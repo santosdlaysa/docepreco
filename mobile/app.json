@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "Precifica Doces",
+    "slug": "sweet-pricing",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#FFF0F3"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FFF0F3"
+      },
+      "permissions": [
+        "android.permission.DETECT_SCREEN_CAPTURE"
+      ],
+      "package": "com.laysadiniz.sweetpricing"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    }
+  }
+}

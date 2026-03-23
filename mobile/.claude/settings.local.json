@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/dev/sweet-pricing/mobile/$USERPROFILE/.gradle/wrapper/**)",
+      "Read(//c/Users/$USERNAME/.gradle/wrapper/**)",
+      "Bash(node:*)",
+      "mcp__ide__getDiagnostics"
+    ]
+  }
+}

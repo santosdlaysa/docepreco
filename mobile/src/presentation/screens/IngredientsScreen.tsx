@@ -1,0 +1,213 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  FlatList,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
+
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import { Ingredient } from '../../domain/entities/Ingredient';
+import { ingredientApi } from '../../data/api/ingredientApi';
+import { colors } from '../theme/colors';
+import { typography } from '../theme/typography';
+import { Card } from '../components/Card';
+import { EmptyState } from '../components/EmptyState';
+import { Header } from '../components/Header';
+import { useToast } from '../context/ToastContext';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+const unitLabels: Record<string, string> = {
+  g: 'gramas',
+  kg: 'quilogramas',
+  ml: 'mililitros',
+  l: 'litros',
+  unit: 'unidade',
+};
+
+export const IngredientsScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const { showToast } = useToast();
+
+  const loadIngredients = async () => {
+    try {
+      const data = await ingredientApi.getAll();
+      setIngredients(data);
+    } catch (error) {
+      showToast('Não foi possível carregar os ingredientes', 'error');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      setLoading(true);
+      loadIngredients();
+    }, [])
+  );
+
+  const handleDelete = (ingredient: Ingredient) => {
+    Alert.alert(
+      'Excluir Ingrediente',
+      `Deseja excluir "${ingredient.name}"?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await ingredientApi.delete(ingredient.id);
+              setIngredients(prev => prev.filter(i => i.id !== ingredient.id));
+              showToast('Ingrediente excluído', 'success');
+            } catch (error) {
+              const msg = error instanceof Error ? error.message : '';
+              if (msg.includes('em uso') || msg.includes('in use') || msg.includes('violates foreign key') || msg.includes('restrict')) {
+                showToast('Ingrediente em uso em uma ou mais receitas', 'warning');
+              } else {
+                showToast('Não foi possível excluir este ingrediente', 'error');
+              }
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const formatPrice = (price: number) =>
+    price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const pricePerUnit = (ingredient: Ingredient) =>
+    ingredient.purchasePrice / ingredient.purchaseQuantity;
+
+  const renderItem = ({ item }: { item: Ingredient }) => (
+    <Card style={styles.ingredientCard}>
+      <View style={styles.ingredientMain}>
+        <View style={styles.ingredientIcon}>
+          <Ionicons name="leaf-outline" size={22} color={colors.secondary} />
+        </View>
+        <View style={styles.ingredientInfo}>
+          <Text style={styles.ingredientName}>{item.name}</Text>
+          <Text style={styles.ingredientQuantity}>
+            {item.purchaseQuantity} {item.unit} por {formatPrice(item.purchasePrice)}
+          </Text>
+          <Text style={styles.pricePerUnit}>
+            {formatPrice(pricePerUnit(item))} por {item.unit}
+          </Text>
+        </View>
+        <View style={styles.ingredientActions}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('EditIngredient', { ingredientId: item.id })}
+            style={styles.actionBtn}
+          >
+            <Ionicons name="pencil-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleDelete(item)}
+            style={[styles.actionBtn, { marginTop: 4 }]}
+          >
+            <Ionicons name="trash-outline" size={18} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Card>
+  );
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Header title="Ingredientes" />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <Header
+        title="Ingredientes"
+        subtitle={`${ingredients.length} cadastrado${ingredients.length !== 1 ? 's' : ''}`}
+        rightAction={
+          <TouchableOpacity
+            onPress={() => navigation.navigate('CreateIngredient')}
+            style={styles.addButton}
+          >
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+        }
+      />
+      <FlatList
+        data={ingredients}
+        keyExtractor={item => item.id}
+        renderItem={renderItem}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => { setRefreshing(true); loadIngredients(); }}
+            colors={[colors.primary]}
+          />
+        }
+        ListEmptyComponent={
+          <EmptyState
+            icon="basket-outline"
+            title="Nenhum ingrediente ainda"
+            description="Cadastre os ingredientes que voce usa nas suas receitas!"
+            actionLabel="Adicionar Ingrediente"
+            onAction={() => navigation.navigate('CreateIngredient')}
+          />
+        }
+      />
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  list: { padding: 20, flexGrow: 1 },
+  addButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ingredientCard: {
+    marginBottom: 10,
+  },
+  ingredientMain: { flexDirection: 'row', alignItems: 'center' },
+  ingredientIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: colors.beige,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  ingredientInfo: { flex: 1 },
+  ingredientName: { ...typography.h4, color: colors.text },
+  ingredientQuantity: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  pricePerUnit: { ...typography.caption, color: colors.primary, marginTop: 3, fontWeight: '600' },
+  ingredientActions: { alignItems: 'center' },
+  actionBtn: { padding: 6 },
+});
