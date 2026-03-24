@@ -29,7 +29,8 @@
       "permissions": [
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
-      "package": "com.laysadiniz.sweetpricing"
+      "package": "com.laysadiniz.sweetpricing",
+      "versionCode": 3
     },
     "web": {
       "favicon": "./assets/favicon.png"
