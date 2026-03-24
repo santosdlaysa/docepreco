@@ -2,7 +2,13 @@
   "permissions": {
     "allow": [
       "Bash(npm install:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(for dir:*)",
+      "Bash(do echo:*)",
+      "Read(//c/dev/sweet-pricing/mobile/android/app/src/main/res/**)",
+      "Bash(done)",
+      "Bash(grep:*)",
+      "Bash(ls:*)"
     ]
   }
 }
