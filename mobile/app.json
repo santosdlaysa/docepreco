@@ -1,12 +1,13 @@
 {
   "expo": {
-    "name": "Precifica Doces",
+    "name": "DocePreço",
     "slug": "sweet-pricing",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFF0F3"
     },
@@ -14,10 +15,15 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.laysadiniz.sweetpricing",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#FFF0F3"
       },
       "permissions": [
@@ -27,6 +33,11 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "2e86f353-1d41-47cc-b552-3e242b8430f4"
+      }
     }
   }
 }

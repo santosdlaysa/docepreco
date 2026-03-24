@@ -16,6 +16,7 @@ import { CreateSaleScreen } from '../screens/CreateSaleScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { OnboardingScreen, hasSeenOnboarding } from '../screens/OnboardingScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
@@ -57,20 +58,22 @@ function TabNavigator() {
 }
 
 export function AppNavigator() {
-  const [authState, setAuthState] = useState<'loading' | 'auth' | 'app'>('loading');
+  const [authState, setAuthState] = useState<'loading' | 'auth' | 'app' | 'onboarding'>('loading');
   const [showRegister, setShowRegister] = useState(false);
   const [companyName, setCompanyName] = useState('');
 
   useEffect(() => {
-    tokenStorage.getToken().then(async token => {
+    (async () => {
+      const token = await tokenStorage.getToken();
       if (token) {
         const user = await tokenStorage.getUser();
         setCompanyName(user?.companyName || '');
         setAuthState('app');
       } else {
-        setAuthState('auth');
+        const seen = await hasSeenOnboarding();
+        setAuthState(seen ? 'auth' : 'onboarding');
       }
-    });
+    })();
   }, []);
 
   const logout = async () => {
@@ -85,6 +88,10 @@ export function AppNavigator() {
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
+  }
+
+  if (authState === 'onboarding') {
+    return <OnboardingScreen onDone={() => setAuthState('auth')} />;
   }
 
   if (authState === 'auth') {
