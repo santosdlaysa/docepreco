@@ -12,3 +12,9 @@ web-build/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+
+# Claude Code
+.claude/settings.local.json
+
+# EAS
+.easignore
