@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { tokenStorage } from '../storage/tokenStorage';
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.211.231.227:3000/api';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

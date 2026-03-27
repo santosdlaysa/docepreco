@@ -19,6 +19,9 @@
       "bundleIdentifier": "com.laysadiniz.sweetpricing",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "runtimeVersion": {
+        "policy": "appVersion"
       }
     },
     "android": {
@@ -27,10 +30,12 @@
         "backgroundColor": "#FFF0F3"
       },
       "permissions": [
+        "android.permission.DETECT_SCREEN_CAPTURE",
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.laysadiniz.sweetpricing",
-      "versionCode": 5
+      "versionCode": 5,
+      "runtimeVersion": "1.0.0"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -39,6 +44,9 @@
       "eas": {
         "projectId": "2e86f353-1d41-47cc-b552-3e242b8430f4"
       }
+    },
+    "updates": {
+      "url": "https://u.expo.dev/2e86f353-1d41-47cc-b552-3e242b8430f4"
     }
   }
 }
