@@ -16,6 +16,7 @@ import { CreateSaleScreen } from '../screens/CreateSaleScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { OnboardingScreen, hasSeenOnboarding } from '../screens/OnboardingScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
@@ -64,14 +65,19 @@ export function AppNavigator() {
 
   useEffect(() => {
     (async () => {
-      const token = await tokenStorage.getToken();
-      if (token) {
-        const user = await tokenStorage.getUser();
-        setCompanyName(user?.companyName || '');
-        setAuthState('app');
-      } else {
-        const seen = await hasSeenOnboarding();
-        setAuthState(seen ? 'auth' : 'onboarding');
+      try {
+        const token = await tokenStorage.getToken();
+        if (token) {
+          const user = await tokenStorage.getUser();
+          setCompanyName(user?.companyName || '');
+          setAuthState('app');
+        } else {
+          const seen = await hasSeenOnboarding();
+          setAuthState(seen ? 'auth' : 'onboarding');
+        }
+      } catch (error) {
+        console.error('Erro na inicialização:', error);
+        setAuthState('auth');
       }
     })();
   }, []);
@@ -125,6 +131,7 @@ export function AppNavigator() {
           <Stack.Screen name="EditIngredient" component={CreateIngredientScreen} />
           <Stack.Screen name="CreateSale" component={CreateSaleScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthContext.Provider>

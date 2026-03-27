@@ -10,4 +10,5 @@ export type RootStackParamList = {
   Sales: undefined;
   CreateSale: undefined;
   Profile: undefined;
+  PrivacyPolicy: undefined;
 };

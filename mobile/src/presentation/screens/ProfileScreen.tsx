@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { colors } from '../theme/colors';
@@ -12,7 +14,7 @@ import { Header } from '../components/Header';
 import { Button } from '../components/Button';
 
 export const ProfileScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout } = useAuth();
   const [user, setUser] = useState<{ companyName: string; email: string } | null>(null);
 
@@ -41,6 +43,17 @@ export const ProfileScreen: React.FC = () => {
               <Text style={styles.email}>{user?.email || '—'}</Text>
             </View>
           </View>
+        </Card>
+
+        <Card style={styles.menuCard}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('PrivacyPolicy')}
+          >
+            <Ionicons name="shield-checkmark-outline" size={22} color={colors.primary} />
+            <Text style={styles.menuText}>Politica de Privacidade</Text>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
         </Card>
 
         <Card style={styles.dangerCard}>
@@ -72,6 +85,18 @@ const styles = StyleSheet.create({
   userInfo: { flex: 1 },
   companyName: { ...typography.h3, color: colors.text },
   email: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  menuCard: { marginBottom: 16 },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 4,
+  },
+  menuText: {
+    ...typography.body,
+    color: colors.text,
+    flex: 1,
+  },
   dangerCard: { borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
   logoutBtn: { borderColor: colors.error },
 });
