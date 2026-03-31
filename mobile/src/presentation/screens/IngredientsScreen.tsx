@@ -17,6 +17,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { ingredientApi } from '../../data/api/ingredientApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoIngredientApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -40,10 +42,11 @@ export const IngredientsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
+  const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const loadIngredients = async () => {
     try {
-      const data = await ingredientApi.getAll();
+      const data = await api.getAll();
       setIngredients(data);
     } catch (error) {
       showToast('Não foi possível carregar os ingredientes', 'error');
@@ -71,7 +74,7 @@ export const IngredientsScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await ingredientApi.delete(ingredient.id);
+              await api.delete(ingredient.id);
               setIngredients(prev => prev.filter(i => i.id !== ingredient.id));
               showToast('Ingrediente excluído', 'success');
             } catch (error) {

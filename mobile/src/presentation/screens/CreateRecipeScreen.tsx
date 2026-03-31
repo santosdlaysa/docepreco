@@ -18,6 +18,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { recipeApi } from '../../data/api/recipeApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { RecipeIngredient, AdditionalCost } from '../../domain/entities/Recipe';
 import { colors } from '../theme/colors';
@@ -60,14 +62,16 @@ export const CreateRecipeScreen: React.FC = () => {
   const [loadingData, setLoadingData] = useState(isEditing);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();
+  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
+  const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   useEffect(() => {
-    ingredientApi.getAll().then(setAvailableIngredients).catch(() => {});
+    iApi.getAll().then(setAvailableIngredients).catch(() => {});
   }, []);
 
   useEffect(() => {
     if (!recipeId) return;
-    recipeApi.getById(recipeId)
+    rApi.getById(recipeId)
       .then(recipe => {
         setName(recipe.name);
         setYieldAmount(String(recipe.yield));
@@ -145,11 +149,11 @@ export const CreateRecipeScreen: React.FC = () => {
         additionalCosts,
       };
       if (isEditing) {
-        await recipeApi.update(recipeId!, payload);
+        await rApi.update(recipeId!, payload);
         showToast('Receita atualizada!', 'success');
         navigation.goBack();
       } else {
-        const recipe = await recipeApi.create(payload);
+        const recipe = await rApi.create(payload);
         showToast('Receita salva! Abrindo precificação...', 'success');
         navigation.replace('RecipeDetail', { recipeId: recipe.id });
       }

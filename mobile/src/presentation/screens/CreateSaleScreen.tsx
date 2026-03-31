@@ -13,6 +13,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { recipeApi } from '../../data/api/recipeApi';
 import { saleApi } from '../../data/api/saleApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
 import { Recipe } from '../../domain/entities/Recipe';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -34,9 +36,11 @@ export const CreateSaleScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const { showToast } = useToast();
+  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
+  const sApi = isDemoMode() ? demoSaleApi : saleApi;
 
   useEffect(() => {
-    recipeApi.getAll().then(setRecipes).catch(() => {});
+    rApi.getAll().then(setRecipes).catch(() => {});
   }, []);
 
   const validate = () => {
@@ -53,7 +57,7 @@ export const CreateSaleScreen: React.FC = () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      await saleApi.create({
+      await sApi.create({
         recipeId: selectedRecipe!.id,
         quantitySold: parseInt(quantity),
         salePrice: parseFloat(salePrice),

@@ -22,6 +22,8 @@ import { Card } from '../components/Card';
 import { shopeeBanners, ShopeeBanner } from '../data/shopeeBanners';
 import { useAuth } from '../../context/AuthContext';
 import { statsApi, AppStats } from '../../data/api/statsApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoStatsApi } from '../../data/demo/demoApi';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -173,11 +175,12 @@ const quickActions: QuickActionItem[] = [
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { companyName } = useAuth();
+  const { companyName, isDemoMode: isDemo } = useAuth();
   const [stats, setStats] = useState<AppStats | null>(null);
+  const api = isDemoMode() ? demoStatsApi : statsApi;
 
   useEffect(() => {
-    statsApi.getStats().then(setStats).catch(() => {});
+    api.getStats().then(setStats).catch(() => {});
   }, []);
 
   const openShopeeLink = async (url: string) => {
@@ -209,6 +212,13 @@ export const HomeScreen: React.FC = () => {
             <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
           </TouchableOpacity>
         </View>
+
+        {isDemo && (
+          <View style={styles.demoBanner}>
+            <Ionicons name="information-circle-outline" size={18} color="#6D5000" />
+            <Text style={styles.demoBannerText}>Modo Demonstração — dados fictícios</Text>
+          </View>
+        )}
 
         <Card style={styles.heroBanner}>
           <View style={styles.heroContent}>
@@ -335,6 +345,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  demoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF8E1',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#FFE082',
+  },
+  demoBannerText: { ...typography.bodySmall, color: '#6D5000', fontWeight: '600', flex: 1 },
   statsCard: {
     marginBottom: 20,
   },

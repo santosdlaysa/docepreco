@@ -15,7 +15,7 @@ import { Button } from '../components/Button';
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout } = useAuth();
+  const { logout, isDemoMode } = useAuth();
   const [user, setUser] = useState<{ companyName: string; email: string } | null>(null);
 
   useEffect(() => {
@@ -40,7 +40,14 @@ export const ProfileScreen: React.FC = () => {
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.companyName}>{user?.companyName || '—'}</Text>
-              <Text style={styles.email}>{user?.email || '—'}</Text>
+              <View style={styles.emailRow}>
+                <Text style={styles.email}>{user?.email || '—'}</Text>
+                {isDemoMode && (
+                  <View style={styles.demoBadge}>
+                    <Text style={styles.demoBadgeText}>Demo</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
         </Card>
@@ -84,7 +91,17 @@ const styles = StyleSheet.create({
   },
   userInfo: { flex: 1 },
   companyName: { ...typography.h3, color: colors.text },
-  email: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  email: { ...typography.bodySmall, color: colors.textSecondary },
+  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  demoBadge: {
+    backgroundColor: '#FFF8E1',
+    borderWidth: 1,
+    borderColor: '#FFE082',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  demoBadgeText: { fontSize: 11, fontWeight: '700', color: '#6D5000' },
   menuCard: { marginBottom: 16 },
   menuItem: {
     flexDirection: 'row',

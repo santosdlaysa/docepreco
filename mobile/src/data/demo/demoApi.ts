@@ -1,0 +1,199 @@
+import { Recipe, CreateRecipeDTO } from '../../domain/entities/Recipe';
+import { Ingredient, CreateIngredientDTO } from '../../domain/entities/Ingredient';
+import { Sale, CreateSaleDTO } from '../../domain/entities/Sale';
+import { CalculationResult } from '../../domain/entities/Calculation';
+import { AppStats } from '../api/statsApi';
+import {
+  demoIngredients,
+  demoRecipes,
+  demoSales,
+  demoStats,
+  demoCalculations,
+} from './demoData';
+
+// Cópias mutáveis dos arrays (reset ao sair do demo mode)
+let ingredients = [...demoIngredients];
+let recipes = [...demoRecipes];
+let sales = [...demoSales];
+let nextId = 100;
+
+const genId = () => `demo-gen-${nextId++}`;
+const now = () => new Date().toISOString();
+const delay = (ms = 300) => new Promise(r => setTimeout(r, ms));
+
+// ── Stats ──
+
+export const demoStatsApi = {
+  getStats: async (): Promise<AppStats> => {
+    await delay();
+    return {
+      ...demoStats,
+      recipesCount: recipes.length,
+      ingredientsCount: ingredients.length,
+      monthlySalesCount: sales.length,
+      monthlyRevenue: sales.reduce((s, v) => s + v.totalRevenue, 0),
+      recentSales: sales.slice(0, 3).map(s => ({
+        id: s.id,
+        recipeName: s.recipeName,
+        quantitySold: s.quantitySold,
+        totalRevenue: s.totalRevenue,
+        saleDate: s.saleDate,
+      })),
+    };
+  },
+};
+
+// ── Recipes ──
+
+function calculateForRecipe(recipe: Recipe): CalculationResult {
+  let ingredientsCost = 0;
+  for (const ri of recipe.ingredients) {
+    const ing = ingredients.find(i => i.id === ri.ingredientId);
+    if (ing) {
+      ingredientsCost += (ri.quantityUsed / ing.purchaseQuantity) * ing.purchasePrice;
+    }
+  }
+  const additionalCostTotal = recipe.additionalCosts.reduce((s, c) => s + c.value, 0);
+  const totalCost = ingredientsCost + additionalCostTotal;
+  const costPerUnit = totalCost / recipe.yield;
+  const suggestedPrice = costPerUnit * (1 + recipe.profitMargin / 100);
+  const estimatedProfit = (suggestedPrice - costPerUnit) * recipe.yield;
+
+  return {
+    totalCost: Math.round(totalCost * 100) / 100,
+    costPerUnit: Math.round(costPerUnit * 100) / 100,
+    suggestedPrice: Math.round(suggestedPrice * 100) / 100,
+    estimatedProfit: Math.round(estimatedProfit * 100) / 100,
+    profitMargin: recipe.profitMargin,
+    ingredientsCost: Math.round(ingredientsCost * 100) / 100,
+    additionalCostTotal: Math.round(additionalCostTotal * 100) / 100,
+  };
+}
+
+export const demoRecipeApi = {
+  getAll: async (): Promise<Recipe[]> => {
+    await delay();
+    return [...recipes];
+  },
+
+  getById: async (id: string): Promise<Recipe> => {
+    await delay();
+    const recipe = recipes.find(r => r.id === id);
+    if (!recipe) throw new Error('Receita não encontrada');
+    return { ...recipe };
+  },
+
+  create: async (data: CreateRecipeDTO): Promise<Recipe> => {
+    await delay();
+    const recipe: Recipe = {
+      id: genId(),
+      ...data,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    recipes.push(recipe);
+    return { ...recipe };
+  },
+
+  update: async (id: string, data: Partial<CreateRecipeDTO>): Promise<Recipe> => {
+    await delay();
+    const idx = recipes.findIndex(r => r.id === id);
+    if (idx === -1) throw new Error('Receita não encontrada');
+    recipes[idx] = { ...recipes[idx], ...data, updatedAt: now() };
+    return { ...recipes[idx] };
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await delay();
+    recipes = recipes.filter(r => r.id !== id);
+  },
+
+  calculate: async (id: string): Promise<CalculationResult> => {
+    await delay();
+    // Use pre-calculated if available, otherwise calculate on the fly
+    if (demoCalculations[id]) return { ...demoCalculations[id] };
+    const recipe = recipes.find(r => r.id === id);
+    if (!recipe) throw new Error('Receita não encontrada');
+    return calculateForRecipe(recipe);
+  },
+};
+
+// ── Ingredients ──
+
+export const demoIngredientApi = {
+  getAll: async (): Promise<Ingredient[]> => {
+    await delay();
+    return [...ingredients];
+  },
+
+  getById: async (id: string): Promise<Ingredient> => {
+    await delay();
+    const ing = ingredients.find(i => i.id === id);
+    if (!ing) throw new Error('Ingrediente não encontrado');
+    return { ...ing };
+  },
+
+  create: async (data: CreateIngredientDTO): Promise<Ingredient> => {
+    await delay();
+    const ingredient: Ingredient = {
+      id: genId(),
+      ...data,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    ingredients.push(ingredient);
+    return { ...ingredient };
+  },
+
+  update: async (id: string, data: Partial<CreateIngredientDTO>): Promise<Ingredient> => {
+    await delay();
+    const idx = ingredients.findIndex(i => i.id === id);
+    if (idx === -1) throw new Error('Ingrediente não encontrado');
+    ingredients[idx] = { ...ingredients[idx], ...data, updatedAt: now() };
+    return { ...ingredients[idx] };
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await delay();
+    const usedInRecipe = recipes.some(r => r.ingredients.some(ri => ri.ingredientId === id));
+    if (usedInRecipe) throw new Error('Ingrediente em uso em uma ou mais receitas');
+    ingredients = ingredients.filter(i => i.id !== id);
+  },
+};
+
+// ── Sales ──
+
+export const demoSaleApi = {
+  getAll: async (period?: 'week' | 'month'): Promise<Sale[]> => {
+    await delay();
+    if (!period) return [...sales];
+    const now = new Date();
+    const cutoff = new Date();
+    if (period === 'week') cutoff.setDate(now.getDate() - 7);
+    else cutoff.setMonth(now.getMonth() - 1);
+    return sales.filter(s => new Date(s.saleDate) >= cutoff);
+  },
+
+  create: async (data: CreateSaleDTO): Promise<Sale> => {
+    await delay();
+    const recipe = recipes.find(r => r.id === data.recipeId);
+    const sale: Sale = {
+      id: genId(),
+      recipeId: data.recipeId,
+      recipeName: recipe?.name || 'Receita',
+      quantitySold: data.quantitySold,
+      salePrice: data.salePrice,
+      totalRevenue: data.quantitySold * data.salePrice,
+      saleDate: data.saleDate,
+      notes: data.notes,
+      createdAt: now(),
+    };
+    sales.unshift(sale);
+    return { ...sale };
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await delay();
+    sales = sales.filter(s => s.id !== id);
+  },
+};

@@ -19,9 +19,10 @@ import { Input } from '../components/Input';
 interface Props {
   onLogin: () => void;
   onGoToRegister: () => void;
+  onDemoLogin?: () => void;
 }
 
-export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister }) => {
+export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onDemoLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -111,6 +112,23 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister }) => {
             </TouchableOpacity>
           </View>
 
+          {onDemoLogin && (
+            <View style={styles.demoSection}>
+              <View style={styles.separator}>
+                <View style={styles.separatorLine} />
+                <Text style={styles.separatorText}>ou</Text>
+                <View style={styles.separatorLine} />
+              </View>
+              <TouchableOpacity onPress={onDemoLogin} style={styles.demoButton} activeOpacity={0.8}>
+                <Ionicons name="play-outline" size={20} color={colors.secondary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.demoButtonText}>Entrar em modo demonstração</Text>
+                  <Text style={styles.demoButtonSub}>Explore o app sem criar conta</Text>
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -150,4 +168,22 @@ const styles = StyleSheet.create({
   switchLink: { marginTop: 16, alignItems: 'center' },
   switchText: { ...typography.body, color: colors.textSecondary },
   switchTextBold: { color: colors.primary, fontWeight: '700' },
+  demoSection: { marginTop: 24, alignItems: 'center' },
+  separator: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 16 },
+  separatorLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  separatorText: { ...typography.bodySmall, color: colors.textMuted, marginHorizontal: 12 },
+  demoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1.5,
+    borderColor: colors.secondary,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    width: '100%',
+    backgroundColor: colors.cream,
+  },
+  demoButtonText: { ...typography.body, color: colors.secondary, fontWeight: '600' },
+  demoButtonSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 });

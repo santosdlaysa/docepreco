@@ -22,6 +22,7 @@ import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
+import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -62,14 +63,17 @@ export function AppNavigator() {
   const [authState, setAuthState] = useState<'loading' | 'auth' | 'app' | 'onboarding'>('loading');
   const [showRegister, setShowRegister] = useState(false);
   const [companyName, setCompanyName] = useState('');
+  const [demoMode, setDemoModeState] = useState(false);
 
   useEffect(() => {
     (async () => {
       try {
+        const isDemo = await loadDemoMode();
         const token = await tokenStorage.getToken();
         if (token) {
           const user = await tokenStorage.getUser();
           setCompanyName(user?.companyName || '');
+          setDemoModeState(isDemo);
           setAuthState('app');
         } else {
           const seen = await hasSeenOnboarding();
@@ -83,9 +87,20 @@ export function AppNavigator() {
   }, []);
 
   const logout = async () => {
+    await setDemoMode(false);
+    setDemoModeState(false);
     await authApi.logout();
     setCompanyName('');
     setAuthState('auth');
+  };
+
+  const loginAsDemo = async () => {
+    await setDemoMode(true);
+    setDemoModeState(true);
+    await tokenStorage.saveUser({ id: 'demo', companyName: 'Demo User', email: 'review@demo.local' });
+    await tokenStorage.saveToken('demo-token');
+    setCompanyName('Demo User');
+    setAuthState('app');
   };
 
   if (authState === 'loading') {
@@ -113,12 +128,13 @@ export function AppNavigator() {
       <LoginScreen
         onLogin={() => setAuthState('app')}
         onGoToRegister={() => setShowRegister(true)}
+        onDemoLogin={loginAsDemo}
       />
     );
   }
 
   return (
-    <AuthContext.Provider value={{ logout, companyName }}>
+    <AuthContext.Provider value={{ logout, companyName, isDemoMode: demoMode }}>
       <NavigationContainer>
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Main" component={TabNavigator} />

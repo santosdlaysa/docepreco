@@ -16,6 +16,8 @@ import { RootStackParamList } from '../navigation/types';
 import { Recipe } from '../../domain/entities/Recipe';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { recipeApi } from '../../data/api/recipeApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoRecipeApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -37,6 +39,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const [calculation, setCalculation] = useState<CalculationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const api = isDemoMode() ? demoRecipeApi : recipeApi;
 
   useEffect(() => {
     loadRecipe();
@@ -44,7 +47,7 @@ export const RecipeDetailScreen: React.FC = () => {
 
   const loadRecipe = async () => {
     try {
-      const data = await recipeApi.getById(recipeId);
+      const data = await api.getById(recipeId);
       setRecipe(data);
       await handleCalculate(recipeId);
     } catch (error) {
@@ -57,7 +60,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const handleCalculate = async (id?: string) => {
     setCalculating(true);
     try {
-      const result = await recipeApi.calculate(id || recipeId);
+      const result = await api.calculate(id || recipeId);
       setCalculation(result);
     } catch (error) {
       // silently fail if no ingredients

@@ -16,6 +16,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Recipe } from '../../domain/entities/Recipe';
 import { recipeApi } from '../../data/api/recipeApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoRecipeApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -31,10 +33,11 @@ export const RecipesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
+  const api = isDemoMode() ? demoRecipeApi : recipeApi;
 
   const loadRecipes = async () => {
     try {
-      const data = await recipeApi.getAll();
+      const data = await api.getAll();
       setRecipes(data);
     } catch (error) {
       showToast('Não foi possível carregar as receitas', 'error');
@@ -62,7 +65,7 @@ export const RecipesScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await recipeApi.delete(recipe.id);
+              await api.delete(recipe.id);
               setRecipes(prev => prev.filter(r => r.id !== recipe.id));
               showToast('Receita excluída', 'success');
             } catch (error) {

@@ -13,6 +13,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ingredientApi } from '../../data/api/ingredientApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoIngredientApi } from '../../data/demo/demoApi';
 import { Unit } from '../../domain/entities/Ingredient';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
@@ -49,10 +51,11 @@ export const CreateIngredientScreen: React.FC = () => {
   const [allNames, setAllNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
+  const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   useEffect(() => {
     if (!isEditing) {
-      ingredientApi.getAll()
+      api.getAll()
         .then(list => setAllNames(list.map(i => i.name)))
         .catch(() => {});
     }
@@ -75,7 +78,7 @@ export const CreateIngredientScreen: React.FC = () => {
 
   useEffect(() => {
     if (!ingredientId) return;
-    ingredientApi.getById(ingredientId)
+    api.getById(ingredientId)
       .then(ingredient => {
         setName(ingredient.name);
         setPurchaseQuantity(String(ingredient.purchaseQuantity));
@@ -102,7 +105,7 @@ export const CreateIngredientScreen: React.FC = () => {
     setLoading(true);
     try {
       if (isEditing) {
-        await ingredientApi.update(ingredientId!, {
+        await api.update(ingredientId!, {
           name: name.trim(),
           purchaseQuantity: parseFloat(purchaseQuantity),
           purchasePrice: parseFloat(purchasePrice),
@@ -111,7 +114,7 @@ export const CreateIngredientScreen: React.FC = () => {
         showToast('Ingrediente atualizado!', 'success');
         navigation.goBack();
       } else {
-        await ingredientApi.create({
+        await api.create({
           name: name.trim(),
           purchaseQuantity: parseFloat(purchaseQuantity),
           purchasePrice: parseFloat(purchasePrice),

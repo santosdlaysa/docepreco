@@ -16,6 +16,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Sale } from '../../domain/entities/Sale';
 import { saleApi } from '../../data/api/saleApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoSaleApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -68,10 +70,11 @@ export const SalesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<'all' | 'week' | 'month'>('all');
   const { showToast } = useToast();
+  const api = isDemoMode() ? demoSaleApi : saleApi;
 
   const loadSales = async () => {
     try {
-      const data = await saleApi.getAll(period === 'all' ? undefined : period);
+      const data = await api.getAll(period === 'all' ? undefined : period);
       setSales(data);
     } catch {
       showToast('Não foi possível carregar as vendas', 'error');
@@ -102,7 +105,7 @@ export const SalesScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              await saleApi.delete(sale.id);
+              await api.delete(sale.id);
               setSales(prev => prev.filter(s => s.id !== sale.id));
               showToast('Venda excluída', 'success');
             } catch {
