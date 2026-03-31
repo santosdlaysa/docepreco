@@ -2,7 +2,7 @@
   "expo": {
     "name": "DocePreço",
     "slug": "sweet-pricing",
-    "version": "1.1.0",
+    "version": "2.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -35,7 +35,7 @@
       ],
       "package": "com.laysadiniz.sweetpricing",
       "versionCode": 6,
-      "runtimeVersion": "1.1.0"
+      "runtimeVersion": "2.1.0"
     },
     "web": {
       "favicon": "./assets/favicon.png"
