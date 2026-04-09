@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -12,6 +12,8 @@ import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
+
+const SUPPORT_WHATSAPP = '5595991371313';
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -27,6 +29,20 @@ export const ProfileScreen: React.FC = () => {
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Sair', style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const handleSupport = async () => {
+    const who = user?.companyName ? ` da ${user.companyName}` : '';
+    const message = `Olá! Sou${who} e preciso de ajuda com o app DocePreço.`;
+    const url = `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`;
+    try {
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert(
+        'Ops',
+        'Não foi possível abrir o WhatsApp. Verifique se o app está instalado.'
+      );
+    }
   };
 
   return (
@@ -52,13 +68,33 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </Card>
 
+        <Text style={styles.sectionTitle}>Ajuda</Text>
+        <Card style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuItem} onPress={handleSupport}>
+            <View style={[styles.iconBadge, { backgroundColor: '#E7F9EF' }]}>
+              <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
+            </View>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuText}>Suporte via WhatsApp</Text>
+              <Text style={styles.menuSubtext}>Fale com a gente, tire dúvidas</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </Card>
+
+        <Text style={styles.sectionTitle}>Sobre</Text>
         <Card style={styles.menuCard}>
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => navigation.navigate('PrivacyPolicy')}
           >
-            <Ionicons name="shield-checkmark-outline" size={22} color={colors.primary} />
-            <Text style={styles.menuText}>Politica de Privacidade</Text>
+            <View style={[styles.iconBadge, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
+            </View>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuText}>Política de Privacidade</Text>
+              <Text style={styles.menuSubtext}>Como usamos os seus dados</Text>
+            </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </Card>
@@ -102,17 +138,41 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   demoBadgeText: { fontSize: 11, fontWeight: '700', color: '#6D5000' },
+  sectionTitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 8,
+    marginLeft: 4,
+  },
   menuCard: { marginBottom: 16 },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 4,
+    paddingVertical: 6,
+  },
+  iconBadge: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  menuTextWrap: {
+    flex: 1,
   },
   menuText: {
     ...typography.body,
     color: colors.text,
-    flex: 1,
+    fontWeight: '600',
+  },
+  menuSubtext: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
   dangerCard: { borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
   logoutBtn: { borderColor: colors.error },
