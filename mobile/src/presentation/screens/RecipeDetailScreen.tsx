@@ -23,6 +23,9 @@ import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { Header } from '../components/Header';
+import { useAuth } from '../../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { shareRecipeQuote } from '../utils/pdfQuote';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -39,7 +42,10 @@ export const RecipeDetailScreen: React.FC = () => {
   const [calculation, setCalculation] = useState<CalculationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
+  const { companyName } = useAuth();
+  const { showToast } = useToast();
 
   useEffect(() => {
     loadRecipe();
@@ -69,6 +75,19 @@ export const RecipeDetailScreen: React.FC = () => {
     }
   };
 
+  const handleShareQuote = async () => {
+    if (!recipe || !calculation) return;
+    setSharing(true);
+    try {
+      await shareRecipeQuote({ recipe, calculation, companyName });
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : 'Erro ao gerar orçamento';
+      showToast(msg, 'error');
+    } finally {
+      setSharing(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -89,12 +108,25 @@ export const RecipeDetailScreen: React.FC = () => {
         showBack
         onBack={() => navigation.goBack()}
         rightAction={
-          <TouchableOpacity
-            onPress={() => navigation.navigate('EditRecipe', { recipeId: recipe.id })}
-            style={styles.editBtn}
-          >
-            <Ionicons name="pencil-outline" size={20} color={colors.primary} />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              onPress={handleShareQuote}
+              disabled={!calculation || sharing}
+              style={[styles.editBtn, (!calculation || sharing) && styles.editBtnDisabled]}
+            >
+              {sharing ? (
+                <ActivityIndicator size="small" color={colors.primary} />
+              ) : (
+                <Ionicons name="share-outline" size={20} color={colors.primary} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('EditRecipe', { recipeId: recipe.id })}
+              style={styles.editBtn}
+            >
+              <Ionicons name="pencil-outline" size={20} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
         }
       />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
@@ -168,6 +200,22 @@ export const RecipeDetailScreen: React.FC = () => {
                 </View>
               )}
             </View>
+
+            <TouchableOpacity
+              onPress={handleShareQuote}
+              disabled={sharing}
+              activeOpacity={0.8}
+              style={[styles.shareButton, sharing && styles.shareButtonDisabled]}
+            >
+              {sharing ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="share-outline" size={18} color="#fff" />
+                  <Text style={styles.shareButtonText}>Compartilhar Orçamento</Text>
+                </>
+              )}
+            </TouchableOpacity>
           </Card>
         )}
 
@@ -249,6 +297,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   container: { flex: 1, padding: 20 },
+  headerActions: { flexDirection: 'row', gap: 8 },
   editBtn: {
     width: 36,
     height: 36,
@@ -257,6 +306,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  editBtnDisabled: { opacity: 0.4 },
   recipeMeta: {
     flexDirection: 'row',
     backgroundColor: colors.surface,
@@ -289,6 +339,23 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     paddingTop: 12,
     gap: 8,
+  },
+  shareButton: {
+    marginTop: 16,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  shareButtonDisabled: { opacity: 0.6 },
+  shareButtonText: {
+    ...typography.button,
+    color: '#fff',
+    fontSize: 14,
   },
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   breakdownLabel: { ...typography.body, color: colors.textSecondary },

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { tokenStorage } from '../storage/tokenStorage';
+import { captureError } from '../../presentation/utils/sentry';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
@@ -33,6 +34,21 @@ apiClient.interceptors.response.use(
     const status = error.response?.status ?? 'ERR';
     const message = error.response?.data?.error || error.message || 'Unknown error';
     console.error(`[API] ✗ ${status} ${method} ${url} — ${message}`);
-    return Promise.reject(new Error(message));
+    // Reporta erros de servidor (5xx) e de rede pro Sentry
+    if (typeof status !== 'number' || status >= 500) {
+      captureError(error, { method, url, status, message });
+    }
+    const apiError: Error & {
+      status?: number;
+      code?: string;
+      limit?: number;
+      current?: number;
+    } = new Error(message);
+    if (typeof status === 'number') apiError.status = status;
+    const data = error.response?.data;
+    if (data?.code) apiError.code = data.code;
+    if (typeof data?.limit === 'number') apiError.limit = data.limit;
+    if (typeof data?.current === 'number') apiError.current = data.current;
+    return Promise.reject(apiError);
   }
 );

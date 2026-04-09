@@ -5,13 +5,19 @@ import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
 import { AppNavigator } from './src/presentation/navigation/AppNavigator';
 import { ToastProvider } from './src/presentation/context/ToastContext';
+import { PremiumProvider } from './src/presentation/context/PremiumContext';
 import {
   flushUsage,
   startUsageTracking,
   stopUsageTracking,
 } from './src/presentation/utils/review';
+import { initSentry, Sentry } from './src/presentation/utils/sentry';
+import { configureRevenueCat } from './src/data/premium/revenueCat';
 
-export default function App() {
+initSentry();
+configureRevenueCat();
+
+function App() {
   const [fontsLoaded] = useFonts({
     ...Ionicons.font,
   });
@@ -46,9 +52,13 @@ export default function App() {
   }
 
   return (
-    <ToastProvider>
-      <StatusBar style="dark" backgroundColor="#FFF0F3" />
-      <AppNavigator />
-    </ToastProvider>
+    <PremiumProvider>
+      <ToastProvider>
+        <StatusBar style="dark" backgroundColor="#FFF0F3" />
+        <AppNavigator />
+      </ToastProvider>
+    </PremiumProvider>
   );
 }
+
+export default Sentry.wrap(App);

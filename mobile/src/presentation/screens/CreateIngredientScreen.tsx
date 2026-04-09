@@ -24,6 +24,7 @@ import { Input } from '../components/Input';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { usePaywall } from '../premium/usePaywall';
 
 const UNITS: { value: Unit; label: string }[] = [
   { value: 'g', label: 'Gramas (g)' },
@@ -51,6 +52,7 @@ export const CreateIngredientScreen: React.FC = () => {
   const [allNames, setAllNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
+  const { checkLimit, openPaywall } = usePaywall();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   useEffect(() => {
@@ -102,6 +104,10 @@ export const CreateIngredientScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!validate()) return;
+    // Client-side limit check (only when creating new)
+    if (!isEditing && !checkLimit('ingredients', allNames.length)) {
+      return;
+    }
     setLoading(true);
     try {
       if (isEditing) {
@@ -124,7 +130,17 @@ export const CreateIngredientScreen: React.FC = () => {
         navigation.goBack();
       }
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
+      const err = error as Error & { code?: string; current?: number };
+      // Server-side fallback: backend enforced the limit
+      if (err.code === 'INGREDIENT_LIMIT') {
+        openPaywall({
+          kind: 'limit',
+          feature: 'ingredients',
+          current: err.current ?? allNames.length,
+        });
+        return;
+      }
+      const msg = err.message || String(error);
       showToast(msg, 'error');
     } finally {
       setLoading(false);

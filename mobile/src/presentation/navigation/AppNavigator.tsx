@@ -18,11 +18,13 @@ import { RegisterScreen } from '../screens/RegisterScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { OnboardingScreen, hasSeenOnboarding } from '../screens/OnboardingScreen';
+import { PaywallScreen } from '../screens/PaywallScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
 import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
+import { identifyRevenueCatUser, logoutRevenueCatUser } from '../../data/premium/revenueCat';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -74,6 +76,9 @@ export function AppNavigator() {
           const user = await tokenStorage.getUser();
           setCompanyName(user?.companyName || '');
           setDemoModeState(isDemo);
+          if (!isDemo && user?.id) {
+            void identifyRevenueCatUser(user.id);
+          }
           setAuthState('app');
         } else {
           const seen = await hasSeenOnboarding();
@@ -90,6 +95,7 @@ export function AppNavigator() {
     await setDemoMode(false);
     setDemoModeState(false);
     await authApi.logout();
+    await logoutRevenueCatUser();
     setCompanyName('');
     setAuthState('auth');
   };
@@ -97,7 +103,14 @@ export function AppNavigator() {
   const loginAsDemo = async () => {
     await setDemoMode(true);
     setDemoModeState(true);
-    await tokenStorage.saveUser({ id: 'demo', companyName: 'Demo User', email: 'review@demo.local' });
+    await tokenStorage.saveUser({
+      id: 'demo',
+      companyName: 'Demo User',
+      email: 'review@demo.local',
+      isPremium: false,
+      premiumUntil: null,
+      premiumPlatform: null,
+    });
     await tokenStorage.saveToken('demo-token');
     setCompanyName('Demo User');
     setAuthState('app');
@@ -148,6 +161,11 @@ export function AppNavigator() {
           <Stack.Screen name="CreateSale" component={CreateSaleScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen
+            name="Paywall"
+            component={PaywallScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
         </Stack.Navigator>
       </NavigationContainer>
     </AuthContext.Provider>

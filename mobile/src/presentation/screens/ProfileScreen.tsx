@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
+import { usePremium } from '../context/PremiumContext';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
@@ -18,11 +19,21 @@ const SUPPORT_WHATSAPP = '5595991371313';
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, isDemoMode } = useAuth();
+  const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
   const [user, setUser] = useState<{ companyName: string; email: string } | null>(null);
 
   useEffect(() => {
     tokenStorage.getUser().then(setUser);
+    void refresh();
   }, []);
+
+  const premiumUntilLabel = premiumUntil
+    ? new Date(premiumUntil).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+    : null;
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja sair da sua conta?', [
@@ -63,10 +74,56 @@ export const ProfileScreen: React.FC = () => {
                     <Text style={styles.demoBadgeText}>Demo</Text>
                   </View>
                 )}
+                {Platform.OS === 'ios' && isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="sparkles" size={10} color="#fff" />
+                    <Text style={styles.premiumBadgeText}>Premium</Text>
+                  </View>
+                )}
               </View>
             </View>
           </View>
         </Card>
+
+        {Platform.OS === 'ios' && (isPremium ? (
+          <Card style={styles.premiumActiveCard}>
+            <View style={styles.premiumActiveRow}>
+              <View style={styles.premiumIconWrap}>
+                <Ionicons name="sparkles" size={22} color="#fff" />
+              </View>
+              <View style={styles.premiumActiveText}>
+                <Text style={styles.premiumActiveTitle}>Você é Premium ✨</Text>
+                <Text style={styles.premiumActiveSubtitle}>
+                  {premiumUntilLabel
+                    ? daysLeft !== null && daysLeft <= 7
+                      ? `Renova em ${daysLeft} dia${daysLeft === 1 ? '' : 's'} (${premiumUntilLabel})`
+                      : `Válido até ${premiumUntilLabel}`
+                    : 'Todos os recursos liberados'}
+                </Text>
+              </View>
+            </View>
+          </Card>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
+          >
+            <Card style={styles.premiumCtaCard}>
+              <View style={styles.premiumCtaRow}>
+                <View style={styles.premiumIconWrap}>
+                  <Ionicons name="sparkles" size={22} color="#fff" />
+                </View>
+                <View style={styles.premiumCtaText}>
+                  <Text style={styles.premiumCtaTitle}>Virar Premium</Text>
+                  <Text style={styles.premiumCtaSubtitle}>
+                    Ingredientes e receitas ilimitados, encomendas, PDF sem marca e mais.
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+              </View>
+            </Card>
+          </TouchableOpacity>
+        ))}
 
         <Text style={styles.sectionTitle}>Ajuda</Text>
         <Card style={styles.menuCard}>
@@ -138,6 +195,52 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   demoBadgeText: { fontSize: 11, fontWeight: '700', color: '#6D5000' },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.primary,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  premiumBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  premiumActiveCard: {
+    marginBottom: 16,
+    backgroundColor: colors.cream,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+  },
+  premiumActiveRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  premiumActiveText: { flex: 1 },
+  premiumActiveTitle: { ...typography.h4, color: colors.text },
+  premiumActiveSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  premiumCtaCard: {
+    marginBottom: 16,
+    backgroundColor: colors.cream,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+  },
+  premiumCtaRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  premiumCtaText: { flex: 1 },
+  premiumCtaTitle: { ...typography.h4, color: colors.text },
+  premiumCtaSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  premiumIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   sectionTitle: {
     ...typography.bodySmall,
     color: colors.textSecondary,

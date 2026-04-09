@@ -5,7 +5,6 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
@@ -55,26 +54,31 @@ export const RecipesScreen: React.FC = () => {
   );
 
   const handleDelete = (recipe: Recipe) => {
-    Alert.alert(
-      'Excluir Receita',
-      `Deseja excluir "${recipe.name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(recipe.id);
-              setRecipes(prev => prev.filter(r => r.id !== recipe.id));
-              showToast('Receita excluída', 'success');
-            } catch (error) {
-              showToast('Não foi possível excluir a receita', 'error');
-            }
-          },
-        },
-      ]
-    );
+    const originalIndex = recipes.findIndex(r => r.id === recipe.id);
+    setRecipes(prev => prev.filter(r => r.id !== recipe.id));
+
+    const restore = () => {
+      setRecipes(prev => {
+        if (prev.some(r => r.id === recipe.id)) return prev;
+        const next = [...prev];
+        const idx = Math.max(0, Math.min(originalIndex, next.length));
+        next.splice(idx, 0, recipe);
+        return next;
+      });
+    };
+
+    showToast(`${recipe.name} excluída`, {
+      type: 'success',
+      action: { label: 'Desfazer', onPress: restore },
+      onDismiss: async () => {
+        try {
+          await api.delete(recipe.id);
+        } catch {
+          restore();
+          showToast('Não foi possível excluir a receita', 'error');
+        }
+      },
+    });
   };
 
   const renderItem = ({ item }: { item: Recipe }) => (

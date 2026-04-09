@@ -29,6 +29,7 @@ import { Input } from '../components/Input';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { usePaywall } from '../premium/usePaywall';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -61,12 +62,17 @@ export const CreateRecipeScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [recipeCount, setRecipeCount] = useState(0);
   const { showToast } = useToast();
+  const { checkLimit, openPaywall } = usePaywall();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   useEffect(() => {
     iApi.getAll().then(setAvailableIngredients).catch(() => {});
+    if (!isEditing) {
+      rApi.getAll().then(list => setRecipeCount(list.length)).catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -139,6 +145,10 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!validate()) return;
+    // Client-side limit check (only when creating new)
+    if (!isEditing && !checkLimit('recipes', recipeCount)) {
+      return;
+    }
     setLoading(true);
     try {
       const payload = {
@@ -158,7 +168,17 @@ export const CreateRecipeScreen: React.FC = () => {
         navigation.replace('RecipeDetail', { recipeId: recipe.id });
       }
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Não foi possível salvar a receita';
+      const err = error as Error & { code?: string; current?: number };
+      // Server-side fallback: backend enforced the limit
+      if (err.code === 'RECIPE_LIMIT') {
+        openPaywall({
+          kind: 'limit',
+          feature: 'recipes',
+          current: err.current ?? recipeCount,
+        });
+        return;
+      }
+      const msg = err.message || 'Não foi possível salvar a receita';
       showToast(msg, 'error');
     } finally {
       setLoading(false);

@@ -5,7 +5,6 @@ import {
   SectionList,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
@@ -95,26 +94,31 @@ export const SalesScreen: React.FC = () => {
   }, [period]);
 
   const handleDelete = (sale: Sale) => {
-    Alert.alert(
-      'Excluir Venda',
-      `Remover venda de "${sale.recipeName}" (${sale.quantitySold} un)?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(sale.id);
-              setSales(prev => prev.filter(s => s.id !== sale.id));
-              showToast('Venda excluída', 'success');
-            } catch {
-              showToast('Não foi possível excluir a venda', 'error');
-            }
-          },
-        },
-      ]
-    );
+    const originalIndex = sales.findIndex(s => s.id === sale.id);
+    setSales(prev => prev.filter(s => s.id !== sale.id));
+
+    const restore = () => {
+      setSales(prev => {
+        if (prev.some(s => s.id === sale.id)) return prev;
+        const next = [...prev];
+        const idx = Math.max(0, Math.min(originalIndex, next.length));
+        next.splice(idx, 0, sale);
+        return next;
+      });
+    };
+
+    showToast(`Venda de ${sale.recipeName} excluída`, {
+      type: 'success',
+      action: { label: 'Desfazer', onPress: restore },
+      onDismiss: async () => {
+        try {
+          await api.delete(sale.id);
+        } catch {
+          restore();
+          showToast('Não foi possível excluir a venda', 'error');
+        }
+      },
+    });
   };
 
   const totalRevenue = sales.reduce((sum, s) => sum + s.totalRevenue, 0);

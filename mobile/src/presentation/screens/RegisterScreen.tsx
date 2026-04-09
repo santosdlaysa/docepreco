@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../data/api/authApi';
+import { identifyRevenueCatUser } from '../../data/premium/revenueCat';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Button } from '../components/Button';
@@ -32,7 +33,11 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
   const validate = () => {
     const e: Record<string, string> = {};
     if (!companyName.trim()) e.companyName = 'Nome da empresa obrigatório';
-    if (!email.trim()) e.email = 'Email obrigatório';
+    if (!email.trim()) {
+      e.email = 'Email obrigatório';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      e.email = 'Email inválido';
+    }
     if (!password || password.length < 6) e.password = 'Senha deve ter pelo menos 6 caracteres';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -42,7 +47,8 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     if (!validate()) return;
     setLoading(true);
     try {
-      await authApi.register(companyName.trim(), email.trim(), password);
+      const user = await authApi.register(companyName.trim(), email.trim(), password);
+      await identifyRevenueCatUser(user.id);
       onRegister();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Erro ao cadastrar';

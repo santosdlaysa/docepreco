@@ -7,6 +7,7 @@ import ingredientRoutes from './presentation/routes/ingredientRoutes';
 import saleRoutes from './presentation/routes/saleRoutes';
 import authRoutes from './presentation/routes/authRoutes';
 import statsRoutes from './presentation/routes/statsRoutes';
+import premiumRoutes from './presentation/routes/premiumRoutes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 
 dotenv.config();
@@ -31,6 +32,7 @@ app.use('/api/recipes', authMiddleware, recipeRoutes);
 app.use('/api/ingredients', authMiddleware, ingredientRoutes);
 app.use('/api/sales', authMiddleware, saleRoutes);
 app.use('/api/stats', authMiddleware, statsRoutes);
+app.use('/api', premiumRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

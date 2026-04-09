@@ -48,6 +48,9 @@
     },
     "updates": {
       "url": "https://u.expo.dev/2e86f353-1d41-47cc-b552-3e242b8430f4"
-    }
+    },
+    "plugins": [
+      "@sentry/react-native"
+    ]
   }
 }

@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../data/api/authApi';
+import { identifyRevenueCatUser } from '../../data/premium/revenueCat';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Button } from '../components/Button';
@@ -31,7 +32,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onDemoLo
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!email.trim()) e.email = 'Email obrigatório';
+    if (!email.trim()) {
+      e.email = 'Email obrigatório';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      e.email = 'Email inválido';
+    }
     if (!password) e.password = 'Senha obrigatória';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -41,7 +46,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onDemoLo
     if (!validate()) return;
     setLoading(true);
     try {
-      await authApi.login(email.trim(), password);
+      const user = await authApi.login(email.trim(), password);
+      await identifyRevenueCatUser(user.id);
       onLogin();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Erro ao entrar';

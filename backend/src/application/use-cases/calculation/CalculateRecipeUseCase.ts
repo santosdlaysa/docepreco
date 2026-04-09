@@ -1,6 +1,7 @@
 import { CalculationResult } from '../../../domain/entities/Calculation';
 import { IRecipeRepository } from '../../../domain/repositories/IRecipeRepository';
 import { IIngredientRepository } from '../../../domain/repositories/IIngredientRepository';
+import { calculateRecipe } from '../../../domain/services/recipeCalculator';
 
 export class CalculateRecipeUseCase {
   constructor(
@@ -14,29 +15,8 @@ export class CalculateRecipeUseCase {
 
     const ingredientIds = recipe.ingredients.map(i => i.ingredientId);
     const ingredients = await this.ingredientRepository.findByIds(ingredientIds);
+    const ingredientsById = new Map(ingredients.map(i => [i.id, i]));
 
-    let ingredientsCost = 0;
-    for (const ri of recipe.ingredients) {
-      const ingredient = ingredients.find(i => i.id === ri.ingredientId);
-      if (!ingredient) continue;
-      const pricePerUnit = ingredient.purchasePrice / ingredient.purchaseQuantity;
-      ingredientsCost += pricePerUnit * ri.quantityUsed;
-    }
-
-    const additionalCostTotal = recipe.additionalCosts.reduce((sum, c) => sum + c.value, 0);
-    const totalCost = ingredientsCost + additionalCostTotal;
-    const costPerUnit = totalCost / recipe.yield;
-    const suggestedPrice = costPerUnit * (1 + recipe.profitMargin / 100);
-    const estimatedProfit = (suggestedPrice - costPerUnit) * recipe.yield;
-
-    return {
-      totalCost,
-      costPerUnit,
-      suggestedPrice,
-      estimatedProfit,
-      profitMargin: recipe.profitMargin,
-      ingredientsCost,
-      additionalCostTotal,
-    };
+    return calculateRecipe(recipe, ingredientsById);
   }
 }

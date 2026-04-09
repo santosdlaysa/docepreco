@@ -7,10 +7,13 @@ import { DeleteRecipeUseCase } from '../../application/use-cases/recipe/DeleteRe
 import { CalculateRecipeUseCase } from '../../application/use-cases/calculation/CalculateRecipeUseCase';
 import { PostgresRecipeRepository } from '../../infrastructure/repositories/PostgresRecipeRepository';
 import { PostgresIngredientRepository } from '../../infrastructure/repositories/PostgresIngredientRepository';
+import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES } from '../../domain/services/premium';
 
 const recipeRepo = new PostgresRecipeRepository();
 const ingredientRepo = new PostgresIngredientRepository();
+const userRepo = new PostgresUserRepository();
 
 export class RecipeController {
   async getAll(req: AuthRequest, res: Response): Promise<void> {
@@ -39,6 +42,24 @@ export class RecipeController {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
+      // Premium gate: enforce free tier limit
+      const user = await userRepo.findById(req.userId!);
+      if (!user) {
+        res.status(401).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const count = await userRepo.countRecipes(req.userId!);
+      if (!canCreateMore(user, 'recipes', count)) {
+        res.status(403).json({
+          success: false,
+          error: `Você atingiu o limite de ${FREE_LIMITS.recipes} receitas do plano gratuito. Assine o Premium para criar mais.`,
+          code: PREMIUM_ERROR_CODES.recipes,
+          limit: FREE_LIMITS.recipes,
+          current: count,
+        });
+        return;
+      }
+
       const useCase = new CreateRecipeUseCase(recipeRepo);
       const recipe = await useCase.execute(req.body, req.userId!);
       res.status(201).json({ success: true, data: recipe });

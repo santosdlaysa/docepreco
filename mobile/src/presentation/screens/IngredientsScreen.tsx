@@ -5,7 +5,6 @@ import {
   FlatList,
   StyleSheet,
   TouchableOpacity,
-  Alert,
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
@@ -64,31 +63,45 @@ export const IngredientsScreen: React.FC = () => {
   );
 
   const handleDelete = (ingredient: Ingredient) => {
-    Alert.alert(
-      'Excluir Ingrediente',
-      `Deseja excluir "${ingredient.name}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Excluir',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(ingredient.id);
-              setIngredients(prev => prev.filter(i => i.id !== ingredient.id));
-              showToast('Ingrediente excluído', 'success');
-            } catch (error) {
-              const msg = error instanceof Error ? error.message : '';
-              if (msg.includes('em uso') || msg.includes('in use') || msg.includes('violates foreign key') || msg.includes('restrict')) {
-                showToast('Ingrediente em uso em uma ou mais receitas', 'warning');
-              } else {
-                showToast('Não foi possível excluir este ingrediente', 'error');
-              }
-            }
-          },
-        },
-      ]
-    );
+    const originalIndex = ingredients.findIndex(i => i.id === ingredient.id);
+    // remove imediatamente da UI
+    setIngredients(prev => prev.filter(i => i.id !== ingredient.id));
+
+    const restore = () => {
+      setIngredients(prev => {
+        if (prev.some(i => i.id === ingredient.id)) return prev;
+        const next = [...prev];
+        const idx = Math.max(0, Math.min(originalIndex, next.length));
+        next.splice(idx, 0, ingredient);
+        return next;
+      });
+    };
+
+    showToast(`${ingredient.name} excluído`, {
+      type: 'success',
+      action: {
+        label: 'Desfazer',
+        onPress: restore,
+      },
+      onDismiss: async () => {
+        try {
+          await api.delete(ingredient.id);
+        } catch (error) {
+          restore();
+          const msg = error instanceof Error ? error.message : '';
+          if (
+            msg.includes('em uso') ||
+            msg.includes('in use') ||
+            msg.includes('violates foreign key') ||
+            msg.includes('restrict')
+          ) {
+            showToast('Ingrediente em uso em uma ou mais receitas', 'warning');
+          } else {
+            showToast('Não foi possível excluir este ingrediente', 'error');
+          }
+        }
+      },
+    });
   };
 
   const formatPrice = (price: number) =>

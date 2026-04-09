@@ -4,9 +4,12 @@ import { GetIngredientsUseCase } from '../../application/use-cases/ingredient/Ge
 import { UpdateIngredientUseCase } from '../../application/use-cases/ingredient/UpdateIngredientUseCase';
 import { DeleteIngredientUseCase } from '../../application/use-cases/ingredient/DeleteIngredientUseCase';
 import { PostgresIngredientRepository } from '../../infrastructure/repositories/PostgresIngredientRepository';
+import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES } from '../../domain/services/premium';
 
 const ingredientRepo = new PostgresIngredientRepository();
+const userRepo = new PostgresUserRepository();
 
 export class IngredientController {
   async getAll(req: AuthRequest, res: Response): Promise<void> {
@@ -34,6 +37,24 @@ export class IngredientController {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
+      // Premium gate: enforce free tier limit
+      const user = await userRepo.findById(req.userId!);
+      if (!user) {
+        res.status(401).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const count = await userRepo.countIngredients(req.userId!);
+      if (!canCreateMore(user, 'ingredients', count)) {
+        res.status(403).json({
+          success: false,
+          error: `Você atingiu o limite de ${FREE_LIMITS.ingredients} ingredientes do plano gratuito. Assine o Premium para adicionar mais.`,
+          code: PREMIUM_ERROR_CODES.ingredients,
+          limit: FREE_LIMITS.ingredients,
+          current: count,
+        });
+        return;
+      }
+
       const useCase = new CreateIngredientUseCase(ingredientRepo);
       const ingredient = await useCase.execute(req.body, req.userId!);
       res.status(201).json({ success: true, data: ingredient });

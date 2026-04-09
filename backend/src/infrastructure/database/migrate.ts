@@ -11,7 +11,10 @@ CREATE TABLE IF NOT EXISTS users (
   company_name VARCHAR(255) NOT NULL,
   email VARCHAR(255) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT NOW()
+  created_at TIMESTAMP DEFAULT NOW(),
+  is_premium BOOLEAN NOT NULL DEFAULT FALSE,
+  premium_until TIMESTAMP NULL,
+  premium_platform VARCHAR(20) NULL
 );
 
 CREATE TABLE IF NOT EXISTS ingredients (
@@ -63,6 +66,22 @@ CREATE TABLE IF NOT EXISTS sales (
 );
 `;
 
+async function addColumnIfMissing(
+  client: any,
+  table: string,
+  column: string,
+  definition: string
+) {
+  const exists = await client.query(
+    `SELECT 1 FROM information_schema.columns WHERE table_name = $1 AND column_name = $2`,
+    [table, column]
+  );
+  if (exists.rows.length === 0) {
+    console.log(`Adding ${column} to ${table}...`);
+    await client.query(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+  }
+}
+
 async function addUserIdColumn(client: any, table: string) {
   const exists = await client.query(`
     SELECT 1 FROM information_schema.columns
@@ -100,6 +119,11 @@ async function migrate() {
     await addUserIdColumn(client, 'ingredients');
     await addUserIdColumn(client, 'recipes');
     await addUserIdColumn(client, 'sales');
+
+    // Premium subscription columns (ALTER TABLE for existing DBs)
+    await addColumnIfMissing(client, 'users', 'is_premium', 'BOOLEAN NOT NULL DEFAULT FALSE');
+    await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
+    await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
 
     await client.query('COMMIT');
     console.log('Migrations applied successfully');

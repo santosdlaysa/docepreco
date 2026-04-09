@@ -13,6 +13,10 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
         return;
       }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400).json({ success: false, error: 'Email inválido' });
+        return;
+      }
       if (password.length < 6) {
         res.status(400).json({ success: false, error: 'Senha deve ter pelo menos 6 caracteres' });
         return;
@@ -35,6 +39,10 @@ export class AuthController {
       const { email, password } = req.body;
       if (!email || !password) {
         res.status(400).json({ success: false, error: 'Email e senha são obrigatórios' });
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400).json({ success: false, error: 'Email inválido' });
         return;
       }
       const user = await userRepo.findByEmail(email);
