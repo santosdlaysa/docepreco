@@ -45,6 +45,17 @@ export class PostgresUserRepository {
     return this.mapRow(result.rows[0]);
   }
 
+  async countAll(): Promise<{ total: number; premium: number; today: number }> {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE is_premium = TRUE)::int AS premium,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '1 day')::int AS today
+      FROM users
+    `);
+    return result.rows[0];
+  }
+
   async countIngredients(userId: string): Promise<number> {
     const result = await pool.query(
       'SELECT COUNT(*)::int AS total FROM ingredients WHERE user_id = $1',

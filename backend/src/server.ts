@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import cron from 'node-cron';
+import { sendDailyUserReport } from './infrastructure/services/telegramService';
 import { connectDatabase } from './infrastructure/database/connection';
 import recipeRoutes from './presentation/routes/recipeRoutes';
 import ingredientRoutes from './presentation/routes/ingredientRoutes';
@@ -44,6 +46,8 @@ async function bootstrap() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+    // Relatório diário às 8h (horário de Brasília)
+    cron.schedule('0 8 * * *', () => sendDailyUserReport(), { timezone: 'America/Sao_Paulo' });
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
