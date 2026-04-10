@@ -84,6 +84,13 @@ export const CreateSaleScreen: React.FC = () => {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
+          <View style={styles.infoCard}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+            <Text style={styles.infoText}>
+              Selecione a receita vendida, informe a quantidade e o preco por unidade. O total sera calculado automaticamente.
+            </Text>
+          </View>
+
           <Card style={styles.section}>
             <Text style={styles.label}>Receita vendida *</Text>
             <TouchableOpacity
@@ -236,4 +243,21 @@ const styles = StyleSheet.create({
   totalValue: { ...typography.h2, color: colors.success },
   totalSub: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
   saveButton: { marginBottom: 32 },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
 });

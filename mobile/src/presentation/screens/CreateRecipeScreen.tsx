@@ -30,6 +30,7 @@ import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
+import { usePremium } from '../context/PremiumContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -63,8 +64,12 @@ export const CreateRecipeScreen: React.FC = () => {
   const [loadingData, setLoadingData] = useState(isEditing);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [recipeCount, setRecipeCount] = useState(0);
+  const [laborExpanded, setLaborExpanded] = useState(false);
+  const [hourlyRate, setHourlyRate] = useState('');
+  const [prepTimeMinutes, setPrepTimeMinutes] = useState('');
   const { showToast } = useToast();
-  const { checkLimit, openPaywall } = usePaywall();
+  const { checkLimit, openPaywall, requirePremium } = usePaywall();
+  const { isPremium } = usePremium();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
@@ -84,6 +89,11 @@ export const CreateRecipeScreen: React.FC = () => {
         setProfitMargin(String(recipe.profitMargin));
         setIngredients(recipe.ingredients);
         setAdditionalCosts(recipe.additionalCosts);
+        // Restore labor cost fields if present
+        const laborCost = recipe.additionalCosts.find(c => c.name === 'Mão de obra (profissional)');
+        if (laborCost && laborCost.value > 0) {
+          setLaborExpanded(true);
+        }
       })
       .catch(() => showToast('Não foi possível carregar a receita', 'error'))
       .finally(() => setLoadingData(false));
@@ -143,6 +153,20 @@ export const CreateRecipeScreen: React.FC = () => {
     return additionalCosts.find(c => c.name === name)?.value.toString() || '';
   };
 
+  const laborCostValue = (() => {
+    const rate = parseFloat(hourlyRate);
+    const mins = parseFloat(prepTimeMinutes);
+    if (rate > 0 && mins > 0) return Math.round(((rate / 60) * mins) * 100) / 100;
+    return 0;
+  })();
+
+  const handleToggleLabor = () => {
+    if (!laborExpanded) {
+      if (!requirePremium('laborCostCalc')) return;
+    }
+    setLaborExpanded(!laborExpanded);
+  };
+
   const handleSave = async () => {
     if (!validate()) return;
     // Client-side limit check (only when creating new)
@@ -151,12 +175,17 @@ export const CreateRecipeScreen: React.FC = () => {
     }
     setLoading(true);
     try {
+      // Merge labor cost into additionalCosts
+      let finalCosts = additionalCosts.filter(c => c.name !== 'Mão de obra (profissional)');
+      if (laborCostValue > 0) {
+        finalCosts = [...finalCosts, { name: 'Mão de obra (profissional)', value: laborCostValue }];
+      }
       const payload = {
         name: name.trim(),
         yield: parseInt(yieldAmount),
         profitMargin: parseFloat(profitMargin) || 30,
         ingredients,
-        additionalCosts,
+        additionalCosts: finalCosts,
       };
       if (isEditing) {
         await rApi.update(recipeId!, payload);
@@ -201,6 +230,13 @@ export const CreateRecipeScreen: React.FC = () => {
       <Header title={isEditing ? 'Editar Receita' : 'Nova Receita'} showBack onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
+          <View style={styles.infoCard}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+            <Text style={styles.infoText}>
+              Preencha os dados da receita, adicione os ingredientes e escolha a margem de lucro. O preco de venda sera calculado automaticamente.
+            </Text>
+          </View>
 
           <Card style={styles.section}>
             <Text style={styles.sectionTitle}>Informacoes Basicas</Text>
@@ -298,6 +334,65 @@ export const CreateRecipeScreen: React.FC = () => {
               />
             ))}
           </Card>
+
+          {Platform.OS === 'ios' && (<Card style={styles.section}>
+            <TouchableOpacity onPress={handleToggleLabor} style={styles.laborHeader} activeOpacity={0.7}>
+              <View style={styles.laborHeaderLeft}>
+                <Ionicons name="construct-outline" size={20} color={laborExpanded ? colors.primary : colors.textSecondary} />
+                <Text style={styles.sectionTitle}>Custos Profissionais</Text>
+              </View>
+              <View style={styles.laborHeaderRight}>
+                {!isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="sparkles" size={10} color="#fff" />
+                    <Text style={styles.premiumBadgeText}>Premium</Text>
+                  </View>
+                )}
+                <Ionicons
+                  name={laborExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={18}
+                  color={colors.textMuted}
+                />
+              </View>
+            </TouchableOpacity>
+            {laborExpanded && (
+              <View style={styles.laborContent}>
+                <Text style={styles.laborDesc}>
+                  Calcule o custo da sua mão de obra e inclua no preço da receita automaticamente.
+                </Text>
+                <View style={styles.row}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Input
+                      label="Custo por hora"
+                      placeholder="25,00"
+                      value={hourlyRate}
+                      onChangeText={setHourlyRate}
+                      keyboardType="decimal-pad"
+                      suffix="R$/h"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label="Tempo de preparo"
+                      placeholder="120"
+                      value={prepTimeMinutes}
+                      onChangeText={setPrepTimeMinutes}
+                      keyboardType="number-pad"
+                      suffix="min"
+                    />
+                  </View>
+                </View>
+                {laborCostValue > 0 && (
+                  <View style={styles.laborResult}>
+                    <Ionicons name="calculator-outline" size={16} color={colors.primary} />
+                    <Text style={styles.laborResultText}>
+                      Mão de obra: R$ {laborCostValue.toFixed(2)}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
+          </Card>)}
 
           <Button
             title={isEditing ? 'Atualizar Receita' : 'Salvar Receita'}
@@ -452,4 +547,51 @@ const styles = StyleSheet.create({
   modalIngCard: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   modalIngName: { ...typography.body, color: colors.text },
   modalIngInfo: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  laborHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 0,
+  },
+  laborHeaderLeft: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  laborHeaderRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.primary,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  premiumBadgeText: { fontSize: 10, fontWeight: '800' as const, color: '#fff' },
+  laborContent: { marginTop: 16 },
+  laborDesc: { ...typography.caption, color: colors.textSecondary, marginBottom: 12, lineHeight: 18 },
+  laborResult: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 4,
+  },
+  laborResultText: { ...typography.body, color: colors.primary, fontWeight: '700' as const },
 });

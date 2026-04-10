@@ -12,6 +12,7 @@ import {
   stopUsageTracking,
 } from './src/presentation/utils/review';
 import { initSentry, Sentry } from './src/presentation/utils/sentry';
+import { initializeNotifications, onAppForeground } from './src/presentation/utils/notifications';
 import { configureRevenueCat } from './src/data/premium/revenueCat';
 
 initSentry();
@@ -26,6 +27,7 @@ function App() {
 
   useEffect(() => {
     startUsageTracking();
+    void initializeNotifications();
 
     const sub = AppState.addEventListener('change', (next) => {
       const prev = appState.current;
@@ -34,8 +36,9 @@ function App() {
         void flushUsage();
         stopUsageTracking();
       } else if (next === 'active' && prev.match(/inactive|background/)) {
-        // voltando ao foco: reinicia o tracking
+        // voltando ao foco: reinicia o tracking e reagenda notificacoes
         startUsageTracking();
+        void onAppForeground();
       }
       appState.current = next;
     });

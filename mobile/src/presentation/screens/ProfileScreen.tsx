@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -13,6 +13,7 @@ import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
+import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notifications';
 
 const SUPPORT_WHATSAPP = '5595991371313';
 
@@ -21,10 +22,12 @@ export const ProfileScreen: React.FC = () => {
   const { logout, isDemoMode } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
   const [user, setUser] = useState<{ companyName: string; email: string } | null>(null);
+  const [notificationsOn, setNotificationsOn] = useState(true);
 
   useEffect(() => {
     tokenStorage.getUser().then(setUser);
     void refresh();
+    getNotificationsEnabled().then(setNotificationsOn);
   }, []);
 
   const premiumUntilLabel = premiumUntil
@@ -124,6 +127,49 @@ export const ProfileScreen: React.FC = () => {
             </Card>
           </TouchableOpacity>
         ))}
+
+        {Platform.OS === 'ios' && isPremium && (
+          <>
+            <Text style={styles.sectionTitle}>Premium</Text>
+            <Card style={styles.menuCard}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => navigation.navigate('PdfSettings')}
+              >
+                <View style={[styles.iconBadge, { backgroundColor: colors.primaryLight }]}>
+                  <Ionicons name="document-text-outline" size={20} color={colors.primary} />
+                </View>
+                <View style={styles.menuTextWrap}>
+                  <Text style={styles.menuText}>Personalizar PDF</Text>
+                  <Text style={styles.menuSubtext}>Logo, cores e slogan nos orçamentos</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+              </TouchableOpacity>
+            </Card>
+          </>
+        )}
+
+        <Text style={styles.sectionTitle}>Preferencias</Text>
+        <Card style={styles.menuCard}>
+          <View style={styles.menuItem}>
+            <View style={[styles.iconBadge, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="notifications-outline" size={20} color="#FF9800" />
+            </View>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuText}>Notificacoes</Text>
+              <Text style={styles.menuSubtext}>Lembretes e dicas de precificacao</Text>
+            </View>
+            <Switch
+              value={notificationsOn}
+              onValueChange={(value) => {
+                setNotificationsOn(value);
+                void setNotificationsEnabled(value);
+              }}
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
+              thumbColor={notificationsOn ? colors.primary : '#f4f3f4'}
+            />
+          </View>
+        </Card>
 
         <Text style={styles.sectionTitle}>Ajuda</Text>
         <Card style={styles.menuCard}>

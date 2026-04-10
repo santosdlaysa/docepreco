@@ -140,7 +140,7 @@ export const SalesScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <Header
         title="Vendas"
-        subtitle={`${sales.length} registro${sales.length !== 1 ? 's' : ''}`}
+        subtitle={`${sales.length} registro${sales.length !== 1 ? 's' : ''} · Toque no + para adicionar`}
         rightAction={
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateSale')}
@@ -193,6 +193,16 @@ export const SalesScreen: React.FC = () => {
             onRefresh={() => { setRefreshing(true); loadSales(); }}
             colors={[colors.primary]}
           />
+        }
+        ListHeaderComponent={
+          sales.length > 0 ? (
+            <View style={styles.infoCard}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+              <Text style={styles.infoText}>
+                Registre aqui suas vendas diarias. Acompanhe o faturamento por periodo e veja quanto cada receita esta rendendo.
+              </Text>
+            </View>
+          ) : null
         }
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
@@ -293,4 +303,21 @@ const styles = StyleSheet.create({
   saleRight: { alignItems: 'flex-end', gap: 8 },
   saleTotal: { ...typography.h4, color: colors.success },
   deleteBtn: { padding: 4 },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
 });

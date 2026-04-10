@@ -10,6 +10,7 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +25,7 @@ import { useAuth } from '../../context/AuthContext';
 import { statsApi, AppStats } from '../../data/api/statsApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoStatsApi } from '../../data/demo/demoApi';
+import { usePremium } from '../context/PremiumContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -33,6 +35,7 @@ interface QuickActionItem {
   description: string;
   route: keyof RootStackParamList;
   color: string;
+  premium?: boolean;
 }
 
 // Cache em memória para não re-buscar a mesma URL
@@ -171,11 +174,36 @@ const quickActions: QuickActionItem[] = [
     route: 'CreateRecipe',
     color: '#9C27B0',
   },
+  {
+    icon: 'calendar-outline',
+    label: 'Encomendas',
+    description: 'Gerencie seus pedidos',
+    route: 'Orders',
+    color: '#FF6B35',
+    premium: true,
+  },
+  {
+    icon: 'people-outline',
+    label: 'Clientes',
+    description: 'Cadastro de clientes',
+    route: 'Clients',
+    color: '#4CAF50',
+    premium: true,
+  },
+  {
+    icon: 'stats-chart-outline',
+    label: 'Relatórios',
+    description: 'Faturamento e estatísticas',
+    route: 'Reports',
+    color: '#2196F3',
+    premium: true,
+  },
 ];
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { companyName, isDemoMode: isDemo } = useAuth();
+  const { isPremium } = usePremium();
   const [stats, setStats] = useState<AppStats | null>(null);
   const api = isDemoMode() ? demoStatsApi : statsApi;
 
@@ -232,6 +260,13 @@ export const HomeScreen: React.FC = () => {
           </View>
         </Card>
 
+        <View style={styles.infoCard}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+          <Text style={styles.infoText}>
+            Cadastre ingredientes, crie receitas e o app calcula o preco ideal de venda automaticamente. Use o menu abaixo para comecar!
+          </Text>
+        </View>
+
         {stats && (
           <Card style={styles.statsCard}>
             <View style={styles.statsGrid}>
@@ -268,7 +303,7 @@ export const HomeScreen: React.FC = () => {
 
         <Text style={styles.sectionTitle}>Acesso Rapido</Text>
 
-        {quickActions.map((action) => (
+        {quickActions.filter(a => !a.premium || Platform.OS === 'ios').map((action) => (
           <TouchableOpacity
             key={action.route}
             onPress={() => navigation.navigate(action.route as never)}
@@ -279,7 +314,15 @@ export const HomeScreen: React.FC = () => {
                 <Ionicons name={action.icon} size={28} color={action.color} />
               </View>
               <View style={styles.actionContent}>
-                <Text style={styles.actionLabel}>{action.label}</Text>
+                <View style={styles.actionLabelRow}>
+                  <Text style={styles.actionLabel}>{action.label}</Text>
+                  {action.premium && !isPremium && (
+                    <View style={styles.premiumBadge}>
+                      <Ionicons name="sparkles" size={10} color="#fff" />
+                      <Text style={styles.premiumBadgeText}>Premium</Text>
+                    </View>
+                  )}
+                </View>
                 <Text style={styles.actionDescription}>{action.description}</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -408,8 +451,19 @@ const styles = StyleSheet.create({
     marginRight: 14,
   },
   actionContent: { flex: 1 },
+  actionLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   actionLabel: { ...typography.h4, color: colors.text },
   actionDescription: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
+  premiumBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: colors.primary,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  premiumBadgeText: { fontSize: 10, fontWeight: '800' as const, color: '#fff' },
   shopeeSection: {
     marginTop: 8,
     marginBottom: 20,
@@ -583,4 +637,21 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   tipText: { ...typography.bodySmall, color: '#6D5000', flex: 1, lineHeight: 20 },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
 });

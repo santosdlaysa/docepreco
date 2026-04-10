@@ -26,6 +26,7 @@ import { Header } from '../components/Header';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { shareRecipeQuote } from '../utils/pdfQuote';
+import { pdfSettingsStorage, PdfSettings } from '../../data/storage/pdfSettingsStorage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -43,12 +44,14 @@ export const RecipeDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [pdfSettings, setPdfSettings] = useState<PdfSettings | undefined>();
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const { companyName } = useAuth();
   const { showToast } = useToast();
 
   useEffect(() => {
     loadRecipe();
+    pdfSettingsStorage.get().then(setPdfSettings);
   }, [recipeId]);
 
   const loadRecipe = async () => {
@@ -79,7 +82,7 @@ export const RecipeDetailScreen: React.FC = () => {
     if (!recipe || !calculation) return;
     setSharing(true);
     try {
-      await shareRecipeQuote({ recipe, calculation, companyName });
+      await shareRecipeQuote({ recipe, calculation, companyName }, pdfSettings);
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Erro ao gerar orçamento';
       showToast(msg, 'error');
@@ -130,6 +133,13 @@ export const RecipeDetailScreen: React.FC = () => {
         }
       />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
+        <View style={styles.infoCard}>
+          <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+          <Text style={styles.infoText}>
+            O preco de venda e calculado com base nos ingredientes, custos adicionais e margem de lucro que voce definiu.
+          </Text>
+        </View>
 
         <View style={styles.recipeMeta}>
           <View style={styles.metaItem}>
@@ -278,12 +288,20 @@ export const RecipeDetailScreen: React.FC = () => {
         {recipe.additionalCosts.length > 0 && (
           <Card style={styles.section}>
             <Text style={styles.sectionTitle}>Custos Adicionais</Text>
-            {recipe.additionalCosts.map((cost, idx) => (
-              <View key={idx} style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>{cost.name}</Text>
-                <Text style={styles.breakdownValue}>{formatCurrency(cost.value)}</Text>
-              </View>
-            ))}
+            {recipe.additionalCosts.map((cost, idx) => {
+              const isLabor = cost.name.includes('Mão de obra');
+              return (
+                <View key={idx} style={styles.breakdownRow}>
+                  <View style={styles.costLabelRow}>
+                    {isLabor && <Ionicons name="construct-outline" size={14} color={colors.primary} />}
+                    <Text style={[styles.breakdownLabel, isLabor && { color: colors.primary, fontWeight: '600' }]}>
+                      {cost.name}
+                    </Text>
+                  </View>
+                  <Text style={styles.breakdownValue}>{formatCurrency(cost.value)}</Text>
+                </View>
+              );
+            })}
           </Card>
         )}
 
@@ -358,6 +376,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  costLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   breakdownLabel: { ...typography.body, color: colors.textSecondary },
   breakdownValue: { ...typography.body, color: colors.text, fontWeight: '600' },
   section: { marginBottom: 16 },
@@ -370,4 +389,21 @@ const styles = StyleSheet.create({
   tableRowHighlight: { backgroundColor: colors.primaryLight, borderRadius: 8, borderColor: 'transparent', marginHorizontal: -4, paddingHorizontal: 4 },
   tableCell: { ...typography.bodySmall, color: colors.text, flex: 1, textAlign: 'center' },
   tableCellHighlight: { color: colors.primary, fontWeight: '700' },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
 });

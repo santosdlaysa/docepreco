@@ -19,4 +19,12 @@ export type RootStackParamList = {
   Profile: undefined;
   PrivacyPolicy: undefined;
   Paywall: { trigger?: PaywallTrigger } | undefined;
+  Orders: undefined;
+  CreateOrder: undefined;
+  EditOrder: { orderId: string };
+  Clients: undefined;
+  CreateClient: undefined;
+  EditClient: { clientId: string };
+  Reports: undefined;
+  PdfSettings: undefined;
 };

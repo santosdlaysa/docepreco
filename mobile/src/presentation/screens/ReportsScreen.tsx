@@ -1,0 +1,337 @@
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
+import { Sale } from '../../domain/entities/Sale';
+import { saleApi } from '../../data/api/saleApi';
+import { recipeApi } from '../../data/api/recipeApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoSaleApi, demoRecipeApi } from '../../data/demo/demoApi';
+import { colors } from '../theme/colors';
+import { typography } from '../theme/typography';
+import { Card } from '../components/Card';
+import { Header } from '../components/Header';
+import { usePaywall } from '../premium/usePaywall';
+
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+const formatCurrency = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const getMonthLabel = (date: Date) => {
+  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+  return months[date.getMonth()];
+};
+
+interface MonthlyData {
+  label: string;
+  revenue: number;
+  count: number;
+}
+
+interface RecipeRanking {
+  recipeName: string;
+  quantity: number;
+  revenue: number;
+}
+
+export const ReportsScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp>();
+  const { requirePremium } = usePaywall();
+  const [loading, setLoading] = useState(true);
+  const [sales, setSales] = useState<Sale[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [topRecipes, setTopRecipes] = useState<RecipeRanking[]>([]);
+  const [currentMonthRevenue, setCurrentMonthRevenue] = useState(0);
+  const [prevMonthRevenue, setPrevMonthRevenue] = useState(0);
+  const [avgTicket, setAvgTicket] = useState(0);
+
+  const sApi = isDemoMode() ? demoSaleApi : saleApi;
+  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!requirePremium('advancedReports')) {
+        navigation.goBack();
+        return;
+      }
+      loadData();
+    }, [])
+  );
+
+  const loadData = async () => {
+    try {
+      const allSales = await sApi.getAll();
+      setSales(allSales);
+
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      // Monthly revenue (last 6 months)
+      const monthly: MonthlyData[] = [];
+      for (let i = 5; i >= 0; i--) {
+        const d = new Date(currentYear, currentMonth - i, 1);
+        const m = d.getMonth();
+        const y = d.getFullYear();
+        const monthSales = allSales.filter(s => {
+          const sd = new Date(s.saleDate);
+          return sd.getMonth() === m && sd.getFullYear() === y;
+        });
+        monthly.push({
+          label: getMonthLabel(d),
+          revenue: monthSales.reduce((sum, s) => sum + s.totalRevenue, 0),
+          count: monthSales.length,
+        });
+      }
+      setMonthlyData(monthly);
+
+      // Current and previous month revenue
+      const curMonthSales = allSales.filter(s => {
+        const sd = new Date(s.saleDate);
+        return sd.getMonth() === currentMonth && sd.getFullYear() === currentYear;
+      });
+      const curRevenue = curMonthSales.reduce((sum, s) => sum + s.totalRevenue, 0);
+      setCurrentMonthRevenue(curRevenue);
+
+      const prevDate = new Date(currentYear, currentMonth - 1, 1);
+      const prevMonthSales = allSales.filter(s => {
+        const sd = new Date(s.saleDate);
+        return sd.getMonth() === prevDate.getMonth() && sd.getFullYear() === prevDate.getFullYear();
+      });
+      setPrevMonthRevenue(prevMonthSales.reduce((sum, s) => sum + s.totalRevenue, 0));
+
+      // Average ticket
+      if (allSales.length > 0) {
+        const totalRevenue = allSales.reduce((sum, s) => sum + s.totalRevenue, 0);
+        setAvgTicket(totalRevenue / allSales.length);
+      }
+
+      // Top recipes
+      const recipeMap = new Map<string, { quantity: number; revenue: number }>();
+      for (const sale of allSales) {
+        const existing = recipeMap.get(sale.recipeName) || { quantity: 0, revenue: 0 };
+        existing.quantity += sale.quantitySold;
+        existing.revenue += sale.totalRevenue;
+        recipeMap.set(sale.recipeName, existing);
+      }
+      const ranked = Array.from(recipeMap.entries())
+        .map(([recipeName, data]) => ({ recipeName, ...data }))
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 5);
+      setTopRecipes(ranked);
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <Header title="Relatórios" subtitle="Dados calculados com base nas vendas registradas no app." showBack onBack={() => navigation.goBack()} />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  const maxMonthlyRevenue = Math.max(...monthlyData.map(m => m.revenue), 1);
+  const revenueChange = prevMonthRevenue > 0
+    ? ((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue * 100)
+    : 0;
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <Header title="Relatórios" subtitle="Dados calculados com base nas vendas registradas no app." showBack onBack={() => navigation.goBack()} />
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+
+        {/* Revenue Card */}
+        <Card style={styles.revenueCard}>
+          <View style={styles.revenueHeader}>
+            <View style={[styles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
+              <Ionicons name="trending-up" size={22} color={colors.success} />
+            </View>
+            <Text style={styles.cardTitle}>Faturamento do mês</Text>
+          </View>
+          <Text style={styles.revenueValue}>{formatCurrency(currentMonthRevenue)}</Text>
+          {prevMonthRevenue > 0 && (
+            <View style={styles.compareRow}>
+              <Ionicons
+                name={revenueChange >= 0 ? 'arrow-up' : 'arrow-down'}
+                size={14}
+                color={revenueChange >= 0 ? colors.success : colors.error}
+              />
+              <Text style={[styles.compareText, { color: revenueChange >= 0 ? colors.success : colors.error }]}>
+                {Math.abs(revenueChange).toFixed(1)}% vs mês anterior ({formatCurrency(prevMonthRevenue)})
+              </Text>
+            </View>
+          )}
+        </Card>
+
+        {/* Average Ticket */}
+        <Card style={styles.card}>
+          <View style={styles.revenueHeader}>
+            <View style={[styles.iconWrap, { backgroundColor: '#FFF3E0' }]}>
+              <Ionicons name="receipt-outline" size={22} color={colors.warning} />
+            </View>
+            <Text style={styles.cardTitle}>Ticket médio</Text>
+          </View>
+          <Text style={styles.ticketValue}>{formatCurrency(avgTicket)}</Text>
+          <Text style={styles.ticketSub}>por venda ({sales.length} vendas total)</Text>
+        </Card>
+
+        {/* Monthly Chart */}
+        <Card style={styles.card}>
+          <Text style={styles.cardTitle}>Vendas por período</Text>
+          <Text style={styles.cardSubtitle}>Últimos 6 meses</Text>
+          <View style={styles.chartContainer}>
+            {monthlyData.map((month, idx) => (
+              <View key={idx} style={styles.barColumn}>
+                <Text style={styles.barValue}>
+                  {month.revenue > 0 ? formatCurrency(month.revenue) : '-'}
+                </Text>
+                <View style={styles.barTrack}>
+                  <View
+                    style={[
+                      styles.bar,
+                      {
+                        height: `${Math.max((month.revenue / maxMonthlyRevenue) * 100, 4)}%`,
+                        backgroundColor: idx === monthlyData.length - 1 ? colors.primary : colors.primaryLight,
+                      },
+                    ]}
+                  />
+                </View>
+                <Text style={styles.barLabel}>{month.label}</Text>
+              </View>
+            ))}
+          </View>
+        </Card>
+
+        {/* Top Recipes */}
+        <Card style={styles.card}>
+          <View style={styles.revenueHeader}>
+            <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
+              <Ionicons name="trophy-outline" size={22} color={colors.primary} />
+            </View>
+            <Text style={styles.cardTitle}>Receitas mais vendidas</Text>
+          </View>
+          {topRecipes.length === 0 ? (
+            <Text style={styles.emptyText}>Nenhuma venda registrada</Text>
+          ) : (
+            topRecipes.map((recipe, idx) => (
+              <View key={recipe.recipeName} style={styles.rankRow}>
+                <View style={[styles.rankBadge, idx === 0 && styles.rankBadgeFirst]}>
+                  <Text style={[styles.rankNumber, idx === 0 && styles.rankNumberFirst]}>
+                    {idx + 1}
+                  </Text>
+                </View>
+                <View style={styles.rankInfo}>
+                  <Text style={styles.rankName}>{recipe.recipeName}</Text>
+                  <Text style={styles.rankSub}>{recipe.quantity} un vendidas</Text>
+                </View>
+                <Text style={styles.rankRevenue}>{formatCurrency(recipe.revenue)}</Text>
+              </View>
+            ))
+          )}
+        </Card>
+
+        <View style={{ height: 32 }} />
+      </ScrollView>
+    </SafeAreaView>
+  );
+};
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  container: { flex: 1, padding: 20 },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
+  revenueCard: { marginBottom: 12, backgroundColor: colors.cream },
+  card: { marginBottom: 12 },
+  revenueHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
+  iconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardTitle: { ...typography.h4, color: colors.text },
+  cardSubtitle: { ...typography.caption, color: colors.textSecondary, marginTop: 4, marginBottom: 12 },
+  revenueValue: { ...typography.h1, color: colors.success, marginBottom: 4 },
+  compareRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  compareText: { ...typography.bodySmall },
+  ticketValue: { ...typography.h2, color: colors.warning, marginBottom: 2 },
+  ticketSub: { ...typography.caption, color: colors.textSecondary },
+  chartContainer: { flexDirection: 'row', height: 180, gap: 4, marginTop: 8 },
+  barColumn: { flex: 1, alignItems: 'center' },
+  barTrack: {
+    flex: 1,
+    width: '80%',
+    justifyContent: 'flex-end',
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: colors.border,
+  },
+  bar: { width: '100%', borderRadius: 8 },
+  barValue: {
+    fontSize: 9,
+    color: colors.textSecondary,
+    fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  barLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 6 },
+  rankRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  rankBadge: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  rankBadgeFirst: { backgroundColor: '#FFD700' },
+  rankNumber: { ...typography.bodySmall, fontWeight: '700', color: colors.textSecondary },
+  rankNumberFirst: { color: '#fff' },
+  rankInfo: { flex: 1 },
+  rankName: { ...typography.body, color: colors.text, fontWeight: '600' },
+  rankSub: { ...typography.caption, color: colors.textSecondary },
+  rankRevenue: { ...typography.h4, color: colors.primary },
+  emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingVertical: 16 },
+});

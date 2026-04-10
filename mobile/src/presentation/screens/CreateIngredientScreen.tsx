@@ -11,6 +11,7 @@ import {
   FlatList,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
@@ -170,6 +171,12 @@ export const CreateIngredientScreen: React.FC = () => {
         style={{ flex: 1 }}
       >
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+          <View style={styles.infoCard}>
+            <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+            <Text style={styles.infoText}>
+              Informe o nome, a quantidade comprada e o preco pago. O custo por unidade sera calculado automaticamente.
+            </Text>
+          </View>
           <Card style={styles.card}>
             <View style={styles.nameWrapper}>
               <Input
@@ -321,4 +328,21 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   suggestionText: { ...typography.body, color: colors.text },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
 });

@@ -36,8 +36,11 @@ const computeDaysLeft = (premiumUntil: string | null): number | null => {
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 };
 
-const isActive = (user: Pick<AuthUser, 'isPremium' | 'premiumUntil'> | null): boolean => {
+const ADMIN_EMAIL = 'santosdlaysa@gmail.com';
+
+const isActive = (user: Pick<AuthUser, 'isPremium' | 'premiumUntil' | 'email'> | null): boolean => {
   if (!user) return false;
+  if (user.email === ADMIN_EMAIL) return true;
   if (!user.isPremium) return false;
   if (user.premiumUntil === null) return true;
   return new Date(user.premiumUntil).getTime() > Date.now();

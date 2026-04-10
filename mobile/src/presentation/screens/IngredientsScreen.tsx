@@ -158,7 +158,7 @@ export const IngredientsScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <Header
         title="Ingredientes"
-        subtitle={`${ingredients.length} cadastrado${ingredients.length !== 1 ? 's' : ''}`}
+        subtitle={`${ingredients.length} cadastrado${ingredients.length !== 1 ? 's' : ''} · Toque no + para adicionar`}
         rightAction={
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateIngredient')}
@@ -180,6 +180,16 @@ export const IngredientsScreen: React.FC = () => {
             onRefresh={() => { setRefreshing(true); loadIngredients(); }}
             colors={[colors.primary]}
           />
+        }
+        ListHeaderComponent={
+          ingredients.length > 0 ? (
+            <View style={styles.infoCard}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+              <Text style={styles.infoText}>
+                Cadastre aqui os ingredientes que voce usa. O preco por unidade e calculado automaticamente e usado nas suas receitas.
+              </Text>
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           <EmptyState
@@ -226,4 +236,21 @@ const styles = StyleSheet.create({
   pricePerUnit: { ...typography.caption, color: colors.primary, marginTop: 3, fontWeight: '600' },
   ingredientActions: { alignItems: 'center' },
   actionBtn: { padding: 6 },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
+  },
 });

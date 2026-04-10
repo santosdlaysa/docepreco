@@ -33,7 +33,6 @@ export const RecipesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
-
   const loadRecipes = async () => {
     try {
       const data = await api.getAll();
@@ -143,7 +142,7 @@ export const RecipesScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       <Header
         title="Minhas Receitas"
-        subtitle={`${recipes.length} receita${recipes.length !== 1 ? 's' : ''}`}
+        subtitle={`${recipes.length} receita${recipes.length !== 1 ? 's' : ''} · Toque no + para adicionar`}
         rightAction={
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateRecipe')}
@@ -165,6 +164,16 @@ export const RecipesScreen: React.FC = () => {
             onRefresh={() => { setRefreshing(true); loadRecipes(); }}
             colors={[colors.primary]}
           />
+        }
+        ListHeaderComponent={
+          recipes.length > 0 ? (
+            <View style={styles.infoCard}>
+              <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+              <Text style={styles.infoText}>
+                Aqui ficam todas as suas receitas. Cada uma calcula automaticamente o preco de venda com base nos ingredientes, custos e margem de lucro.
+              </Text>
+            </View>
+          ) : null
         }
         ListEmptyComponent={
           <EmptyState
@@ -235,5 +244,22 @@ const styles = StyleSheet.create({
   deleteBtn: {
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 14,
+  },
+  infoText: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    flex: 1,
+    lineHeight: 18,
   },
 });
