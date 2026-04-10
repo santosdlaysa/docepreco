@@ -3,7 +3,7 @@
     "name": "DocePreço",
     "slug": "sweet-pricing",
     "owner": "doce-preco",
-    "version": "2.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -50,7 +50,7 @@
       "url": "https://u.expo.dev/2e86f353-1d41-47cc-b552-3e242b8430f4"
     },
     "plugins": [
-      "@sentry/react-native"
+"@sentry/react-native"
     ]
   }
 }
