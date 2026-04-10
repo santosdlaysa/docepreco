@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, ActivityIndicator } from 'react-native';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,10 +15,18 @@ import { SalesScreen } from '../screens/SalesScreen';
 import { CreateSaleScreen } from '../screens/CreateSaleScreen';
 import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
+import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { OnboardingScreen, hasSeenOnboarding } from '../screens/OnboardingScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
+import { PremiumAdScreen } from '../screens/PremiumAdScreen';
+import { OrdersScreen } from '../screens/OrdersScreen';
+import { CreateOrderScreen } from '../screens/CreateOrderScreen';
+import { ClientsScreen } from '../screens/ClientsScreen';
+import { CreateClientScreen } from '../screens/CreateClientScreen';
+import { ReportsScreen } from '../screens/ReportsScreen';
+import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
@@ -62,10 +70,13 @@ function TabNavigator() {
 }
 
 export function AppNavigator() {
-  const [authState, setAuthState] = useState<'loading' | 'auth' | 'app' | 'onboarding'>('loading');
+  const [authState, setAuthState] = useState<'loading' | 'auth' | 'app' | 'onboarding' | 'premiumAd'>('loading');
   const [showRegister, setShowRegister] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [companyName, setCompanyName] = useState('');
   const [demoMode, setDemoModeState] = useState(false);
+  const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const pendingPaywall = useRef(false);
 
   useEffect(() => {
     (async () => {
@@ -129,26 +140,54 @@ export function AppNavigator() {
   }
 
   if (authState === 'auth') {
+    if (showForgotPassword) {
+      return (
+        <ForgotPasswordScreen
+          onBack={() => setShowForgotPassword(false)}
+        />
+      );
+    }
     if (showRegister) {
       return (
         <RegisterScreen
-          onRegister={() => setAuthState('app')}
+          onRegister={() => setAuthState('premiumAd')}
           onGoToLogin={() => setShowRegister(false)}
         />
       );
     }
     return (
       <LoginScreen
-        onLogin={() => setAuthState('app')}
+        onLogin={() => setAuthState('premiumAd')}
         onGoToRegister={() => setShowRegister(true)}
+        onGoToForgotPassword={() => setShowForgotPassword(true)}
         onDemoLogin={loginAsDemo}
+      />
+    );
+  }
+
+  if (authState === 'premiumAd') {
+    return (
+      <PremiumAdScreen
+        onViewPlans={() => {
+          pendingPaywall.current = true;
+          setAuthState('app');
+        }}
+        onSkip={() => setAuthState('app')}
       />
     );
   }
 
   return (
     <AuthContext.Provider value={{ logout, companyName, isDemoMode: demoMode }}>
-      <NavigationContainer>
+      <NavigationContainer
+        ref={navigationRef}
+        onReady={() => {
+          if (pendingPaywall.current) {
+            pendingPaywall.current = false;
+            navigationRef.current?.navigate('Paywall');
+          }
+        }}
+      >
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Main" component={TabNavigator} />
           <Stack.Screen name="Recipes" component={RecipesScreen} />
@@ -161,6 +200,14 @@ export function AppNavigator() {
           <Stack.Screen name="CreateSale" component={CreateSaleScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="Orders" component={OrdersScreen} />
+          <Stack.Screen name="CreateOrder" component={CreateOrderScreen} />
+          <Stack.Screen name="EditOrder" component={CreateOrderScreen} />
+          <Stack.Screen name="Clients" component={ClientsScreen} />
+          <Stack.Screen name="CreateClient" component={CreateClientScreen} />
+          <Stack.Screen name="EditClient" component={CreateClientScreen} />
+          <Stack.Screen name="Reports" component={ReportsScreen} />
+          <Stack.Screen name="PdfSettings" component={PdfSettingsScreen} />
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}

@@ -7,6 +7,8 @@ const controller = new AuthController();
 
 router.post('/register', (req, res) => controller.register(req, res));
 router.post('/login', (req, res) => controller.login(req, res));
+router.post('/forgot-password', (req, res) => controller.forgotPassword(req, res));
+router.post('/reset-password', (req, res) => controller.resetPassword(req, res));
 router.get('/me', authMiddleware, (req, res) => controller.me(req as any, res));
 
 export default router;

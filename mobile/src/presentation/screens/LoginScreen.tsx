@@ -20,10 +20,11 @@ import { Input } from '../components/Input';
 interface Props {
   onLogin: () => void;
   onGoToRegister: () => void;
+  onGoToForgotPassword?: () => void;
   onDemoLogin?: () => void;
 }
 
-export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onDemoLogin }) => {
+export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToForgotPassword, onDemoLogin }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -103,6 +104,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onDemoLo
               }
             />
 
+            {onGoToForgotPassword && (
+              <TouchableOpacity onPress={onGoToForgotPassword} style={styles.forgotLink}>
+                <Text style={styles.forgotText}>Esqueci minha senha</Text>
+              </TouchableOpacity>
+            )}
+
             <Button
               title="Entrar"
               onPress={handleLogin}
@@ -170,6 +177,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorBannerText: { ...typography.bodySmall, color: colors.error, flex: 1 },
+  forgotLink: { alignItems: 'flex-end', marginTop: -8, marginBottom: 8 },
+  forgotText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
   btn: { marginTop: 8 },
   switchLink: { marginTop: 16, alignItems: 'center' },
   switchText: { ...typography.body, color: colors.textSecondary },

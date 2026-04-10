@@ -1,0 +1,70 @@
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
+
+export async function sendPasswordResetCode(email: string, code: string): Promise<void> {
+  const digits = code.split('').map(d =>
+    `<td style="width:44px;height:52px;background:#FFF0F3;border:2px solid #F8BBD9;border-radius:10px;text-align:center;font-size:28px;font-weight:700;color:#E91E8C;font-family:Arial,sans-serif;">${d}</td>`
+  ).join('<td style="width:8px;"></td>');
+
+  await resend.emails.send({
+    from: 'Precifica Doces <noreply@docepreco.site>',
+    to: email,
+    subject: 'Seu codigo de recuperacao - Precifica Doces',
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#FFF0F3;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF0F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(233,30,140,0.08);">
+
+        <!-- Header -->
+        <tr><td style="background:#E91E8C;padding:32px 40px;text-align:center;">
+          <div style="width:64px;height:64px;border-radius:16px;background:rgba(255,255,255,0.2);margin:0 auto 12px;line-height:64px;font-size:32px;">&#127856;</div>
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#FFFFFF;letter-spacing:-0.3px;">Precifica Doces</h1>
+          <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.85);">Gestao inteligente para confeiteiros</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:36px 40px 24px;">
+          <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#2D1B14;">Recuperacao de senha</h2>
+          <p style="margin:0 0 28px;font-size:15px;color:#8B7355;line-height:1.6;">
+            Recebemos uma solicitacao para redefinir sua senha. Use o codigo abaixo para continuar:
+          </p>
+
+          <!-- Codigo -->
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+            <tr>${digits}</tr>
+          </table>
+
+          <!-- Timer -->
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px;background:#FFF8F0;border-radius:10px;">
+            <tr><td style="padding:12px 20px;text-align:center;">
+              <span style="font-size:13px;color:#8B4513;">&#9200; Este codigo expira em <strong>15 minutos</strong></span>
+            </td></tr>
+          </table>
+
+          <hr style="border:none;border-top:1px solid #F0D5DC;margin:0 0 20px;" />
+
+          <p style="margin:0;font-size:13px;color:#B5A090;line-height:1.5;">
+            Se voce nao solicitou essa recuperacao, ignore este email. Sua senha permanecera a mesma.
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#FFF8F0;padding:20px 40px;text-align:center;border-top:1px solid #F0D5DC;">
+          <p style="margin:0;font-size:12px;color:#B5A090;">
+            &copy; ${new Date().getFullYear()} Precifica Doces &bull; docepreco.site
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `,
+  });
+}

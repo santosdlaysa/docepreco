@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
+import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 
 const userRepo = new PostgresUserRepository();
 const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
@@ -58,6 +59,55 @@ export class AuthController {
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
       const { passwordHash, ...safeUser } = user;
       res.json({ success: true, data: { user: safeUser, token } });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  async forgotPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        res.status(400).json({ success: false, error: 'Email é obrigatório' });
+        return;
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        res.status(400).json({ success: false, error: 'Email inválido' });
+        return;
+      }
+      const user = await userRepo.findByEmail(email);
+      if (!user) {
+        // Return success even if user not found (security: don't reveal if email exists)
+        res.json({ success: true, message: 'Se o email estiver cadastrado, você receberá um código de recuperação' });
+        return;
+      }
+      const code = await userRepo.createPasswordResetCode(user.id);
+      await sendPasswordResetCode(user.email, code);
+      res.json({ success: true, message: 'Se o email estiver cadastrado, você receberá um código de recuperação' });
+    } catch (error) {
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  async resetPassword(req: Request, res: Response): Promise<void> {
+    try {
+      const { email, code, newPassword } = req.body;
+      if (!email || !code || !newPassword) {
+        res.status(400).json({ success: false, error: 'Email, código e nova senha são obrigatórios' });
+        return;
+      }
+      if (newPassword.length < 6) {
+        res.status(400).json({ success: false, error: 'Senha deve ter pelo menos 6 caracteres' });
+        return;
+      }
+      const result = await userRepo.verifyPasswordResetCode(email, code);
+      if (!result.valid || !result.userId) {
+        res.status(400).json({ success: false, error: 'Código inválido ou expirado' });
+        return;
+      }
+      await userRepo.updatePassword(result.userId, newPassword);
+      await userRepo.markResetCodeUsed(result.userId, code);
+      res.json({ success: true, message: 'Senha atualizada com sucesso' });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Erro interno' });
     }
