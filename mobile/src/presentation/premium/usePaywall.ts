@@ -5,8 +5,8 @@ import { RootStackParamList, PaywallTrigger } from '../navigation/types';
 import { usePremium } from '../context/PremiumContext';
 import { FREE_LIMITS, LimitedFeature, PremiumFeature } from './limits';
 
-/** Premium/paywall is only active on iOS for now. */
-const PREMIUM_ENABLED = Platform.OS === 'ios';
+/** Temporarily disabled while waiting for Apple review. */
+const PREMIUM_ENABLED = false;
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
