@@ -26,8 +26,8 @@ export function canCreateMore(
   feature: LimitedFeature,
   currentCount: number
 ): boolean {
-  if (isActivePremium(user)) return true;
-  return currentCount < FREE_LIMITS[feature];
+  // Temporarily disabled while waiting for Apple review
+  return true;
 }
 
 export const PREMIUM_ERROR_CODES = {
