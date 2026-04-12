@@ -48,15 +48,14 @@ const formatBirthday = (birthday: string): string => {
 
 export const ClientsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { requirePremium } = usePaywall();
+  const { guardScreen } = usePaywall();
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
-      if (!requirePremium('clientsManagement')) {
-        navigation.goBack();
+      if (!guardScreen('clientsManagement')) {
         return;
       }
       loadClients();

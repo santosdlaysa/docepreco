@@ -53,7 +53,7 @@ export const CreateIngredientScreen: React.FC = () => {
   const [allNames, setAllNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
-  const { checkLimit, openPaywall } = usePaywall();
+  const { openPaywall } = usePaywall();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   useEffect(() => {
@@ -105,10 +105,7 @@ export const CreateIngredientScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!validate()) return;
-    // Client-side limit check (only when creating new)
-    if (!isEditing && !checkLimit('ingredients', allNames.length)) {
-      return;
-    }
+
     setLoading(true);
     try {
       if (isEditing) {
@@ -132,15 +129,7 @@ export const CreateIngredientScreen: React.FC = () => {
       }
     } catch (error) {
       const err = error as Error & { code?: string; current?: number };
-      // Server-side fallback: backend enforced the limit
-      if (err.code === 'INGREDIENT_LIMIT') {
-        openPaywall({
-          kind: 'limit',
-          feature: 'ingredients',
-          current: err.current ?? allNames.length,
-        });
-        return;
-      }
+
       const msg = err.message || String(error);
       showToast(msg, 'error');
     } finally {

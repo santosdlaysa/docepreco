@@ -5,8 +5,7 @@ import { RootStackParamList, PaywallTrigger } from '../navigation/types';
 import { usePremium } from '../context/PremiumContext';
 import { FREE_LIMITS, LimitedFeature, PremiumFeature } from './limits';
 
-/** Temporarily disabled while waiting for Apple review. */
-const PREMIUM_ENABLED = false;
+const PREMIUM_ENABLED = true;
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -17,7 +16,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
  * const { openPaywall, checkLimit, requirePremium } = usePaywall();
  *
  * // Before creating a resource with a free-tier limit:
- * if (!checkLimit('ingredients', currentCount)) return;
+ * if (!checkLimit('recipes', currentCount)) return;
  *
  * // Before using a premium-only feature:
  * if (!requirePremium('pdfCustomBranding')) return;
@@ -46,6 +45,7 @@ export function usePaywall() {
   /**
    * Checks if the user has access to a premium-only feature.
    * If not, opens the paywall and returns false.
+   * Use this for inline feature gates (e.g. toggling a section inside a screen).
    */
   const requirePremium = (feature: PremiumFeature): boolean => {
     if (!PREMIUM_ENABLED) return true;
@@ -54,5 +54,18 @@ export function usePaywall() {
     return false;
   };
 
-  return { isPremium, openPaywall, checkLimit, requirePremium };
+  /**
+   * Use this at the top of premium-gated screens (in useFocusEffect / useEffect).
+   * Replaces the current screen with the Paywall so that closing the Paywall
+   * returns the user to the previous screen instead of leaving them on a
+   * loading spinner.
+   */
+  const guardScreen = (feature: PremiumFeature): boolean => {
+    if (!PREMIUM_ENABLED) return true;
+    if (isPremium) return true;
+    navigation.replace('Paywall', { trigger: { kind: 'feature', feature } });
+    return false;
+  };
+
+  return { isPremium, openPaywall, checkLimit, requirePremium, guardScreen };
 }

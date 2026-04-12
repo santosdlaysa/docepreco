@@ -62,7 +62,7 @@ type Section = { title: string; data: Order[] };
 
 export const OrdersScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { requirePremium } = usePaywall();
+  const { guardScreen } = usePaywall();
   const { showToast } = useToast();
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const [orders, setOrders] = useState<Order[]>([]);
@@ -71,8 +71,7 @@ export const OrdersScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (!requirePremium('ordersManagement')) {
-        navigation.goBack();
+      if (!guardScreen('ordersManagement')) {
         return;
       }
       loadOrders();

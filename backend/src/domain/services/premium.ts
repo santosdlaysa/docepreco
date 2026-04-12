@@ -1,8 +1,7 @@
 import { User } from '../entities/User';
 
 export const FREE_LIMITS = {
-  ingredients: 15,
-  recipes: 5,
+  recipes: 6,
 } as const;
 
 export type LimitedFeature = keyof typeof FREE_LIMITS;
@@ -26,11 +25,10 @@ export function canCreateMore(
   feature: LimitedFeature,
   currentCount: number
 ): boolean {
-  // Temporarily disabled while waiting for Apple review
-  return true;
+  if (isActivePremium(user)) return true;
+  return currentCount < FREE_LIMITS[feature];
 }
 
 export const PREMIUM_ERROR_CODES = {
-  ingredients: 'INGREDIENT_LIMIT',
   recipes: 'RECIPE_LIMIT',
 } as const;

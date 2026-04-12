@@ -46,7 +46,7 @@ interface RecipeRanking {
 
 export const ReportsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { requirePremium } = usePaywall();
+  const { guardScreen } = usePaywall();
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
@@ -60,8 +60,7 @@ export const ReportsScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      if (!requirePremium('advancedReports')) {
-        navigation.goBack();
+      if (!guardScreen('advancedReports')) {
         return;
       }
       loadData();

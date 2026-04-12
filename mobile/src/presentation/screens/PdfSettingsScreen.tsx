@@ -41,7 +41,7 @@ const COLOR_PRESETS = [
 
 export const PdfSettingsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { requirePremium } = usePaywall();
+  const { guardScreen } = usePaywall();
   const { showToast } = useToast();
 
   const [settings, setSettings] = useState<PdfSettings>({
@@ -52,8 +52,7 @@ export const PdfSettingsScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!requirePremium('pdfCustomBranding')) {
-      navigation.goBack();
+    if (!guardScreen('pdfCustomBranding')) {
       return;
     }
     pdfSettingsStorage.get().then(setSettings);

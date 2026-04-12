@@ -3,8 +3,7 @@
  * Keep in sync with backend/src/domain/services/premium.ts FREE_LIMITS.
  */
 export const FREE_LIMITS = {
-  ingredients: 15,
-  recipes: 5,
+  recipes: 6,
 } as const;
 
 export type LimitedFeature = keyof typeof FREE_LIMITS;
@@ -51,10 +50,6 @@ export const FEATURE_COPY: Record<PremiumFeature, { title: string; description: 
 };
 
 export const FREE_LIMIT_COPY: Record<LimitedFeature, { title: string; description: string }> = {
-  ingredients: {
-    title: `Até ${FREE_LIMITS.ingredients} ingredientes`,
-    description: `O plano gratuito permite até ${FREE_LIMITS.ingredients} ingredientes. Vire Premium para ilimitado.`,
-  },
   recipes: {
     title: `Até ${FREE_LIMITS.recipes} receitas`,
     description: `O plano gratuito permite até ${FREE_LIMITS.recipes} receitas. Vire Premium para ilimitado.`,

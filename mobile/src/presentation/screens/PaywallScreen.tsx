@@ -7,6 +7,7 @@ import {
   StyleSheet,
   ActivityIndicator,
   Linking,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -248,7 +249,8 @@ export const PaywallScreen: React.FC = () => {
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          A assinatura é renovada automaticamente até você cancelar. Você pode cancelar a qualquer momento nas configurações da loja.
+          A assinatura é renovada automaticamente até você cancelar. Você pode cancelar a qualquer momento nas configurações da{' '}
+          {Platform.OS === 'android' ? 'Google Play' : 'App Store'}.
         </Text>
 
         <View style={styles.linksRow}>
@@ -258,7 +260,11 @@ export const PaywallScreen: React.FC = () => {
           <Text style={styles.linkSeparator}> · </Text>
           <TouchableOpacity
             onPress={() =>
-              Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')
+              Linking.openURL(
+                Platform.OS === 'android'
+                  ? 'https://play.google.com/intl/pt-BR/about/play-terms/'
+                  : 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+              )
             }
           >
             <Text style={styles.link}>Termos</Text>
