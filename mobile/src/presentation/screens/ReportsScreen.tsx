@@ -5,11 +5,14 @@ import {
   StyleSheet,
   ScrollView,
   ActivityIndicator,
+  TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import { RootStackParamList } from '../navigation/types';
 import { Sale } from '../../domain/entities/Sale';
 import { saleApi } from '../../data/api/saleApi';
@@ -48,6 +51,7 @@ export const ReportsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { guardScreen } = usePaywall();
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [sales, setSales] = useState<Sale[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [topRecipes, setTopRecipes] = useState<RecipeRanking[]>([]);
@@ -135,6 +139,93 @@ export const ReportsScreen: React.FC = () => {
     }
   };
 
+  const handleDownload = async () => {
+    setDownloading(true);
+    try {
+      const now = new Date();
+      const dateLabel = now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+      const revenueChange = prevMonthRevenue > 0
+        ? ((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue * 100)
+        : 0;
+
+      const monthRows = monthlyData.map(m => `
+        <tr>
+          <td>${m.label}</td>
+          <td>${m.count} venda${m.count !== 1 ? 's' : ''}</td>
+          <td style="text-align:right;font-weight:600;color:#E91E63">${formatCurrency(m.revenue)}</td>
+        </tr>`).join('');
+
+      const recipeRows = topRecipes.map((r, i) => `
+        <tr>
+          <td style="font-weight:700;color:${i === 0 ? '#E91E63' : '#333'}">${i + 1}º</td>
+          <td>${r.recipeName}</td>
+          <td>${r.quantity} un</td>
+          <td style="text-align:right;font-weight:600;color:#E91E63">${formatCurrency(r.revenue)}</td>
+        </tr>`).join('');
+
+      const html = `
+        <html><head><meta charset="utf-8"/>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 32px; color: #333; }
+          h1 { color: #E91E63; font-size: 24px; margin-bottom: 4px; }
+          .subtitle { color: #888; font-size: 13px; margin-bottom: 28px; }
+          .section { margin-bottom: 28px; }
+          h2 { font-size: 15px; color: #555; border-bottom: 2px solid #F8BBD0; padding-bottom: 6px; margin-bottom: 12px; }
+          .stat-grid { display: flex; gap: 16px; margin-bottom: 24px; }
+          .stat { flex: 1; background: #FFF0F5; border-radius: 10px; padding: 14px; }
+          .stat-label { font-size: 12px; color: #888; margin-bottom: 4px; }
+          .stat-value { font-size: 22px; font-weight: 700; color: #E91E63; }
+          .stat-sub { font-size: 11px; color: #888; margin-top: 4px; }
+          table { width: 100%; border-collapse: collapse; font-size: 13px; }
+          th { background: #FCE4EC; color: #C2185B; text-align: left; padding: 8px 10px; }
+          td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
+          .footer { margin-top: 40px; font-size: 11px; color: #bbb; text-align: center; }
+        </style></head><body>
+        <h1>Relatório DocePreço</h1>
+        <div class="subtitle">Gerado em ${dateLabel}</div>
+
+        <div class="stat-grid">
+          <div class="stat">
+            <div class="stat-label">Faturamento do mês</div>
+            <div class="stat-value">${formatCurrency(currentMonthRevenue)}</div>
+            ${prevMonthRevenue > 0 ? `<div class="stat-sub">${revenueChange >= 0 ? '▲' : '▼'} ${Math.abs(revenueChange).toFixed(1)}% vs mês anterior</div>` : ''}
+          </div>
+          <div class="stat">
+            <div class="stat-label">Ticket médio</div>
+            <div class="stat-value">${formatCurrency(avgTicket)}</div>
+            <div class="stat-sub">${sales.length} vendas no total</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Vendas por mês (últimos 6 meses)</h2>
+          <table><thead><tr><th>Mês</th><th>Qtd. vendas</th><th style="text-align:right">Faturamento</th></tr></thead>
+          <tbody>${monthRows}</tbody></table>
+        </div>
+
+        <div class="section">
+          <h2>Receitas mais vendidas</h2>
+          ${topRecipes.length === 0
+            ? '<p style="color:#aaa">Nenhuma venda registrada.</p>'
+            : `<table><thead><tr><th>#</th><th>Receita</th><th>Qtd.</th><th style="text-align:right">Faturamento</th></tr></thead>
+               <tbody>${recipeRows}</tbody></table>`}
+        </div>
+
+        <div class="footer">DocePreço · relatório gerado automaticamente</div>
+        </body></html>`;
+
+      const { uri } = await Print.printToFileAsync({ html, base64: false });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, { mimeType: 'application/pdf', dialogTitle: 'Relatório DocePreço' });
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -153,7 +244,19 @@ export const ReportsScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="Relatórios" subtitle="Dados calculados com base nas vendas registradas no app." showBack onBack={() => navigation.goBack()} />
+      <Header
+        title="Relatórios"
+        subtitle="Dados calculados com base nas vendas registradas no app."
+        showBack
+        onBack={() => navigation.goBack()}
+        rightAction={
+          <TouchableOpacity onPress={handleDownload} disabled={downloading} style={styles.downloadBtn} activeOpacity={0.7}>
+            {downloading
+              ? <ActivityIndicator size="small" color={colors.primary} />
+              : <Ionicons name="download-outline" size={22} color={colors.primary} />}
+          </TouchableOpacity>
+        }
+      />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
         {/* Revenue Card */}
@@ -333,4 +436,12 @@ const styles = StyleSheet.create({
   rankSub: { ...typography.caption, color: colors.textSecondary },
   rankRevenue: { ...typography.h4, color: colors.primary },
   emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingVertical: 16 },
+  downloadBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
