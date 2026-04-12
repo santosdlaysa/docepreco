@@ -10,7 +10,6 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
-  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -303,7 +302,7 @@ export const HomeScreen: React.FC = () => {
 
         <Text style={styles.sectionTitle}>Acesso Rapido</Text>
 
-        {quickActions.filter(a => !a.premium || Platform.OS === 'ios').map((action) => (
+        {quickActions.map((action) => (
           <TouchableOpacity
             key={action.route}
             onPress={() => navigation.navigate(action.route as never)}
