@@ -32,8 +32,8 @@ type RouteType = RouteProp<RootStackParamList, 'Paywall'>;
 const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; description: string }> = [
   {
     icon: 'infinite-outline',
-    title: 'Ingredientes e receitas ilimitados',
-    description: 'Chega de limite. Cadastre quantos quiser.',
+    title: 'Receitas ilimitadas',
+    description: 'Chega de limite. Cadastre quantas receitas quiser.',
   },
   {
     icon: 'calendar-outline',
