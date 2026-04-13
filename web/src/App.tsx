@@ -5,12 +5,18 @@ import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { LogsPage } from './pages/LogsPage';
 import { RequestLogsPage } from './pages/RequestLogsPage';
+import { BannersPage } from './pages/BannersPage';
+import { NotificationsPage } from './pages/NotificationsPage';
+import { TipsPage } from './pages/TipsPage';
 
-type Page = 'dashboard' | 'users' | 'logs' | 'requests';
+type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests';
 
 const NAV: Array<{ id: Page; label: string; icon: string }> = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'users', label: 'Usuários', icon: '👥' },
+  { id: 'banners', label: 'Banners', icon: '📢' },
+  { id: 'notifications', label: 'Notificações', icon: '🔔' },
+  { id: 'tips', label: 'Dicas', icon: '💡' },
   { id: 'logs', label: 'Logs do sistema', icon: '📋' },
   { id: 'requests', label: 'Rotas HTTP', icon: '🌐' },
 ];
@@ -73,6 +79,9 @@ export default function App() {
       <main className="flex-1 p-6 overflow-y-auto">
         {page === 'dashboard' && <DashboardPage />}
         {page === 'users' && <UsersPage />}
+        {page === 'banners' && <BannersPage />}
+        {page === 'notifications' && <NotificationsPage />}
+        {page === 'tips' && <TipsPage />}
         {page === 'logs' && <LogsPage />}
         {page === 'requests' && <RequestLogsPage />}
       </main>

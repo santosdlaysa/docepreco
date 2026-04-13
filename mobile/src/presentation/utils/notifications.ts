@@ -1,23 +1,33 @@
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
+import Constants from 'expo-constants';
+import { pushTokenApi } from '../../data/api/pushTokenApi';
+import { tipApi } from '../../data/api/tipApi';
+import { isDemoMode } from '../../data/demo/demoMode';
+import { demoTipApi } from '../../data/demo/demoApi';
 
 const LAST_OPEN_KEY = '@docepreco:lastAppOpen';
 const NOTIFICATIONS_ENABLED_KEY = '@docepreco:notificationsEnabled';
 
-const MOTIVATIONAL_TIPS = [
-  'Dica: revise seus precos a cada 15 dias para acompanhar a variacao dos ingredientes!',
+const FALLBACK_TIPS = [
+  'Dica: revise seus preços a cada 15 dias para acompanhar a variacao dos ingredientes!',
   'Voce sabia? Embalar bem seus doces pode aumentar o valor percebido em ate 30%!',
   'Lembre-se: seu tempo tambem e um ingrediente! Nao esqueca de incluir a mao de obra.',
-  'Dica: ofereca combos e kits para aumentar o ticket medio dos seus pedidos!',
   'Precificar corretamente e o primeiro passo para um negocio lucrativo. Voce esta no caminho certo!',
-  'Dica: ingredientes comprados em atacado podem reduzir seus custos em ate 40%!',
-  'Voce sabia? Clientes fieis pagam mais por qualidade. Invista no seu diferencial!',
-  'Dica: anote todas as vendas para entender quais doces dao mais lucro!',
 ];
 
-function randomTip(): string {
-  return MOTIVATIONAL_TIPS[Math.floor(Math.random() * MOTIVATIONAL_TIPS.length)];
+async function fetchRandomTip(): Promise<string> {
+  try {
+    const api = isDemoMode() ? demoTipApi : tipApi;
+    const tips = await api.getActive();
+    if (tips.length > 0) {
+      return tips[Math.floor(Math.random() * tips.length)].message;
+    }
+  } catch {
+    // Offline ou erro — usa fallback
+  }
+  return FALLBACK_TIPS[Math.floor(Math.random() * FALLBACK_TIPS.length)];
 }
 
 export async function getNotificationsEnabled(): Promise<boolean> {
@@ -105,8 +115,8 @@ async function scheduleRecurringNotifications(): Promise<void> {
   // Lembrete semanal - toda segunda as 9h
   await Notifications.scheduleNotificationAsync({
     content: {
-      title: 'Comeco de semana! 📊',
-      body: 'Confira se os precos dos ingredientes mudaram. Manter tudo atualizado e o segredo!',
+      title: 'Começo de semana! 📊',
+      body: 'Confira se os precos dos ingredientes mudaram. Manter tudo atualizado é o segredo!',
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
@@ -118,12 +128,12 @@ async function scheduleRecurringNotifications(): Promise<void> {
 }
 
 async function scheduleMotivationalTip(): Promise<void> {
-  // Dica motivacional a cada 3 dias as 10h
-  // Usamos TIME_INTERVAL para 3 dias
+  // Dica motivacional a cada 3 dias
+  const tip = await fetchRandomTip();
   await Notifications.scheduleNotificationAsync({
     content: {
       title: 'Dica DocePreco 💡',
-      body: randomTip(),
+      body: tip,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
@@ -166,8 +176,27 @@ export async function initializeNotifications(): Promise<void> {
       });
     }
 
+    // Listener: quando o usuário toca na notificação
+    Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data?.url && typeof data.url === 'string') {
+        Linking.openURL(data.url).catch(() => {});
+      }
+    });
+
     const granted = await requestPermissions();
     if (!granted) return;
+
+    // Registrar push token no backend
+    try {
+      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+      if (projectId) {
+        const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+        await pushTokenApi.register(token, Platform.OS);
+      }
+    } catch {
+      // Silencioso — registro de token não deve impedir o fluxo
+    }
 
     const enabled = await getNotificationsEnabled();
     if (!enabled) return;

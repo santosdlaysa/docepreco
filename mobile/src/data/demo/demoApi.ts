@@ -3,6 +3,7 @@ import { Ingredient, CreateIngredientDTO } from '../../domain/entities/Ingredien
 import { Sale, CreateSaleDTO } from '../../domain/entities/Sale';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { AppStats } from '../api/statsApi';
+import { Banner } from '../api/bannerApi';
 import {
   demoIngredients,
   demoRecipes,
@@ -40,6 +41,39 @@ export const demoStatsApi = {
         saleDate: s.saleDate,
       })),
     };
+  },
+};
+
+// ── Banners ──
+
+export const demoBannerApi = {
+  getActive: async (): Promise<Banner[]> => {
+    await delay();
+    return [
+      {
+        id: 'demo-banner-1',
+        title: 'Modo Demonstração',
+        message: 'Explore todas as funcionalidades do app com dados fictícios!',
+        type: 'info' as const,
+        actionUrl: null,
+        startsAt: new Date().toISOString(),
+        endsAt: null,
+        isActive: true,
+      },
+    ];
+  },
+};
+
+// ── Tips ──
+
+export const demoTipApi = {
+  getActive: async () => {
+    await delay();
+    return [
+      { id: 'demo-tip-1', message: 'Dica: revise seus preços a cada 15 dias para acompanhar a variação dos ingredientes!', isActive: true, createdAt: new Date().toISOString() },
+      { id: 'demo-tip-2', message: 'Você sabia? Embalar bem seus doces pode aumentar o valor percebido em até 30%!', isActive: true, createdAt: new Date().toISOString() },
+      { id: 'demo-tip-3', message: 'Lembre-se: seu tempo também é um ingrediente! Não esqueça de incluir a mão de obra.', isActive: true, createdAt: new Date().toISOString() },
+    ];
   },
 };
 

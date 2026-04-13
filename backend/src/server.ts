@@ -16,7 +16,14 @@ import seasonRoutes from './presentation/routes/seasonRoutes';
 import priceHistoryRoutes from './presentation/routes/priceHistoryRoutes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 import telegramRoutes from './presentation/routes/telegramRoutes';
+import bannerRoutes from './presentation/routes/bannerRoutes';
+import pushTokenRoutes from './presentation/routes/pushTokenRoutes';
+import notificationRoutes from './presentation/routes/notificationRoutes';
+import tipRoutes from './presentation/routes/tipRoutes';
 import { pool } from './infrastructure/database/connection';
+import { PostgresNotificationRepository } from './infrastructure/repositories/PostgresNotificationRepository';
+import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
+import { sendPushNotifications } from './infrastructure/services/pushService';
 
 dotenv.config();
 
@@ -52,6 +59,10 @@ app.use('/api/ingredients/:ingredientId/price-history', authMiddleware, priceHis
 app.use('/api', premiumRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/telegram', telegramRoutes);
+app.use('/api/banners', bannerRoutes);
+app.use('/api/push-tokens', authMiddleware, pushTokenRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/tips', tipRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -65,6 +76,30 @@ async function bootstrap() {
     });
     // Relatório diário às 8h (horário de Brasília)
     cron.schedule('0 8 * * *', () => sendDailyUserReport(), { timezone: 'America/Sao_Paulo' });
+
+    // Cron: envia notificações agendadas a cada minuto
+    const notifRepo = new PostgresNotificationRepository();
+    const tokenRepo = new PostgresPushTokenRepository();
+    cron.schedule('* * * * *', async () => {
+      try {
+        const pending = await notifRepo.findPending();
+        for (const notif of pending) {
+          try {
+            const tokens = await tokenRepo.findByTarget(notif.target);
+            const tokenStrings = tokens.map(t => t.token);
+            const data = notif.dataJson ? JSON.parse(notif.dataJson) : undefined;
+            const count = await sendPushNotifications(tokenStrings, notif.title, notif.body, data);
+            await notifRepo.markSent(notif.id, count);
+            console.log(`[Cron] Notificação ${notif.id} enviada para ${count} dispositivos`);
+          } catch (err) {
+            await notifRepo.markFailed(notif.id);
+            console.error(`[Cron] Falha ao enviar notificação ${notif.id}:`, err);
+          }
+        }
+      } catch (err) {
+        console.error('[Cron] Erro ao processar notificações:', err);
+      }
+    });
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

@@ -129,7 +129,41 @@ export const api = {
     if (params.search) q.set('search', params.search);
     return req<RequestLog[]>(`/admin/request-logs?${q}`);
   },
+
+  // ── Banners ──
+  listBanners: () => req<Banner[]>('/banners'),
+  createBanner: (data: Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>) =>
+    req<Banner>('/banners', { method: 'POST', body: JSON.stringify(data) }),
+  updateBanner: (id: string, data: Partial<Banner>) =>
+    req<Banner>(`/banners/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteBanner: (id: string) =>
+    req<void>(`/banners/${id}`, { method: 'DELETE' }),
+
+  // ── Tips ──
+  listTips: () => req<Tip[]>('/tips'),
+  createTip: (message: string) =>
+    req<Tip>('/tips', { method: 'POST', body: JSON.stringify({ message }) }),
+  updateTip: (id: string, data: { message?: string; isActive?: boolean }) =>
+    req<Tip>(`/tips/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTip: (id: string) =>
+    req<void>(`/tips/${id}`, { method: 'DELETE' }),
+
+  // ── Notifications ──
+  listNotifications: () => req<AppNotification[]>('/notifications'),
+  createNotification: (data: { title: string; body: string; target?: string; scheduledAt?: string; dataJson?: string }) =>
+    req<AppNotification>('/notifications', { method: 'POST', body: JSON.stringify(data) }),
+  sendNotification: (id: string) =>
+    req<AppNotification>(`/notifications/${id}/send`, { method: 'POST' }),
+  deleteNotification: (id: string) =>
+    req<void>(`/notifications/${id}`, { method: 'DELETE' }),
 };
+
+export interface Tip {
+  id: string;
+  message: string;
+  isActive: boolean;
+  createdAt: string;
+}
 
 export interface LogEntry {
   type: 'new_user' | 'sale' | 'premium_on' | 'premium_off';
@@ -146,4 +180,30 @@ export interface RequestLog {
   durationMs: number;
   ip: string | null;
   ts: string;
+}
+
+export interface Banner {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'promo' | 'update';
+  actionUrl: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  dataJson: string | null;
+  target: 'all' | 'premium' | 'free';
+  scheduledAt: string | null;
+  sentAt: string | null;
+  status: 'pending' | 'scheduled' | 'sent' | 'failed';
+  recipientsCount: number;
+  createdAt: string;
 }

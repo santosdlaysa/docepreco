@@ -27,9 +27,11 @@ import { shopeeBanners, ShopeeBanner } from '../data/shopeeBanners';
 import { useAuth } from '../../context/AuthContext';
 import { statsApi, AppStats } from '../../data/api/statsApi';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoStatsApi } from '../../data/demo/demoApi';
+import { demoStatsApi, demoBannerApi } from '../../data/demo/demoApi';
 import { usePremium } from '../context/PremiumContext';
 import { goalApi, RevenueGoal } from '../../data/api/goalApi';
+import { bannerApi, Banner } from '../../data/api/bannerApi';
+import { bannerStorage } from '../../data/storage/bannerStorage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -218,6 +220,7 @@ export const HomeScreen: React.FC = () => {
   const { isPremium } = usePremium();
   const [stats, setStats] = useState<AppStats | null>(null);
   const [goal, setGoal] = useState<RevenueGoal | null>(null);
+  const [banners, setBanners] = useState<Banner[]>([]);
   const api = isDemoMode() ? demoStatsApi : statsApi;
 
   useEffect(() => {
@@ -226,6 +229,14 @@ export const HomeScreen: React.FC = () => {
       const now = new Date();
       goalApi.get(now.getMonth() + 1, now.getFullYear()).then(setGoal).catch(() => {});
     }
+
+    // Fetch banners
+    const bApi = isDemoMode() ? demoBannerApi : bannerApi;
+    bApi.getActive().then(async (active) => {
+      const dismissed = await bannerStorage.getDismissedIds();
+      await bannerStorage.clearExpired(active.map(b => b.id));
+      setBanners(active.filter(b => !dismissed.includes(b.id)));
+    }).catch(() => {});
   }, []);
 
   const [showGoalInput, setShowGoalInput] = useState(false);
@@ -270,6 +281,11 @@ export const HomeScreen: React.FC = () => {
     setShowGoalInput(false);
   };
 
+  const dismissBanner = async (id: string) => {
+    await bannerStorage.dismiss(id);
+    setBanners(prev => prev.filter(b => b.id !== id));
+  };
+
   const openShopeeLink = async (url: string) => {
     if (url === 'SEU_LINK_AFILIADO_AQUI') {
       Alert.alert('Configure o link', 'Substitua "SEU_LINK_AFILIADO_AQUI" pelo seu link de afiliado no arquivo HomeScreen.tsx.');
@@ -306,6 +322,35 @@ export const HomeScreen: React.FC = () => {
             <Text style={styles.demoBannerText}>Modo Demonstração — dados fictícios</Text>
           </View>
         )}
+
+        {banners.map(b => {
+          const cfg = {
+            info:    { bg: '#EBF5FF', border: '#BFDBFE', text: '#1E40AF', icon: 'information-circle-outline' as const },
+            warning: { bg: '#FFF8E1', border: '#FFE082', text: '#6D5000', icon: 'warning-outline' as const },
+            promo:   { bg: '#ECFDF5', border: '#A7F3D0', text: '#065F46', icon: 'gift-outline' as const },
+            update:  { bg: '#F3E8FF', border: '#C4B5FD', text: '#5B21B6', icon: 'rocket-outline' as const },
+          }[b.type];
+          return (
+            <View
+              key={b.id}
+              style={[styles.appBanner, { backgroundColor: cfg.bg, borderColor: cfg.border }]}
+            >
+              <Ionicons name={cfg.icon} size={20} color={cfg.text} style={{ marginTop: 2 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.appBannerTitle, { color: cfg.text }]}>{b.title}</Text>
+                <Text style={[styles.appBannerMessage, { color: cfg.text }]}>{b.message}</Text>
+                {b.actionUrl && (
+                  <TouchableOpacity onPress={() => Linking.openURL(b.actionUrl!)}>
+                    <Text style={[styles.appBannerLink, { color: cfg.text }]}>Saiba mais →</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <TouchableOpacity onPress={() => dismissBanner(b.id)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                <Ionicons name="close" size={18} color={cfg.text} />
+              </TouchableOpacity>
+            </View>
+          );
+        })}
 
         <Card style={styles.heroBanner}>
           <View style={styles.heroContent}>
@@ -523,6 +568,18 @@ const styles = StyleSheet.create({
     borderColor: '#FFE082',
   },
   demoBannerText: { ...typography.bodySmall, color: '#6D5000', fontWeight: '600', flex: 1 },
+  appBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+  },
+  appBannerTitle: { ...typography.bodySmall, fontWeight: '700', marginBottom: 2 },
+  appBannerMessage: { ...typography.bodySmall, lineHeight: 18 },
+  appBannerLink: { ...typography.bodySmall, fontWeight: '700', marginTop: 6 },
   statsCard: {
     marginBottom: 20,
   },
