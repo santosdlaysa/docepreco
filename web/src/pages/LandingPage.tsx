@@ -134,7 +134,7 @@ export function LandingPage() {
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-4 animate-slide-up">
                 <a
-                  href="https://apps.apple.com"
+                  href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="group inline-flex items-center gap-3 bg-gray-900 text-white px-8 py-4 rounded-2xl text-sm font-semibold hover:bg-gray-800 transition-all shadow-xl shadow-gray-900/20 hover:shadow-2xl hover:shadow-gray-900/30 hover:-translate-y-0.5"
@@ -371,7 +371,7 @@ export function LandingPage() {
           </p>
           <div className="mt-10">
             <a
-              href="https://apps.apple.com"
+              href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172"
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5"
