@@ -1,7 +1,10 @@
 import { Request, Response } from 'express';
 import { PostgresNotificationTemplateRepository } from '../../infrastructure/repositories/PostgresNotificationTemplateRepository';
+import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { sendPushNotifications } from '../../infrastructure/services/pushService';
 
 const repo = new PostgresNotificationTemplateRepository();
+const tokenRepo = new PostgresPushTokenRepository();
 
 export class NotificationTemplateController {
   async getAll(_req: Request, res: Response): Promise<void> {
@@ -35,6 +38,28 @@ export class NotificationTemplateController {
       res.json({ success: true, data: updated });
     } catch {
       res.status(500).json({ success: false, error: 'Erro ao atualizar template' });
+    }
+  }
+
+  async send(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { target = 'all' } = req.body;
+
+      const templates = await repo.findAll();
+      const template = templates.find(t => t.id === id);
+      if (!template) {
+        res.status(404).json({ success: false, error: 'Template não encontrado' });
+        return;
+      }
+
+      const tokens = await tokenRepo.findByTarget(target);
+      const tokenStrings = tokens.map(t => t.token);
+      const count = await sendPushNotifications(tokenStrings, template.title, template.body);
+
+      res.json({ success: true, data: { recipientsCount: count } });
+    } catch {
+      res.status(500).json({ success: false, error: 'Erro ao enviar notificação' });
     }
   }
 }

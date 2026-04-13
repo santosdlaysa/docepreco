@@ -132,6 +132,16 @@ export function TipsPage() {
     }
   };
 
+  const sendTemplatePush = async (t: NotificationTemplate) => {
+    if (!confirm(`Enviar push "${t.title}" para todos os usuários agora?`)) return;
+    try {
+      const result = await api.sendNotificationTemplate(t.id);
+      alert(`Enviado para ${result.recipientsCount} dispositivo(s)!`);
+    } catch (e: any) {
+      alert(e.message);
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* ── Dicas Motivacionais ── */}
@@ -229,7 +239,7 @@ export function TipsPage() {
                   <th className="px-3 py-3">Título</th>
                   <th className="px-3 py-3">Corpo</th>
                   <th className="px-3 py-3 w-24">Status</th>
-                  <th className="px-3 py-3 text-right w-44">Ações</th>
+                  <th className="px-3 py-3 text-right w-56">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -265,6 +275,12 @@ export function TipsPage() {
                         className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                       >
                         Editar
+                      </button>
+                      <button
+                        onClick={() => sendTemplatePush(t)}
+                        className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                      >
+                        Enviar agora
                       </button>
                     </td>
                   </tr>

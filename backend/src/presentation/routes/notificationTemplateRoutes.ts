@@ -11,5 +11,6 @@ router.get('/active', (req, res) => controller.getActive(req, res));
 // Admin
 router.get('/', adminMiddleware, (req, res) => controller.getAll(req, res));
 router.put('/:id', adminMiddleware, (req, res) => controller.update(req, res));
+router.post('/:id/send', adminMiddleware, (req, res) => controller.send(req, res));
 
 export default router;
