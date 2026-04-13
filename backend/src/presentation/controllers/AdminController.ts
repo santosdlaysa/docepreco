@@ -4,20 +4,54 @@ import { pool } from '../../infrastructure/database/connection';
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
     try {
-      const result = await pool.query(`
-        SELECT
-          (SELECT COUNT(*)::int FROM users)                                                        AS "totalUsers",
-          (SELECT COUNT(*)::int FROM users WHERE is_premium = TRUE)                               AS "premiumUsers",
-          (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '7 days')         AS "newUsersWeek",
-          (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '1 day')          AS "newUsersToday",
-          (SELECT COUNT(*)::int FROM recipes)                                                      AS "totalRecipes",
-          (SELECT COUNT(*)::int FROM ingredients)                                                  AS "totalIngredients",
-          (SELECT COUNT(*)::int FROM sales)                                                        AS "totalSales",
-          (SELECT COALESCE(SUM(total_revenue), 0)::float FROM sales)                              AS "totalRevenue",
-          (SELECT COALESCE(SUM(total_revenue), 0)::float FROM sales
-           WHERE sale_date >= date_trunc('month', NOW()))                                          AS "revenueThisMonth"
-      `);
-      res.json({ success: true, data: result.rows[0] });
+      const [statsRes, topRevenueRes, topActivityRes] = await Promise.all([
+        pool.query(`
+          SELECT
+            (SELECT COUNT(*)::int FROM users)                                                        AS "totalUsers",
+            (SELECT COUNT(*)::int FROM users WHERE is_premium = TRUE)                               AS "premiumUsers",
+            (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '7 days')         AS "newUsersWeek",
+            (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '1 day')          AS "newUsersToday",
+            (SELECT COUNT(*)::int FROM recipes)                                                      AS "totalRecipes",
+            (SELECT COUNT(*)::int FROM ingredients)                                                  AS "totalIngredients",
+            (SELECT COUNT(*)::int FROM sales)                                                        AS "totalSales",
+            (SELECT COALESCE(SUM(total_revenue), 0)::float FROM sales)                              AS "totalRevenue",
+            (SELECT COALESCE(SUM(total_revenue), 0)::float FROM sales
+             WHERE sale_date >= date_trunc('month', NOW()))                                          AS "revenueThisMonth"
+        `),
+        pool.query(`
+          SELECT
+            u.id,
+            u.company_name AS "companyName",
+            u.is_premium   AS "isPremium",
+            COALESCE(SUM(s.total_revenue), 0)::float AS "totalRevenue"
+          FROM users u
+          LEFT JOIN sales s ON s.user_id = u.id
+          GROUP BY u.id
+          ORDER BY "totalRevenue" DESC
+          LIMIT 5
+        `),
+        pool.query(`
+          SELECT
+            u.id,
+            u.company_name AS "companyName",
+            u.is_premium   AS "isPremium",
+            (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id AND s.sale_date >= NOW() - INTERVAL '30 days') AS "salesMonth",
+            (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id)  AS "recipeCount",
+            (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount"
+          FROM users u
+          ORDER BY "salesMonth" DESC, "recipeCount" DESC
+          LIMIT 5
+        `),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          ...statsRes.rows[0],
+          topByRevenue: topRevenueRes.rows,
+          topByActivity: topActivityRes.rows,
+        },
+      });
     } catch (error) {
       console.error('[Admin] getStats error:', error);
       res.status(500).json({ error: 'Internal error' });
@@ -74,6 +108,21 @@ export class AdminController {
       });
     } catch (error) {
       console.error('[Admin] listUsers error:', error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async setPremium(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { isPremium, premiumUntil } = req.body;
+    try {
+      await pool.query(
+        `UPDATE users SET is_premium = $1, premium_until = $2, premium_platform = $3 WHERE id = $4`,
+        [isPremium, premiumUntil ?? null, isPremium ? 'manual' : null, id]
+      );
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Admin] setPremium error:', error);
       res.status(500).json({ error: 'Internal error' });
     }
   }

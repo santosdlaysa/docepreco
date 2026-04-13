@@ -10,5 +10,6 @@ router.use(adminMiddleware);
 router.get('/stats', (req, res) => controller.getStats(req, res));
 router.get('/users', (req, res) => controller.listUsers(req, res));
 router.get('/users/:id', (req, res) => controller.getUser(req, res));
+router.post('/users/:id/premium', (req, res) => controller.setPremium(req, res));
 
 export default router;

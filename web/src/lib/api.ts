@@ -32,6 +32,22 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+export interface TopRevenueUser {
+  id: string;
+  companyName: string;
+  isPremium: boolean;
+  totalRevenue: number;
+}
+
+export interface TopActivityUser {
+  id: string;
+  companyName: string;
+  isPremium: boolean;
+  salesMonth: number;
+  recipeCount: number;
+  ingredientCount: number;
+}
+
 export interface Stats {
   totalUsers: number;
   premiumUsers: number;
@@ -42,6 +58,8 @@ export interface Stats {
   totalSales: number;
   totalRevenue: number;
   revenueThisMonth: number;
+  topByRevenue: TopRevenueUser[];
+  topByActivity: TopActivityUser[];
 }
 
 export interface AdminUser {
