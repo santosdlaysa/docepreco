@@ -120,7 +120,7 @@ export class PremiumController {
    * Body: { isPremium: boolean, premiumUntil?: string | null }
    */
   async setPremiumManually(req: Request, res: Response): Promise<void> {
-    const expected = process.env.ADMIN_SECRET;
+    const expected = process.env.DOCEPRECO_ADMIN_SECRET;
     if (!expected) {
       res.status(500).json({ success: false, error: 'Admin secret not configured' });
       return;
