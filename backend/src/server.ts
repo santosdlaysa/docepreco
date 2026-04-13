@@ -10,7 +10,6 @@ import saleRoutes from './presentation/routes/saleRoutes';
 import authRoutes from './presentation/routes/authRoutes';
 import statsRoutes from './presentation/routes/statsRoutes';
 import premiumRoutes from './presentation/routes/premiumRoutes';
-import adminRoutes from './presentation/routes/adminRoutes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 import telegramRoutes from './presentation/routes/telegramRoutes';
 
@@ -37,7 +36,6 @@ app.use('/api/ingredients', authMiddleware, ingredientRoutes);
 app.use('/api/sales', authMiddleware, saleRoutes);
 app.use('/api/stats', authMiddleware, statsRoutes);
 app.use('/api', premiumRoutes);
-app.use('/api/admin', adminRoutes);
 app.use('/api/telegram', telegramRoutes);
 
 app.get('/health', (req, res) => {
