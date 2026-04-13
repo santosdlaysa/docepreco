@@ -63,7 +63,17 @@ export class AdminController {
     const page = Math.max(1, parseInt((req.query.page as string) || '1'));
     const limit = Math.min(50, parseInt((req.query.limit as string) || '20'));
     const isPremiumFilter = req.query.isPremium;
+    const sortBy = (req.query.sortBy as string) || 'createdAt';
     const offset = (page - 1) * limit;
+
+    const SORT_MAP: Record<string, string> = {
+      createdAt:       'u.created_at DESC',
+      recipeCount:     '"recipeCount" DESC',
+      ingredientCount: '"ingredientCount" DESC',
+      saleCount:       '"saleCount" DESC',
+      totalRevenue:    '"totalRevenue" DESC',
+    };
+    const orderBy = SORT_MAP[sortBy] ?? 'u.created_at DESC';
 
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -96,7 +106,7 @@ export class AdminController {
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",
             (SELECT COALESCE(SUM(s.total_revenue),0)::float FROM sales s WHERE s.user_id = u.id) AS "totalRevenue"
           FROM users u ${where}
-          ORDER BY u.created_at DESC
+          ORDER BY ${orderBy}
           LIMIT $${idx} OFFSET $${idx + 1}`,
           [...params, limit, offset]
         ),

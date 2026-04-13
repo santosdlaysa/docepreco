@@ -103,11 +103,12 @@ export const api = {
 
   getStats: () => req<Stats>('/admin/stats'),
 
-  listUsers: (params: { search?: string; page?: number; isPremium?: boolean | null } = {}) => {
+  listUsers: (params: { search?: string; page?: number; isPremium?: boolean | null; sortBy?: string } = {}) => {
     const q = new URLSearchParams();
     if (params.search) q.set('search', params.search);
     if (params.page) q.set('page', String(params.page));
     if (params.isPremium != null) q.set('isPremium', String(params.isPremium));
+    if (params.sortBy) q.set('sortBy', params.sortBy);
     return req<UsersResponse>(`/admin/users?${q}`);
   },
 

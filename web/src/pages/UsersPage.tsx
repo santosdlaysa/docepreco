@@ -1,6 +1,16 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 
+type SortKey = 'createdAt' | 'recipeCount' | 'ingredientCount' | 'saleCount' | 'totalRevenue';
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: 'createdAt',       label: 'Mais recentes' },
+  { key: 'totalRevenue',    label: 'Maior faturamento' },
+  { key: 'recipeCount',     label: 'Mais receitas' },
+  { key: 'ingredientCount', label: 'Mais ingredientes' },
+  { key: 'saleCount',       label: 'Mais vendas' },
+];
+
 function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: string | null }) {
   if (!isPremium) return <span className="text-xs text-gray-400">Gratuito</span>;
   const label = platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : 'Manual';
@@ -8,6 +18,12 @@ function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: s
     <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
       ⭐ {label}
     </span>
+  );
+}
+
+function SortIcon({ active }: { active: boolean }) {
+  return (
+    <span className={`ml-1 ${active ? 'text-primary-600' : 'text-gray-300'}`}>▼</span>
   );
 }
 
@@ -52,14 +68,12 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
           <p className="p-5 text-gray-400">Carregando...</p>
         ) : (
           <div className="p-5 space-y-5">
-            {/* Info */}
             <div>
               <p className="font-semibold text-gray-900">{user.companyName}</p>
               <p className="text-sm text-gray-500">{user.email}</p>
               <p className="text-xs text-gray-400 mt-1">Cadastrado em {fmtDate(user.createdAt)}</p>
             </div>
 
-            {/* Status premium */}
             <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
               <div>
                 <p className="text-sm font-medium text-gray-700">Status premium</p>
@@ -86,7 +100,6 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
             </div>
             {msg && <p className="text-sm text-primary-600 font-medium">{msg}</p>}
 
-            {/* Estatísticas */}
             <div className="grid grid-cols-2 gap-3">
               {[
                 { label: 'Receitas', value: user.recipeCount },
@@ -101,7 +114,6 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
               ))}
             </div>
 
-            {/* Vendas recentes */}
             {user.recentSales.length > 0 && (
               <div>
                 <p className="text-sm font-semibold text-gray-700 mb-2">Últimas vendas</p>
@@ -110,7 +122,7 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
                     <div key={s.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
                       <div>
                         <p className="text-gray-800">{s.recipeName ?? '—'}</p>
-                        <p className="text-xs text-gray-400">{fmtDate(s.saleDate)} · {s.quantitySold}× </p>
+                        <p className="text-xs text-gray-400">{fmtDate(s.saleDate)} · {s.quantitySold}×</p>
                       </div>
                       <p className="font-semibold text-gray-900">{fmtCurrency(s.totalRevenue)}</p>
                     </div>
@@ -131,13 +143,19 @@ export function UsersPage() {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [premiumFilter, setPremiumFilter] = useState<boolean | null>(null);
+  const [sortBy, setSortBy] = useState<SortKey>('createdAt');
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtCurrency = (n: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.listUsers({ search, page, isPremium: premiumFilter ?? undefined });
+      const res = await api.listUsers({ search, page, isPremium: premiumFilter ?? undefined, sortBy });
       setUsers(res.users);
       setTotal(res.total);
     } catch (e) {
@@ -145,16 +163,25 @@ export function UsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search, page, premiumFilter]);
+  }, [search, page, premiumFilter, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const fmtCurrency = (n: number) =>
-    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+  const handleSort = (key: SortKey) => {
+    setSortBy(key);
+    setPage(1);
+  };
 
   const totalPages = Math.ceil(total / 20);
+
+  const ColHeader = ({ label, sortKey }: { label: string; sortKey: SortKey }) => (
+    <th
+      className="text-right px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none whitespace-nowrap"
+      onClick={() => handleSort(sortKey)}
+    >
+      {label}<SortIcon active={sortBy === sortKey} />
+    </th>
+  );
 
   return (
     <div className="space-y-4">
@@ -184,6 +211,15 @@ export function UsersPage() {
           <option value="true">Somente premium</option>
           <option value="false">Somente gratuito</option>
         </select>
+        <select
+          value={sortBy}
+          onChange={e => handleSort(e.target.value as SortKey)}
+          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        >
+          {SORT_OPTIONS.map(o => (
+            <option key={o.key} value={o.key}>{o.label}</option>
+          ))}
+        </select>
       </div>
 
       {/* Tabela */}
@@ -195,20 +231,27 @@ export function UsersPage() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Confeitaria</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Plano</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Receitas</th>
-                <th className="text-right px-4 py-3 font-semibold text-gray-600">Faturamento</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Cadastro</th>
+                <ColHeader label="Receitas"      sortKey="recipeCount" />
+                <ColHeader label="Ingredientes"  sortKey="ingredientCount" />
+                <ColHeader label="Vendas"        sortKey="saleCount" />
+                <ColHeader label="Faturamento"   sortKey="totalRevenue" />
+                <th
+                  className="text-left px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none"
+                  onClick={() => handleSort('createdAt')}
+                >
+                  Cadastro<SortIcon active={sortBy === 'createdAt'} />
+                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {loading && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-400">Carregando...</td>
+                  <td colSpan={8} className="text-center py-8 text-gray-400">Carregando...</td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
+                  <td colSpan={8} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
                 </tr>
               )}
               {!loading && users.map(u => (
@@ -222,8 +265,10 @@ export function UsersPage() {
                   <td className="px-4 py-3">
                     <PremiumBadge isPremium={u.isPremium} platform={u.premiumPlatform} />
                   </td>
-                  <td className="px-4 py-3 text-right text-gray-700">{u.recipeCount}</td>
-                  <td className="px-4 py-3 text-right text-gray-700">{fmtCurrency(u.totalRevenue)}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'recipeCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.recipeCount}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'ingredientCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.ingredientCount}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'saleCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.saleCount}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'totalRevenue' ? 'text-primary-600' : 'text-gray-700'}`}>{fmtCurrency(u.totalRevenue)}</td>
                   <td className="px-4 py-3 text-gray-400">{fmtDate(u.createdAt)}</td>
                 </tr>
               ))}
@@ -231,7 +276,6 @@ export function UsersPage() {
           </table>
         </div>
 
-        {/* Paginação */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
             <button
