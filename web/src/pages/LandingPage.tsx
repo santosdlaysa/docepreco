@@ -116,49 +116,51 @@ export function LandingPage() {
         <div className="absolute top-40 right-10 w-96 h-96 bg-pink-200/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-gradient-to-t from-violet-100/20 to-transparent rounded-full blur-3xl" />
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-8 sm:pt-24 sm:pb-12">
-          <div className="text-center">
-            <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-50 to-pink-50 border border-primary-100 text-primary-700 text-xs font-semibold px-4 py-2 rounded-full mb-8 animate-fade-in shadow-sm">
-              <Sparkles size={14} className="text-primary-500" />
-              O app que toda confeiteira precisa
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-12 sm:pt-24 sm:pb-16">
+          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+            {/* Text */}
+            <div className="flex-1 text-center lg:text-left">
+              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-50 to-pink-50 border border-primary-100 text-primary-700 text-xs font-semibold px-4 py-2 rounded-full mb-8 animate-fade-in shadow-sm">
+                <Sparkles size={14} className="text-primary-500" />
+                O app que toda confeiteira precisa
+              </div>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] animate-slide-up">
+                Pare de vender<br />
+                seus doces<br />
+                <span className="bg-gradient-to-r from-primary-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">no prejuízo</span>
+              </h1>
+              <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-xl leading-relaxed animate-slide-up lg:mx-0 mx-auto">
+                Calcule o custo real de cada receita e descubra quanto cobrar para ter lucro de verdade.
+              </p>
+              <div className="mt-10 flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-4 animate-slide-up">
+                <a
+                  href="https://apps.apple.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-3 bg-gray-900 text-white px-8 py-4 rounded-2xl text-sm font-semibold hover:bg-gray-800 transition-all shadow-xl shadow-gray-900/20 hover:shadow-2xl hover:shadow-gray-900/30 hover:-translate-y-0.5"
+                >
+                  <Smartphone size={20} />
+                  Baixar na App Store
+                </a>
+                <span className="inline-flex items-center gap-2.5 text-gray-400 px-6 py-4 rounded-2xl text-sm font-medium">
+                  <Smartphone size={18} />
+                  Google Play em breve
+                </span>
+              </div>
             </div>
-            <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-gray-900 tracking-tight leading-[1.1] animate-slide-up">
-              Pare de vender<br />
-              seus doces<br />
-              <span className="bg-gradient-to-r from-primary-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">no prejuízo</span>
-            </h1>
-            <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-xl mx-auto leading-relaxed animate-slide-up">
-              Calcule o custo real de cada receita e descubra quanto cobrar para ter lucro de verdade.
-            </p>
-            <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4 animate-slide-up">
-              <a
-                href="https://apps.apple.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center gap-3 bg-gray-900 text-white px-8 py-4 rounded-2xl text-sm font-semibold hover:bg-gray-800 transition-all shadow-xl shadow-gray-900/20 hover:shadow-2xl hover:shadow-gray-900/30 hover:-translate-y-0.5"
-              >
-                <Smartphone size={20} />
-                Baixar na App Store
-              </a>
-              <span className="inline-flex items-center gap-2.5 text-gray-400 px-6 py-4 rounded-2xl text-sm font-medium">
-                <Smartphone size={18} />
-                Google Play em breve
-              </span>
-            </div>
-          </div>
 
-          {/* App Preview */}
-          <div className="mt-16 sm:mt-20 animate-slide-up relative">
-            <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent z-10 pointer-events-none" />
-            <img
-              src="/app-preview.png"
-              alt="DocePreço - Telas do aplicativo mostrando o dashboard e cadastro de ingredientes"
-              className="mx-auto max-w-sm sm:max-w-md lg:max-w-lg w-full drop-shadow-2xl"
-            />
+            {/* App Preview */}
+            <div className="flex-1 relative animate-slide-up max-w-sm sm:max-w-md lg:max-w-lg">
+              <img
+                src="/app-preview.png"
+                alt="DocePreço - Telas do aplicativo mostrando o dashboard e cadastro de ingredientes"
+                className="w-full drop-shadow-2xl"
+              />
+            </div>
           </div>
 
           {/* Scroll indicator */}
-          <div className="flex justify-center mt-4 animate-fade-in">
+          <div className="flex justify-center mt-8 animate-fade-in">
             <a href="#stats" className="text-gray-300 hover:text-primary-400 transition-colors">
               <ArrowDown size={24} className="animate-bounce" />
             </a>
