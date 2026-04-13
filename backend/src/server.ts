@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import { sendDailyUserReport } from './infrastructure/services/telegramService';
+import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendSlowApiAlert } from './infrastructure/services/telegramService';
 import { connectDatabase } from './infrastructure/database/connection';
 import recipeRoutes from './presentation/routes/recipeRoutes';
 import ingredientRoutes from './presentation/routes/ingredientRoutes';
@@ -46,6 +46,12 @@ app.use((req, res, next) => {
       `INSERT INTO request_logs (method, path, status_code, duration_ms, ip) VALUES ($1, $2, $3, $4, $5)`,
       [req.method, path, res.statusCode, duration, ip]
     ).catch(() => {});
+
+    if (res.statusCode >= 500) {
+      sendErrorAlert(req.method, path, res.statusCode, duration);
+    } else if (duration > 2000) {
+      sendSlowApiAlert(req.method, path, duration);
+    }
   });
   next();
 });
@@ -80,6 +86,8 @@ async function bootstrap() {
     });
     // Relatório diário às 8h (horário de Brasília)
     cron.schedule('0 8 * * *', () => sendDailyUserReport(), { timezone: 'America/Sao_Paulo' });
+    // Relatório semanal toda segunda às 9h (horário de Brasília)
+    cron.schedule('0 9 * * 1', () => sendWeeklyReport(), { timezone: 'America/Sao_Paulo' });
 
     // Cron: envia notificações agendadas a cada minuto
     const notifRepo = new PostgresNotificationRepository();

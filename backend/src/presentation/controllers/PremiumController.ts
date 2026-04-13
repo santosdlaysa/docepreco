@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PremiumPlatform } from '../../domain/entities/User';
+import { notifyPremiumEvent } from '../../infrastructure/services/telegramService';
 
 const userRepo = new PostgresUserRepository();
 
@@ -106,6 +107,7 @@ export class PremiumController {
           console.log(`[Premium] Unhandled event type: ${event.type}`);
       }
 
+      notifyPremiumEvent(user.companyName, event.type, platform);
       res.json({ success: true });
     } catch (error) {
       console.error('[Premium] Webhook processing error:', error);

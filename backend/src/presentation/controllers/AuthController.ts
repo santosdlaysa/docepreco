@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
-import { notifyNewUser } from '../../infrastructure/services/telegramService';
+import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
 
 const userRepo = new PostgresUserRepository();
 const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
@@ -30,6 +30,7 @@ export class AuthController {
       }
       const user = await userRepo.create({ companyName, email, password });
       notifyNewUser(companyName, email);
+      userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
       res.status(201).json({ success: true, data: { user, token } });
     } catch (error) {
