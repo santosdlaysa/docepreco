@@ -216,6 +216,25 @@ async function migrate() {
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
 
+    // Seed motivational tips (only if table is empty)
+    const tipCount = await client.query('SELECT COUNT(*) FROM motivational_tips');
+    if (parseInt(tipCount.rows[0].count) === 0) {
+      console.log('Seeding motivational tips...');
+      const tips = [
+        'Dica: revise seus preços a cada 15 dias para acompanhar a variação dos ingredientes!',
+        'Você sabia? Embalar bem seus doces pode aumentar o valor percebido em até 30%!',
+        'Lembre-se: seu tempo também é um ingrediente! Não esqueça de incluir a mão de obra.',
+        'Dica: ofereça combos e kits para aumentar o ticket médio dos seus pedidos!',
+        'Precificar corretamente é o primeiro passo para um negócio lucrativo. Você está no caminho certo!',
+        'Dica: ingredientes comprados em atacado podem reduzir seus custos em até 40%!',
+        'Você sabia? Clientes fiéis pagam mais por qualidade. Invista no seu diferencial!',
+        'Dica: anote todas as vendas para entender quais doces dão mais lucro!',
+      ];
+      for (const msg of tips) {
+        await client.query('INSERT INTO motivational_tips (message) VALUES ($1)', [msg]);
+      }
+    }
+
     await client.query('COMMIT');
     console.log('Migrations applied successfully');
   } catch (error) {
