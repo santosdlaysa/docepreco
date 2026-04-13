@@ -26,7 +26,7 @@ import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
-import { priceHistoryStorage } from '../../data/storage/priceHistoryStorage';
+import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 
 const UNITS: { value: Unit; label: string }[] = [
   { value: 'g', label: 'Gramas (g)' },
@@ -124,12 +124,11 @@ export const CreateIngredientScreen: React.FC = () => {
         });
         // Save price history if price or quantity changed
         if (originalPrice !== null && (newPrice !== originalPrice || newQty !== originalQty)) {
-          await priceHistoryStorage.addEntry(ingredientId!, {
+          await priceHistoryApi.add(ingredientId!, {
             price: newPrice,
             purchaseQuantity: newQty,
             unit,
-            date: new Date().toISOString(),
-          });
+          }).catch(() => {});
         }
         showToast('Ingrediente atualizado!', 'success');
         navigation.goBack();

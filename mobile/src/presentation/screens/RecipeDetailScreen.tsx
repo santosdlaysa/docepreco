@@ -27,7 +27,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { shareRecipeQuote } from '../utils/pdfQuote';
 import { pdfSettingsStorage, PdfSettings } from '../../data/storage/pdfSettingsStorage';
-import { seasonStorage, Season } from '../../data/storage/seasonStorage';
+import { seasonApi, Season } from '../../data/api/seasonApi';
 import { usePremium } from '../context/PremiumContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -56,7 +56,7 @@ export const RecipeDetailScreen: React.FC = () => {
   useEffect(() => {
     loadRecipe();
     pdfSettingsStorage.get().then(setPdfSettings);
-    if (isPremium) seasonStorage.getActive().then(setActiveSeason);
+    if (isPremium && !isDemoMode()) seasonApi.getActive().then(setActiveSeason).catch(() => {});
   }, [recipeId]);
 
   const loadRecipe = async () => {

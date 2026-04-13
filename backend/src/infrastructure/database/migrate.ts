@@ -73,6 +73,37 @@ CREATE TABLE IF NOT EXISTS password_reset_codes (
   used BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS revenue_goals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  amount DECIMAL(10,2) NOT NULL,
+  month INTEGER NOT NULL CHECK (month BETWEEN 1 AND 12),
+  year INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(user_id, month, year)
+);
+
+CREATE TABLE IF NOT EXISTS seasons (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  multiplier DECIMAL(6,4) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ingredient_price_history (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  price DECIMAL(10,2) NOT NULL,
+  purchase_quantity DECIMAL(10,3) NOT NULL,
+  unit VARCHAR(10) NOT NULL,
+  recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 `;
 
 async function addColumnIfMissing(

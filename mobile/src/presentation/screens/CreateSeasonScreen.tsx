@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
-import { seasonStorage } from '../../data/storage/seasonStorage';
+import { seasonApi } from '../../data/api/seasonApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -43,14 +43,14 @@ export const CreateSeasonScreen: React.FC = () => {
 
   useEffect(() => {
     if (!seasonId) return;
-    seasonStorage.getAll().then(all => {
+    seasonApi.getAll().then(all => {
       const s = all.find(x => x.id === seasonId);
       if (!s) return;
       setName(s.name);
       setStartDate(s.startDate);
       setEndDate(s.endDate);
       setPercentText(String(Math.round((s.multiplier - 1) * 100)));
-    });
+    }).catch(() => {});
   }, [seasonId]);
 
   const applyPreset = (preset: typeof PRESETS[0]) => {
@@ -80,10 +80,10 @@ export const CreateSeasonScreen: React.FC = () => {
       const multiplier = 1 + parseFloat(percentText) / 100;
       const data = { name: name.trim(), startDate, endDate, multiplier };
       if (isEditing) {
-        await seasonStorage.update(seasonId!, data);
+        await seasonApi.update(seasonId!, data);
         showToast('Temporada atualizada!', 'success');
       } else {
-        await seasonStorage.create(data);
+        await seasonApi.create(data);
         showToast('Temporada criada!', 'success');
       }
       navigation.goBack();

@@ -7,7 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { seasonStorage, Season } from '../../data/storage/seasonStorage';
+import { seasonApi, Season } from '../../data/api/seasonApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -32,7 +32,7 @@ export const SeasonsScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       if (!guardScreen('seasonalPricing')) return;
-      seasonStorage.getAll().then(setSeasons);
+      seasonApi.getAll().then(setSeasons).catch(() => {});
     }, [])
   );
 
@@ -43,7 +43,7 @@ export const SeasonsScreen: React.FC = () => {
         text: 'Excluir',
         style: 'destructive',
         onPress: async () => {
-          await seasonStorage.delete(season.id);
+          await seasonApi.delete(season.id);
           setSeasons(prev => prev.filter(s => s.id !== season.id));
         },
       },

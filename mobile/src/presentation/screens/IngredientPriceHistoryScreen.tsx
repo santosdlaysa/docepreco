@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
-import { priceHistoryStorage, PriceEntry } from '../../data/storage/priceHistoryStorage';
+import { priceHistoryApi, PriceEntry } from '../../data/api/priceHistoryApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -27,9 +27,10 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
 
   useFocusEffect(
     useCallback(() => {
-      priceHistoryStorage
+      priceHistoryApi
         .getForIngredient(ingredientId)
         .then(setEntries)
+        .catch(() => {})
         .finally(() => setLoading(false));
     }, [ingredientId])
   );
@@ -47,7 +48,7 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
       <Card style={styles.entryCard}>
         <View style={styles.entryRow}>
           <View style={styles.dateCol}>
-            <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+            <Text style={styles.dateText}>{formatDate(item.recordedAt)}</Text>
             {index === 0 && (
               <View style={styles.latestBadge}>
                 <Text style={styles.latestBadgeText}>Atual</Text>

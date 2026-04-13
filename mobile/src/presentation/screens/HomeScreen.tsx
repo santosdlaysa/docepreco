@@ -29,7 +29,7 @@ import { statsApi, AppStats } from '../../data/api/statsApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoStatsApi } from '../../data/demo/demoApi';
 import { usePremium } from '../context/PremiumContext';
-import { goalStorage, RevenueGoal } from '../../data/storage/goalStorage';
+import { goalApi, RevenueGoal } from '../../data/api/goalApi';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -222,7 +222,10 @@ export const HomeScreen: React.FC = () => {
 
   useEffect(() => {
     api.getStats().then(setStats).catch(() => {});
-    goalStorage.get().then(setGoal);
+    if (!isDemoMode()) {
+      const now = new Date();
+      goalApi.get(now.getMonth() + 1, now.getFullYear()).then(setGoal).catch(() => {});
+    }
   }, []);
 
   const [showGoalInput, setShowGoalInput] = useState(false);
@@ -241,9 +244,8 @@ export const HomeScreen: React.FC = () => {
               const amount = parseFloat((value ?? '').replace(',', '.'));
               if (!isNaN(amount) && amount > 0) {
                 const now = new Date();
-                const newGoal = { amount, month: now.getMonth(), year: now.getFullYear() };
-                await goalStorage.set(newGoal);
-                setGoal(newGoal);
+                const saved = await goalApi.set(amount, now.getMonth() + 1, now.getFullYear());
+                setGoal(saved);
               }
             },
           },
@@ -262,9 +264,8 @@ export const HomeScreen: React.FC = () => {
     const amount = parseFloat(goalInputValue.replace(',', '.'));
     if (!isNaN(amount) && amount > 0) {
       const now = new Date();
-      const newGoal = { amount, month: now.getMonth(), year: now.getFullYear() };
-      await goalStorage.set(newGoal);
-      setGoal(newGoal);
+      const saved = await goalApi.set(amount, now.getMonth() + 1, now.getFullYear());
+      setGoal(saved);
     }
     setShowGoalInput(false);
   };
@@ -361,7 +362,7 @@ export const HomeScreen: React.FC = () => {
 
         {(() => {
           const now = new Date();
-          const isCurrentMonth = goal && goal.month === now.getMonth() && goal.year === now.getFullYear();
+          const isCurrentMonth = goal && goal.month === now.getMonth() + 1 && goal.year === now.getFullYear();
           const revenue = stats?.monthlyRevenue ?? 0;
           const progress = isCurrentMonth ? Math.min(revenue / goal!.amount, 1) : 0;
           const pct = Math.round(progress * 100);
