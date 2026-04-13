@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api, Tip, NotificationTemplate } from '../lib/api';
+import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
+import { Plus, Pencil, Trash2, Power, Send, Lightbulb, BellRing } from 'lucide-react';
+
+interface Props {
+  toast: ToastFn;
+}
 
 const SLUG_LABELS: Record<string, string> = {
   inactivity_2d: 'Inatividade 2 dias',
@@ -15,13 +21,14 @@ function fmtDate(iso: string) {
   });
 }
 
-export function TipsPage() {
+export function TipsPage({ toast }: Props) {
   // ── Tips state ──
   const [tips, setTips] = useState<Tip[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editing, setEditing] = useState<Tip | null>(null);
   const [message, setMessage] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState<Tip | null>(null);
 
   // ── Notification Templates state ──
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
@@ -30,6 +37,7 @@ export function TipsPage() {
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
   const [templateTitle, setTemplateTitle] = useState('');
   const [templateBody, setTemplateBody] = useState('');
+  const [confirmSendTemplate, setConfirmSendTemplate] = useState<NotificationTemplate | null>(null);
 
   const loadTips = async () => {
     try {
@@ -72,32 +80,35 @@ export function TipsPage() {
     try {
       if (editing) {
         await api.updateTip(editing.id, { message });
+        toast.success('Dica atualizada!');
       } else {
         await api.createTip(message);
+        toast.success('Dica criada!');
       }
       setShowModal(false);
       loadTips();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   const toggleActive = async (t: Tip) => {
     try {
       await api.updateTip(t.id, { isActive: !t.isActive });
+      toast.success(t.isActive ? 'Dica desativada.' : 'Dica ativada!');
       loadTips();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   const remove = async (t: Tip) => {
-    if (!confirm(`Excluir a dica "${t.message.slice(0, 40)}..."?`)) return;
     try {
       await api.deleteTip(t.id);
+      toast.success('Dica excluída.');
       loadTips();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
@@ -117,28 +128,29 @@ export function TipsPage() {
         body: templateBody,
       });
       setShowTemplateModal(false);
+      toast.success('Template atualizado!');
       loadTemplates();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   const toggleTemplateActive = async (t: NotificationTemplate) => {
     try {
       await api.updateNotificationTemplate(t.id, { isActive: !t.isActive });
+      toast.success(t.isActive ? 'Template desativado.' : 'Template ativado!');
       loadTemplates();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   const sendTemplatePush = async (t: NotificationTemplate) => {
-    if (!confirm(`Enviar push "${t.title}" para todos os usuários agora?`)) return;
     try {
       const result = await api.sendNotificationTemplate(t.id);
-      alert(`Enviado com sucesso para ${result.recipientsCount} dispositivo(s)!\nStatus: ${result.status}`);
+      toast.success(`Enviado para ${result.recipientsCount} dispositivo(s)!`);
     } catch (e: any) {
-      alert(`Falha: ${e.message}`);
+      toast.error(`Falha: ${e.message}`);
     }
   };
 
@@ -147,18 +159,22 @@ export function TipsPage() {
       {/* ── Dicas Motivacionais ── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">Dicas Motivacionais</h2>
+          <div className="flex items-center gap-2">
+            <Lightbulb size={20} className="text-yellow-500" />
+            <h2 className="text-xl font-bold text-gray-900">Dicas Motivacionais</h2>
+          </div>
           <button
             onClick={openNew}
-            className="text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+            className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
           >
-            + Nova dica
+            <Plus size={16} />
+            Nova dica
           </button>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {loading ? (
-            <p className="text-center text-gray-400 py-10">Carregando...</p>
+            <TableSkeleton rows={4} cols={4} />
           ) : tips.length === 0 ? (
             <p className="text-center text-gray-400 py-10">Nenhuma dica cadastrada</p>
           ) : (
@@ -188,24 +204,27 @@ export function TipsPage() {
                     <td className="px-3 py-3 text-right space-x-2">
                       <button
                         onClick={() => toggleActive(t)}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                           t.isActive
                             ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
                             : 'bg-green-50 text-green-600 hover:bg-green-100'
                         }`}
                       >
+                        <Power size={12} />
                         {t.isActive ? 'Desativar' : 'Ativar'}
                       </button>
                       <button
                         onClick={() => openEdit(t)}
-                        className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                       >
+                        <Pencil size={12} />
                         Editar
                       </button>
                       <button
-                        onClick={() => remove(t)}
-                        className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        onClick={() => setConfirmDelete(t)}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                       >
+                        <Trash2 size={12} />
                         Excluir
                       </button>
                     </td>
@@ -220,15 +239,18 @@ export function TipsPage() {
       {/* ── Notificações Locais ── */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">Notificações Locais</h2>
-            <p className="text-sm text-gray-500 mt-1">Templates das notificações agendadas no celular do usuário</p>
+          <div className="flex items-center gap-2">
+            <BellRing size={20} className="text-purple-500" />
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">Notificações Locais</h2>
+              <p className="text-sm text-gray-500 mt-1">Templates das notificações agendadas no celular do usuário</p>
+            </div>
           </div>
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           {templatesLoading ? (
-            <p className="text-center text-gray-400 py-10">Carregando...</p>
+            <TableSkeleton rows={4} cols={5} />
           ) : templates.length === 0 ? (
             <p className="text-center text-gray-400 py-10">Nenhum template encontrado</p>
           ) : (
@@ -262,24 +284,27 @@ export function TipsPage() {
                     <td className="px-3 py-3 text-right space-x-2">
                       <button
                         onClick={() => toggleTemplateActive(t)}
-                        className={`text-xs px-2 py-1 rounded transition-colors ${
+                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                           t.isActive
                             ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
                             : 'bg-green-50 text-green-600 hover:bg-green-100'
                         }`}
                       >
+                        <Power size={12} />
                         {t.isActive ? 'Desativar' : 'Ativar'}
                       </button>
                       <button
                         onClick={() => openEditTemplate(t)}
-                        className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
                       >
+                        <Pencil size={12} />
                         Editar
                       </button>
                       <button
-                        onClick={() => sendTemplatePush(t)}
-                        className="text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                        onClick={() => setConfirmSendTemplate(t)}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
                       >
+                        <Send size={12} />
                         Enviar agora
                       </button>
                     </td>
@@ -291,10 +316,32 @@ export function TipsPage() {
         </div>
       </div>
 
+      {/* Confirm Delete Tip */}
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Excluir dica"
+        message={`Tem certeza que deseja excluir esta dica?`}
+        confirmLabel="Excluir"
+        confirmColor="red"
+        onConfirm={() => { if (confirmDelete) remove(confirmDelete); setConfirmDelete(null); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
+      {/* Confirm Send Template */}
+      <ConfirmModal
+        open={!!confirmSendTemplate}
+        title="Enviar notificação"
+        message={`Enviar push "${confirmSendTemplate?.title}" para todos os usuários agora?`}
+        confirmLabel="Enviar"
+        confirmColor="primary"
+        onConfirm={() => { if (confirmSendTemplate) sendTemplatePush(confirmSendTemplate); setConfirmSendTemplate(null); }}
+        onCancel={() => setConfirmSendTemplate(null)}
+      />
+
       {/* Modal Dicas */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <ModalOverlay onClose={() => setShowModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editing ? 'Editar dica' : 'Nova dica'}
             </h3>
@@ -324,13 +371,13 @@ export function TipsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* Modal Templates */}
       {showTemplateModal && editingTemplate && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowTemplateModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <ModalOverlay onClose={() => setShowTemplateModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               Editar notificação — {SLUG_LABELS[editingTemplate.slug] ?? editingTemplate.slug}
             </h3>
@@ -370,7 +417,7 @@ export function TipsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );

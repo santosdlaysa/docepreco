@@ -1,11 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { api, LogEntry } from '../lib/api';
+import { Skeleton } from '../components';
+import { UserPlus, DollarSign, Star, Lock, RefreshCw } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
-const TYPE_CONFIG: Record<LogEntry['type'], { icon: string; label: string; color: string }> = {
-  new_user:    { icon: '👤', label: 'Novo usuário',       color: 'bg-blue-50 border-blue-200 text-blue-700' },
-  sale:        { icon: '💰', label: 'Venda registrada',   color: 'bg-green-50 border-green-200 text-green-700' },
-  premium_on:  { icon: '⭐', label: 'Premium ativado',    color: 'bg-yellow-50 border-yellow-200 text-yellow-700' },
-  premium_off: { icon: '🔒', label: 'Premium removido',   color: 'bg-gray-50 border-gray-200 text-gray-500' },
+const TYPE_CONFIG: Record<LogEntry['type'], { icon: LucideIcon; label: string; color: string; iconColor: string }> = {
+  new_user:    { icon: UserPlus,   label: 'Novo usuário',       color: 'bg-blue-50 border-blue-200 text-blue-700', iconColor: 'text-blue-600' },
+  sale:        { icon: DollarSign, label: 'Venda registrada',   color: 'bg-green-50 border-green-200 text-green-700', iconColor: 'text-green-600' },
+  premium_on:  { icon: Star,       label: 'Premium ativado',    color: 'bg-yellow-50 border-yellow-200 text-yellow-700', iconColor: 'text-yellow-500' },
+  premium_off: { icon: Lock,       label: 'Premium removido',   color: 'bg-gray-50 border-gray-200 text-gray-500', iconColor: 'text-gray-400' },
 };
 
 function fmtTs(ts: string) {
@@ -24,6 +27,30 @@ function timeAgo(ts: string) {
   const h = Math.floor(m / 60);
   if (h < 24) return `${h}h atrás`;
   return `${Math.floor(h / 24)}d atrás`;
+}
+
+function LogsSkeleton() {
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-gray-200 px-4 py-3 space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-12" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-7 w-7 rounded-full" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-3 w-16" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function LogsPage() {
@@ -61,6 +88,8 @@ export function LogsPage() {
     return acc;
   }, {} as Record<string, number>);
 
+  if (loading) return <LogsSkeleton />;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -84,9 +113,10 @@ export function LogsPage() {
           </label>
           <button
             onClick={load}
-            className="text-sm bg-white border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-white border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 px-3 py-1.5 rounded-lg transition-colors"
           >
-            ↻ Atualizar
+            <RefreshCw size={14} />
+            Atualizar
           </button>
         </div>
       </div>
@@ -95,9 +125,13 @@ export function LogsPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {(Object.keys(TYPE_CONFIG) as LogEntry['type'][]).map(type => {
           const cfg = TYPE_CONFIG[type];
+          const Icon = cfg.icon;
           return (
             <div key={type} className={`rounded-xl border px-4 py-3 ${cfg.color}`}>
-              <p className="text-xs font-medium">{cfg.icon} {cfg.label}</p>
+              <p className="text-xs font-medium flex items-center gap-1.5">
+                <Icon size={14} className={cfg.iconColor} />
+                {cfg.label}
+              </p>
               <p className="text-2xl font-bold mt-1">{counts[type] ?? 0}</p>
               <p className="text-xs opacity-60">nos últimos 100 eventos</p>
             </div>
@@ -112,18 +146,17 @@ export function LogsPage() {
           <span className="text-xs text-gray-400">{logs.length} eventos</span>
         </div>
 
-        {loading ? (
-          <p className="text-center text-gray-400 py-10">Carregando...</p>
-        ) : logs.length === 0 ? (
+        {logs.length === 0 ? (
           <p className="text-center text-gray-400 py-10">Nenhum evento encontrado</p>
         ) : (
           <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
             {logs.map((log, i) => {
               const cfg = TYPE_CONFIG[log.type];
+              const Icon = cfg.icon;
               return (
                 <div key={i} className="flex items-start gap-3 px-5 py-3 hover:bg-gray-50 transition-colors">
-                  <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center text-sm shrink-0 border ${cfg.color}`}>
-                    {cfg.icon}
+                  <div className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center shrink-0 border ${cfg.color}`}>
+                    <Icon size={14} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">

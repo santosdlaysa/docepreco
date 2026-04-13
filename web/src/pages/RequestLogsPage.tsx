@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { api, RequestLog } from '../lib/api';
+import { Skeleton } from '../components';
+import { RefreshCw, Activity, AlertOctagon, Clock, BarChart3, Search } from 'lucide-react';
 
 const METHOD_COLOR: Record<string, string> = {
-  GET:    'bg-blue-100 text-blue-700',
-  POST:   'bg-green-100 text-green-700',
-  PUT:    'bg-yellow-100 text-yellow-700',
-  PATCH:  'bg-orange-100 text-orange-700',
-  DELETE: 'bg-red-100 text-red-700',
+  GET:    'bg-blue-100 text-blue-700 border-blue-200',
+  POST:   'bg-green-100 text-green-700 border-green-200',
+  PUT:    'bg-yellow-100 text-yellow-700 border-yellow-200',
+  PATCH:  'bg-orange-100 text-orange-700 border-orange-200',
+  DELETE: 'bg-red-100 text-red-700 border-red-200',
 };
 
 function statusColor(code: number) {
@@ -31,6 +33,30 @@ function fmtTs(ts: string) {
     day: '2-digit', month: '2-digit', year: 'numeric',
     hour: '2-digit', minute: '2-digit', second: '2-digit',
   });
+}
+
+function RequestLogsSkeleton() {
+  return (
+    <div className="space-y-4 animate-fade-in">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-gray-200 px-4 py-3 space-y-2">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+        ))}
+      </div>
+      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+        {Array.from({ length: 8 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-5 w-12 rounded" />
+            <Skeleton className="h-4 flex-1" />
+            <Skeleton className="h-4 w-10" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export function RequestLogsPage() {
@@ -83,6 +109,8 @@ export function RequestLogsPage() {
     ? Math.round(logs.reduce((s, l) => s + l.durationMs, 0) / logs.length)
     : 0;
 
+  if (loading) return <RequestLogsSkeleton />;
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
@@ -106,9 +134,10 @@ export function RequestLogsPage() {
           </label>
           <button
             onClick={load}
-            className="text-sm bg-white border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-white border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 px-3 py-1.5 rounded-lg transition-colors"
           >
-            ↻ Atualizar
+            <RefreshCw size={14} />
+            Atualizar
           </button>
         </div>
       </div>
@@ -116,22 +145,34 @@ export function RequestLogsPage() {
       {/* Resumo */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border px-4 py-3 bg-gray-50 border-gray-200">
-          <p className="text-xs font-medium text-gray-500">Total</p>
+          <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+            <Activity size={14} className="text-gray-400" />
+            Total
+          </p>
           <p className="text-2xl font-bold text-gray-800 mt-1">{logs.length}</p>
           <p className="text-xs text-gray-400">últimas requisições</p>
         </div>
         <div className="rounded-xl border px-4 py-3 bg-red-50 border-red-200">
-          <p className="text-xs font-medium text-red-600">Erros (4xx/5xx)</p>
+          <p className="text-xs font-medium text-red-600 flex items-center gap-1.5">
+            <AlertOctagon size={14} />
+            Erros (4xx/5xx)
+          </p>
           <p className="text-2xl font-bold text-red-700 mt-1">{errorCount}</p>
           <p className="text-xs text-red-400">{logs.length ? Math.round(errorCount / logs.length * 100) : 0}% do total</p>
         </div>
         <div className="rounded-xl border px-4 py-3 bg-blue-50 border-blue-200">
-          <p className="text-xs font-medium text-blue-600">Tempo médio</p>
+          <p className="text-xs font-medium text-blue-600 flex items-center gap-1.5">
+            <Clock size={14} />
+            Tempo médio
+          </p>
           <p className="text-2xl font-bold text-blue-700 mt-1">{avgDuration}ms</p>
           <p className="text-xs text-blue-400">por requisição</p>
         </div>
         <div className="rounded-xl border px-4 py-3 bg-green-50 border-green-200">
-          <p className="text-xs font-medium text-green-600">Métodos</p>
+          <p className="text-xs font-medium text-green-600 flex items-center gap-1.5">
+            <BarChart3 size={14} />
+            Métodos
+          </p>
           <p className="text-sm font-bold text-green-700 mt-1">
             {Object.entries(methodCounts).map(([m, c]) => `${m}:${c}`).join(' · ') || '—'}
           </p>
@@ -141,13 +182,16 @@ export function RequestLogsPage() {
 
       {/* Filtros */}
       <div className="flex gap-3 flex-wrap">
-        <input
-          type="text"
-          placeholder="Filtrar por rota..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="flex-1 min-w-48 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
-        />
+        <div className="relative flex-1 min-w-48">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Filtrar por rota..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
+          />
+        </div>
         <select
           value={methodFilter}
           onChange={e => setMethodFilter(e.target.value)}
@@ -167,15 +211,13 @@ export function RequestLogsPage() {
           <span className="text-xs text-gray-400">{filtered.length} registros</span>
         </div>
 
-        {loading ? (
-          <p className="text-center text-gray-400 py-10">Carregando...</p>
-        ) : filtered.length === 0 ? (
+        {filtered.length === 0 ? (
           <p className="text-center text-gray-400 py-10">Nenhuma requisição encontrada</p>
         ) : (
           <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
             {filtered.map(log => (
               <div key={log.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 transition-colors text-sm">
-                <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600'}`}>
+                <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                   {log.method}
                 </span>
                 <span className="flex-1 font-mono text-gray-700 truncate" title={log.path}>{log.path}</span>

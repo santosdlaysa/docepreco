@@ -1,15 +1,51 @@
 import { useEffect, useState } from 'react';
 import { api, Stats, TopRevenueUser, TopActivityUser } from '../lib/api';
+import { Skeleton, TableSkeleton } from '../components';
+import {
+  Users, Crown, CalendarPlus, CalendarDays,
+  BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
+  Trophy, Flame,
+} from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
+import type { LucideIcon } from 'lucide-react';
 
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
+const STAT_ICONS: Array<{ icon: LucideIcon; color: string; border: string }> = [
+  { icon: Users, color: 'text-blue-600 bg-blue-50', border: 'border-l-blue-500' },
+  { icon: Crown, color: 'text-primary-600 bg-primary-50', border: 'border-l-primary-500' },
+  { icon: CalendarPlus, color: 'text-green-600 bg-green-50', border: 'border-l-green-500' },
+  { icon: CalendarDays, color: 'text-purple-600 bg-purple-50', border: 'border-l-purple-500' },
+];
+
+const CONTENT_ICONS: Array<{ icon: LucideIcon; color: string; border: string }> = [
+  { icon: BookOpen, color: 'text-indigo-600 bg-indigo-50', border: 'border-l-indigo-500' },
+  { icon: Egg, color: 'text-orange-600 bg-orange-50', border: 'border-l-orange-500' },
+  { icon: ShoppingCart, color: 'text-teal-600 bg-teal-50', border: 'border-l-teal-500' },
+];
+
+const REVENUE_ICONS: Array<{ icon: LucideIcon; color: string; border: string }> = [
+  { icon: DollarSign, color: 'text-green-600 bg-green-50', border: 'border-l-green-500' },
+  { icon: TrendingUp, color: 'text-primary-600 bg-primary-50', border: 'border-l-primary-500' },
+];
+
+function StatCard({ label, value, sub, icon: Icon, iconStyle, borderStyle }: {
+  label: string; value: string | number; sub?: string;
+  icon: LucideIcon; iconStyle: string; borderStyle: string;
+}) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-5">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-      {sub && <p className="text-xs text-gray-400 mt-1">{sub}</p>}
+    <div className={`bg-white rounded-xl border border-gray-200 p-5 flex items-start gap-4 border-l-4 ${borderStyle}`}>
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconStyle}`}>
+        <Icon size={20} />
+      </div>
+      <div>
+        <p className="text-sm text-gray-500">{label}</p>
+        <p className="text-2xl font-bold text-gray-900 mt-0.5">{value}</p>
+        {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
+      </div>
     </div>
   );
 }
+
+const PIE_COLORS = ['#e91e8c', '#d1d5db'];
 
 function PremiumDot({ isPremium }: { isPremium: boolean }) {
   return isPremium
@@ -21,12 +57,22 @@ function fmt(n: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 }
 
+function MedalBadge({ rank }: { rank: number }) {
+  if (rank === 1) return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 font-bold text-xs">1</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-500 font-bold text-xs">2</span>;
+  if (rank === 3) return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-500 font-bold text-xs">3</span>;
+  return <span className="text-gray-400 font-bold text-sm w-6 text-center">{rank}</span>;
+}
+
 function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <p className="font-semibold text-gray-900">🏆 Maior faturamento</p>
-        <p className="text-xs text-gray-400 mt-0.5">Faturamento das confeiteiras no app (todas as vendas registradas)</p>
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <Trophy size={18} className="text-yellow-500" />
+        <div>
+          <p className="font-semibold text-gray-900">Maior faturamento</p>
+          <p className="text-xs text-gray-400 mt-0.5">Faturamento das confeiteiras no app (todas as vendas registradas)</p>
+        </div>
       </div>
       <table className="w-full text-sm">
         <thead className="bg-gray-50">
@@ -38,8 +84,8 @@ function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
         </thead>
         <tbody className="divide-y divide-gray-100">
           {users.map((u, i) => (
-            <tr key={u.id} className="hover:bg-gray-50">
-              <td className="px-5 py-3 text-gray-400 font-bold">{i + 1}</td>
+            <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-5 py-3"><MedalBadge rank={i + 1} /></td>
               <td className="px-5 py-3">
                 <span className="flex items-center">
                   <PremiumDot isPremium={u.isPremium} />
@@ -58,9 +104,12 @@ function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
 function TopActivityTable({ users }: { users: TopActivityUser[] }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      <div className="px-5 py-4 border-b border-gray-100">
-        <p className="font-semibold text-gray-900">🔥 Mais ativas no app</p>
-        <p className="text-xs text-gray-400 mt-0.5">Ordenado por vendas nos últimos 30 dias</p>
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <Flame size={18} className="text-orange-500" />
+        <div>
+          <p className="font-semibold text-gray-900">Mais ativas no app</p>
+          <p className="text-xs text-gray-400 mt-0.5">Ordenado por vendas nos últimos 30 dias</p>
+        </div>
       </div>
       <table className="w-full text-sm">
         <thead className="bg-gray-50">
@@ -74,8 +123,8 @@ function TopActivityTable({ users }: { users: TopActivityUser[] }) {
         </thead>
         <tbody className="divide-y divide-gray-100">
           {users.map((u, i) => (
-            <tr key={u.id} className="hover:bg-gray-50">
-              <td className="px-5 py-3 text-gray-400 font-bold">{i + 1}</td>
+            <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-5 py-3"><MedalBadge rank={i + 1} /></td>
               <td className="px-5 py-3">
                 <span className="flex items-center">
                   <PremiumDot isPremium={u.isPremium} />
@@ -99,6 +148,40 @@ function TopActivityTable({ users }: { users: TopActivityUser[] }) {
   );
 }
 
+function DashboardSkeleton() {
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <Skeleton className="h-7 w-40" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+            <Skeleton className="h-4 w-24" />
+            <Skeleton className="h-8 w-16" />
+          </div>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="p-5"><Skeleton className="h-5 w-40" /></div>
+          <TableSkeleton rows={5} cols={3} />
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="p-5"><Skeleton className="h-5 w-40" /></div>
+          <TableSkeleton rows={5} cols={5} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
@@ -110,32 +193,106 @@ export function DashboardPage() {
   }, []);
 
   if (error) return <p className="text-red-600 p-4">{error}</p>;
-  if (!stats) return <p className="text-gray-400 p-4">Carregando...</p>;
+  if (!stats) return <DashboardSkeleton />;
 
   const premiumPct = stats.totalUsers > 0
     ? ((stats.premiumUsers / stats.totalUsers) * 100).toFixed(1)
     : '0';
 
+  const freeUsers = stats.totalUsers - stats.premiumUsers;
+  const pieData = [
+    { name: 'Premium', value: stats.premiumUsers },
+    { name: 'Gratuito', value: freeUsers },
+  ];
+
+  const barData = [
+    { name: 'Acumulado', value: stats.totalRevenue },
+    { name: 'Este mês', value: stats.revenueThisMonth },
+  ];
+
+  const userStats = [
+    { label: 'Total de usuários', value: stats.totalUsers },
+    { label: 'Premium', value: stats.premiumUsers, sub: `${premiumPct}% do total` },
+    { label: 'Novos hoje', value: stats.newUsersToday },
+    { label: 'Novos esta semana', value: stats.newUsersWeek },
+  ];
+
+  const contentStats = [
+    { label: 'Receitas criadas', value: stats.totalRecipes },
+    { label: 'Ingredientes', value: stats.totalIngredients },
+    { label: 'Vendas registradas', value: stats.totalSales },
+  ];
+
+  const revenueStats = [
+    { label: 'Total acumulado', value: fmt(stats.totalRevenue), sub: 'todas as vendas desde o início' },
+    { label: 'Este mês', value: fmt(stats.revenueThisMonth) },
+  ];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <h2 className="text-xl font-bold text-gray-900">Visão geral</h2>
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Usuários</p>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard label="Total de usuários" value={stats.totalUsers} />
-          <StatCard label="Premium" value={stats.premiumUsers} sub={`${premiumPct}% do total`} />
-          <StatCard label="Novos hoje" value={stats.newUsersToday} />
-          <StatCard label="Novos esta semana" value={stats.newUsersWeek} />
+          {userStats.map((s, i) => (
+            <StatCard key={s.label} {...s} icon={STAT_ICONS[i].icon} iconStyle={STAT_ICONS[i].color} borderStyle={STAT_ICONS[i].border} />
+          ))}
         </div>
       </div>
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Conteúdo</p>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-          <StatCard label="Receitas criadas" value={stats.totalRecipes} />
-          <StatCard label="Ingredientes" value={stats.totalIngredients} />
-          <StatCard label="Vendas registradas" value={stats.totalSales} />
+          {contentStats.map((s, i) => (
+            <StatCard key={s.label} {...s} icon={CONTENT_ICONS[i].icon} iconStyle={CONTENT_ICONS[i].color} borderStyle={CONTENT_ICONS[i].border} />
+          ))}
+        </div>
+      </div>
+
+      {/* Charts */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Distribuição e Faturamento</p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* Pie Chart - Planos */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="font-semibold text-gray-900 text-sm mb-4">Distribuição de planos</p>
+            <div className="flex items-center gap-6">
+              <ResponsiveContainer width={140} height={140}>
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value" strokeWidth={2}>
+                    {pieData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-primary-500" />
+                  <span className="text-sm text-gray-700">Premium: <strong>{stats.premiumUsers}</strong></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-3 h-3 rounded-full bg-gray-300" />
+                  <span className="text-sm text-gray-700">Gratuito: <strong>{freeUsers}</strong></span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">{premiumPct}% premium</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Bar Chart - Faturamento */}
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <p className="font-semibold text-gray-900 text-sm mb-4">Faturamento das confeiteiras</p>
+            <ResponsiveContainer width="100%" height={140}>
+              <BarChart data={barData} layout="vertical" margin={{ left: 0, right: 10 }}>
+                <XAxis type="number" tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12 }} width={80} />
+                <Tooltip formatter={(v) => fmt(Number(v))} />
+                <Bar dataKey="value" fill="#e91e8c" radius={[0, 6, 6, 0]} barSize={24} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
@@ -145,8 +302,9 @@ export function DashboardPage() {
           <span className="ml-2 normal-case font-normal text-gray-400">(soma das vendas registradas no app)</span>
         </p>
         <div className="grid grid-cols-2 gap-4">
-          <StatCard label="Total acumulado" value={fmt(stats.totalRevenue)} sub="todas as vendas desde o início" />
-          <StatCard label="Este mês" value={fmt(stats.revenueThisMonth)} />
+          {revenueStats.map((s, i) => (
+            <StatCard key={s.label} {...s} icon={REVENUE_ICONS[i].icon} iconStyle={REVENUE_ICONS[i].color} borderStyle={REVENUE_ICONS[i].border} />
+          ))}
         </div>
       </div>
 

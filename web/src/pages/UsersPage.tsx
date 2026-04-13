@@ -1,5 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
+import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+
+interface Props {
+  toast: ToastFn;
+}
 
 type SortKey = 'createdAt' | 'recipeCount' | 'ingredientCount' | 'saleCount' | 'totalRevenue';
 
@@ -8,21 +14,21 @@ function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: s
   const label = platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : 'Manual';
   return (
     <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
-      ⭐ {label}
+      <Crown size={12} />
+      {label}
     </span>
   );
 }
 
 function SortIcon({ active }: { active: boolean }) {
   return (
-    <span className={`ml-1 ${active ? 'text-primary-600' : 'text-gray-300'}`}>▼</span>
+    <ChevronDown size={14} className={`inline ml-0.5 ${active ? 'text-primary-600' : 'text-gray-300'}`} />
   );
 }
 
-function UserModal({ userId, onClose }: { userId: string; onClose: () => void }) {
+function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => void; toast: ToastFn }) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
 
   useEffect(() => {
     api.getUser(userId).then(setUser).catch(console.error);
@@ -31,13 +37,13 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
   const togglePremium = async () => {
     if (!user) return;
     setSaving(true);
-    setMsg('');
     try {
       await api.setPremium(user.id, !user.isPremium, user.isPremium ? null : undefined);
+      const msg = user.isPremium ? 'Premium removido.' : 'Premium ativado!';
       setUser(prev => prev ? { ...prev, isPremium: !prev.isPremium } : prev);
-      setMsg(user.isPremium ? 'Premium removido.' : 'Premium ativado!');
+      toast.success(msg);
     } catch (e: unknown) {
-      setMsg(e instanceof Error ? e.message : 'Erro');
+      toast.error(e instanceof Error ? e.message : 'Erro');
     } finally {
       setSaving(false);
     }
@@ -49,15 +55,19 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <ModalOverlay onClose={onClose}>
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h3 className="font-bold text-gray-900">Detalhes do usuário</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">×</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
         </div>
 
         {!user ? (
-          <p className="p-5 text-gray-400">Carregando...</p>
+          <div className="p-5 space-y-4">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-20 w-full" />
+          </div>
         ) : (
           <div className="p-5 space-y-5">
             <div>
@@ -90,7 +100,6 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
                 {saving ? '...' : user.isPremium ? 'Remover premium' : 'Dar premium'}
               </button>
             </div>
-            {msg && <p className="text-sm text-primary-600 font-medium">{msg}</p>}
 
             <div className="grid grid-cols-2 gap-3">
               {[
@@ -114,7 +123,7 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
                     <div key={s.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
                       <div>
                         <p className="text-gray-800">{s.recipeName ?? '—'}</p>
-                        <p className="text-xs text-gray-400">{fmtDate(s.saleDate)} · {s.quantitySold}×</p>
+                        <p className="text-xs text-gray-400">{fmtDate(s.saleDate)} · {s.quantitySold}x</p>
                       </div>
                       <p className="font-semibold text-gray-900">{fmtCurrency(s.totalRevenue)}</p>
                     </div>
@@ -125,11 +134,11 @@ function UserModal({ userId, onClose }: { userId: string; onClose: () => void })
           </div>
         )}
       </div>
-    </div>
+    </ModalOverlay>
   );
 }
 
-export function UsersPage() {
+export function UsersPage({ toast }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -175,6 +184,21 @@ export function UsersPage() {
     </th>
   );
 
+  // Generate page numbers
+  const getPageNumbers = () => {
+    const pages: (number | '...')[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push('...');
+      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i);
+      if (page < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -184,13 +208,16 @@ export function UsersPage() {
 
       {/* Filtros */}
       <div className="flex gap-3 flex-wrap">
-        <input
-          type="text"
-          placeholder="Buscar por nome ou email..."
-          value={search}
-          onChange={e => { setSearch(e.target.value); setPage(1); }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-64"
-        />
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Buscar por nome ou email..."
+            value={search}
+            onChange={e => { setSearch(e.target.value); setPage(1); }}
+            className="border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-64"
+          />
+        </div>
         <select
           value={premiumFilter === null ? '' : String(premiumFilter)}
           onChange={e => {
@@ -229,7 +256,9 @@ export function UsersPage() {
             <tbody className="divide-y divide-gray-100">
               {loading && (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">Carregando...</td>
+                  <td colSpan={8}>
+                    <TableSkeleton rows={8} cols={8} />
+                  </td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
@@ -237,10 +266,11 @@ export function UsersPage() {
                   <td colSpan={8} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
                 </tr>
               )}
-              {!loading && users.map(u => (
+              {!loading && users.map((u, i) => (
                 <tr
                   key={u.id}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="hover:bg-gray-50 cursor-pointer transition-colors animate-fade-in"
+                  style={{ animationDelay: `${i * 20}ms` }}
                   onClick={() => setSelectedId(u.id)}
                 >
                   <td className="px-4 py-3 font-medium text-gray-900">{u.companyName}</td>
@@ -264,17 +294,37 @@ export function UsersPage() {
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="text-sm text-gray-500 disabled:opacity-40 hover:text-gray-900"
+              className="flex items-center gap-1 text-sm text-gray-500 disabled:opacity-40 hover:text-gray-900 transition-colors"
             >
-              ← Anterior
+              <ChevronLeft size={16} />
+              Anterior
             </button>
-            <span className="text-sm text-gray-400">Página {page} de {totalPages}</span>
+            <div className="flex items-center gap-1">
+              {getPageNumbers().map((p, i) =>
+                p === '...' ? (
+                  <span key={`dots-${i}`} className="px-2 text-gray-400">...</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setPage(p)}
+                    className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition-colors ${
+                      page === p
+                        ? 'bg-primary-500 text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                )
+              )}
+            </div>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="text-sm text-gray-500 disabled:opacity-40 hover:text-gray-900"
+              className="flex items-center gap-1 text-sm text-gray-500 disabled:opacity-40 hover:text-gray-900 transition-colors"
             >
-              Próxima →
+              Próxima
+              <ChevronRight size={16} />
             </button>
           </div>
         )}
@@ -284,6 +334,7 @@ export function UsersPage() {
         <UserModal
           userId={selectedId}
           onClose={() => { setSelectedId(null); load(); }}
+          toast={toast}
         />
       )}
     </div>

@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
 import { api, AppNotification } from '../lib/api';
+import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
+import { Send, Trash2, Plus, Bell } from 'lucide-react';
+
+interface Props {
+  toast: ToastFn;
+}
 
 const STATUS_CONFIG: Record<AppNotification['status'], { label: string; color: string }> = {
   pending:   { label: 'Pendente',  color: 'bg-yellow-100 text-yellow-700' },
@@ -21,11 +27,13 @@ function fmtDate(iso: string) {
   });
 }
 
-export function NotificationsPage() {
+export function NotificationsPage({ toast }: Props) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState({ title: '', body: '', target: 'all', schedule: false, scheduledAt: '' });
+  const [confirmSend, setConfirmSend] = useState<AppNotification | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<AppNotification | null>(null);
 
   const load = async () => {
     try {
@@ -54,47 +62,52 @@ export function NotificationsPage() {
         scheduledAt: form.schedule && form.scheduledAt ? new Date(form.scheduledAt).toISOString() : undefined,
       });
       setShowModal(false);
+      toast.success('Notificação criada!');
       load();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   const sendNow = async (n: AppNotification) => {
-    if (!confirm(`Enviar a notificação "${n.title}" agora?`)) return;
     try {
       await api.sendNotification(n.id);
+      toast.success('Notificação enviada!');
       load();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   const remove = async (n: AppNotification) => {
-    if (!confirm(`Excluir a notificação "${n.title}"?`)) return;
     try {
       await api.deleteNotification(n.id);
+      toast.success('Notificação excluída.');
       load();
     } catch (e: any) {
-      alert(e.message);
+      toast.error(e.message);
     }
   };
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-bold text-gray-900">Notificações Push</h2>
+        <div className="flex items-center gap-2">
+          <Bell size={20} className="text-gray-400" />
+          <h2 className="text-xl font-bold text-gray-900">Notificações Push</h2>
+        </div>
         <button
           onClick={openNew}
-          className="text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+          className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
         >
-          + Nova notificação
+          <Plus size={16} />
+          Nova notificação
         </button>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
-          <p className="text-center text-gray-400 py-10">Carregando...</p>
+          <TableSkeleton rows={4} cols={7} />
         ) : notifications.length === 0 ? (
           <p className="text-center text-gray-400 py-10">Nenhuma notificação enviada</p>
         ) : (
@@ -135,17 +148,19 @@ export function NotificationsPage() {
                     <td className="px-3 py-3 text-right space-x-2">
                       {(n.status === 'scheduled' || n.status === 'pending') && (
                         <button
-                          onClick={() => sendNow(n)}
-                          className="text-xs px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
+                          onClick={() => setConfirmSend(n)}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100 transition-colors"
                         >
+                          <Send size={12} />
                           Enviar agora
                         </button>
                       )}
                       {n.status !== 'sent' && (
                         <button
-                          onClick={() => remove(n)}
-                          className="text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                          onClick={() => setConfirmDelete(n)}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
                         >
+                          <Trash2 size={12} />
                           Excluir
                         </button>
                       )}
@@ -158,10 +173,32 @@ export function NotificationsPage() {
         )}
       </div>
 
+      {/* Confirm Send */}
+      <ConfirmModal
+        open={!!confirmSend}
+        title="Enviar notificação"
+        message={`Enviar a notificação "${confirmSend?.title}" agora?`}
+        confirmLabel="Enviar"
+        confirmColor="primary"
+        onConfirm={() => { if (confirmSend) sendNow(confirmSend); setConfirmSend(null); }}
+        onCancel={() => setConfirmSend(null)}
+      />
+
+      {/* Confirm Delete */}
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Excluir notificação"
+        message={`Tem certeza que deseja excluir a notificação "${confirmDelete?.title}"?`}
+        confirmLabel="Excluir"
+        confirmColor="red"
+        onConfirm={() => { if (confirmDelete) remove(confirmDelete); setConfirmDelete(null); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50" onClick={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 p-6" onClick={e => e.stopPropagation()}>
+        <ModalOverlay onClose={() => setShowModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold text-gray-900 mb-4">Nova notificação</h3>
             <div className="space-y-3">
               <div>
@@ -229,7 +266,7 @@ export function NotificationsPage() {
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );
