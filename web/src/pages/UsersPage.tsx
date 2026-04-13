@@ -3,14 +3,6 @@ import { api, AdminUser, AdminUserDetail } from '../lib/api';
 
 type SortKey = 'createdAt' | 'recipeCount' | 'ingredientCount' | 'saleCount' | 'totalRevenue';
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'createdAt',       label: 'Mais recentes' },
-  { key: 'totalRevenue',    label: 'Maior faturamento' },
-  { key: 'recipeCount',     label: 'Mais receitas' },
-  { key: 'ingredientCount', label: 'Mais ingredientes' },
-  { key: 'saleCount',       label: 'Mais vendas' },
-];
-
 function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: string | null }) {
   if (!isPremium) return <span className="text-xs text-gray-400">Gratuito</span>;
   const label = platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : 'Manual';
@@ -210,15 +202,6 @@ export function UsersPage() {
           <option value="">Todos os planos</option>
           <option value="true">Somente premium</option>
           <option value="false">Somente gratuito</option>
-        </select>
-        <select
-          value={sortBy}
-          onChange={e => handleSort(e.target.value as SortKey)}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-        >
-          {SORT_OPTIONS.map(o => (
-            <option key={o.key} value={o.key}>{o.label}</option>
-          ))}
         </select>
       </div>
 
