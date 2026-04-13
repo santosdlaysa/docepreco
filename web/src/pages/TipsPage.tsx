@@ -201,32 +201,34 @@ export function TipsPage({ toast }: Props) {
                       </span>
                     </td>
                     <td className="px-3 py-3 text-gray-500 text-xs">{fmtDate(t.createdAt)}</td>
-                    <td className="px-3 py-3 text-right space-x-2">
-                      <button
-                        onClick={() => toggleActive(t)}
-                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
-                          t.isActive
-                            ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
-                            : 'bg-green-50 text-green-600 hover:bg-green-100'
-                        }`}
-                      >
-                        <Power size={12} />
-                        {t.isActive ? 'Desativar' : 'Ativar'}
-                      </button>
-                      <button
-                        onClick={() => openEdit(t)}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                      >
-                        <Pencil size={12} />
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => setConfirmDelete(t)}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
-                      >
-                        <Trash2 size={12} />
-                        Excluir
-                      </button>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => toggleActive(t)}
+                          className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                            t.isActive
+                              ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+                              : 'bg-green-50 text-green-600 hover:bg-green-100'
+                          }`}
+                        >
+                          <Power size={12} />
+                          {t.isActive ? 'Desativar' : 'Ativar'}
+                        </button>
+                        <button
+                          onClick={() => openEdit(t)}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        >
+                          <Pencil size={12} />
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(t)}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        >
+                          <Trash2 size={12} />
+                          Excluir
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -261,7 +263,7 @@ export function TipsPage({ toast }: Props) {
                   <th className="px-3 py-3">Título</th>
                   <th className="px-3 py-3">Corpo</th>
                   <th className="px-3 py-3 w-24">Status</th>
-                  <th className="px-3 py-3 text-right w-56">Ações</th>
+                  <th className="px-3 py-3 text-right">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -281,32 +283,34 @@ export function TipsPage({ toast }: Props) {
                         {t.isActive ? 'Ativa' : 'Inativa'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-right space-x-2">
-                      <button
-                        onClick={() => toggleTemplateActive(t)}
-                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
-                          t.isActive
-                            ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
-                            : 'bg-green-50 text-green-600 hover:bg-green-100'
-                        }`}
-                      >
-                        <Power size={12} />
-                        {t.isActive ? 'Desativar' : 'Ativar'}
-                      </button>
-                      <button
-                        onClick={() => openEditTemplate(t)}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                      >
-                        <Pencil size={12} />
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => setConfirmSendTemplate(t)}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
-                      >
-                        <Send size={12} />
-                        Enviar agora
-                      </button>
+                    <td className="px-3 py-3">
+                      <div className="flex items-center justify-end gap-2 whitespace-nowrap">
+                        <button
+                          onClick={() => toggleTemplateActive(t)}
+                          className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                            t.isActive
+                              ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
+                              : 'bg-green-50 text-green-600 hover:bg-green-100'
+                          }`}
+                        >
+                          <Power size={12} />
+                          {t.isActive ? 'Desativar' : 'Ativar'}
+                        </button>
+                        <button
+                          onClick={() => openEditTemplate(t)}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        >
+                          <Pencil size={12} />
+                          Editar
+                        </button>
+                        <button
+                          onClick={() => setConfirmSendTemplate(t)}
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                        >
+                          <Send size={12} />
+                          Enviar agora
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
