@@ -136,9 +136,9 @@ export function TipsPage() {
     if (!confirm(`Enviar push "${t.title}" para todos os usuários agora?`)) return;
     try {
       const result = await api.sendNotificationTemplate(t.id);
-      alert(`Enviado para ${result.recipientsCount} dispositivo(s)!`);
+      alert(`Enviado com sucesso para ${result.recipientsCount} dispositivo(s)!\nStatus: ${result.status}`);
     } catch (e: any) {
-      alert(e.message);
+      alert(`Falha: ${e.message}`);
     }
   };
 

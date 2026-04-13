@@ -153,7 +153,7 @@ export const api = {
   updateNotificationTemplate: (id: string, data: { title?: string; body?: string; isActive?: boolean }) =>
     req<NotificationTemplate>(`/notification-templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   sendNotificationTemplate: (id: string, target: 'all' | 'premium' | 'free' = 'all') =>
-    req<{ recipientsCount: number }>(`/notification-templates/${id}/send`, { method: 'POST', body: JSON.stringify({ target }) }),
+    req<AppNotification>(`/notification-templates/${id}/send`, { method: 'POST', body: JSON.stringify({ target }) }),
 
   // ── Notifications ──
   listNotifications: () => req<AppNotification[]>('/notifications'),

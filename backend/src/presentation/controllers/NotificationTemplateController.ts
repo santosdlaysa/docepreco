@@ -1,10 +1,12 @@
 import { Request, Response } from 'express';
 import { PostgresNotificationTemplateRepository } from '../../infrastructure/repositories/PostgresNotificationTemplateRepository';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { PostgresNotificationRepository } from '../../infrastructure/repositories/PostgresNotificationRepository';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 
 const repo = new PostgresNotificationTemplateRepository();
 const tokenRepo = new PostgresPushTokenRepository();
+const notifRepo = new PostgresNotificationRepository();
 
 export class NotificationTemplateController {
   async getAll(_req: Request, res: Response): Promise<void> {
@@ -53,11 +55,26 @@ export class NotificationTemplateController {
         return;
       }
 
+      // Cria registro na tabela notifications para histórico
+      const notification = await notifRepo.create({
+        title: template.title,
+        body: template.body,
+        target,
+      });
+
       const tokens = await tokenRepo.findByTarget(target);
       const tokenStrings = tokens.map(t => t.token);
-      const count = await sendPushNotifications(tokenStrings, template.title, template.body);
 
-      res.json({ success: true, data: { recipientsCount: count } });
+      try {
+        const count = await sendPushNotifications(tokenStrings, template.title, template.body);
+        await notifRepo.markSent(notification.id, count);
+        const updated = await notifRepo.findById(notification.id);
+        res.json({ success: true, data: updated });
+      } catch (err) {
+        await notifRepo.markFailed(notification.id);
+        const updated = await notifRepo.findById(notification.id);
+        res.status(500).json({ success: false, data: updated, error: 'Falha ao enviar push' });
+      }
     } catch {
       res.status(500).json({ success: false, error: 'Erro ao enviar notificação' });
     }
