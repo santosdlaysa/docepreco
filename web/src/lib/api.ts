@@ -119,4 +119,31 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null }),
     }),
+
+  getLogs: (limit = 50) => req<LogEntry[]>(`/admin/logs?limit=${limit}`),
+
+  getRequestLogs: (params: { limit?: number; method?: string; search?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.limit) q.set('limit', String(params.limit));
+    if (params.method) q.set('method', params.method);
+    if (params.search) q.set('search', params.search);
+    return req<RequestLog[]>(`/admin/request-logs?${q}`);
+  },
 };
+
+export interface LogEntry {
+  type: 'new_user' | 'sale' | 'premium_on' | 'premium_off';
+  label: string;
+  detail: string;
+  ts: string;
+}
+
+export interface RequestLog {
+  id: number;
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  ip: string | null;
+  ts: string;
+}

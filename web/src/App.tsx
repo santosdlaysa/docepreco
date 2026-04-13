@@ -3,12 +3,16 @@ import { loadSecret, clearSecret } from './lib/api';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
+import { LogsPage } from './pages/LogsPage';
+import { RequestLogsPage } from './pages/RequestLogsPage';
 
-type Page = 'dashboard' | 'users';
+type Page = 'dashboard' | 'users' | 'logs' | 'requests';
 
 const NAV: Array<{ id: Page; label: string; icon: string }> = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
   { id: 'users', label: 'Usuários', icon: '👥' },
+  { id: 'logs', label: 'Logs do sistema', icon: '📋' },
+  { id: 'requests', label: 'Rotas HTTP', icon: '🌐' },
 ];
 
 export default function App() {
@@ -69,6 +73,8 @@ export default function App() {
       <main className="flex-1 p-6 overflow-y-auto">
         {page === 'dashboard' && <DashboardPage />}
         {page === 'users' && <UsersPage />}
+        {page === 'logs' && <LogsPage />}
+        {page === 'requests' && <RequestLogsPage />}
       </main>
     </div>
   );

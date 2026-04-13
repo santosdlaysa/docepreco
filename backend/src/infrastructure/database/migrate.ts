@@ -104,6 +104,16 @@ CREATE TABLE IF NOT EXISTS ingredient_price_history (
   unit VARCHAR(10) NOT NULL,
   recorded_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS request_logs (
+  id BIGSERIAL PRIMARY KEY,
+  method VARCHAR(10) NOT NULL,
+  path TEXT NOT NULL,
+  status_code INTEGER NOT NULL,
+  duration_ms INTEGER NOT NULL,
+  ip VARCHAR(45),
+  ts TIMESTAMP NOT NULL DEFAULT NOW()
+);
 `;
 
 async function addColumnIfMissing(

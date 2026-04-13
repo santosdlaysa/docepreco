@@ -16,6 +16,7 @@ import seasonRoutes from './presentation/routes/seasonRoutes';
 import priceHistoryRoutes from './presentation/routes/priceHistoryRoutes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 import telegramRoutes from './presentation/routes/telegramRoutes';
+import { pool } from './infrastructure/database/connection';
 
 dotenv.config();
 
@@ -27,9 +28,15 @@ app.use(express.json());
 
 app.use((req, res, next) => {
   const start = Date.now();
+  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.socket.remoteAddress ?? null;
   res.on('finish', () => {
     const duration = Date.now() - start;
+    const path = req.originalUrl.split('?')[0];
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+    pool.query(
+      `INSERT INTO request_logs (method, path, status_code, duration_ms, ip) VALUES ($1, $2, $3, $4, $5)`,
+      [req.method, path, res.statusCode, duration, ip]
+    ).catch(() => {});
   });
   next();
 });

@@ -179,4 +179,76 @@ export class AdminController {
       res.status(500).json({ error: 'Internal error' });
     }
   }
+
+  async getRequestLogs(req: Request, res: Response): Promise<void> {
+    const limit = Math.min(500, parseInt((req.query.limit as string) || '200'));
+    const method = req.query.method as string | undefined;
+    const search = req.query.search as string | undefined;
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (method) { conditions.push(`method = $${idx++}`); params.push(method); }
+    if (search) { conditions.push(`path ILIKE $${idx++}`); params.push(`%${search}%`); }
+
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    try {
+      const result = await pool.query(
+        `SELECT id, method, path, status_code AS "statusCode", duration_ms AS "durationMs", ip, ts
+         FROM request_logs ${where}
+         ORDER BY ts DESC LIMIT $${idx}`,
+        [...params, limit]
+      );
+      res.json({ success: true, data: result.rows });
+    } catch (error) {
+      console.error('[Admin] getRequestLogs error:', error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async getLogs(req: Request, res: Response): Promise<void> {
+    const limit = Math.min(100, parseInt((req.query.limit as string) || '50'));
+    try {
+      const result = await pool.query(`
+        SELECT type, label, detail, ts FROM (
+          SELECT
+            'new_user'           AS type,
+            u.company_name       AS label,
+            u.email              AS detail,
+            u.created_at         AS ts
+          FROM users u
+
+          UNION ALL
+
+          SELECT
+            'sale'               AS type,
+            r.name               AS label,
+            u.company_name       AS detail,
+            s.created_at         AS ts
+          FROM sales s
+          JOIN users u ON u.id = s.user_id
+          LEFT JOIN recipes r ON r.id = s.recipe_id
+
+          UNION ALL
+
+          SELECT
+            CASE WHEN u.is_premium THEN 'premium_on' ELSE 'premium_off' END AS type,
+            u.company_name       AS label,
+            COALESCE(u.premium_platform, 'manual') AS detail,
+            u.created_at         AS ts
+          FROM users u
+          WHERE u.is_premium = TRUE AND u.premium_platform IS NOT NULL
+        ) events
+        ORDER BY ts DESC
+        LIMIT $1
+      `, [limit]);
+
+      res.json({ success: true, data: result.rows });
+    } catch (error) {
+      console.error('[Admin] getLogs error:', error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
 }
