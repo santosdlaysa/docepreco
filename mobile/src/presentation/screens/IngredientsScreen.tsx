@@ -156,7 +156,7 @@ export const IngredientsScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <Header title="Ingredientes" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -166,7 +166,7 @@ export const IngredientsScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Header
         title="Ingredientes"
         subtitle={`${ingredients.length} cadastrado${ingredients.length !== 1 ? 's' : ''} · Toque no + para adicionar`}

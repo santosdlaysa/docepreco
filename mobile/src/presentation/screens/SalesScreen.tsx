@@ -127,7 +127,7 @@ export const SalesScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <Header title="Vendas" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -137,7 +137,7 @@ export const SalesScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Header
         title="Vendas"
         subtitle={`${sales.length} registro${sales.length !== 1 ? 's' : ''} · Toque no + para adicionar`}

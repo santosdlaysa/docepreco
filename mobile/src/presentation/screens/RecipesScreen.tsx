@@ -129,7 +129,7 @@ export const RecipesScreen: React.FC = () => {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
         <Header title="Minhas Receitas" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -139,7 +139,7 @@ export const RecipesScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Header
         title="Minhas Receitas"
         subtitle={`${recipes.length} receita${recipes.length !== 1 ? 's' : ''} · Toque no + para adicionar`}
