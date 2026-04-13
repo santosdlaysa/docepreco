@@ -90,6 +90,72 @@ router.post('/webhook', async (req: Request, res: Response) => {
       break;
     }
 
+    case '/erros': {
+      const { rows } = await pool.query(`
+        SELECT method, path, status_code, duration_ms,
+               created_at AT TIME ZONE 'America/Sao_Paulo' AS created_at
+        FROM request_logs
+        WHERE status_code >= 500
+        ORDER BY created_at DESC
+        LIMIT 10
+      `);
+      if (rows.length === 0) {
+        sendTelegramReply('✅ Nenhum erro 500 registrado.');
+      } else {
+        let msg = `🚨 Ultimos ${rows.length} erros:\n`;
+        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; created_at: Date }) => {
+          const time = new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+          msg += `\n${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms\n🕐 ${time}`;
+        });
+        sendTelegramReply(msg);
+      }
+      break;
+    }
+
+    case '/lentas': {
+      const { rows } = await pool.query(`
+        SELECT method, path, status_code, duration_ms,
+               created_at AT TIME ZONE 'America/Sao_Paulo' AS created_at
+        FROM request_logs
+        WHERE duration_ms > 2000
+        ORDER BY created_at DESC
+        LIMIT 10
+      `);
+      if (rows.length === 0) {
+        sendTelegramReply('✅ Nenhuma rota lenta (>2s) registrada.');
+      } else {
+        let msg = `🐢 Ultimas ${rows.length} rotas lentas:\n`;
+        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; created_at: Date }) => {
+          const time = new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+          msg += `\n${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms\n🕐 ${time}`;
+        });
+        sendTelegramReply(msg);
+      }
+      break;
+    }
+
+    case '/logs': {
+      const { rows } = await pool.query(`
+        SELECT method, path, status_code, duration_ms,
+               created_at AT TIME ZONE 'America/Sao_Paulo' AS created_at
+        FROM request_logs
+        ORDER BY created_at DESC
+        LIMIT 20
+      `);
+      if (rows.length === 0) {
+        sendTelegramReply('📭 Nenhum log registrado.');
+      } else {
+        let msg = `📋 Ultimos ${rows.length} logs:\n`;
+        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; created_at: Date }) => {
+          const time = new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          const icon = r.status_code >= 500 ? '🔴' : r.status_code >= 400 ? '🟡' : '🟢';
+          msg += `\n${icon} ${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms (${time})`;
+        });
+        sendTelegramReply(msg);
+      }
+      break;
+    }
+
     case '/ajuda':
       sendTelegramReply(
         '📋 Comandos disponiveis:\n\n' +
@@ -98,6 +164,9 @@ router.post('/webhook', async (req: Request, res: Response) => {
         '/premium — Lista usuarios premium\n' +
         '/vendashoje — Vendas do dia\n' +
         '/top — Top 10 usuarios (30 dias)\n' +
+        '/erros — Ultimos 10 erros (500)\n' +
+        '/lentas — Ultimas 10 rotas lentas (>2s)\n' +
+        '/logs — Ultimos 20 requests\n' +
         '/ajuda — Esta mensagem'
       );
       break;
