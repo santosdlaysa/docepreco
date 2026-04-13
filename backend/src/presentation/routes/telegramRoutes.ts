@@ -22,6 +22,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   const text: string = (message.text || '').split('@')[0];
 
+  try {
   switch (text) {
     case '/relatorio':
       await sendDailyUserReport();
@@ -93,18 +94,18 @@ router.post('/webhook', async (req: Request, res: Response) => {
     case '/erros': {
       const { rows } = await pool.query(`
         SELECT method, path, status_code, duration_ms,
-               created_at AT TIME ZONE 'America/Sao_Paulo' AS created_at
+               ts AT TIME ZONE 'America/Sao_Paulo' AS ts
         FROM request_logs
         WHERE status_code >= 500
-        ORDER BY created_at DESC
+        ORDER BY ts DESC
         LIMIT 10
       `);
       if (rows.length === 0) {
         sendTelegramReply('✅ Nenhum erro 500 registrado.');
       } else {
         let msg = `🚨 Ultimos ${rows.length} erros:\n`;
-        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; created_at: Date }) => {
-          const time = new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; ts: Date }) => {
+          const time = new Date(r.ts).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
           msg += `\n${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms\n🕐 ${time}`;
         });
         sendTelegramReply(msg);
@@ -115,18 +116,18 @@ router.post('/webhook', async (req: Request, res: Response) => {
     case '/lentas': {
       const { rows } = await pool.query(`
         SELECT method, path, status_code, duration_ms,
-               created_at AT TIME ZONE 'America/Sao_Paulo' AS created_at
+               ts AT TIME ZONE 'America/Sao_Paulo' AS ts
         FROM request_logs
         WHERE duration_ms > 2000
-        ORDER BY created_at DESC
+        ORDER BY ts DESC
         LIMIT 10
       `);
       if (rows.length === 0) {
         sendTelegramReply('✅ Nenhuma rota lenta (>2s) registrada.');
       } else {
         let msg = `🐢 Ultimas ${rows.length} rotas lentas:\n`;
-        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; created_at: Date }) => {
-          const time = new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; ts: Date }) => {
+          const time = new Date(r.ts).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
           msg += `\n${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms\n🕐 ${time}`;
         });
         sendTelegramReply(msg);
@@ -137,17 +138,17 @@ router.post('/webhook', async (req: Request, res: Response) => {
     case '/logs': {
       const { rows } = await pool.query(`
         SELECT method, path, status_code, duration_ms,
-               created_at AT TIME ZONE 'America/Sao_Paulo' AS created_at
+               ts AT TIME ZONE 'America/Sao_Paulo' AS ts
         FROM request_logs
-        ORDER BY created_at DESC
+        ORDER BY ts DESC
         LIMIT 20
       `);
       if (rows.length === 0) {
         sendTelegramReply('📭 Nenhum log registrado.');
       } else {
         let msg = `📋 Ultimos ${rows.length} logs:\n`;
-        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; created_at: Date }) => {
-          const time = new Date(r.created_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; ts: Date }) => {
+          const time = new Date(r.ts).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit', second: '2-digit' });
           const icon = r.status_code >= 500 ? '🔴' : r.status_code >= 400 ? '🟡' : '🟢';
           msg += `\n${icon} ${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms (${time})`;
         });
@@ -170,6 +171,10 @@ router.post('/webhook', async (req: Request, res: Response) => {
         '/ajuda — Esta mensagem'
       );
       break;
+  }
+  } catch (err) {
+    console.error('[Telegram] Erro ao processar comando:', err);
+    sendTelegramReply(`❌ Erro ao executar ${text}`);
   }
 
   res.sendStatus(200);
