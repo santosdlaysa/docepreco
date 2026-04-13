@@ -10,6 +10,10 @@ import {
   Image,
   ActivityIndicator,
   Dimensions,
+  Modal,
+  TextInput,
+  Platform,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +29,7 @@ import { statsApi, AppStats } from '../../data/api/statsApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoStatsApi } from '../../data/demo/demoApi';
 import { usePremium } from '../context/PremiumContext';
+import { goalStorage, RevenueGoal } from '../../data/storage/goalStorage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -197,6 +202,14 @@ const quickActions: QuickActionItem[] = [
     color: '#2196F3',
     premium: true,
   },
+  {
+    icon: 'pricetag-outline',
+    label: 'Temporadas',
+    description: 'Preços para datas especiais',
+    route: 'Seasons',
+    color: '#9C27B0',
+    premium: true,
+  },
 ];
 
 export const HomeScreen: React.FC = () => {
@@ -204,11 +217,57 @@ export const HomeScreen: React.FC = () => {
   const { companyName, isDemoMode: isDemo } = useAuth();
   const { isPremium } = usePremium();
   const [stats, setStats] = useState<AppStats | null>(null);
+  const [goal, setGoal] = useState<RevenueGoal | null>(null);
   const api = isDemoMode() ? demoStatsApi : statsApi;
 
   useEffect(() => {
     api.getStats().then(setStats).catch(() => {});
+    goalStorage.get().then(setGoal);
   }, []);
+
+  const [showGoalInput, setShowGoalInput] = useState(false);
+  const [goalInputValue, setGoalInputValue] = useState('');
+
+  const handleSetGoal = () => {
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Meta do mês',
+        'Qual é o seu objetivo de faturamento este mês? (R$)',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Salvar',
+            onPress: async (value) => {
+              const amount = parseFloat((value ?? '').replace(',', '.'));
+              if (!isNaN(amount) && amount > 0) {
+                const now = new Date();
+                const newGoal = { amount, month: now.getMonth(), year: now.getFullYear() };
+                await goalStorage.set(newGoal);
+                setGoal(newGoal);
+              }
+            },
+          },
+        ],
+        'plain-text',
+        goal ? String(goal.amount) : '',
+        'numeric'
+      );
+    } else {
+      setGoalInputValue(goal ? String(goal.amount) : '');
+      setShowGoalInput(true);
+    }
+  };
+
+  const saveGoalAndroid = async () => {
+    const amount = parseFloat(goalInputValue.replace(',', '.'));
+    if (!isNaN(amount) && amount > 0) {
+      const now = new Date();
+      const newGoal = { amount, month: now.getMonth(), year: now.getFullYear() };
+      await goalStorage.set(newGoal);
+      setGoal(newGoal);
+    }
+    setShowGoalInput(false);
+  };
 
   const openShopeeLink = async (url: string) => {
     if (url === 'SEU_LINK_AFILIADO_AQUI') {
@@ -300,6 +359,44 @@ export const HomeScreen: React.FC = () => {
           </Card>
         )}
 
+        {(() => {
+          const now = new Date();
+          const isCurrentMonth = goal && goal.month === now.getMonth() && goal.year === now.getFullYear();
+          const revenue = stats?.monthlyRevenue ?? 0;
+          const progress = isCurrentMonth ? Math.min(revenue / goal!.amount, 1) : 0;
+          const pct = Math.round(progress * 100);
+          return (
+            <TouchableOpacity onPress={handleSetGoal} activeOpacity={0.85}>
+              <Card style={styles.goalCard}>
+                <View style={styles.goalHeader}>
+                  <View style={styles.goalIconWrap}>
+                    <Ionicons name="flag-outline" size={18} color={colors.primary} />
+                  </View>
+                  <Text style={styles.goalTitle}>
+                    {isCurrentMonth ? `Meta do mês: ${pct}%` : 'Meta do mês'}
+                  </Text>
+                  <Ionicons name="pencil-outline" size={14} color={colors.textMuted} />
+                </View>
+                {isCurrentMonth ? (
+                  <>
+                    <View style={styles.goalTrack}>
+                      <View style={[styles.goalBar, { width: `${pct}%` as any }]} />
+                    </View>
+                    <Text style={styles.goalSub}>
+                      {revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {' de '}
+                      {goal!.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+                      {pct >= 100 ? ' 🎉 Meta atingida!' : ''}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.goalSub}>Toque para definir uma meta de faturamento</Text>
+                )}
+              </Card>
+            </TouchableOpacity>
+          );
+        })()}
+
         <Text style={styles.sectionTitle}>Acesso Rapido</Text>
 
         {quickActions.map((action) => (
@@ -363,6 +460,32 @@ export const HomeScreen: React.FC = () => {
           </Text>
         </View>
       </ScrollView>
+
+      {/* Android goal input modal */}
+      <Modal visible={showGoalInput} transparent animationType="fade">
+        <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Meta do mês</Text>
+            <Text style={styles.modalSubtitle}>Qual é o seu objetivo de faturamento? (R$)</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={goalInputValue}
+              onChangeText={setGoalInputValue}
+              keyboardType="numeric"
+              placeholder="Ex: 3000"
+              autoFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity onPress={() => setShowGoalInput(false)} style={styles.modalCancel}>
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={saveGoalAndroid} style={styles.modalSave}>
+                <Text style={styles.modalSaveText}>Salvar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -431,6 +554,34 @@ const styles = StyleSheet.create({
   heroText: { ...typography.bodySmall, color: 'rgba(255,255,255,0.85)', lineHeight: 20 },
   heroDecoration: { justifyContent: 'center', paddingLeft: 12 },
   heroEmoji: { fontSize: 48 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 32 },
+  modalBox: { backgroundColor: colors.surface, borderRadius: 16, padding: 24 },
+  modalTitle: { ...typography.h3, color: colors.text, marginBottom: 6 },
+  modalSubtitle: { ...typography.body, color: colors.textSecondary, marginBottom: 16 },
+  modalInput: {
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    ...typography.body, color: colors.text, marginBottom: 20,
+  },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  modalCancel: { padding: 10 },
+  modalCancelText: { ...typography.body, color: colors.textSecondary, fontWeight: '600' },
+  modalSave: { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
+  modalSaveText: { ...typography.body, color: '#fff', fontWeight: '700' },
+  goalCard: { marginBottom: 14, padding: 14 },
+  goalHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  goalIconWrap: {
+    width: 28, height: 28, borderRadius: 8,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  goalTitle: { ...typography.h4, color: colors.text, flex: 1 },
+  goalTrack: {
+    height: 8, backgroundColor: colors.border, borderRadius: 4,
+    overflow: 'hidden', marginBottom: 6,
+  },
+  goalBar: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
+  goalSub: { ...typography.caption, color: colors.textSecondary },
   sectionTitle: {
     ...typography.h4,
     color: colors.text,

@@ -27,4 +27,8 @@ export type RootStackParamList = {
   EditClient: { clientId: string };
   Reports: undefined;
   PdfSettings: undefined;
+  IngredientPriceHistory: { ingredientId: string; ingredientName: string };
+  Seasons: undefined;
+  CreateSeason: undefined;
+  EditSeason: { seasonId: string };
 };

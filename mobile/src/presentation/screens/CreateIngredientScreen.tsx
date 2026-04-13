@@ -26,6 +26,7 @@ import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
+import { priceHistoryStorage } from '../../data/storage/priceHistoryStorage';
 
 const UNITS: { value: Unit; label: string }[] = [
   { value: 'g', label: 'Gramas (g)' },
@@ -49,6 +50,8 @@ export const CreateIngredientScreen: React.FC = () => {
   const [unit, setUnit] = useState<Unit>('g');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
+  const [originalPrice, setOriginalPrice] = useState<number | null>(null);
+  const [originalQty, setOriginalQty] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [allNames, setAllNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -87,6 +90,8 @@ export const CreateIngredientScreen: React.FC = () => {
         setPurchaseQuantity(String(ingredient.purchaseQuantity));
         setPurchasePrice(String(ingredient.purchasePrice));
         setUnit(ingredient.unit);
+        setOriginalPrice(ingredient.purchasePrice);
+        setOriginalQty(ingredient.purchaseQuantity);
       })
       .catch(() => showToast('Não foi possível carregar o ingrediente', 'error'))
       .finally(() => setLoadingData(false));
@@ -109,12 +114,23 @@ export const CreateIngredientScreen: React.FC = () => {
     setLoading(true);
     try {
       if (isEditing) {
+        const newPrice = parseFloat(purchasePrice);
+        const newQty = parseFloat(purchaseQuantity);
         await api.update(ingredientId!, {
           name: name.trim(),
-          purchaseQuantity: parseFloat(purchaseQuantity),
-          purchasePrice: parseFloat(purchasePrice),
+          purchaseQuantity: newQty,
+          purchasePrice: newPrice,
           unit,
         });
+        // Save price history if price or quantity changed
+        if (originalPrice !== null && (newPrice !== originalPrice || newQty !== originalQty)) {
+          await priceHistoryStorage.addEntry(ingredientId!, {
+            price: newPrice,
+            purchaseQuantity: newQty,
+            unit,
+            date: new Date().toISOString(),
+          });
+        }
         showToast('Ingrediente atualizado!', 'success');
         navigation.goBack();
       } else {

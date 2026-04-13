@@ -24,6 +24,7 @@ import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { usePaywall } from '../premium/usePaywall';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -41,6 +42,7 @@ export const IngredientsScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
+  const { requirePremium } = usePaywall();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const loadIngredients = async () => {
@@ -131,6 +133,15 @@ export const IngredientsScreen: React.FC = () => {
             style={styles.actionBtn}
           >
             <Ionicons name="pencil-outline" size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => {
+              if (!requirePremium('ingredientPriceHistory')) return;
+              navigation.navigate('IngredientPriceHistory', { ingredientId: item.id, ingredientName: item.name });
+            }}
+            style={[styles.actionBtn, { marginTop: 4 }]}
+          >
+            <Ionicons name="time-outline" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => handleDelete(item)}

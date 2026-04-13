@@ -27,6 +27,9 @@ import { ClientsScreen } from '../screens/ClientsScreen';
 import { CreateClientScreen } from '../screens/CreateClientScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
+import { IngredientPriceHistoryScreen } from '../screens/IngredientPriceHistoryScreen';
+import { SeasonsScreen } from '../screens/SeasonsScreen';
+import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
@@ -208,6 +211,10 @@ export function AppNavigator() {
           <Stack.Screen name="EditClient" component={CreateClientScreen} />
           <Stack.Screen name="Reports" component={ReportsScreen} />
           <Stack.Screen name="PdfSettings" component={PdfSettingsScreen} />
+          <Stack.Screen name="IngredientPriceHistory" component={IngredientPriceHistoryScreen} />
+          <Stack.Screen name="Seasons" component={SeasonsScreen} />
+          <Stack.Screen name="CreateSeason" component={CreateSeasonScreen} />
+          <Stack.Screen name="EditSeason" component={CreateSeasonScreen} />
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}

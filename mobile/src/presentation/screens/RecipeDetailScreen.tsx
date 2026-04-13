@@ -27,6 +27,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { shareRecipeQuote } from '../utils/pdfQuote';
 import { pdfSettingsStorage, PdfSettings } from '../../data/storage/pdfSettingsStorage';
+import { seasonStorage, Season } from '../../data/storage/seasonStorage';
+import { usePremium } from '../context/PremiumContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -45,13 +47,16 @@ export const RecipeDetailScreen: React.FC = () => {
   const [calculating, setCalculating] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [pdfSettings, setPdfSettings] = useState<PdfSettings | undefined>();
+  const [activeSeason, setActiveSeason] = useState<Season | null>(null);
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const { companyName } = useAuth();
   const { showToast } = useToast();
+  const { isPremium } = usePremium();
 
   useEffect(() => {
     loadRecipe();
     pdfSettingsStorage.get().then(setPdfSettings);
+    if (isPremium) seasonStorage.getActive().then(setActiveSeason);
   }, [recipeId]);
 
   const loadRecipe = async () => {
@@ -189,6 +194,24 @@ export const RecipeDetailScreen: React.FC = () => {
                 <Text style={styles.mainResultSub}>total</Text>
               </View>
             </View>
+
+            {activeSeason && (
+              <View style={styles.seasonBanner}>
+                <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.seasonLabel}>
+                    🎉 {activeSeason.name} ativa
+                  </Text>
+                  <Text style={styles.seasonPrice}>
+                    Preço na temporada:{' '}
+                    <Text style={styles.seasonPriceValue}>
+                      {formatCurrency(calculation.suggestedPrice * activeSeason.multiplier)}
+                    </Text>
+                    {' '}({activeSeason.multiplier >= 1 ? '+' : ''}{Math.round((activeSeason.multiplier - 1) * 100)}%)
+                  </Text>
+                </View>
+              </View>
+            )}
 
             <View style={styles.breakdown}>
               <View style={styles.breakdownRow}>
@@ -406,4 +429,18 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
+  seasonBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 8,
+    backgroundColor: colors.cream,
+    borderRadius: 10,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  seasonLabel: { ...typography.bodySmall, color: colors.text, fontWeight: '700', marginBottom: 2 },
+  seasonPrice: { ...typography.bodySmall, color: colors.textSecondary },
+  seasonPriceValue: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
 });

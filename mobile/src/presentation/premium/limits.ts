@@ -18,6 +18,8 @@ export const PREMIUM_FEATURES = {
   ordersManagement: 'ordersManagement',
   laborCostCalc: 'laborCostCalc',
   smartShoppingList: 'smartShoppingList',
+  ingredientPriceHistory: 'ingredientPriceHistory',
+  seasonalPricing: 'seasonalPricing',
 } as const;
 
 export type PremiumFeature = keyof typeof PREMIUM_FEATURES;
@@ -46,6 +48,14 @@ export const FEATURE_COPY: Record<PremiumFeature, { title: string; description: 
   smartShoppingList: {
     title: 'Lista de compras inteligente',
     description: 'Calcula o que você precisa comprar pras encomendas da semana.',
+  },
+  ingredientPriceHistory: {
+    title: 'Histórico de preços',
+    description: 'Acompanhe a evolução do custo dos seus ingredientes ao longo do tempo.',
+  },
+  seasonalPricing: {
+    title: 'Precificação por temporada',
+    description: 'Ajuste os preços automaticamente no Natal, Páscoa e outras datas especiais.',
   },
 };
 
