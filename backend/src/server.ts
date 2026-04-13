@@ -20,6 +20,7 @@ import bannerRoutes from './presentation/routes/bannerRoutes';
 import pushTokenRoutes from './presentation/routes/pushTokenRoutes';
 import notificationRoutes from './presentation/routes/notificationRoutes';
 import tipRoutes from './presentation/routes/tipRoutes';
+import notificationTemplateRoutes from './presentation/routes/notificationTemplateRoutes';
 import { pool } from './infrastructure/database/connection';
 import { PostgresNotificationRepository } from './infrastructure/repositories/PostgresNotificationRepository';
 import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
@@ -63,6 +64,7 @@ app.use('/api/banners', bannerRoutes);
 app.use('/api/push-tokens', authMiddleware, pushTokenRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/tips', tipRoutes);
+app.use('/api/notification-templates', notificationTemplateRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

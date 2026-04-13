@@ -148,6 +148,11 @@ export const api = {
   deleteTip: (id: string) =>
     req<void>(`/tips/${id}`, { method: 'DELETE' }),
 
+  // ── Notification Templates ──
+  listNotificationTemplates: () => req<NotificationTemplate[]>('/notification-templates'),
+  updateNotificationTemplate: (id: string, data: { title?: string; body?: string; isActive?: boolean }) =>
+    req<NotificationTemplate>(`/notification-templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
   // ── Notifications ──
   listNotifications: () => req<AppNotification[]>('/notifications'),
   createNotification: (data: { title: string; body: string; target?: string; scheduledAt?: string; dataJson?: string }) =>
@@ -190,6 +195,16 @@ export interface Banner {
   actionUrl: string | null;
   startsAt: string;
   endsAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface NotificationTemplate {
+  id: string;
+  slug: string;
+  title: string;
+  body: string;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;

@@ -155,6 +155,16 @@ CREATE TABLE IF NOT EXISTS motivational_tips (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS notification_templates (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  slug VARCHAR(50) NOT NULL UNIQUE,
+  title VARCHAR(255) NOT NULL,
+  body TEXT NOT NULL,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 `;
 
 async function addColumnIfMissing(
@@ -232,6 +242,24 @@ async function migrate() {
       ];
       for (const msg of tips) {
         await client.query('INSERT INTO motivational_tips (message) VALUES ($1)', [msg]);
+      }
+    }
+
+    // Seed notification templates (only if table is empty)
+    const templateCount = await client.query('SELECT COUNT(*) FROM notification_templates');
+    if (parseInt(templateCount.rows[0].count) === 0) {
+      console.log('Seeding notification templates...');
+      const templates = [
+        { slug: 'inactivity_2d', title: 'Sentimos sua falta! 🧁', body: 'Suas receitas estão te esperando! Abra o DocePreço e confira seus cálculos.' },
+        { slug: 'inactivity_5d', title: 'Faz tempo! 🍰', body: 'Faz tempo que você não aparece! Seus doces precisam de preços atualizados.' },
+        { slug: 'daily_sales', title: 'Hora do registro! 📝', body: 'Já registrou as vendas de hoje? Mantenha seu controle em dia!' },
+        { slug: 'weekly_reminder', title: 'Começo de semana! 📊', body: 'Confira se os preços dos ingredientes mudaram. Manter tudo atualizado é o segredo!' },
+      ];
+      for (const t of templates) {
+        await client.query(
+          'INSERT INTO notification_templates (slug, title, body) VALUES ($1, $2, $3)',
+          [t.slug, t.title, t.body]
+        );
       }
     }
 

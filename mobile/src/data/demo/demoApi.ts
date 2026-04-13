@@ -77,6 +77,20 @@ export const demoTipApi = {
   },
 };
 
+// ── Notification Templates ──
+
+export const demoNotificationTemplateApi = {
+  getActive: async () => {
+    await delay();
+    return [
+      { id: 'demo-nt-1', slug: 'inactivity_2d', title: 'Sentimos sua falta! 🧁', body: 'Suas receitas estão te esperando! Abra o DocePreço e confira seus cálculos.', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'demo-nt-2', slug: 'inactivity_5d', title: 'Faz tempo! 🍰', body: 'Faz tempo que você não aparece! Seus doces precisam de preços atualizados.', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'demo-nt-3', slug: 'daily_sales', title: 'Hora do registro! 📝', body: 'Já registrou as vendas de hoje? Mantenha seu controle em dia!', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+      { id: 'demo-nt-4', slug: 'weekly_reminder', title: 'Começo de semana! 📊', body: 'Confira se os preços dos ingredientes mudaram. Manter tudo atualizado é o segredo!', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+    ];
+  },
+};
+
 // ── Recipes ──
 
 function calculateForRecipe(recipe: Recipe): CalculationResult {

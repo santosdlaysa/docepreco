@@ -4,8 +4,9 @@ import { Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
 import { pushTokenApi } from '../../data/api/pushTokenApi';
 import { tipApi } from '../../data/api/tipApi';
+import { notificationTemplateApi, NotificationTemplate } from '../../data/api/notificationTemplateApi';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoTipApi } from '../../data/demo/demoApi';
+import { demoTipApi, demoNotificationTemplateApi } from '../../data/demo/demoApi';
 
 const LAST_OPEN_KEY = '@docepreco:lastAppOpen';
 const NOTIFICATIONS_ENABLED_KEY = '@docepreco:notificationsEnabled';
@@ -16,6 +17,39 @@ const FALLBACK_TIPS = [
   'Lembre-se: seu tempo tambem e um ingrediente! Nao esqueca de incluir a mao de obra.',
   'Precificar corretamente e o primeiro passo para um negocio lucrativo. Voce esta no caminho certo!',
 ];
+
+const FALLBACK_TEMPLATES: Record<string, { title: string; body: string }> = {
+  inactivity_2d: { title: 'Sentimos sua falta! 🧁', body: 'Suas receitas estao te esperando! Abra o DocePreco e confira seus calculos.' },
+  inactivity_5d: { title: 'Faz tempo! 🍰', body: 'Faz tempo que voce nao aparece! Seus doces precisam de precos atualizados.' },
+  daily_sales: { title: 'Hora do registro! 📝', body: 'Ja registrou as vendas de hoje? Mantenha seu controle em dia!' },
+  weekly_reminder: { title: 'Começo de semana! 📊', body: 'Confira se os precos dos ingredientes mudaram. Manter tudo atualizado é o segredo!' },
+};
+
+async function fetchTemplates(): Promise<Map<string, NotificationTemplate>> {
+  try {
+    const api = isDemoMode() ? demoNotificationTemplateApi : notificationTemplateApi;
+    const templates = await api.getActive();
+    const map = new Map<string, NotificationTemplate>();
+    for (const t of templates) {
+      map.set(t.slug, t);
+    }
+    return map;
+  } catch {
+    // Offline — return empty map (will use fallback)
+    return new Map();
+  }
+}
+
+function getTemplate(
+  templates: Map<string, NotificationTemplate>,
+  slug: string
+): { title: string; body: string; active: boolean } {
+  const t = templates.get(slug);
+  if (t) return { title: t.title, body: t.body, active: true };
+  const fallback = FALLBACK_TEMPLATES[slug];
+  if (fallback) return { title: fallback.title, body: fallback.body, active: true };
+  return { title: '', body: '', active: false };
+}
 
 async function fetchRandomTip(): Promise<string> {
   try {
@@ -57,30 +91,30 @@ export async function trackAppOpen(): Promise<void> {
   await AsyncStorage.setItem(LAST_OPEN_KEY, String(Date.now()));
 }
 
-async function scheduleInactivityNotifications(): Promise<void> {
+async function scheduleInactivityNotifications(templates: Map<string, NotificationTemplate>): Promise<void> {
   // 2 dias de inatividade
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Sentimos sua falta! 🧁',
-      body: 'Suas receitas estao te esperando! Abra o DocePreco e confira seus calculos.',
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 48 * 60 * 60,
-    },
-  });
+  const t2d = getTemplate(templates, 'inactivity_2d');
+  if (t2d.active) {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: t2d.title, body: t2d.body },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 48 * 60 * 60,
+      },
+    });
+  }
 
   // 5 dias de inatividade
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Faz tempo! 🍰',
-      body: 'Faz tempo que voce nao aparece! Seus doces precisam de precos atualizados.',
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 120 * 60 * 60,
-    },
-  });
+  const t5d = getTemplate(templates, 'inactivity_5d');
+  if (t5d.active) {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: t5d.title, body: t5d.body },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 120 * 60 * 60,
+      },
+    });
+  }
 }
 
 function getNextWeekday(targetDay: number, targetHour: number, targetMinute: number): Date {
@@ -98,33 +132,33 @@ function getNextWeekday(targetDay: number, targetHour: number, targetMinute: num
   return result;
 }
 
-async function scheduleRecurringNotifications(): Promise<void> {
+async function scheduleRecurringNotifications(templates: Map<string, NotificationTemplate>): Promise<void> {
   // Lembrete de vendas - todo dia as 19h
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Hora do registro! 📝',
-      body: 'Ja registrou as vendas de hoje? Mantenha seu controle em dia!',
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.DAILY,
-      hour: 19,
-      minute: 0,
-    },
-  });
+  const daily = getTemplate(templates, 'daily_sales');
+  if (daily.active) {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: daily.title, body: daily.body },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: 19,
+        minute: 0,
+      },
+    });
+  }
 
   // Lembrete semanal - toda segunda as 9h
-  await Notifications.scheduleNotificationAsync({
-    content: {
-      title: 'Começo de semana! 📊',
-      body: 'Confira se os precos dos ingredientes mudaram. Manter tudo atualizado é o segredo!',
-    },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
-      weekday: 2, // Segunda-feira (1=Domingo, 2=Segunda, ...)
-      hour: 9,
-      minute: 0,
-    },
-  });
+  const weekly = getTemplate(templates, 'weekly_reminder');
+  if (weekly.active) {
+    await Notifications.scheduleNotificationAsync({
+      content: { title: weekly.title, body: weekly.body },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: 2, // Segunda-feira (1=Domingo, 2=Segunda, ...)
+        hour: 9,
+        minute: 0,
+      },
+    });
+  }
 }
 
 async function scheduleMotivationalTip(): Promise<void> {
@@ -144,8 +178,10 @@ async function scheduleMotivationalTip(): Promise<void> {
 
 async function scheduleAllNotifications(): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
-  await scheduleInactivityNotifications();
-  await scheduleRecurringNotifications();
+
+  const templates = await fetchTemplates();
+  await scheduleInactivityNotifications(templates);
+  await scheduleRecurringNotifications(templates);
   await scheduleMotivationalTip();
 
   if (__DEV__) {
