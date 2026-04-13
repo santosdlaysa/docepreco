@@ -27,9 +27,9 @@ export const Header: React.FC<HeaderProps> = ({
             <Ionicons name="arrow-back" size={24} color={colors.primary} />
           </TouchableOpacity>
         )}
-        <View>
-          <Text style={styles.title}>{title}</Text>
-          {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+        <View style={styles.titleWrap}>
+          <Text style={styles.title} numberOfLines={1}>{title}</Text>
+          {subtitle && <Text style={styles.subtitle} numberOfLines={2}>{subtitle}</Text>}
         </View>
       </View>
       {rightAction && <View>{rightAction}</View>}
@@ -48,7 +48,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  left: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  left: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
+  titleWrap: { flex: 1 },
   backButton: {
     marginRight: 12,
     width: 36,
