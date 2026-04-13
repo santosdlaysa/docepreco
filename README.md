@@ -152,6 +152,8 @@ DATABASE_URL=postgresql://user:pass@localhost:5432/docepreco
 JWT_SECRET=your-secret-key
 REVENUECAT_WEBHOOK_SECRET=<token>
 ADMIN_SECRET=<token>
+TELEGRAM_BOT_TOKEN=<token do bot>
+TELEGRAM_CHAT_ID=<id do chat/grupo>
 ```
 
 ### Mobile (`.env` / EAS Secrets)
@@ -182,6 +184,54 @@ EXPO_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
 - **Entitlement:** `premium`
 - **Webhook events:** INITIAL_PURCHASE, RENEWAL, EXPIRATION, CANCELLATION, etc.
 - **Admin override:** `POST /api/admin/users/:id/premium` com header `X-Admin-Secret`
+
+## Notificacoes Telegram
+
+Bot de monitoramento que envia alertas em tempo real e relatorios periodicos para um chat/grupo do Telegram.
+
+### Configuracao
+
+Adicione ao `.env` do backend:
+
+```
+TELEGRAM_BOT_TOKEN=<token do bot>
+TELEGRAM_CHAT_ID=<id do chat/grupo>
+```
+
+### Alertas em tempo real
+
+| Evento | Gatilho | Exemplo de mensagem |
+|--------|---------|---------------------|
+| **Novo cadastro** | Usuario se registra | `🆕 Novo cadastro! 🏪 Doces da Maria 📧 maria@email.com` |
+| **Evento premium** | Webhook RevenueCat (assinatura, renovacao, cancelamento, etc.) | `💎 Nova assinatura (ios) 🏪 Doces da Maria` |
+| **Venda registrada** | Usuario cria uma venda | `🧁 Nova venda! 🏪 Doces da Maria 🍰 Bolo de chocolate × 2 💰 R$ 120,00` |
+| **Marco de usuarios** | Total de usuarios atinge 50, 100, 200, 500, 1000, 2000, 5000 ou 10000 | `🎉 Marco atingido! 👥 500 usuarios cadastrados!` |
+| **Erro no servidor** | Rota retorna status >= 500 | `🚨 Erro no servidor POST /api/sales Status: 500` |
+| **Rota lenta** | Rota demora > 2000ms | `🐢 Rota lenta GET /api/recipes Duracao: 3200ms` |
+
+### Relatorios periodicos
+
+| Relatorio | Horario | Conteudo |
+|-----------|---------|----------|
+| **Diario** | Todo dia as 8h (Sao Paulo) | Total de usuarios, premium, novos do dia |
+| **Semanal** | Segunda-feira as 9h (Sao Paulo) | Novos usuarios, receitas criadas, vendas, receita total, top 5 usuarios ativos |
+
+### Arquitetura
+
+Todas as funcoes ficam em `backend/src/infrastructure/services/telegramService.ts` e sao chamadas nos controllers/middleware:
+
+| Funcao | Onde e chamada |
+|--------|---------------|
+| `notifyNewUser` | `AuthController.register` |
+| `notifyUserMilestone` | `AuthController.register` (apos criar usuario) |
+| `notifyPremiumEvent` | `PremiumController.revenueCatWebhook` |
+| `notifySale` | `SaleController.create` |
+| `sendErrorAlert` | Middleware de request logs (`server.ts`) |
+| `sendSlowApiAlert` | Middleware de request logs (`server.ts`) |
+| `sendDailyUserReport` | Cron `0 8 * * *` (`server.ts`) |
+| `sendWeeklyReport` | Cron `0 9 * * 1` (`server.ts`) |
+
+Todas as notificacoes sao **fire-and-forget** — nao bloqueiam a resposta da API nem causam erro se o Telegram estiver indisponivel.
 
 ## Suporte
 
