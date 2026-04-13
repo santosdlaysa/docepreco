@@ -36,6 +36,7 @@ import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
 import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { identifyRevenueCatUser, logoutRevenueCatUser } from '../../data/premium/revenueCat';
+import { registerPushToken } from '../utils/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -104,6 +105,13 @@ export function AppNavigator() {
       }
     })();
   }, []);
+
+  // Registra push token sempre que o usuario entra no app (apos login/registro)
+  useEffect(() => {
+    if (authState === 'app' && !demoMode) {
+      void registerPushToken();
+    }
+  }, [authState]);
 
   const logout = async () => {
     await setDemoMode(false);

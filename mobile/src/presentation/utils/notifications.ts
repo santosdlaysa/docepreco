@@ -190,6 +190,26 @@ async function scheduleAllNotifications(): Promise<void> {
   }
 }
 
+export async function registerPushToken(): Promise<void> {
+  try {
+    const granted = await requestPermissions();
+    if (!granted) return;
+
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+    if (!projectId) return;
+
+    const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
+    await pushTokenApi.register(token, Platform.OS);
+    if (__DEV__) {
+      console.log('[Notifications] Push token registrado:', token);
+    }
+  } catch (err) {
+    if (__DEV__) {
+      console.warn('[Notifications] Falha ao registrar push token:', err);
+    }
+  }
+}
+
 export async function initializeNotifications(): Promise<void> {
   try {
     // Configura como as notificacoes aparecem quando o app esta em primeiro plano
@@ -220,19 +240,8 @@ export async function initializeNotifications(): Promise<void> {
       }
     });
 
-    const granted = await requestPermissions();
-    if (!granted) return;
-
-    // Registrar push token no backend
-    try {
-      const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-      if (projectId) {
-        const { data: token } = await Notifications.getExpoPushTokenAsync({ projectId });
-        await pushTokenApi.register(token, Platform.OS);
-      }
-    } catch {
-      // Silencioso — registro de token não deve impedir o fluxo
-    }
+    // Registrar push token no backend (pode falhar se usuario nao estiver logado)
+    await registerPushToken();
 
     const enabled = await getNotificationsEnabled();
     if (!enabled) return;
@@ -246,6 +255,9 @@ export async function initializeNotifications(): Promise<void> {
 
 export async function onAppForeground(): Promise<void> {
   try {
+    // Re-registra push token (garante que esta atualizado no backend)
+    await registerPushToken();
+
     const enabled = await getNotificationsEnabled();
     if (!enabled) return;
 
