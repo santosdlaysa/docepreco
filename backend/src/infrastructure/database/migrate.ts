@@ -73,6 +73,43 @@ CREATE TABLE IF NOT EXISTS password_reset_codes (
   used BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+-- Premium: gestão de clientes
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(30),
+  birthday DATE,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Premium: agenda de encomendas
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+  recipe_id UUID REFERENCES recipes(id) ON DELETE SET NULL,
+  quantity INTEGER NOT NULL DEFAULT 1,
+  total_price DECIMAL(10,2),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'in_progress', 'ready', 'delivered', 'cancelled')),
+  delivery_date DATE,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- Premium: PDF personalizado
+CREATE TABLE IF NOT EXISTS pdf_settings (
+  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  logo_url TEXT,
+  brand_color VARCHAR(7),
+  hide_watermark BOOLEAN NOT NULL DEFAULT FALSE,
+  updated_at TIMESTAMP DEFAULT NOW()
+);
 `;
 
 async function addColumnIfMissing(
@@ -133,6 +170,10 @@ async function migrate() {
     await addColumnIfMissing(client, 'users', 'is_premium', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
+
+    // Premium: cálculo de mão de obra por receita
+    await addColumnIfMissing(client, 'recipes', 'labor_minutes', 'INTEGER NOT NULL DEFAULT 0');
+    await addColumnIfMissing(client, 'users', 'hourly_rate', 'DECIMAL(10,2) NULL');
 
     await client.query('COMMIT');
     console.log('Migrations applied successfully');
