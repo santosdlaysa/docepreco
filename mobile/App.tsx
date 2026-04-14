@@ -3,6 +3,7 @@ import { AppState, AppStateStatus, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+import * as Updates from 'expo-updates';
 import { AppNavigator } from './src/presentation/navigation/AppNavigator';
 import { ToastProvider } from './src/presentation/context/ToastContext';
 import { PremiumProvider } from './src/presentation/context/PremiumContext';
@@ -25,9 +26,23 @@ function App() {
 
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
+  const checkForUpdate = async () => {
+    if (__DEV__) return;
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
+      }
+    } catch {
+      // silencioso
+    }
+  };
+
   useEffect(() => {
     startUsageTracking();
     void initializeNotifications();
+    void checkForUpdate();
 
     const sub = AppState.addEventListener('change', (next) => {
       const prev = appState.current;
@@ -39,6 +54,7 @@ function App() {
         // voltando ao foco: reinicia o tracking e reagenda notificacoes
         startUsageTracking();
         void onAppForeground();
+        void checkForUpdate();
       }
       appState.current = next;
     });
