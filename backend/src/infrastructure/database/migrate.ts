@@ -231,7 +231,7 @@ async function migrate() {
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
 
-    await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP DEFAULT NOW()');
+    await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
 
     // Seed motivational tips (only if table is empty)
