@@ -8,7 +8,8 @@
       "Read(//c/dev/sweet-pricing/mobile/android/app/src/main/res/**)",
       "Bash(done)",
       "Bash(grep:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

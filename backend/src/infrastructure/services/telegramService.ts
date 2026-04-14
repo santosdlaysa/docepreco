@@ -78,8 +78,12 @@ export function notifyUserMilestone(total: number): void {
 
 // ── Error & slow API alerts ─────────────────────────────────────────
 
-export function sendErrorAlert(method: string, path: string, statusCode: number, durationMs: number): void {
-  const text = `🚨 Erro no servidor\n\n${method} ${path}\nStatus: ${statusCode}\nDuração: ${durationMs}ms\n🕐 ${brNow()}`;
+export function sendErrorAlert(method: string, path: string, statusCode: number, durationMs: number, errorMessage?: string): void {
+  let text = `🚨 Erro no servidor\n\n${method} ${path}\nStatus: ${statusCode}\nDuração: ${durationMs}ms`;
+  if (errorMessage) {
+    text += `\nErro: ${errorMessage}`;
+  }
+  text += `\n🕐 ${brNow()}`;
   sendTelegramMessage(text);
 }
 

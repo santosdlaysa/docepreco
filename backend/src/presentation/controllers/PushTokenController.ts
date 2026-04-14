@@ -18,7 +18,8 @@ export class PushTokenController {
       }
       const pushToken = await repo.upsert(userId, token, platform);
       res.status(201).json({ success: true, data: pushToken });
-    } catch {
+    } catch (err) {
+      console.error('Erro ao registrar push token:', err);
       res.status(500).json({ success: false, error: 'Erro ao registrar push token' });
     }
   }
@@ -32,7 +33,8 @@ export class PushTokenController {
       }
       await repo.removeByToken(token);
       res.json({ success: true });
-    } catch {
+    } catch (err) {
+      console.error('Erro ao remover push token:', err);
       res.status(500).json({ success: false, error: 'Erro ao remover push token' });
     }
   }

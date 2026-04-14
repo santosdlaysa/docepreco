@@ -131,7 +131,7 @@ CREATE TABLE IF NOT EXISTS banners (
 CREATE TABLE IF NOT EXISTS push_tokens (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  token VARCHAR(255) NOT NULL UNIQUE,
+  token TEXT NOT NULL UNIQUE,
   platform VARCHAR(10) NOT NULL CHECK (platform IN ('ios', 'android')),
   created_at TIMESTAMP DEFAULT NOW()
 );
@@ -222,6 +222,9 @@ async function migrate() {
     await addUserIdColumn(client, 'sales');
 
     // Premium subscription columns (ALTER TABLE for existing DBs)
+    // Expand push_tokens.token column for long FCM tokens
+    await client.query(`ALTER TABLE push_tokens ALTER COLUMN token TYPE TEXT`);
+
     await addColumnIfMissing(client, 'users', 'is_premium', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');

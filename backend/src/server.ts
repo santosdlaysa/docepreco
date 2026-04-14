@@ -38,6 +38,16 @@ app.use(express.json());
 app.use((req, res, next) => {
   const start = Date.now();
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.socket.remoteAddress ?? null;
+
+  // Intercepta res.json para capturar a mensagem de erro
+  const originalJson = res.json.bind(res);
+  res.json = (body: any) => {
+    if (res.statusCode >= 400 && body) {
+      res.locals.errorMessage = body.error || body.message || undefined;
+    }
+    return originalJson(body);
+  };
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     const path = req.originalUrl.split('?')[0];
@@ -48,7 +58,7 @@ app.use((req, res, next) => {
     ).catch(() => {});
 
     if (res.statusCode >= 500) {
-      sendErrorAlert(req.method, path, res.statusCode, duration);
+      sendErrorAlert(req.method, path, res.statusCode, duration, res.locals.errorMessage);
     } else if (duration > 2000) {
       sendSlowApiAlert(req.method, path, duration);
     }
