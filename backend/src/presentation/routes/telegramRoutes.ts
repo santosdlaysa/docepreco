@@ -93,7 +93,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
     case '/erros': {
       const { rows } = await pool.query(`
-        SELECT method, path, status_code, duration_ms,
+        SELECT method, path, status_code, duration_ms, error_message,
                ts AT TIME ZONE 'America/Sao_Paulo' AS ts
         FROM request_logs
         WHERE status_code >= 500
@@ -104,9 +104,11 @@ router.post('/webhook', async (req: Request, res: Response) => {
         sendTelegramReply('✅ Nenhum erro 500 registrado.');
       } else {
         let msg = `🚨 Ultimos ${rows.length} erros:\n`;
-        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; ts: Date }) => {
+        rows.forEach((r: { method: string; path: string; status_code: number; duration_ms: number; error_message: string | null; ts: Date }) => {
           const time = new Date(r.ts).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
-          msg += `\n${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms\n🕐 ${time}`;
+          msg += `\n${r.method} ${r.path} — ${r.status_code} — ${r.duration_ms}ms`;
+          if (r.error_message) msg += `\nErro: ${r.error_message}`;
+          msg += `\n🕐 ${time}`;
         });
         sendTelegramReply(msg);
       }

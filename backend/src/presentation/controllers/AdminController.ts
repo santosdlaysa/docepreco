@@ -196,7 +196,7 @@ export class AdminController {
 
     try {
       const result = await pool.query(
-        `SELECT id, method, path, status_code AS "statusCode", duration_ms AS "durationMs", ip, ts
+        `SELECT id, method, path, status_code AS "statusCode", duration_ms AS "durationMs", ip, error_message AS "errorMessage", ts
          FROM request_logs ${where}
          ORDER BY ts DESC LIMIT $${idx}`,
         [...params, limit]

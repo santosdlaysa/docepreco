@@ -112,6 +112,7 @@ CREATE TABLE IF NOT EXISTS request_logs (
   status_code INTEGER NOT NULL,
   duration_ms INTEGER NOT NULL,
   ip VARCHAR(45),
+  error_message TEXT,
   ts TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
@@ -228,6 +229,8 @@ async function migrate() {
     await addColumnIfMissing(client, 'users', 'is_premium', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
+
+    await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
 
     // Seed motivational tips (only if table is empty)
     const tipCount = await client.query('SELECT COUNT(*) FROM motivational_tips');

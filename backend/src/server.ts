@@ -52,9 +52,10 @@ app.use((req, res, next) => {
     const duration = Date.now() - start;
     const path = req.originalUrl.split('?')[0];
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
+    const errorMsg = res.locals.errorMessage || null;
     pool.query(
-      `INSERT INTO request_logs (method, path, status_code, duration_ms, ip) VALUES ($1, $2, $3, $4, $5)`,
-      [req.method, path, res.statusCode, duration, ip]
+      `INSERT INTO request_logs (method, path, status_code, duration_ms, ip, error_message) VALUES ($1, $2, $3, $4, $5, $6)`,
+      [req.method, path, res.statusCode, duration, ip, errorMsg]
     ).catch(() => {});
 
     if (res.statusCode >= 500) {
