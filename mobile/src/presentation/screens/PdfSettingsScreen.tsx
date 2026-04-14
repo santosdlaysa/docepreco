@@ -13,7 +13,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
 import { RootStackParamList } from '../navigation/types';
 import { PdfSettings, pdfSettingsStorage } from '../../data/storage/pdfSettingsStorage';
 import { colors } from '../theme/colors';
@@ -64,16 +63,15 @@ export const PdfSettingsScreen: React.FC = () => {
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.5,
-      base64: false,
+      base64: true,
     });
 
     if (!result.canceled && result.assets[0]) {
-      try {
-        const base64 = await FileSystem.readAsStringAsync(result.assets[0].uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        setSettings(prev => ({ ...prev, logoBase64: `data:image/jpeg;base64,${base64}` }));
-      } catch {
+      const asset = result.assets[0];
+      if (asset.base64) {
+        const mime = asset.mimeType || 'image/jpeg';
+        setSettings(prev => ({ ...prev, logoBase64: `data:${mime};base64,${asset.base64}` }));
+      } else {
         showToast('Erro ao carregar imagem', 'error');
       }
     }

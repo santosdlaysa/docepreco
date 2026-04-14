@@ -77,7 +77,7 @@ export const ProfileScreen: React.FC = () => {
                     <Text style={styles.demoBadgeText}>Demo</Text>
                   </View>
                 )}
-                {Platform.OS === 'ios' && isPremium && (
+                {isPremium && (
                   <View style={styles.premiumBadge}>
                     <Ionicons name="sparkles" size={10} color="#fff" />
                     <Text style={styles.premiumBadgeText}>Premium</Text>
@@ -88,7 +88,7 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </Card>
 
-        {Platform.OS === 'ios' && (isPremium ? (
+        {(isPremium ? (
           <Card style={styles.premiumActiveCard}>
             <View style={styles.premiumActiveRow}>
               <View style={styles.premiumIconWrap}>
@@ -128,7 +128,7 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
 
-        {Platform.OS === 'ios' && isPremium && (
+        {isPremium && (
           <>
             <Text style={styles.sectionTitle}>Premium</Text>
             <Card style={styles.menuCard}>

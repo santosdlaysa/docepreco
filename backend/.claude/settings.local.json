@@ -12,7 +12,8 @@
       "Bash(npx tsc:*)",
       "Bash(npx ts-node:*)",
       "Bash(npx:*)",
-      "Bash(node -e:*)"
+      "Bash(node -e:*)",
+      "Bash(find:*)"
     ]
   }
 }
