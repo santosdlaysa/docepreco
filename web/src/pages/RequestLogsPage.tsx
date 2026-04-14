@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { api, RequestLog } from '../lib/api';
 import { Skeleton } from '../components';
-import { RefreshCw, Activity, AlertOctagon, Clock, BarChart3, Search } from 'lucide-react';
+import { RefreshCw, Activity, AlertOctagon, Clock, BarChart3, Search, ChevronDown } from 'lucide-react';
 
 const METHOD_COLOR: Record<string, string> = {
   GET:    'bg-blue-100 text-blue-700 border-blue-200',
@@ -66,6 +66,7 @@ export function RequestLogsPage() {
   const [methodFilter, setMethodFilter] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
@@ -215,20 +216,47 @@ export function RequestLogsPage() {
           <p className="text-center text-gray-400 py-10">Nenhuma requisição encontrada</p>
         ) : (
           <div className="divide-y divide-gray-50 max-h-[600px] overflow-y-auto">
-            {filtered.map(log => (
-              <div key={log.id} className="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 transition-colors text-sm">
-                <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
-                  {log.method}
-                </span>
-                <span className="flex-1 font-mono text-gray-700 truncate" title={log.path}>{log.path}</span>
-                <span className={`shrink-0 font-bold ${statusColor(log.statusCode)}`}>{log.statusCode}</span>
-                <span className="shrink-0 text-gray-400 text-xs w-14 text-right">{log.durationMs}ms</span>
-                <span className="shrink-0 text-gray-300 text-xs w-20 text-right hidden lg:block">{log.ip ?? '—'}</span>
-                <div className="shrink-0 text-right w-24">
-                  <p className="text-xs text-gray-400" title={fmtTs(log.ts)}>{timeAgo(log.ts)}</p>
+            {filtered.map(log => {
+              const isExpanded = expandedId === log.id;
+              const hasError = log.statusCode >= 400;
+              return (
+                <div key={log.id}>
+                  <div
+                    onClick={() => setExpandedId(isExpanded ? null : log.id)}
+                    className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 transition-colors text-sm cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`}
+                  >
+                    <ChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`} />
+                    <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                      {log.method}
+                    </span>
+                    <span className="flex-1 font-mono text-gray-700 truncate" title={log.path}>{log.path}</span>
+                    <span className={`shrink-0 font-bold ${statusColor(log.statusCode)}`}>{log.statusCode}</span>
+                    <span className="shrink-0 text-gray-400 text-xs w-14 text-right">{log.durationMs}ms</span>
+                    <span className="shrink-0 text-gray-300 text-xs w-20 text-right hidden lg:block">{log.ip ?? '—'}</span>
+                    <div className="shrink-0 text-right w-24">
+                      <p className="text-xs text-gray-400" title={fmtTs(log.ts)}>{timeAgo(log.ts)}</p>
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-sm space-y-1.5">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1.5 text-gray-600">
+                        <div><span className="text-gray-400 text-xs">Rota:</span> <span className="font-mono">{log.path}</span></div>
+                        <div><span className="text-gray-400 text-xs">Status:</span> <span className={`font-bold ${statusColor(log.statusCode)}`}>{log.statusCode}</span></div>
+                        <div><span className="text-gray-400 text-xs">Duração:</span> {log.durationMs}ms</div>
+                        <div><span className="text-gray-400 text-xs">IP:</span> {log.ip ?? '—'}</div>
+                        <div className="col-span-2 lg:col-span-4"><span className="text-gray-400 text-xs">Data:</span> {fmtTs(log.ts)}</div>
+                      </div>
+                      {hasError && (
+                        <div className="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-lg">
+                          <p className="text-xs font-medium text-red-600 mb-0.5">Erro:</p>
+                          <p className="text-red-700 font-mono text-xs">{log.errorMessage || 'Sem descrição disponível'}</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

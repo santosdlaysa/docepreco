@@ -186,6 +186,7 @@ export interface RequestLog {
   statusCode: number;
   durationMs: number;
   ip: string | null;
+  errorMessage: string | null;
   ts: string;
 }
 

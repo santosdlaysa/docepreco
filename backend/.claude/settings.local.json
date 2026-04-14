@@ -10,7 +10,8 @@
       "Bash(grep:*)",
       "Bash(ls:*)",
       "Bash(npx tsc:*)",
-      "Bash(npx ts-node:*)"
+      "Bash(npx ts-node:*)",
+      "Bash(npx:*)"
     ]
   }
 }
