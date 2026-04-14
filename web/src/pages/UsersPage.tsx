@@ -255,7 +255,7 @@ export function UsersPage({ toast }: Props) {
             placeholder="Buscar por nome ou email..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-64"
+            className="border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full sm:w-64"
           />
         </div>
         <select
@@ -275,7 +275,7 @@ export function UsersPage({ toast }: Props) {
       {/* Tabela */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[800px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Confeitaria</th>

@@ -66,7 +66,7 @@ function MedalBadge({ rank }: { rank: number }) {
 
 function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
         <Trophy size={18} className="text-yellow-500" />
         <div>
@@ -74,7 +74,7 @@ function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
           <p className="text-xs text-gray-400 mt-0.5">Faturamento das confeiteiras no app (todas as vendas registradas)</p>
         </div>
       </div>
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[500px]">
         <thead className="bg-gray-50">
           <tr>
             <th className="text-left px-5 py-2.5 font-semibold text-gray-500">#</th>
@@ -103,7 +103,7 @@ function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
 
 function TopActivityTable({ users }: { users: TopActivityUser[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
         <Flame size={18} className="text-orange-500" />
         <div>
@@ -111,7 +111,7 @@ function TopActivityTable({ users }: { users: TopActivityUser[] }) {
           <p className="text-xs text-gray-400 mt-0.5">Ordenado por vendas nos últimos 30 dias</p>
         </div>
       </div>
-      <table className="w-full text-sm">
+      <table className="w-full text-sm min-w-[500px]">
         <thead className="bg-gray-50">
           <tr>
             <th className="text-left px-5 py-2.5 font-semibold text-gray-500">#</th>
@@ -174,7 +174,7 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
       <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
         <Crown size={18} className="text-primary-500" />
         <div>
@@ -185,7 +185,7 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
       {subscribers.length === 0 ? (
         <p className="text-center text-gray-400 py-8">Nenhum assinante premium</p>
       ) : (
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[500px]">
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>

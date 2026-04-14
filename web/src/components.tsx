@@ -143,7 +143,7 @@ export function ConfirmModal({ open, title, message, confirmLabel = 'Confirmar',
 
 export function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 flex items-end md:items-center justify-center z-50 md:p-4 animate-fade-in" onClick={onClose}>
       <div className="animate-scale-in w-full max-w-2xl" onClick={e => e.stopPropagation()}>
         {children}
       </div>

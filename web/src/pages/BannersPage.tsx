@@ -132,13 +132,13 @@ export function BannersPage({ toast }: Props) {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
         {loading ? (
           <TableSkeleton rows={4} cols={6} />
         ) : banners.length === 0 ? (
           <p className="text-center text-gray-400 py-10">Nenhum banner cadastrado</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px]">
             <thead>
               <tr className="border-b border-gray-100 text-left text-gray-500 text-xs uppercase">
                 <th className="px-5 py-3">Título</th>

@@ -172,7 +172,7 @@ export function TipsPage({ toast }: Props) {
           </button>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
           {loading ? (
             <TableSkeleton rows={4} cols={4} />
           ) : tips.length === 0 ? (
@@ -250,7 +250,7 @@ export function TipsPage({ toast }: Props) {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
           {templatesLoading ? (
             <TableSkeleton rows={4} cols={5} />
           ) : templates.length === 0 ? (
