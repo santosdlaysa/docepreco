@@ -60,6 +60,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [showIngredientModal, setShowIngredientModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [ingredientQuantity, setIngredientQuantity] = useState('');
+  const [ingredientUnit, setIngredientUnit] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -109,6 +110,18 @@ export const CreateRecipeScreen: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
+  const getCompatibleUnits = (unit: string): string[] => {
+    if (unit === 'g' || unit === 'kg') return ['g', 'kg'];
+    if (unit === 'ml' || unit === 'l') return ['ml', 'l'];
+    return [unit];
+  };
+
+  const getDefaultUnit = (unit: string): string => {
+    if (unit === 'kg') return 'g';
+    if (unit === 'l') return 'ml';
+    return unit;
+  };
+
   const addIngredient = () => {
     if (!selectedIngredient || !ingredientQuantity || parseFloat(ingredientQuantity) <= 0) return;
     const existing = ingredients.find(i => i.ingredientId === selectedIngredient.id);
@@ -122,11 +135,12 @@ export const CreateRecipeScreen: React.FC = () => {
         ingredientId: selectedIngredient.id,
         ingredientName: selectedIngredient.name,
         quantityUsed: parseFloat(ingredientQuantity),
-        unit: selectedIngredient.unit,
+        unit: ingredientUnit || selectedIngredient.unit,
       },
     ]);
     setSelectedIngredient(null);
     setIngredientQuantity('');
+    setIngredientUnit('');
     setShowIngredientModal(false);
   };
 
@@ -422,18 +436,37 @@ export const CreateRecipeScreen: React.FC = () => {
                 </Text>
               </Card>
               <Input
-                label={`Quantidade usada na receita (${selectedIngredient.unit})`}
+                label={`Quantidade usada na receita (${ingredientUnit || selectedIngredient.unit})`}
                 placeholder="0"
                 value={ingredientQuantity}
                 onChangeText={setIngredientQuantity}
                 keyboardType="decimal-pad"
-                suffix={selectedIngredient.unit}
+                suffix={ingredientUnit || selectedIngredient.unit}
               />
+              {getCompatibleUnits(selectedIngredient.unit).length > 1 && (
+                <View style={styles.unitSelector}>
+                  {getCompatibleUnits(selectedIngredient.unit).map(u => (
+                    <TouchableOpacity
+                      key={u}
+                      onPress={() => setIngredientUnit(u)}
+                      style={[
+                        styles.unitBtn,
+                        (ingredientUnit || selectedIngredient.unit) === u && styles.unitBtnSelected,
+                      ]}
+                    >
+                      <Text style={[
+                        styles.unitBtnText,
+                        (ingredientUnit || selectedIngredient.unit) === u && styles.unitBtnTextSelected,
+                      ]}>{u}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
               <View style={styles.modalActions}>
                 <Button
                   title="Voltar"
                   variant="outline"
-                  onPress={() => setSelectedIngredient(null)}
+                  onPress={() => { setSelectedIngredient(null); setIngredientUnit(''); }}
                   style={{ flex: 1, marginRight: 8 }}
                 />
                 <Button
@@ -450,7 +483,7 @@ export const CreateRecipeScreen: React.FC = () => {
               contentContainerStyle={{ padding: 20 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  onPress={() => setSelectedIngredient(item)}
+                  onPress={() => { setSelectedIngredient(item); setIngredientUnit(getDefaultUnit(item.unit)); }}
                   activeOpacity={0.8}
                 >
                   <Card style={styles.modalIngCard}>
@@ -543,6 +576,19 @@ const styles = StyleSheet.create({
   selectedIngCard: { marginBottom: 16, backgroundColor: colors.beige },
   selectedIngName: { ...typography.h4, color: colors.text },
   selectedIngInfo: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
+  unitSelector: { flexDirection: 'row', gap: 8, marginBottom: 8 },
+  unitBtn: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.cream,
+  },
+  unitBtnSelected: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  unitBtnText: { ...typography.body, color: colors.textSecondary, fontWeight: '600' },
+  unitBtnTextSelected: { color: colors.primary },
   modalActions: { flexDirection: 'row', marginTop: 8 },
   modalIngCard: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
   modalIngName: { ...typography.body, color: colors.text },

@@ -9,6 +9,15 @@ export interface RecipeCalculationInput {
   additionalCosts: AdditionalCost[];
 }
 
+export function convertUnit(quantity: number, fromUnit: string, toUnit: string): number {
+  if (fromUnit === toUnit) return quantity;
+  if (fromUnit === 'g'  && toUnit === 'kg') return quantity / 1000;
+  if (fromUnit === 'kg' && toUnit === 'g')  return quantity * 1000;
+  if (fromUnit === 'ml' && toUnit === 'l')  return quantity / 1000;
+  if (fromUnit === 'l'  && toUnit === 'ml') return quantity * 1000;
+  return quantity;
+}
+
 /**
  * Pure function that computes the cost + suggested price of a recipe.
  *
@@ -21,7 +30,7 @@ export interface RecipeCalculationInput {
  */
 export function calculateRecipe(
   recipe: RecipeCalculationInput,
-  ingredientsById: Map<string, Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity'>>
+  ingredientsById: Map<string, Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit'>>
 ): CalculationResult {
   if (recipe.yield <= 0) {
     throw new Error('Recipe yield must be greater than 0');
@@ -37,7 +46,8 @@ export function calculateRecipe(
       );
     }
     const pricePerUnit = ingredient.purchasePrice / ingredient.purchaseQuantity;
-    ingredientsCost += pricePerUnit * ri.quantityUsed;
+    const convertedQuantity = convertUnit(ri.quantityUsed, ri.unit, ingredient.unit);
+    ingredientsCost += pricePerUnit * convertedQuantity;
   }
 
   const additionalCostTotal = recipe.additionalCosts.reduce(

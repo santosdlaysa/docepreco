@@ -1,7 +1,7 @@
-import { calculateRecipe, RecipeCalculationInput } from './recipeCalculator';
+import { calculateRecipe, convertUnit, RecipeCalculationInput } from './recipeCalculator';
 import { Ingredient } from '../entities/Ingredient';
 
-type TestIngredient = Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity'>;
+type TestIngredient = Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit'>;
 
 const makeIngredientMap = (list: TestIngredient[]) =>
   new Map(list.map(i => [i.id, i] as const));
@@ -27,8 +27,8 @@ describe('calculateRecipe', () => {
         additionalCosts: [{ name: 'Energia', value: 4 }],
       };
       const ingredients = makeIngredientMap([
-        { id: 'farinha', purchasePrice: 10, purchaseQuantity: 1000 },
-        { id: 'acucar', purchasePrice: 8, purchaseQuantity: 1000 },
+        { id: 'farinha', purchasePrice: 10, purchaseQuantity: 1000, unit: 'g' },
+        { id: 'acucar', purchasePrice: 8, purchaseQuantity: 1000, unit: 'g' },
       ]);
 
       const result = calculateRecipe(recipe, ingredients);
@@ -80,7 +80,7 @@ describe('calculateRecipe', () => {
 
     it('aplica margem de lucro corretamente', () => {
       const ingredients = makeIngredientMap([
-        { id: 'i1', purchasePrice: 100, purchaseQuantity: 100 }, // R$1/un
+        { id: 'i1', purchasePrice: 100, purchaseQuantity: 100, unit: 'g' }, // R$1/un
       ]);
 
       const margem100 = calculateRecipe(
@@ -134,7 +134,7 @@ describe('calculateRecipe', () => {
           additionalCosts: [],
         },
         makeIngredientMap([
-          { id: 'existe', purchasePrice: 10, purchaseQuantity: 100 },
+          { id: 'existe', purchasePrice: 10, purchaseQuantity: 100, unit: 'g' },
         ])
       );
 
@@ -170,7 +170,7 @@ describe('calculateRecipe', () => {
             additionalCosts: [],
           },
           makeIngredientMap([
-            { id: 'bug', purchasePrice: 100, purchaseQuantity: 0 },
+            { id: 'bug', purchasePrice: 100, purchaseQuantity: 0, unit: 'g' },
           ])
         )
       ).toThrow(/invalid purchaseQuantity/);
@@ -201,7 +201,7 @@ describe('calculateRecipe', () => {
           additionalCosts: [],
         },
         makeIngredientMap([
-          { id: 'ferm', purchasePrice: 5, purchaseQuantity: 100 },
+          { id: 'ferm', purchasePrice: 5, purchaseQuantity: 100, unit: 'g' },
         ])
       );
       expect(result.ingredientsCost).toBeCloseTo(0.05, 10);
@@ -232,10 +232,10 @@ describe('calculateRecipe', () => {
           additionalCosts: [{ name: 'Forminhas', value: 3 }],
         },
         makeIngredientMap([
-          { id: 'leite-c', purchasePrice: 6, purchaseQuantity: 395 },
-          { id: 'choc-po', purchasePrice: 8, purchaseQuantity: 200 },
-          { id: 'manteiga', purchasePrice: 10, purchaseQuantity: 200 },
-          { id: 'granulado', purchasePrice: 15, purchaseQuantity: 500 },
+          { id: 'leite-c', purchasePrice: 6, purchaseQuantity: 395, unit: 'g' },
+          { id: 'choc-po', purchasePrice: 8, purchaseQuantity: 200, unit: 'g' },
+          { id: 'manteiga', purchasePrice: 10, purchaseQuantity: 200, unit: 'g' },
+          { id: 'granulado', purchasePrice: 15, purchaseQuantity: 500, unit: 'g' },
         ])
       );
 
@@ -262,9 +262,9 @@ describe('calculateRecipe', () => {
           additionalCosts: [],
         },
         makeIngredientMap([
-          { id: 'farinha', purchasePrice: 5, purchaseQuantity: 1000 },
-          { id: 'ovos', purchasePrice: 12, purchaseQuantity: 12 },
-          { id: 'leite', purchasePrice: 4, purchaseQuantity: 1000 },
+          { id: 'farinha', purchasePrice: 5, purchaseQuantity: 1000, unit: 'g' },
+          { id: 'ovos', purchasePrice: 12, purchaseQuantity: 12, unit: 'unit' },
+          { id: 'leite', purchasePrice: 4, purchaseQuantity: 1000, unit: 'ml' },
         ])
       );
 
@@ -273,6 +273,106 @@ describe('calculateRecipe', () => {
       expect(result.costPerUnit).toBeCloseTo(0.625, 5);
       expect(result.suggestedPrice).toBeCloseTo(1.25, 5);
       expect(result.estimatedProfit).toBeCloseTo(7.5, 5);
+    });
+  });
+
+  describe('convertUnit', () => {
+    it('retorna mesma quantidade quando unidades são iguais', () => {
+      expect(convertUnit(500, 'g', 'g')).toBe(500);
+      expect(convertUnit(2, 'kg', 'kg')).toBe(2);
+      expect(convertUnit(100, 'ml', 'ml')).toBe(100);
+      expect(convertUnit(3, 'l', 'l')).toBe(3);
+      expect(convertUnit(5, 'unit', 'unit')).toBe(5);
+    });
+
+    it('converte g para kg', () => {
+      expect(convertUnit(500, 'g', 'kg')).toBe(0.5);
+      expect(convertUnit(1000, 'g', 'kg')).toBe(1);
+    });
+
+    it('converte kg para g', () => {
+      expect(convertUnit(0.5, 'kg', 'g')).toBe(500);
+      expect(convertUnit(2, 'kg', 'g')).toBe(2000);
+    });
+
+    it('converte ml para l', () => {
+      expect(convertUnit(500, 'ml', 'l')).toBe(0.5);
+      expect(convertUnit(1000, 'ml', 'l')).toBe(1);
+    });
+
+    it('converte l para ml', () => {
+      expect(convertUnit(0.5, 'l', 'ml')).toBe(500);
+      expect(convertUnit(2, 'l', 'ml')).toBe(2000);
+    });
+  });
+
+  describe('cálculo com conversão de unidade', () => {
+    it('ingrediente em kg, receita usa g', () => {
+      // Açúcar: 2 kg por R$16 → R$8/kg → R$0.008/g
+      // Receita usa 500g → 0.5 kg → 0.5 * R$8 = R$4
+      const result = calculateRecipe(
+        {
+          yield: 1,
+          profitMargin: 0,
+          ingredients: [{ ingredientId: 'acucar', quantityUsed: 500, unit: 'g' }],
+          additionalCosts: [],
+        },
+        makeIngredientMap([
+          { id: 'acucar', purchasePrice: 16, purchaseQuantity: 2, unit: 'kg' },
+        ])
+      );
+      expect(result.ingredientsCost).toBeCloseTo(4, 5);
+    });
+
+    it('ingrediente em g, receita usa kg', () => {
+      // Farinha: 1000g por R$10 → R$0.01/g
+      // Receita usa 1.5 kg → 1500g → 1500 * R$0.01 = R$15
+      const result = calculateRecipe(
+        {
+          yield: 1,
+          profitMargin: 0,
+          ingredients: [{ ingredientId: 'farinha', quantityUsed: 1.5, unit: 'kg' }],
+          additionalCosts: [],
+        },
+        makeIngredientMap([
+          { id: 'farinha', purchasePrice: 10, purchaseQuantity: 1000, unit: 'g' },
+        ])
+      );
+      expect(result.ingredientsCost).toBeCloseTo(15, 5);
+    });
+
+    it('ingrediente em l, receita usa ml', () => {
+      // Leite: 1 l por R$6 → R$6/l
+      // Receita usa 250 ml → 0.25 l → 0.25 * R$6 = R$1.50
+      const result = calculateRecipe(
+        {
+          yield: 1,
+          profitMargin: 0,
+          ingredients: [{ ingredientId: 'leite', quantityUsed: 250, unit: 'ml' }],
+          additionalCosts: [],
+        },
+        makeIngredientMap([
+          { id: 'leite', purchasePrice: 6, purchaseQuantity: 1, unit: 'l' },
+        ])
+      );
+      expect(result.ingredientsCost).toBeCloseTo(1.5, 5);
+    });
+
+    it('ingrediente em ml, receita usa l', () => {
+      // Essência: 100 ml por R$20 → R$0.20/ml
+      // Receita usa 0.05 l → 50 ml → 50 * R$0.20 = R$10
+      const result = calculateRecipe(
+        {
+          yield: 1,
+          profitMargin: 0,
+          ingredients: [{ ingredientId: 'essencia', quantityUsed: 0.05, unit: 'l' }],
+          additionalCosts: [],
+        },
+        makeIngredientMap([
+          { id: 'essencia', purchasePrice: 20, purchaseQuantity: 100, unit: 'ml' },
+        ])
+      );
+      expect(result.ingredientsCost).toBeCloseTo(10, 5);
     });
   });
 });
