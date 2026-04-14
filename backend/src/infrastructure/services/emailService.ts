@@ -1,4 +1,5 @@
 import { Resend } from 'resend';
+import { pool } from '../database/connection';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -67,4 +68,95 @@ export async function sendPasswordResetCode(email: string, code: string): Promis
 </html>
     `,
   });
+}
+
+export async function sendUpdateEmail(email: string, companyName: string): Promise<void> {
+  await resend.emails.send({
+    from: 'Precifica Doces <noreply@docepreco.site>',
+    to: email,
+    subject: 'Nova versao disponivel! Atualize seu Precifica Doces',
+    html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
+<body style="margin:0;padding:0;background:#FFF0F3;font-family:Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FFF0F3;padding:40px 16px;">
+    <tr><td align="center">
+      <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background:#FFFFFF;border-radius:20px;overflow:hidden;box-shadow:0 4px 24px rgba(233,30,140,0.08);">
+
+        <!-- Header -->
+        <tr><td style="background:#E91E8C;padding:32px 40px;text-align:center;">
+          <div style="width:64px;height:64px;border-radius:16px;background:rgba(255,255,255,0.2);margin:0 auto 12px;line-height:64px;font-size:32px;">&#127856;</div>
+          <h1 style="margin:0;font-size:22px;font-weight:700;color:#FFFFFF;letter-spacing:-0.3px;">Precifica Doces</h1>
+          <p style="margin:4px 0 0;font-size:13px;color:rgba(255,255,255,0.85);">Gestao inteligente para confeiteiros</p>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td style="padding:36px 40px 24px;">
+          <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#2D1B14;">Ola, ${companyName}! &#128075;</h2>
+          <p style="margin:0 0 20px;font-size:15px;color:#8B7355;line-height:1.6;">
+            Temos uma <strong>nova versao</strong> do Precifica Doces com varias melhorias para voce!
+          </p>
+
+          <h3 style="margin:0 0 12px;font-size:16px;font-weight:700;color:#E91E8C;">O que ha de novo:</h3>
+
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;">
+            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#128276; <strong>Notificacoes push</strong> — Receba avisos importantes direto no celular</td></tr>
+            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#128218; <strong>Dicas motivacionais</strong> — Dicas diarias para impulsionar seu negocio</td></tr>
+            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#128227; <strong>Banners informativos</strong> — Fique por dentro das novidades</td></tr>
+            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#9889; <strong>Melhorias de desempenho</strong> — App mais rapido e estavel</td></tr>
+          </table>
+
+          <!-- CTA -->
+          <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
+            <tr><td style="background:#E91E8C;border-radius:12px;padding:14px 32px;text-align:center;">
+              <a href="https://play.google.com/store/apps/details?id=com.laysadiniz.sweetpricing" style="font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;">Atualizar agora &#128640;</a>
+            </td></tr>
+          </table>
+
+          <p style="margin:0 0 16px;font-size:14px;color:#8B7355;line-height:1.6;text-align:center;">
+            Acesse a <strong>Play Store</strong> ou <strong>App Store</strong> e atualize para a versao mais recente.
+          </p>
+
+          <hr style="border:none;border-top:1px solid #F0D5DC;margin:0 0 20px;" />
+
+          <p style="margin:0;font-size:13px;color:#B5A090;line-height:1.5;">
+            Obrigado por usar o Precifica Doces! Estamos sempre trabalhando para melhorar sua experiencia.
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td style="background:#FFF8F0;padding:20px 40px;text-align:center;border-top:1px solid #F0D5DC;">
+          <p style="margin:0;font-size:12px;color:#B5A090;">
+            &copy; ${new Date().getFullYear()} Precifica Doces &bull; docepreco.site
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
+    `,
+  });
+}
+
+export async function sendBulkUpdateEmail(): Promise<{ sent: number; failed: number }> {
+  const { rows } = await pool.query('SELECT email, company_name FROM users ORDER BY created_at');
+  let sent = 0;
+  let failed = 0;
+
+  for (const user of rows) {
+    try {
+      await sendUpdateEmail(user.email, user.company_name);
+      sent++;
+      // Resend rate limit: small delay between emails
+      await new Promise(r => setTimeout(r, 200));
+    } catch (err) {
+      console.error(`[Email] Failed to send update to ${user.email}:`, err);
+      failed++;
+    }
+  }
+
+  return { sent, failed };
 }

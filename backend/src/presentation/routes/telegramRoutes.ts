@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { sendDailyUserReport, sendWeeklyReport } from '../../infrastructure/services/telegramService';
+import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { pool } from '../../infrastructure/database/connection';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -159,6 +160,13 @@ router.post('/webhook', async (req: Request, res: Response) => {
       break;
     }
 
+    case '/atualizar': {
+      sendTelegramReply('📧 Enviando email de atualizacao para todos os usuarios...');
+      const result = await sendBulkUpdateEmail();
+      sendTelegramReply(`✅ Email de atualizacao enviado!\n\n📬 Enviados: ${result.sent}\n❌ Falhas: ${result.failed}`);
+      break;
+    }
+
     case '/ajuda':
       sendTelegramReply(
         '📋 Comandos disponiveis:\n\n' +
@@ -170,6 +178,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
         '/erros — Ultimos 10 erros (500)\n' +
         '/lentas — Ultimas 10 rotas lentas (>2s)\n' +
         '/logs — Ultimos 20 requests\n' +
+        '/atualizar — Envia email de atualizacao para todos\n' +
         '/ajuda — Esta mensagem'
       );
       break;

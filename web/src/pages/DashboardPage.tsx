@@ -4,7 +4,7 @@ import { Skeleton, TableSkeleton } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
-  Trophy, Flame,
+  Trophy, Flame, Mail, Loader2,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
@@ -250,9 +250,11 @@ function DashboardSkeleton() {
   );
 }
 
-export function DashboardPage() {
+export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success' | 'error') => void }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const [confirmEmail, setConfirmEmail] = useState(false);
 
   useEffect(() => {
     api.getStats()
@@ -387,6 +389,61 @@ export function DashboardPage() {
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Assinaturas</p>
         <PremiumSubscribersTable subscribers={stats.premiumSubscribers} />
+      </div>
+
+      {/* Email de atualização */}
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Comunicação</p>
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
+              <Mail size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Email de atualização</p>
+              <p className="text-xs text-gray-400">Enviar email para todos os {stats.totalUsers} usuários pedindo para atualizar o app</p>
+            </div>
+          </div>
+
+          {!confirmEmail ? (
+            <button
+              onClick={() => setConfirmEmail(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            >
+              Enviar email de atualização
+            </button>
+          ) : (
+            <div className="flex items-center gap-3">
+              <p className="text-sm text-orange-600 font-medium">Confirma o envio para {stats.totalUsers} usuários?</p>
+              <button
+                onClick={async () => {
+                  setSendingEmail(true);
+                  try {
+                    const result = await api.sendUpdateEmail();
+                    toast(`Email enviado! ${result.sent} enviados, ${result.failed} falhas.`, 'success');
+                  } catch (e: any) {
+                    toast(`Erro ao enviar: ${e.message}`, 'error');
+                  } finally {
+                    setSendingEmail(false);
+                    setConfirmEmail(false);
+                  }
+                }}
+                disabled={sendingEmail}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {sendingEmail && <Loader2 size={14} className="animate-spin" />}
+                {sendingEmail ? 'Enviando...' : 'Confirmar'}
+              </button>
+              <button
+                onClick={() => setConfirmEmail(false)}
+                disabled={sendingEmail}
+                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

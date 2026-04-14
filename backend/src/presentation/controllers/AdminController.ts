@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
+import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
@@ -265,6 +266,17 @@ export class AdminController {
       res.json({ success: true, data: result.rows });
     } catch (error) {
       console.error('[Admin] getLogs error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async sendUpdateEmail(_req: Request, res: Response): Promise<void> {
+    try {
+      const result = await sendBulkUpdateEmail();
+      res.json({ success: true, data: result });
+    } catch (error) {
+      console.error('[Admin] sendUpdateEmail error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }

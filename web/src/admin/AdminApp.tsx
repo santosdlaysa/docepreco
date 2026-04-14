@@ -106,7 +106,7 @@ export default function AdminApp() {
       {/* Conteúdo */}
       <main className="flex-1 p-6 overflow-y-auto">
         <PageTransition pageKey={page}>
-          {page === 'dashboard' && <DashboardPage />}
+          {page === 'dashboard' && <DashboardPage toast={toast} />}
           {page === 'users' && <UsersPage toast={toast} />}
           {page === 'banners' && <BannersPage toast={toast} />}
           {page === 'notifications' && <NotificationsPage toast={toast} />}

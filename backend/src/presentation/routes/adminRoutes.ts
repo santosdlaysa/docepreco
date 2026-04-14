@@ -13,5 +13,6 @@ router.get('/users/:id', (req, res) => controller.getUser(req, res));
 router.get('/logs', (req, res) => controller.getLogs(req, res));
 router.get('/request-logs', (req, res) => controller.getRequestLogs(req, res));
 router.post('/users/:id/premium', (req, res) => controller.setPremium(req, res));
+router.post('/send-update-email', (req, res) => controller.sendUpdateEmail(req, res));
 
 export default router;

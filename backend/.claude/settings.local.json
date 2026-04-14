@@ -13,7 +13,11 @@
       "Bash(npx ts-node:*)",
       "Bash(npx:*)",
       "Bash(node -e:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(git -C /c/Users/ldsantos/docepreco status -s)",
+      "Bash(git -C /c/Users/ldsantos/docepreco diff --stat HEAD)",
+      "Bash(git -C /c/Users/ldsantos/docepreco log --oneline -5)",
+      "Bash(git -C /c/Users/ldsantos/docepreco push origin main)"
     ]
   }
 }
