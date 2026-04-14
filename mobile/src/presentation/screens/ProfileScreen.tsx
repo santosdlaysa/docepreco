@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -62,7 +62,7 @@ export const ProfileScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header title="Minha Conta" showBack onBack={() => navigation.goBack()} />
-      <View style={styles.container}>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <Card style={styles.card}>
           <View style={styles.avatarRow}>
             <View style={styles.avatar}>
@@ -210,7 +210,7 @@ export const ProfileScreen: React.FC = () => {
             style={styles.logoutBtn}
           />
         </Card>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 };
