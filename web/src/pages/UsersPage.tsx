@@ -29,6 +29,7 @@ function SortIcon({ active }: { active: boolean }) {
 function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => void; toast: ToastFn }) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [saving, setSaving] = useState(false);
+  const [premiumDays, setPremiumDays] = useState('30');
 
   useEffect(() => {
     api.getUser(userId).then(setUser).catch(console.error);
@@ -38,9 +39,21 @@ function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => 
     if (!user) return;
     setSaving(true);
     try {
-      await api.setPremium(user.id, !user.isPremium, user.isPremium ? null : undefined);
-      const msg = user.isPremium ? 'Premium removido.' : 'Premium ativado!';
-      setUser(prev => prev ? { ...prev, isPremium: !prev.isPremium } : prev);
+      let premiumUntil: string | null = null;
+      if (!user.isPremium) {
+        const days = parseInt(premiumDays);
+        if (!days || days <= 0) {
+          toast.error('Informe um período válido');
+          setSaving(false);
+          return;
+        }
+        const until = new Date();
+        until.setDate(until.getDate() + days);
+        premiumUntil = until.toISOString();
+      }
+      await api.setPremium(user.id, !user.isPremium, premiumUntil);
+      const msg = user.isPremium ? 'Premium removido.' : `Premium ativado por ${premiumDays} dias!`;
+      setUser(prev => prev ? { ...prev, isPremium: !prev.isPremium, premiumUntil: premiumUntil } : prev);
       toast.success(msg);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Erro');
@@ -76,29 +89,48 @@ function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => 
               <p className="text-xs text-gray-400 mt-1">Cadastrado em {fmtDate(user.createdAt)}</p>
             </div>
 
-            <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4">
-              <div>
-                <p className="text-sm font-medium text-gray-700">Status premium</p>
-                <div className="mt-1">
-                  <PremiumBadge isPremium={user.isPremium} platform={user.premiumPlatform} />
+            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-gray-700">Status premium</p>
+                  <div className="mt-1">
+                    <PremiumBadge isPremium={user.isPremium} platform={user.premiumPlatform} />
+                  </div>
+                  {user.premiumUntil && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Válido até {fmtDate(user.premiumUntil)}
+                    </p>
+                  )}
                 </div>
-                {user.premiumUntil && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    Válido até {fmtDate(user.premiumUntil)}
-                  </p>
-                )}
+                <button
+                  onClick={togglePremium}
+                  disabled={saving}
+                  className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${
+                    user.isPremium
+                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      : 'bg-primary-500 hover:bg-primary-600 text-white'
+                  }`}
+                >
+                  {saving ? '...' : user.isPremium ? 'Remover premium' : 'Dar premium'}
+                </button>
               </div>
-              <button
-                onClick={togglePremium}
-                disabled={saving}
-                className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${
-                  user.isPremium
-                    ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                    : 'bg-primary-500 hover:bg-primary-600 text-white'
-                }`}
-              >
-                {saving ? '...' : user.isPremium ? 'Remover premium' : 'Dar premium'}
-              </button>
+              {!user.isPremium && (
+                <div className="flex items-center gap-2">
+                  <label className="text-xs text-gray-500">Período:</label>
+                  <select
+                    value={premiumDays}
+                    onChange={e => setPremiumDays(e.target.value)}
+                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  >
+                    <option value="7">7 dias</option>
+                    <option value="15">15 dias</option>
+                    <option value="30">30 dias</option>
+                    <option value="90">3 meses</option>
+                    <option value="180">6 meses</option>
+                    <option value="365">1 ano</option>
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">
