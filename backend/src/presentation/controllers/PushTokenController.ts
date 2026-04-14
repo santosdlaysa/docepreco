@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { pool } from '../../infrastructure/database/connection';
 
 const repo = new PostgresPushTokenRepository();
 
@@ -14,6 +15,11 @@ export class PushTokenController {
       }
       if (!['ios', 'android'].includes(platform)) {
         res.status(400).json({ success: false, error: 'platform inválido' });
+        return;
+      }
+      const userExists = await pool.query('SELECT 1 FROM users WHERE id = $1', [userId]);
+      if (userExists.rows.length === 0) {
+        res.status(401).json({ success: false, error: 'Usuário não encontrado' });
         return;
       }
       const pushToken = await repo.upsert(userId, token, platform);
