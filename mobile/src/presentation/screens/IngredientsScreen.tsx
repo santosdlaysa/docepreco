@@ -88,16 +88,17 @@ export const IngredientsScreen: React.FC = () => {
       onDismiss: async () => {
         try {
           await api.delete(ingredient.id);
-        } catch (error) {
+        } catch (error: any) {
           restore();
-          const msg = error instanceof Error ? error.message : '';
+          const serverMsg = error?.response?.data?.error || error?.message || '';
           if (
-            msg.includes('em uso') ||
-            msg.includes('in use') ||
-            msg.includes('violates foreign key') ||
-            msg.includes('restrict')
+            serverMsg.includes('em uso') ||
+            serverMsg.includes('in use') ||
+            serverMsg.includes('violates foreign key') ||
+            serverMsg.includes('restrict') ||
+            error?.response?.status === 409
           ) {
-            showToast('Ingrediente em uso em uma ou mais receitas', 'warning');
+            showToast('Ingrediente em uso em uma ou mais receitas. Remova da receita primeiro.', 'warning');
           } else {
             showToast('Não foi possível excluir este ingrediente', 'error');
           }
