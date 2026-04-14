@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, Stats, TopRevenueUser, TopActivityUser } from '../lib/api';
+import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber } from '../lib/api';
 import { Skeleton, TableSkeleton } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
@@ -144,6 +144,74 @@ function TopActivityTable({ users }: { users: TopActivityUser[] }) {
           <span className="inline-block w-2 h-2 rounded-full bg-gray-300 ml-3 mr-1" />Gratuito
         </p>
       </div>
+    </div>
+  );
+}
+
+function timeRemaining(dateStr: string | null): { label: string; color: string } {
+  if (!dateStr) return { label: 'Sem expiração', color: 'text-gray-400' };
+  const diff = new Date(dateStr).getTime() - Date.now();
+  if (diff <= 0) return { label: 'Expirado', color: 'text-red-600' };
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (days === 0) return { label: 'Expira hoje', color: 'text-red-600' };
+  if (days <= 3) return { label: `${days}d restante${days > 1 ? 's' : ''}`, color: 'text-red-500' };
+  if (days <= 7) return { label: `${days} dias`, color: 'text-orange-500' };
+  if (days <= 30) return { label: `${days} dias`, color: 'text-yellow-600' };
+  const months = Math.floor(days / 30);
+  const remDays = days % 30;
+  return { label: remDays > 0 ? `${months}m ${remDays}d` : `${months} mês${months > 1 ? 'es' : ''}`, color: 'text-green-600' };
+}
+
+function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const platformLabel = (p: string | null) => {
+    if (p === 'ios') return 'iOS';
+    if (p === 'android') return 'Android';
+    if (p === 'manual') return 'Manual';
+    return p || '—';
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <Crown size={18} className="text-primary-500" />
+        <div>
+          <p className="font-semibold text-gray-900">Assinantes premium</p>
+          <p className="text-xs text-gray-400 mt-0.5">{subscribers.length} assinante{subscribers.length !== 1 ? 's' : ''} ativo{subscribers.length !== 1 ? 's' : ''}</p>
+        </div>
+      </div>
+      {subscribers.length === 0 ? (
+        <p className="text-center text-gray-400 py-8">Nenhum assinante premium</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Plataforma</th>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Válido até</th>
+              <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Tempo restante</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {subscribers.map(s => {
+              const remaining = timeRemaining(s.premiumUntil);
+              return (
+                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-5 py-3">
+                    <p className="font-medium text-gray-900">{s.companyName}</p>
+                    <p className="text-xs text-gray-400">{s.email}</p>
+                  </td>
+                  <td className="px-5 py-3 text-gray-600">{platformLabel(s.premiumPlatform)}</td>
+                  <td className="px-5 py-3 text-gray-600">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
+                  <td className={`px-5 py-3 text-right font-semibold ${remaining.color}`}>{remaining.label}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -314,6 +382,11 @@ export function DashboardPage() {
           <TopRevenueTable users={stats.topByRevenue} />
           <TopActivityTable users={stats.topByActivity} />
         </div>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Assinaturas</p>
+        <PremiumSubscribersTable subscribers={stats.premiumSubscribers} />
       </div>
     </div>
   );

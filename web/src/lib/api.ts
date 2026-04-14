@@ -48,6 +48,14 @@ export interface TopActivityUser {
   ingredientCount: number;
 }
 
+export interface PremiumSubscriber {
+  id: string;
+  companyName: string;
+  email: string;
+  premiumPlatform: string | null;
+  premiumUntil: string | null;
+}
+
 export interface Stats {
   totalUsers: number;
   premiumUsers: number;
@@ -60,6 +68,7 @@ export interface Stats {
   revenueThisMonth: number;
   topByRevenue: TopRevenueUser[];
   topByActivity: TopActivityUser[];
+  premiumSubscribers: PremiumSubscriber[];
 }
 
 export interface AdminUser {

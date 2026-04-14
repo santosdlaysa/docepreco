@@ -4,7 +4,7 @@ import { pool } from '../../infrastructure/database/connection';
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
     try {
-      const [statsRes, topRevenueRes, topActivityRes] = await Promise.all([
+      const [statsRes, topRevenueRes, topActivityRes, premiumSubsRes] = await Promise.all([
         pool.query(`
           SELECT
             (SELECT COUNT(*)::int FROM users)                                                        AS "totalUsers",
@@ -42,6 +42,17 @@ export class AdminController {
           ORDER BY "salesMonth" DESC, "recipeCount" DESC
           LIMIT 5
         `),
+        pool.query(`
+          SELECT
+            u.id,
+            u.company_name   AS "companyName",
+            u.email,
+            u.premium_platform AS "premiumPlatform",
+            u.premium_until    AS "premiumUntil"
+          FROM users u
+          WHERE u.is_premium = TRUE
+          ORDER BY u.premium_until ASC NULLS LAST
+        `),
       ]);
 
       res.json({
@@ -50,6 +61,7 @@ export class AdminController {
           ...statsRes.rows[0],
           topByRevenue: topRevenueRes.rows,
           topByActivity: topActivityRes.rows,
+          premiumSubscribers: premiumSubsRes.rows,
         },
       });
     } catch (error) {
