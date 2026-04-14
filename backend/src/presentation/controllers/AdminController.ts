@@ -271,9 +271,13 @@ export class AdminController {
     }
   }
 
-  async sendUpdateEmail(_req: Request, res: Response): Promise<void> {
+  async sendUpdateEmail(req: Request, res: Response): Promise<void> {
     try {
-      const result = await sendBulkUpdateEmail();
+      const { subject, intro, features, ctaText, ctaUrl } = req.body ?? {};
+      const content = (subject || intro || features || ctaText || ctaUrl)
+        ? { subject, intro, features, ctaText, ctaUrl }
+        : undefined;
+      const result = await sendBulkUpdateEmail(content);
       res.json({ success: true, data: result });
     } catch (error) {
       console.error('[Admin] sendUpdateEmail error:', error);

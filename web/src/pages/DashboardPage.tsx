@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber } from '../lib/api';
-import { Skeleton, TableSkeleton } from '../components';
+import { Skeleton, TableSkeleton, ModalOverlay } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
-  Trophy, Flame, Mail, Loader2,
+  Trophy, Flame, Mail, Loader2, X, Eye,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
@@ -253,7 +253,15 @@ function DashboardSkeleton() {
 export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success' | 'error') => void }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('Nova versao disponivel! Atualize seu Precifica Doces');
+  const [emailIntro, setEmailIntro] = useState('Temos uma <strong>nova versao</strong> do Precifica Doces com varias melhorias para voce!');
+  const [emailFeatures, setEmailFeatures] = useState(
+    'Notificacoes push — Receba avisos importantes direto no celular\nDicas motivacionais — Dicas diarias para impulsionar seu negocio\nBanners informativos — Fique por dentro das novidades\nMelhorias de desempenho — App mais rapido e estavel'
+  );
+  const [emailCtaText, setEmailCtaText] = useState('Atualizar agora');
+  const [emailCtaUrl, setEmailCtaUrl] = useState('https://apps.apple.com/app/precifica-doces/id6744712907');
   const [confirmEmail, setConfirmEmail] = useState(false);
 
   useEffect(() => {
@@ -395,56 +403,182 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Comunicação</p>
         <div className="bg-white rounded-xl border border-gray-200 p-5">
-          <div className="flex items-center gap-3 mb-3">
+          <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center">
               <Mail size={20} className="text-blue-600" />
             </div>
-            <div>
+            <div className="flex-1">
               <p className="font-semibold text-gray-900">Email de atualização</p>
-              <p className="text-xs text-gray-400">Enviar email para todos os {stats.totalUsers} usuários pedindo para atualizar o app</p>
+              <p className="text-xs text-gray-400">Edite e envie email para todos os {stats.totalUsers} usuários</p>
             </div>
-          </div>
-
-          {!confirmEmail ? (
             <button
-              onClick={() => setConfirmEmail(true)}
+              onClick={() => setEmailModalOpen(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
             >
-              Enviar email de atualização
+              Compor email
             </button>
-          ) : (
-            <div className="flex items-center gap-3">
-              <p className="text-sm text-orange-600 font-medium">Confirma o envio para {stats.totalUsers} usuários?</p>
-              <button
-                onClick={async () => {
-                  setSendingEmail(true);
-                  try {
-                    const result = await api.sendUpdateEmail();
-                    toast(`Email enviado! ${result.sent} enviados, ${result.failed} falhas.`, 'success');
-                  } catch (e: any) {
-                    toast(`Erro ao enviar: ${e.message}`, 'error');
-                  } finally {
-                    setSendingEmail(false);
-                    setConfirmEmail(false);
-                  }
-                }}
-                disabled={sendingEmail}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
-              >
-                {sendingEmail && <Loader2 size={14} className="animate-spin" />}
-                {sendingEmail ? 'Enviando...' : 'Confirmar'}
-              </button>
-              <button
-                onClick={() => setConfirmEmail(false)}
-                disabled={sendingEmail}
-                className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       </div>
+
+      {emailModalOpen && (
+        <ModalOverlay onClose={() => { if (!sendingEmail) setEmailModalOpen(false); }}>
+          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-bold text-gray-900">Compor email de atualização</h3>
+              <button onClick={() => { if (!sendingEmail) setEmailModalOpen(false); }} className="text-gray-400 hover:text-gray-600">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-gray-200">
+              {/* Form */}
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Assunto</label>
+                  <input
+                    type="text"
+                    value={emailSubject}
+                    onChange={e => setEmailSubject(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Texto de introdução</label>
+                  <textarea
+                    rows={2}
+                    value={emailIntro}
+                    onChange={e => setEmailIntro(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none"
+                  />
+                  <p className="text-xs text-gray-400 mt-0.5">Suporta HTML (ex: &lt;strong&gt;negrito&lt;/strong&gt;)</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Novidades (1 por linha)</label>
+                  <textarea
+                    rows={5}
+                    value={emailFeatures}
+                    onChange={e => setEmailFeatures(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Texto do botão</label>
+                    <input
+                      type="text"
+                      value={emailCtaText}
+                      onChange={e => setEmailCtaText(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">URL do botão</label>
+                    <input
+                      type="url"
+                      value={emailCtaUrl}
+                      onChange={e => setEmailCtaUrl(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Preview */}
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <Eye size={16} className="text-gray-400" />
+                  <p className="text-sm font-medium text-gray-500">Preview</p>
+                </div>
+                <div className="bg-pink-50 rounded-xl p-4 text-sm space-y-3">
+                  <div className="bg-primary-500 rounded-t-xl p-4 text-center text-white">
+                    <p className="text-lg font-bold">Precifica Doces</p>
+                    <p className="text-xs opacity-80">Gestao inteligente para confeiteiros</p>
+                  </div>
+                  <div className="bg-white rounded-b-xl p-4 space-y-3">
+                    <p className="font-bold text-gray-800">Ola, [Nome]!</p>
+                    <p className="text-gray-600 text-xs" dangerouslySetInnerHTML={{ __html: emailIntro }} />
+                    <p className="font-semibold text-primary-500 text-xs">O que ha de novo:</p>
+                    <ul className="space-y-1">
+                      {emailFeatures.split('\n').filter(Boolean).map((f, i) => (
+                        <li key={i} className="text-xs text-gray-600 flex items-start gap-1.5">
+                          <span className="text-primary-500 mt-0.5">&#10003;</span>
+                          <span>{f}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="text-center pt-2">
+                      <span className="inline-block bg-primary-500 text-white text-xs font-bold px-4 py-2 rounded-lg">
+                        {emailCtaText}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-400 mt-2">Assunto: {emailSubject}</p>
+              </div>
+            </div>
+
+            {/* Modal footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+              {!confirmEmail ? (
+                <div className="flex items-center gap-3 ml-auto">
+                  <button
+                    onClick={() => { if (!sendingEmail) setEmailModalOpen(false); }}
+                    className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={() => setConfirmEmail(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Enviar para {stats.totalUsers} usuários
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3 ml-auto">
+                  <p className="text-sm text-orange-600 font-medium">Confirma o envio?</p>
+                  <button
+                    onClick={() => setConfirmEmail(false)}
+                    disabled={sendingEmail}
+                    className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setSendingEmail(true);
+                      try {
+                        const features = emailFeatures.split('\n').filter(Boolean);
+                        const result = await api.sendUpdateEmail({
+                          subject: emailSubject,
+                          intro: emailIntro,
+                          features,
+                          ctaText: emailCtaText,
+                          ctaUrl: emailCtaUrl,
+                        });
+                        toast(`Email enviado! ${result.sent} enviados, ${result.failed} falhas.`, 'success');
+                        setEmailModalOpen(false);
+                      } catch (e: any) {
+                        toast(`Erro ao enviar: ${e.message}`, 'error');
+                      } finally {
+                        setSendingEmail(false);
+                        setConfirmEmail(false);
+                      }
+                    }}
+                    disabled={sendingEmail}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {sendingEmail && <Loader2 size={14} className="animate-spin" />}
+                    {sendingEmail ? 'Enviando...' : 'Confirmar envio'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
     </div>
   );
 }

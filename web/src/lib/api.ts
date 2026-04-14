@@ -129,7 +129,11 @@ export const api = {
       body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null }),
     }),
 
-  sendUpdateEmail: () => req<{ sent: number; failed: number }>('/admin/send-update-email', { method: 'POST' }),
+  sendUpdateEmail: (content?: { subject?: string; intro?: string; features?: string[]; ctaText?: string; ctaUrl?: string }) =>
+    req<{ sent: number; failed: number }>('/admin/send-update-email', {
+      method: 'POST',
+      body: JSON.stringify(content ?? {}),
+    }),
 
   getLogs: (limit = 50) => req<LogEntry[]>(`/admin/logs?limit=${limit}`),
 

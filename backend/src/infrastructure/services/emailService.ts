@@ -70,11 +70,38 @@ export async function sendPasswordResetCode(email: string, code: string): Promis
   });
 }
 
-export async function sendUpdateEmail(email: string, companyName: string): Promise<void> {
+export interface UpdateEmailContent {
+  subject: string;
+  intro: string;
+  features: string[];
+  ctaText: string;
+  ctaUrl: string;
+}
+
+const DEFAULT_EMAIL_CONTENT: UpdateEmailContent = {
+  subject: 'Nova versao disponivel! Atualize seu Precifica Doces',
+  intro: 'Temos uma <strong>nova versao</strong> do Precifica Doces com varias melhorias para voce!',
+  features: [
+    'Notificacoes push — Receba avisos importantes direto no celular',
+    'Dicas motivacionais — Dicas diarias para impulsionar seu negocio',
+    'Banners informativos — Fique por dentro das novidades',
+    'Melhorias de desempenho — App mais rapido e estavel',
+  ],
+  ctaText: 'Atualizar agora',
+  ctaUrl: 'https://apps.apple.com/app/precifica-doces/id6744712907',
+};
+
+export async function sendUpdateEmail(email: string, companyName: string, content?: Partial<UpdateEmailContent>): Promise<void> {
+  const c = { ...DEFAULT_EMAIL_CONTENT, ...content };
+
+  const featuresHtml = c.features
+    .map(f => `<tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#10003; ${f}</td></tr>`)
+    .join('');
+
   await resend.emails.send({
     from: 'Precifica Doces <noreply@docepreco.site>',
     to: email,
-    subject: 'Nova versao disponivel! Atualize seu Precifica Doces',
+    subject: c.subject,
     html: `
 <!DOCTYPE html>
 <html>
@@ -95,27 +122,24 @@ export async function sendUpdateEmail(email: string, companyName: string): Promi
         <tr><td style="padding:36px 40px 24px;">
           <h2 style="margin:0 0 8px;font-size:20px;font-weight:700;color:#2D1B14;">Ola, ${companyName}! &#128075;</h2>
           <p style="margin:0 0 20px;font-size:15px;color:#8B7355;line-height:1.6;">
-            Temos uma <strong>nova versao</strong> do Precifica Doces com varias melhorias para voce!
+            ${c.intro}
           </p>
 
           <h3 style="margin:0 0 12px;font-size:16px;font-weight:700;color:#E91E8C;">O que ha de novo:</h3>
 
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 24px;width:100%;">
-            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#128276; <strong>Notificacoes push</strong> — Receba avisos importantes direto no celular</td></tr>
-            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#128218; <strong>Dicas motivacionais</strong> — Dicas diarias para impulsionar seu negocio</td></tr>
-            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#128227; <strong>Banners informativos</strong> — Fique por dentro das novidades</td></tr>
-            <tr><td style="padding:8px 0;font-size:14px;color:#5D4037;">&#9889; <strong>Melhorias de desempenho</strong> — App mais rapido e estavel</td></tr>
+            ${featuresHtml}
           </table>
 
           <!-- CTA -->
           <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 auto 28px;">
             <tr><td style="background:#E91E8C;border-radius:12px;padding:14px 32px;text-align:center;">
-              <a href="https://play.google.com/store/apps/details?id=com.laysadiniz.sweetpricing" style="font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;">Atualizar agora &#128640;</a>
+              <a href="${c.ctaUrl}" style="font-size:16px;font-weight:700;color:#FFFFFF;text-decoration:none;">${c.ctaText} &#128640;</a>
             </td></tr>
           </table>
 
           <p style="margin:0 0 16px;font-size:14px;color:#8B7355;line-height:1.6;text-align:center;">
-            Acesse a <strong>Play Store</strong> ou <strong>App Store</strong> e atualize para a versao mais recente.
+            Acesse a <strong>App Store</strong> ou <strong>Play Store</strong> e atualize para a versao mais recente.
           </p>
 
           <hr style="border:none;border-top:1px solid #F0D5DC;margin:0 0 20px;" />
@@ -141,14 +165,14 @@ export async function sendUpdateEmail(email: string, companyName: string): Promi
   });
 }
 
-export async function sendBulkUpdateEmail(): Promise<{ sent: number; failed: number }> {
+export async function sendBulkUpdateEmail(content?: Partial<UpdateEmailContent>): Promise<{ sent: number; failed: number }> {
   const { rows } = await pool.query('SELECT email, company_name FROM users ORDER BY created_at');
   let sent = 0;
   let failed = 0;
 
   for (const user of rows) {
     try {
-      await sendUpdateEmail(user.email, user.company_name);
+      await sendUpdateEmail(user.email, user.company_name, content);
       sent++;
       // Resend rate limit: small delay between emails
       await new Promise(r => setTimeout(r, 200));
