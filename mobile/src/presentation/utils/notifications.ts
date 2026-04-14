@@ -162,7 +162,7 @@ async function scheduleRecurringNotifications(templates: Map<string, Notificatio
 }
 
 async function scheduleMotivationalTip(): Promise<void> {
-  // Dica motivacional a cada 3 dias
+  // Dica motivacional todo dia as 10h
   const tip = await fetchRandomTip();
   await Notifications.scheduleNotificationAsync({
     content: {
@@ -170,8 +170,9 @@ async function scheduleMotivationalTip(): Promise<void> {
       body: tip,
     },
     trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds: 3 * 24 * 60 * 60,
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: 10,
+      minute: 0,
     },
   });
 }
