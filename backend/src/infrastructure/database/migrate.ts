@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP DEFAULT NOW(),
   is_premium BOOLEAN NOT NULL DEFAULT FALSE,
   premium_until TIMESTAMP NULL,
-  premium_platform VARCHAR(20) NULL
+  premium_platform VARCHAR(20) NULL,
+  last_seen_at TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS ingredients (
@@ -230,6 +231,7 @@ async function migrate() {
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
 
+    await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP DEFAULT NOW()');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
 
     // Seed motivational tips (only if table is empty)

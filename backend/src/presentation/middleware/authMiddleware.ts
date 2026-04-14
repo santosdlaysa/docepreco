@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { pool } from '../../infrastructure/database/connection';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 
@@ -18,6 +19,10 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   try {
     const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
     req.userId = payload.userId;
+
+    // Fire-and-forget: update last_seen_at
+    pool.query('UPDATE users SET last_seen_at = NOW() WHERE id = $1', [payload.userId]).catch(() => {});
+
     next();
   } catch {
     res.status(401).json({ success: false, error: 'Token inválido ou expirado' });

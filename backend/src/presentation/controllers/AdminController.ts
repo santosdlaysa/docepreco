@@ -86,6 +86,7 @@ export class AdminController {
       ingredientCount: '"ingredientCount" DESC',
       saleCount:       '"saleCount" DESC',
       totalRevenue:    '"totalRevenue" DESC',
+      lastSeenAt:      'u.last_seen_at DESC NULLS LAST',
     };
     const orderBy = SORT_MAP[sortBy] ?? 'u.created_at DESC';
 
@@ -115,6 +116,7 @@ export class AdminController {
             u.is_premium               AS "isPremium",
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
+            u.last_seen_at             AS "lastSeenAt",
             (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id) AS "recipeCount",
             (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",
@@ -166,6 +168,7 @@ export class AdminController {
             u.is_premium               AS "isPremium",
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
+            u.last_seen_at             AS "lastSeenAt",
             (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id) AS "recipeCount",
             (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",

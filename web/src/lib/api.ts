@@ -79,6 +79,7 @@ export interface AdminUser {
   isPremium: boolean;
   premiumUntil: string | null;
   premiumPlatform: string | null;
+  lastSeenAt: string | null;
   recipeCount: number;
   ingredientCount: number;
   saleCount: number;

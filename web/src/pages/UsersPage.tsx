@@ -7,7 +7,7 @@ interface Props {
   toast: ToastFn;
 }
 
-type SortKey = 'createdAt' | 'recipeCount' | 'ingredientCount' | 'saleCount' | 'totalRevenue';
+type SortKey = 'createdAt' | 'recipeCount' | 'ingredientCount' | 'saleCount' | 'totalRevenue' | 'lastSeenAt';
 
 function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: string | null }) {
   if (!isPremium) return <span className="text-xs text-gray-400">Gratuito</span>;
@@ -87,6 +87,9 @@ function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => 
               <p className="font-semibold text-gray-900">{user.companyName}</p>
               <p className="text-sm text-gray-500">{user.email}</p>
               <p className="text-xs text-gray-400 mt-1">Cadastrado em {fmtDate(user.createdAt)}</p>
+              {user.lastSeenAt && (
+                <p className="text-xs text-gray-400">Último acesso: {new Date(user.lastSeenAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(user.lastSeenAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
+              )}
             </div>
 
             <div className="bg-gray-50 rounded-xl p-4 space-y-3">
@@ -182,6 +185,11 @@ export function UsersPage({ toast }: Props) {
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  const fmtDateTime = (d: string) => {
+    const dt = new Date(d);
+    return dt.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })
+      + ' ' + dt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  };
   const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 
@@ -278,6 +286,12 @@ export function UsersPage({ toast }: Props) {
                 <ColHeader label="Vendas"        sortKey="saleCount" />
                 <ColHeader label="Faturamento"   sortKey="totalRevenue" />
                 <th
+                  className="text-left px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none whitespace-nowrap"
+                  onClick={() => handleSort('lastSeenAt')}
+                >
+                  Último acesso<SortIcon active={sortBy === 'lastSeenAt'} />
+                </th>
+                <th
                   className="text-left px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none"
                   onClick={() => handleSort('createdAt')}
                 >
@@ -288,14 +302,14 @@ export function UsersPage({ toast }: Props) {
             <tbody className="divide-y divide-gray-100">
               {loading && (
                 <tr>
-                  <td colSpan={8}>
+                  <td colSpan={9}>
                     <TableSkeleton rows={8} cols={8} />
                   </td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
+                  <td colSpan={9} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
                 </tr>
               )}
               {!loading && users.map((u, i) => (
@@ -314,6 +328,7 @@ export function UsersPage({ toast }: Props) {
                   <td className={`px-4 py-3 text-right font-medium ${sortBy === 'ingredientCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.ingredientCount}</td>
                   <td className={`px-4 py-3 text-right font-medium ${sortBy === 'saleCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.saleCount}</td>
                   <td className={`px-4 py-3 text-right font-medium ${sortBy === 'totalRevenue' ? 'text-primary-600' : 'text-gray-700'}`}>{fmtCurrency(u.totalRevenue)}</td>
+                  <td className={`px-4 py-3 whitespace-nowrap ${sortBy === 'lastSeenAt' ? 'text-primary-600' : 'text-gray-400'}`}>{u.lastSeenAt ? fmtDateTime(u.lastSeenAt) : '—'}</td>
                   <td className="px-4 py-3 text-gray-400">{fmtDate(u.createdAt)}</td>
                 </tr>
               ))}
