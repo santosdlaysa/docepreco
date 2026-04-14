@@ -20,7 +20,13 @@ npm-debug.log*
 *.iml
 
 # Claude Code
-.claude/settings.local.json
+.claude/
+
+# Firebase credentials
+google-services.json
+
+# Sentry
+sentry.properties
 
 # OS
 .DS_Store

@@ -21,6 +21,7 @@
       "autoIncrement": true,
       "env": {
         "EXPO_PUBLIC_API_URL": "https://docepreco.onrender.com/api",
+        "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_nIaFhhgHuGKrJEBaufBzyIWyKPE",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       },
       "ios": {
