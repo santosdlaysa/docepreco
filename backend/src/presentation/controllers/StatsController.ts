@@ -46,6 +46,7 @@ export class StatsController {
       });
     } catch (error) {
       console.error('[StatsController] Error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }

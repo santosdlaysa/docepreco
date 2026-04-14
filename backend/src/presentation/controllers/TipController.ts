@@ -8,7 +8,8 @@ export class TipController {
     try {
       const tips = await repo.findAll();
       res.json({ success: true, data: tips });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao buscar dicas' });
     }
   }
@@ -17,7 +18,8 @@ export class TipController {
     try {
       const tips = await repo.findActive();
       res.json({ success: true, data: tips });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao buscar dicas ativas' });
     }
   }
@@ -31,7 +33,8 @@ export class TipController {
       }
       const tip = await repo.create(message.trim());
       res.status(201).json({ success: true, data: tip });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao criar dica' });
     }
   }
@@ -46,7 +49,8 @@ export class TipController {
         return;
       }
       res.json({ success: true, data: tip });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao atualizar dica' });
     }
   }
@@ -60,7 +64,8 @@ export class TipController {
         return;
       }
       res.json({ success: true });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao excluir dica' });
     }
   }

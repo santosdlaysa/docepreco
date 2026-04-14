@@ -111,6 +111,7 @@ export class PremiumController {
       res.json({ success: true });
     } catch (error) {
       console.error('[Premium] Webhook processing error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Internal error' });
     }
   }
@@ -155,6 +156,7 @@ export class PremiumController {
       res.json({ success: true, data: user });
     } catch (error) {
       console.error('[Premium] Manual update error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Internal error' });
     }
   }

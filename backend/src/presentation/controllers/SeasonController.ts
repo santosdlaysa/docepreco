@@ -9,7 +9,8 @@ export class SeasonController {
       const userId = (req as any).userId as string;
       const seasons = await repo.findAll(userId);
       res.json({ success: true, data: seasons });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao buscar temporadas' });
     }
   }
@@ -19,7 +20,8 @@ export class SeasonController {
       const userId = (req as any).userId as string;
       const season = await repo.findActive(userId);
       res.json({ success: true, data: season });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao buscar temporada ativa' });
     }
   }
@@ -34,7 +36,8 @@ export class SeasonController {
       }
       const season = await repo.create(userId, { name, startDate, endDate, multiplier });
       res.status(201).json({ success: true, data: season });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao criar temporada' });
     }
   }
@@ -50,7 +53,8 @@ export class SeasonController {
         return;
       }
       res.json({ success: true, data: season });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao atualizar temporada' });
     }
   }
@@ -65,7 +69,8 @@ export class SeasonController {
         return;
       }
       res.json({ success: true });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao excluir temporada' });
     }
   }

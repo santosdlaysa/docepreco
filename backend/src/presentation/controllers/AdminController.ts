@@ -54,6 +54,7 @@ export class AdminController {
       });
     } catch (error) {
       console.error('[Admin] getStats error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
   }
@@ -118,6 +119,7 @@ export class AdminController {
       });
     } catch (error) {
       console.error('[Admin] listUsers error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
   }
@@ -133,6 +135,7 @@ export class AdminController {
       res.json({ success: true });
     } catch (error) {
       console.error('[Admin] setPremium error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
   }
@@ -176,6 +179,7 @@ export class AdminController {
       res.json({ success: true, data: { ...userRes.rows[0], recentSales: salesRes.rows } });
     } catch (error) {
       console.error('[Admin] getUser error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
   }
@@ -204,6 +208,7 @@ export class AdminController {
       res.json({ success: true, data: result.rows });
     } catch (error) {
       console.error('[Admin] getRequestLogs error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
   }
@@ -248,6 +253,7 @@ export class AdminController {
       res.json({ success: true, data: result.rows });
     } catch (error) {
       console.error('[Admin] getLogs error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
   }

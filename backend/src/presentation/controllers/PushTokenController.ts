@@ -20,6 +20,7 @@ export class PushTokenController {
       res.status(201).json({ success: true, data: pushToken });
     } catch (err) {
       console.error('Erro ao registrar push token:', err);
+      res.locals.errorMessage = err instanceof Error ? err.message : String(err);
       res.status(500).json({ success: false, error: 'Erro ao registrar push token' });
     }
   }
@@ -35,6 +36,7 @@ export class PushTokenController {
       res.json({ success: true });
     } catch (err) {
       console.error('Erro ao remover push token:', err);
+      res.locals.errorMessage = err instanceof Error ? err.message : String(err);
       res.status(500).json({ success: false, error: 'Erro ao remover push token' });
     }
   }

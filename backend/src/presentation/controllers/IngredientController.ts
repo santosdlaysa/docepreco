@@ -42,6 +42,7 @@ export class IngredientController {
         const status = error.message.includes('already exists') ? 409 : 400;
         res.status(status).json({ success: false, error: error.message });
       } else {
+        res.locals.errorMessage = error instanceof Error ? error.message : String(error);
         res.status(500).json({ success: false, error: 'Internal server error' });
       }
     }
@@ -57,6 +58,7 @@ export class IngredientController {
         const status = error.message.includes('already exists') ? 409 : 400;
         res.status(status).json({ success: false, error: error.message });
       } else {
+        res.locals.errorMessage = error instanceof Error ? error.message : String(error);
         res.status(500).json({ success: false, error: 'Internal server error' });
       }
     }
@@ -73,6 +75,7 @@ export class IngredientController {
       } else if (error instanceof Error) {
         res.status(400).json({ success: false, error: error.message });
       } else {
+        res.locals.errorMessage = error instanceof Error ? error.message : String(error);
         res.status(500).json({ success: false, error: 'Internal server error' });
       }
     }

@@ -16,6 +16,7 @@ export class GoalController {
       const goal = await repo.findByMonthYear(userId, month, year);
       res.json({ success: true, data: goal });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao buscar meta' });
     }
   }
@@ -33,6 +34,7 @@ export class GoalController {
       const goal = await repo.upsert(userId, amount, month, year);
       res.json({ success: true, data: goal });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao salvar meta' });
     }
   }

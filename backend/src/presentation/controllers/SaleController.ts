@@ -24,6 +24,7 @@ export class SaleController {
       const sales = await saleRepo.findAll(req.userId!, startDate);
       res.json({ success: true, data: sales });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }
@@ -55,6 +56,7 @@ export class SaleController {
       if (error instanceof Error) {
         res.status(400).json({ success: false, error: error.message });
       } else {
+        res.locals.errorMessage = String(error);
         res.status(500).json({ success: false, error: 'Internal server error' });
       }
     }
@@ -69,6 +71,7 @@ export class SaleController {
       }
       res.json({ success: true });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
   }

@@ -42,7 +42,7 @@ app.use((req, res, next) => {
   // Intercepta res.json para capturar a mensagem de erro
   const originalJson = res.json.bind(res);
   res.json = (body: any) => {
-    if (res.statusCode >= 400 && body) {
+    if (res.statusCode >= 400 && body && !res.locals.errorMessage) {
       res.locals.errorMessage = body.error || body.message || undefined;
     }
     return originalJson(body);

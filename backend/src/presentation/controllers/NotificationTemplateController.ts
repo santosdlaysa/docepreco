@@ -13,7 +13,8 @@ export class NotificationTemplateController {
     try {
       const templates = await repo.findAll();
       res.json({ success: true, data: templates });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao buscar templates' });
     }
   }
@@ -22,7 +23,8 @@ export class NotificationTemplateController {
     try {
       const templates = await repo.findActive();
       res.json({ success: true, data: templates });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao buscar templates ativos' });
     }
   }
@@ -38,7 +40,8 @@ export class NotificationTemplateController {
         return;
       }
       res.json({ success: true, data: updated });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao atualizar template' });
     }
   }
@@ -73,9 +76,11 @@ export class NotificationTemplateController {
       } catch (err) {
         await notifRepo.markFailed(notification.id);
         const updated = await notifRepo.findById(notification.id);
+        res.locals.errorMessage = err instanceof Error ? err.message : String(err);
         res.status(500).json({ success: false, data: updated, error: 'Falha ao enviar push' });
       }
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao enviar notificação' });
     }
   }

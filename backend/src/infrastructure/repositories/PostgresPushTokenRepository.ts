@@ -13,7 +13,7 @@ export class PostgresPushTokenRepository {
     const result = await pool.query(
       `INSERT INTO push_tokens (user_id, token, platform)
        VALUES ($1, $2, $3)
-       ON CONFLICT (token) DO UPDATE SET user_id = $1, platform = $3
+       ON CONFLICT (token) DO UPDATE SET user_id = EXCLUDED.user_id, platform = EXCLUDED.platform
        RETURNING *`,
       [userId, token, platform]
     );

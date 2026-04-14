@@ -34,6 +34,7 @@ export class AuthController {
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
       res.status(201).json({ success: true, data: { user, token } });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
     }
   }
@@ -63,6 +64,7 @@ export class AuthController {
       const { passwordHash, ...safeUser } = user;
       res.json({ success: true, data: { user: safeUser, token } });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
     }
   }
@@ -88,6 +90,7 @@ export class AuthController {
       await sendPasswordResetCode(user.email, code);
       res.json({ success: true, message: 'Se o email estiver cadastrado, você receberá um código de recuperação' });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
     }
   }
@@ -112,6 +115,7 @@ export class AuthController {
       await userRepo.markResetCodeUsed(result.userId, code);
       res.json({ success: true, message: 'Senha atualizada com sucesso' });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
     }
   }
@@ -121,7 +125,8 @@ export class AuthController {
       const user = await userRepo.findById(req.userId!);
       if (!user) { res.status(404).json({ success: false, error: 'Usuário não encontrado' }); return; }
       res.json({ success: true, data: user });
-    } catch {
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
     }
   }
