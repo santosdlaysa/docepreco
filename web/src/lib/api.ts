@@ -109,7 +109,7 @@ export const api = {
   verify: (s: string) =>
     fetch(`${BASE}/admin/stats`, {
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': s },
-    }).then(r => r.ok),
+    }).then(r => r.ok).catch(() => false),
 
   getStats: () => req<Stats>('/admin/stats'),
 

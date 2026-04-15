@@ -17,13 +17,18 @@ export function LoginPage({ onLogin }: Props) {
     if (!secret.trim()) return;
     setLoading(true);
     setError('');
-    const ok = await api.verify(secret.trim());
-    setLoading(false);
-    if (ok) {
-      saveSecret(secret.trim());
-      onLogin();
-    } else {
-      setError('Senha incorreta.');
+    try {
+      const ok = await api.verify(secret.trim());
+      if (ok) {
+        saveSecret(secret.trim());
+        onLogin();
+      } else {
+        setError('Senha incorreta.');
+      }
+    } catch {
+      setError('Erro de conexão. Tente novamente.');
+    } finally {
+      setLoading(false);
     }
   };
 
