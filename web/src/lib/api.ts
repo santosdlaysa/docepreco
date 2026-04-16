@@ -171,6 +171,15 @@ export const api = {
   sendNotificationTemplate: (id: string, target: 'all' | 'premium' | 'free' = 'all') =>
     req<AppNotification>(`/notification-templates/${id}/send`, { method: 'POST', body: JSON.stringify({ target }) }),
 
+  // ── Settings ──
+  getDailyRegistrationGoal: () =>
+    req<{ goal: number; registeredToday: number }>('/admin/settings/daily-registration-goal'),
+  setDailyRegistrationGoal: (goal: number) =>
+    req<{ goal: number }>('/admin/settings/daily-registration-goal', {
+      method: 'PUT',
+      body: JSON.stringify({ goal }),
+    }),
+
   // ── Notifications ──
   listNotifications: () => req<AppNotification[]>('/notifications'),
   createNotification: (data: { title: string; body: string; target?: string; scheduledAt?: string; dataJson?: string }) =>

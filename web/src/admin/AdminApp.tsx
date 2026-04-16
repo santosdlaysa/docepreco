@@ -8,6 +8,7 @@ import { RequestLogsPage } from '../pages/RequestLogsPage';
 import { BannersPage } from '../pages/BannersPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { TipsPage } from '../pages/TipsPage';
+import { SettingsPage } from '../pages/SettingsPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -17,6 +18,7 @@ import {
   Lightbulb,
   ScrollText,
   Globe,
+  Settings,
   LogOut,
   Cake,
   Menu,
@@ -24,7 +26,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests';
+type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings';
 
 const NAV: Array<{ id: Page; label: string; icon: LucideIcon }> = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -34,6 +36,7 @@ const NAV: Array<{ id: Page; label: string; icon: LucideIcon }> = [
   { id: 'tips', label: 'Dicas', icon: Lightbulb },
   { id: 'logs', label: 'Logs do sistema', icon: ScrollText },
   { id: 'requests', label: 'Rotas HTTP', icon: Globe },
+  { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
 export default function AdminApp() {
@@ -163,6 +166,7 @@ export default function AdminApp() {
             {page === 'tips' && <TipsPage toast={toast} />}
             {page === 'logs' && <LogsPage />}
             {page === 'requests' && <RequestLogsPage />}
+            {page === 'settings' && <SettingsPage toast={toast} />}
           </PageTransition>
         </div>
       </main>

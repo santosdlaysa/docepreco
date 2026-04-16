@@ -274,6 +274,46 @@ export class AdminController {
     }
   }
 
+  async getDailyRegistrationGoal(req: Request, res: Response): Promise<void> {
+    try {
+      const { rows } = await pool.query(
+        `SELECT value FROM app_settings WHERE key = 'daily_registration_goal'`
+      );
+      const goal = rows.length > 0 ? parseInt(rows[0].value, 10) : 0;
+      const todayRes = await pool.query(
+        `SELECT COUNT(*)::int AS count FROM users
+         WHERE created_at >= date_trunc('day', NOW() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'`
+      );
+      res.json({ success: true, data: { goal, registeredToday: todayRes.rows[0].count } });
+    } catch (error) {
+      console.error('[Admin] getDailyRegistrationGoal error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async setDailyRegistrationGoal(req: Request, res: Response): Promise<void> {
+    const { goal } = req.body ?? {};
+    const parsed = Number(goal);
+    if (!Number.isInteger(parsed) || parsed < 0) {
+      res.status(400).json({ error: 'Meta inválida' });
+      return;
+    }
+    try {
+      await pool.query(
+        `INSERT INTO app_settings (key, value, updated_at)
+         VALUES ('daily_registration_goal', $1, NOW())
+         ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+        [String(parsed)]
+      );
+      res.json({ success: true, data: { goal: parsed } });
+    } catch (error) {
+      console.error('[Admin] setDailyRegistrationGoal error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async sendUpdateEmail(req: Request, res: Response): Promise<void> {
     try {
       const { subject, intro, features, ctaText, ctaUrl } = req.body ?? {};

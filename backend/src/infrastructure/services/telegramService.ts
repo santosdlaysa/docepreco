@@ -92,6 +92,31 @@ export function sendSlowApiAlert(method: string, path: string, durationMs: numbe
   sendTelegramMessage(text);
 }
 
+// ── Daily registration goal progress ────────────────────────────────
+
+export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}): Promise<void> {
+  const { rows: settingRows } = await pool.query(
+    `SELECT value FROM app_settings WHERE key = 'daily_registration_goal'`
+  );
+  const goal = settingRows.length > 0 ? parseInt(settingRows[0].value, 10) : 0;
+  if (!goal || goal <= 0) return;
+
+  const { rows } = await pool.query(`
+    SELECT COUNT(*)::int AS count FROM users
+    WHERE created_at >= date_trunc('day', NOW() AT TIME ZONE 'America/Sao_Paulo') AT TIME ZONE 'America/Sao_Paulo'
+  `);
+  const today = rows[0].count;
+  const remaining = Math.max(0, goal - today);
+  const percent = Math.min(100, Math.round((today / goal) * 100));
+
+  if (opts.silentIfMet && remaining === 0) return;
+
+  const bar = '█'.repeat(Math.round(percent / 10)) + '░'.repeat(10 - Math.round(percent / 10));
+  const status = remaining === 0 ? '🎯 Meta batida!' : `Faltam ${remaining} para bater a meta`;
+  const text = `📈 Meta de cadastros\n\n${bar} ${percent}%\n👥 ${today}/${goal} hoje\n${status}\n🕐 ${brNow()}`;
+  sendTelegramMessage(text);
+}
+
 // ── Weekly report ───────────────────────────────────────────────────
 
 export async function sendWeeklyReport(): Promise<void> {

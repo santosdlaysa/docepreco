@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendSlowApiAlert } from './infrastructure/services/telegramService';
+import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendSlowApiAlert, sendDailyGoalProgress } from './infrastructure/services/telegramService';
 import { connectDatabase } from './infrastructure/database/connection';
 import recipeRoutes from './presentation/routes/recipeRoutes';
 import ingredientRoutes from './presentation/routes/ingredientRoutes';
@@ -99,6 +99,8 @@ async function bootstrap() {
     cron.schedule('0 8 * * *', () => sendDailyUserReport(), { timezone: 'America/Sao_Paulo' });
     // Relatório semanal toda segunda às 9h (horário de Brasília)
     cron.schedule('0 9 * * 1', () => sendWeeklyReport(), { timezone: 'America/Sao_Paulo' });
+    // Progresso da meta de cadastros: 12h, 15h, 18h e 21h (horário de Brasília)
+    cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
 
     // Cron: envia notificações agendadas a cada minuto
     const notifRepo = new PostgresNotificationRepository();

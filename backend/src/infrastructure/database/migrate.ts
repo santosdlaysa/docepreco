@@ -167,6 +167,12 @@ CREATE TABLE IF NOT EXISTS notification_templates (
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS app_settings (
+  key VARCHAR(64) PRIMARY KEY,
+  value TEXT NOT NULL,
+  updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
 `;
 
 async function addColumnIfMissing(

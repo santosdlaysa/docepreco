@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { sendDailyUserReport, sendWeeklyReport } from '../../infrastructure/services/telegramService';
+import { sendDailyUserReport, sendWeeklyReport, sendDailyGoalProgress } from '../../infrastructure/services/telegramService';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { pool } from '../../infrastructure/database/connection';
 
@@ -32,6 +32,19 @@ router.post('/webhook', async (req: Request, res: Response) => {
     case '/semanal':
       await sendWeeklyReport();
       break;
+
+    case '/meta': {
+      const { rows } = await pool.query(
+        `SELECT value FROM app_settings WHERE key = 'daily_registration_goal'`
+      );
+      const goal = rows.length > 0 ? parseInt(rows[0].value, 10) : 0;
+      if (!goal || goal <= 0) {
+        sendTelegramReply('⚠️ Nenhuma meta de cadastros definida. Configure no painel admin.');
+      } else {
+        await sendDailyGoalProgress();
+      }
+      break;
+    }
 
     case '/premium': {
       const { rows } = await pool.query(`
@@ -172,6 +185,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
         '📋 Comandos disponiveis:\n\n' +
         '/relatorio — Relatorio diario (usuarios)\n' +
         '/semanal — Relatorio semanal completo\n' +
+        '/meta — Progresso da meta de cadastros do dia\n' +
         '/premium — Lista usuarios premium\n' +
         '/vendashoje — Vendas do dia\n' +
         '/top — Top 10 usuarios (30 dias)\n' +
