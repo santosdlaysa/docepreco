@@ -31,17 +31,45 @@ function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: s
 
 export function UserDataPage({ userId, onBack }: Props) {
   const [data, setData] = useState<UserData | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('recipes');
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
 
   useEffect(() => {
-    api.getUserData(userId).then(setData).catch(console.error);
+    setError(null);
+    api.getUserData(userId)
+      .then(setData)
+      .catch(e => setError(e instanceof Error ? e.message : 'Erro ao carregar dados'));
   }, [userId]);
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+
+  if (error) {
+    return (
+      <div className="space-y-4">
+        <button
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <ArrowLeft size={18} />
+          Voltar
+        </button>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+          <p className="text-red-600 font-medium">Erro ao carregar dados do usuario</p>
+          <p className="text-red-400 text-sm mt-1">{error}</p>
+          <button
+            onClick={() => { setError(null); api.getUserData(userId).then(setData).catch(e => setError(e instanceof Error ? e.message : 'Erro')); }}
+            className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!data) {
     return (
