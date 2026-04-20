@@ -87,7 +87,7 @@ export function UserDataPage({ userId, onBack }: Props) {
   }
 
   const { user, recipes, ingredients, sales } = data;
-  const totalRevenue = sales.reduce((sum, s) => sum + s.totalRevenue, 0);
+  const totalRevenue = sales.reduce((sum, s) => sum + Number(s.totalRevenue || 0), 0);
 
   const tabs: Array<{ id: Tab; label: string; count: number; icon: typeof CakeSlice }> = [
     { id: 'recipes', label: 'Receitas', count: recipes.length, icon: CakeSlice },
