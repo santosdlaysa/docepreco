@@ -314,6 +314,72 @@ export class AdminController {
     }
   }
 
+  async getUserData(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    try {
+      const [userRes, recipesRes, ingredientsRes, salesRes] = await Promise.all([
+        pool.query(
+          `SELECT u.id, u.company_name AS "companyName", u.email,
+                  u.created_at AS "createdAt", u.is_premium AS "isPremium",
+                  u.premium_until AS "premiumUntil", u.premium_platform AS "premiumPlatform",
+                  u.last_seen_at AS "lastSeenAt"
+           FROM users u WHERE u.id = $1`,
+          [id]
+        ),
+        pool.query(
+          `SELECT r.id, r.name, r.yield, r.profit_margin AS "profitMargin",
+                  r.created_at AS "createdAt", r.updated_at AS "updatedAt",
+                  (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.recipe_id = r.id) AS "ingredientCount",
+                  (SELECT COALESCE(SUM(ri.quantity * i.price / i.package_amount), 0)::float
+                   FROM recipe_ingredients ri
+                   JOIN ingredients i ON i.id = ri.ingredient_id
+                   WHERE ri.recipe_id = r.id) AS "totalCost"
+           FROM recipes r WHERE r.user_id = $1
+           ORDER BY r.updated_at DESC`,
+          [id]
+        ),
+        pool.query(
+          `SELECT i.id, i.name, i.price, i.package_amount AS "packageAmount",
+                  i.unit, i.created_at AS "createdAt",
+                  (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.ingredient_id = i.id) AS "usedInRecipes"
+           FROM ingredients i WHERE i.user_id = $1
+           ORDER BY i.name ASC`,
+          [id]
+        ),
+        pool.query(
+          `SELECT s.id, r.name AS "recipeName", s.quantity_sold AS "quantitySold",
+                  s.sale_price AS "salePrice", s.total_revenue AS "totalRevenue",
+                  s.sale_date AS "saleDate", s.notes, s.created_at AS "createdAt"
+           FROM sales s
+           LEFT JOIN recipes r ON r.id = s.recipe_id
+           WHERE s.user_id = $1
+           ORDER BY s.sale_date DESC
+           LIMIT 100`,
+          [id]
+        ),
+      ]);
+
+      if (userRes.rows.length === 0) {
+        res.status(404).json({ error: 'User not found' });
+        return;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          user: userRes.rows[0],
+          recipes: recipesRes.rows,
+          ingredients: ingredientsRes.rows,
+          sales: salesRes.rows,
+        },
+      });
+    } catch (error) {
+      console.error('[Admin] getUserData error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async sendUpdateEmail(req: Request, res: Response): Promise<void> {
     try {
       const { subject, intro, features, ctaText, ctaUrl } = req.body ?? {};

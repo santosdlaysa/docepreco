@@ -91,7 +91,7 @@ export function NotificationsPage({ toast }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <div className="flex items-center gap-2">
           <Bell size={20} className="text-gray-400" />
           <h2 className="text-xl font-bold text-gray-900">Notificações Push</h2>

@@ -28,6 +28,15 @@ export class PostgresUserRepository {
     return bcrypt.compare(plain, hash);
   }
 
+  async updateInstagramHandle(userId: string, instagramHandle: string | null): Promise<(User & { passwordHash: string }) | null> {
+    const result = await pool.query(
+      `UPDATE users SET instagram_handle = $2 WHERE id = $1 RETURNING *`,
+      [userId, instagramHandle]
+    );
+    if (result.rows.length === 0) return null;
+    return this.mapRow(result.rows[0]);
+  }
+
   async updatePremiumStatus(
     userId: string,
     isPremium: boolean,
@@ -117,6 +126,7 @@ export class PostgresUserRepository {
       id: row.id as string,
       companyName: row.company_name as string,
       email: row.email as string,
+      instagramHandle: (row.instagram_handle as string | null) ?? null,
       passwordHash: row.password_hash as string,
       createdAt: (row.created_at as Date).toISOString(),
       isPremium: Boolean(row.is_premium),

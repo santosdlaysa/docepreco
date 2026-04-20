@@ -103,6 +103,54 @@ export interface UsersResponse {
   limit: number;
 }
 
+export interface UserRecipe {
+  id: string;
+  name: string;
+  yield: number;
+  profitMargin: number;
+  createdAt: string;
+  updatedAt: string;
+  ingredientCount: number;
+  totalCost: number;
+}
+
+export interface UserIngredient {
+  id: string;
+  name: string;
+  price: number;
+  packageAmount: number;
+  unit: string;
+  createdAt: string;
+  usedInRecipes: number;
+}
+
+export interface UserSale {
+  id: string;
+  recipeName: string | null;
+  quantitySold: number;
+  salePrice: number;
+  totalRevenue: number;
+  saleDate: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface UserData {
+  user: {
+    id: string;
+    companyName: string;
+    email: string;
+    createdAt: string;
+    isPremium: boolean;
+    premiumUntil: string | null;
+    premiumPlatform: string | null;
+    lastSeenAt: string | null;
+  };
+  recipes: UserRecipe[];
+  ingredients: UserIngredient[];
+  sales: UserSale[];
+}
+
 // ── Endpoints ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -123,6 +171,7 @@ export const api = {
   },
 
   getUser: (id: string) => req<AdminUserDetail>(`/admin/users/${id}`),
+  getUserData: (id: string) => req<UserData>(`/admin/users/${id}/data`),
 
   setPremium: (id: string, isPremium: boolean, premiumUntil?: string | null) =>
     req(`/admin/users/${id}/premium`, {

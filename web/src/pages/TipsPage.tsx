@@ -158,7 +158,7 @@ export function TipsPage({ toast }: Props) {
     <div className="space-y-8">
       {/* ── Dicas Motivacionais ── */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Lightbulb size={20} className="text-yellow-500" />
             <h2 className="text-xl font-bold text-gray-900">Dicas Motivacionais</h2>
@@ -178,7 +178,7 @@ export function TipsPage({ toast }: Props) {
           ) : tips.length === 0 ? (
             <p className="text-center text-gray-400 py-10">Nenhuma dica cadastrada</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-gray-500 text-xs uppercase">
                   <th className="px-5 py-3">Mensagem</th>
@@ -256,7 +256,7 @@ export function TipsPage({ toast }: Props) {
           ) : templates.length === 0 ? (
             <p className="text-center text-gray-400 py-10">Nenhum template encontrado</p>
           ) : (
-            <table className="w-full text-sm">
+            <table className="w-full text-sm min-w-[600px]">
               <thead>
                 <tr className="border-b border-gray-100 text-left text-gray-500 text-xs uppercase">
                   <th className="px-5 py-3 w-44">Tipo</th>

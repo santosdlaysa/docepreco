@@ -120,6 +120,32 @@ export class AuthController {
     }
   }
 
+  async updateProfile(req: Request & { userId?: string }, res: Response): Promise<void> {
+    try {
+      const { instagramHandle } = req.body;
+      if (instagramHandle !== undefined && instagramHandle !== null) {
+        const handle = String(instagramHandle).replace(/^@/, '').trim();
+        if (handle.length > 30) {
+          res.status(400).json({ success: false, error: 'Instagram inválido (máximo 30 caracteres)' });
+          return;
+        }
+        if (handle && !/^[a-zA-Z0-9._]+$/.test(handle)) {
+          res.status(400).json({ success: false, error: 'Instagram inválido (apenas letras, números, . e _)' });
+          return;
+        }
+        const user = await userRepo.updateInstagramHandle(req.userId!, handle || null);
+        if (!user) { res.status(404).json({ success: false, error: 'Usuário não encontrado' }); return; }
+        const { passwordHash, ...safeUser } = user;
+        res.json({ success: true, data: safeUser });
+        return;
+      }
+      res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
   async me(req: Request & { userId?: string }, res: Response): Promise<void> {
     try {
       const user = await userRepo.findById(req.userId!);

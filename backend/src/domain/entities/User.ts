@@ -4,6 +4,7 @@ export interface User {
   id: string;
   companyName: string;
   email: string;
+  instagramHandle: string | null;
   createdAt: string;
   isPremium: boolean;
   premiumUntil: string | null;

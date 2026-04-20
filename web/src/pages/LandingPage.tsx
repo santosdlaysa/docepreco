@@ -85,7 +85,7 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white overflow-hidden">
+    <div className="min-h-screen bg-white overflow-x-hidden">
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100/50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
@@ -112,8 +112,8 @@ export function LandingPage() {
       <section className="relative">
         {/* Background decorations */}
         <div className="absolute inset-0 bg-gradient-to-b from-primary-50/80 via-white to-white" />
-        <div className="absolute top-20 left-10 w-72 h-72 bg-primary-200/30 rounded-full blur-3xl" />
-        <div className="absolute top-40 right-10 w-96 h-96 bg-pink-200/20 rounded-full blur-3xl" />
+        <div className="absolute top-20 -left-10 w-72 h-72 bg-primary-200/30 rounded-full blur-3xl" />
+        <div className="absolute top-40 -right-10 w-72 sm:w-96 h-72 sm:h-96 bg-pink-200/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-gradient-to-t from-violet-100/20 to-transparent rounded-full blur-3xl" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-12 sm:pt-24 sm:pb-16">
@@ -124,7 +124,7 @@ export function LandingPage() {
                 <Sparkles size={14} className="text-primary-500" />
                 O app que toda confeiteira precisa
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] animate-slide-up">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] animate-slide-up">
                 Pare de vender<br />
                 seus doces<br />
                 <span className="bg-gradient-to-r from-primary-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">no prejuízo</span>
@@ -265,7 +265,7 @@ export function LandingPage() {
               <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
             ))}
           </div>
-          <blockquote className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white leading-snug">
+          <blockquote className="text-xl sm:text-3xl lg:text-4xl font-bold text-white leading-snug">
             "Eu não sabia que estava vendendo meus brigadeiros com prejuízo.
             <span className="text-primary-400"> O DocePreço mudou meu negócio.</span>"
           </blockquote>
@@ -363,7 +363,7 @@ export function LandingPage() {
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm mb-8">
             <TrendingUp size={28} className="text-white" />
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
             Pronta para lucrar<br />com seus doces?
           </h2>
           <p className="mt-6 text-lg text-white/80 max-w-lg mx-auto">

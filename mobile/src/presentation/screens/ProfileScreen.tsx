@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -8,6 +8,7 @@ import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../context/PremiumContext';
 import { tokenStorage } from '../../data/storage/tokenStorage';
+import { authApi } from '../../data/api/authApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
@@ -21,11 +22,16 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, isDemoMode } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
-  const [user, setUser] = useState<{ companyName: string; email: string } | null>(null);
+  const [user, setUser] = useState<{ companyName: string; email: string; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
+  const [instagramInput, setInstagramInput] = useState('');
+  const [savingInstagram, setSavingInstagram] = useState(false);
 
   useEffect(() => {
-    tokenStorage.getUser().then(setUser);
+    tokenStorage.getUser().then((u) => {
+      setUser(u);
+      setInstagramInput(u?.instagramHandle || '');
+    });
     void refresh();
     getNotificationsEnabled().then(setNotificationsOn);
   }, []);
@@ -37,6 +43,27 @@ export const ProfileScreen: React.FC = () => {
         year: 'numeric',
       })
     : null;
+
+  const handleSaveInstagram = async () => {
+    const handle = instagramInput.replace(/^@/, '').trim();
+    if (handle && !/^[a-zA-Z0-9._]+$/.test(handle)) {
+      Alert.alert('Instagram inválido', 'Use apenas letras, números, . e _');
+      return;
+    }
+    setSavingInstagram(true);
+    try {
+      const updated = await authApi.updateProfile({ instagramHandle: handle || null });
+      setUser(updated);
+      setInstagramInput(updated.instagramHandle || '');
+      Alert.alert('Salvo', 'Instagram atualizado com sucesso!');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
+    } finally {
+      setSavingInstagram(false);
+    }
+  };
+
+  const instagramChanged = (instagramInput.replace(/^@/, '').trim()) !== (user?.instagramHandle || '');
 
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja sair da sua conta?', [
@@ -82,6 +109,43 @@ export const ProfileScreen: React.FC = () => {
                     <Ionicons name="sparkles" size={10} color="#fff" />
                     <Text style={styles.premiumBadgeText}>Premium</Text>
                   </View>
+                )}
+              </View>
+            </View>
+          </View>
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.menuItem}>
+            <View style={[styles.iconBadge, { backgroundColor: '#FCE4EC' }]}>
+              <Ionicons name="logo-instagram" size={20} color="#E1306C" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuText}>Instagram</Text>
+              <View style={styles.instagramRow}>
+                <Text style={styles.instagramAt}>@</Text>
+                <TextInput
+                  style={styles.instagramInput}
+                  placeholder="seu_usuario"
+                  placeholderTextColor={colors.textMuted}
+                  value={instagramInput}
+                  onChangeText={setInstagramInput}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  maxLength={30}
+                />
+                {instagramChanged && (
+                  <TouchableOpacity
+                    style={styles.instagramSaveBtn}
+                    onPress={handleSaveInstagram}
+                    disabled={savingInstagram}
+                  >
+                    {savingInstagram ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="checkmark" size={18} color="#fff" />
+                    )}
+                  </TouchableOpacity>
                 )}
               </View>
             </View>
@@ -322,6 +386,36 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  instagramRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 2,
+  },
+  instagramAt: {
+    ...typography.body,
+    color: colors.textMuted,
+    fontSize: 15,
+  },
+  instagramInput: {
+    flex: 1,
+    ...typography.body,
+    color: colors.text,
+    fontSize: 15,
+    paddingVertical: 4,
+    paddingHorizontal: 4,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  instagramSaveBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: 8,
   },
   dangerCard: { borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
   logoutBtn: { borderColor: colors.error },

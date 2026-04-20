@@ -121,7 +121,7 @@ export function BannersPage({ toast }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-bold text-gray-900">Banners</h2>
         <button
           onClick={openNew}
@@ -241,7 +241,7 @@ export function BannersPage({ toast }: Props) {
                   onChange={e => setForm({ ...form, message: e.target.value })}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
                   <select
@@ -265,7 +265,7 @@ export function BannersPage({ toast }: Props) {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Início</label>
                   <input

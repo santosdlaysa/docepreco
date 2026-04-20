@@ -7,6 +7,7 @@ export interface AuthUser {
   id: string;
   companyName: string;
   email: string;
+  instagramHandle: string | null;
   isPremium: boolean;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
@@ -16,6 +17,7 @@ const normalizeUser = (raw: any): AuthUser => ({
   id: raw.id,
   companyName: raw.companyName,
   email: raw.email,
+  instagramHandle: raw.instagramHandle ?? null,
   isPremium: Boolean(raw.isPremium),
   premiumUntil: raw.premiumUntil ?? null,
   premiumPlatform: raw.premiumPlatform ?? null,
@@ -55,6 +57,13 @@ export const authApi = {
   resetPassword: async (email: string, code: string, newPassword: string): Promise<string> => {
     const response = await apiClient.post('/auth/reset-password', { email, code, newPassword });
     return response.data.message;
+  },
+
+  updateProfile: async (data: { instagramHandle?: string | null }): Promise<AuthUser> => {
+    const response = await apiClient.patch('/auth/profile', data);
+    const normalized = normalizeUser(response.data.data);
+    await tokenStorage.saveUser(normalized);
+    return normalized;
   },
 
   logout: async (): Promise<void> => {

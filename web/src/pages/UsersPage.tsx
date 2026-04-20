@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
+  onImpersonate?: (userId: string) => void;
 }
 
 type SortKey = 'createdAt' | 'recipeCount' | 'ingredientCount' | 'saleCount' | 'totalRevenue' | 'lastSeenAt';
@@ -26,7 +27,7 @@ function SortIcon({ active }: { active: boolean }) {
   );
 }
 
-function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => void; toast: ToastFn }) {
+function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; onClose: () => void; toast: ToastFn; onImpersonate?: (userId: string) => void }) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [saving, setSaving] = useState(false);
   const [premiumDays, setPremiumDays] = useState('30');
@@ -72,7 +73,18 @@ function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => 
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-5 border-b border-gray-100">
           <h3 className="font-bold text-gray-900">Detalhes do usuário</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <div className="flex items-center gap-2">
+            {onImpersonate && (
+              <button
+                onClick={() => { onClose(); onImpersonate(userId); }}
+                className="flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"
+              >
+                <Eye size={15} />
+                Ver cadastros
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          </div>
         </div>
 
         {!user ? (
@@ -173,7 +185,7 @@ function UserModal({ userId, onClose, toast }: { userId: string; onClose: () => 
   );
 }
 
-export function UsersPage({ toast }: Props) {
+export function UsersPage({ toast, onImpersonate }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
@@ -241,7 +253,7 @@ export function UsersPage({ toast }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-bold text-gray-900">Usuários</h2>
         <span className="text-sm text-gray-400">{total} no total</span>
       </div>
@@ -382,6 +394,7 @@ export function UsersPage({ toast }: Props) {
           userId={selectedId}
           onClose={() => { setSelectedId(null); load(); }}
           toast={toast}
+          onImpersonate={onImpersonate}
         />
       )}
     </div>

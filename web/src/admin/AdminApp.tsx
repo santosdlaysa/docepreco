@@ -9,6 +9,7 @@ import { BannersPage } from '../pages/BannersPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { TipsPage } from '../pages/TipsPage';
 import { SettingsPage } from '../pages/SettingsPage';
+import { UserDataPage } from '../pages/UserDataPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -43,6 +44,7 @@ export default function AdminApp() {
   const [authed, setAuthed] = useState(!!loadSecret());
   const [page, setPage] = useState<Page>('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [impersonateUserId, setImpersonateUserId] = useState<string | null>(null);
   const { toasts, toast, removeToast } = useToast();
 
   useEffect(() => {
@@ -51,6 +53,7 @@ export default function AdminApp() {
 
   const navigate = (p: Page) => {
     setPage(p);
+    setImpersonateUserId(null);
     setSidebarOpen(false);
   };
 
@@ -158,9 +161,10 @@ export default function AdminApp() {
         </div>
 
         <div className="p-4 md:p-6">
-          <PageTransition pageKey={page}>
+          <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
-            {page === 'users' && <UsersPage toast={toast} />}
+            {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
+            {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} />}
             {page === 'banners' && <BannersPage toast={toast} />}
             {page === 'notifications' && <NotificationsPage toast={toast} />}
             {page === 'tips' && <TipsPage toast={toast} />}
