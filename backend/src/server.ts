@@ -23,6 +23,7 @@ import tipRoutes from './presentation/routes/tipRoutes';
 import notificationTemplateRoutes from './presentation/routes/notificationTemplateRoutes';
 import publicRoutes from './presentation/routes/publicRoutes';
 import { pool } from './infrastructure/database/connection';
+import { runMigrations } from './infrastructure/database/migrate';
 import { PostgresNotificationRepository } from './infrastructure/repositories/PostgresNotificationRepository';
 import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from './infrastructure/services/pushService';
@@ -92,6 +93,7 @@ app.get('/health', (req, res) => {
 async function bootstrap() {
   try {
     await connectDatabase();
+    await runMigrations();
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

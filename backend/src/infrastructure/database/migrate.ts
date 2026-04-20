@@ -218,7 +218,7 @@ async function addUserIdColumn(client: any, table: string) {
   }
 }
 
-async function migrate() {
+export async function runMigrations() {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -286,8 +286,12 @@ async function migrate() {
     throw error;
   } finally {
     client.release();
-    await pool.end();
   }
 }
 
-migrate();
+// Run standalone when called directly (npm run migrate)
+if (require.main === module) {
+  runMigrations()
+    .then(() => pool.end())
+    .catch(() => pool.end().then(() => process.exit(1)));
+}
