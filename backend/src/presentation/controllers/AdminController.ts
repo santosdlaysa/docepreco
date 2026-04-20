@@ -330,7 +330,7 @@ export class AdminController {
           `SELECT r.id, r.name, r.yield, r.profit_margin AS "profitMargin",
                   r.created_at AS "createdAt", r.updated_at AS "updatedAt",
                   (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.recipe_id = r.id) AS "ingredientCount",
-                  (SELECT COALESCE(SUM(ri.quantity * i.price / i.package_amount), 0)::float
+                  (SELECT COALESCE(SUM(ri.quantity_used * i.purchase_price / NULLIF(i.purchase_quantity, 0)), 0)::float
                    FROM recipe_ingredients ri
                    JOIN ingredients i ON i.id = ri.ingredient_id
                    WHERE ri.recipe_id = r.id) AS "totalCost"
@@ -339,7 +339,7 @@ export class AdminController {
           [id]
         ),
         pool.query(
-          `SELECT i.id, i.name, i.price, i.package_amount AS "packageAmount",
+          `SELECT i.id, i.name, i.purchase_price AS "price", i.purchase_quantity AS "packageAmount",
                   i.unit, i.created_at AS "createdAt",
                   (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.ingredient_id = i.id) AS "usedInRecipes"
            FROM ingredients i WHERE i.user_id = $1
