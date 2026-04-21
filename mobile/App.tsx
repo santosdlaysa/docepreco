@@ -3,6 +3,7 @@ import { AppState, AppStateStatus, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
 import { AppNavigator } from './src/presentation/navigation/AppNavigator';
 import { ToastProvider } from './src/presentation/context/ToastContext';
@@ -71,12 +72,14 @@ function App() {
   }
 
   return (
-    <PremiumProvider>
-      <ToastProvider>
-        <StatusBar style="dark" backgroundColor="#FFF0F3" />
-        <AppNavigator />
-      </ToastProvider>
-    </PremiumProvider>
+    <SafeAreaProvider>
+      <PremiumProvider>
+        <ToastProvider>
+          <StatusBar style="dark" backgroundColor="#FFF0F3" />
+          <AppNavigator />
+        </ToastProvider>
+      </PremiumProvider>
+    </SafeAreaProvider>
   );
 }
 
