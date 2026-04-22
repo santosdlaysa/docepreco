@@ -191,7 +191,17 @@ export const CreateRecipeScreen: React.FC = () => {
       return;
     }
 
-    confirmAndAddIngredient();
+    const costPerUnit = selectedIngredient.purchasePrice / convertToSameUnit(selectedIngredient.purchaseQuantity, selectedIngredient.unit, unit);
+    const ingredientCost = qty * costPerUnit;
+
+    Alert.alert(
+      'Confirmar ingrediente',
+      `${selectedIngredient.name}\nQuantidade: ${qty} ${unit}\nCusto estimado: R$ ${ingredientCost.toFixed(2)}\n\nAdicionar à receita?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Adicionar', onPress: confirmAndAddIngredient },
+      ]
+    );
   };
 
   const removeIngredient = (id: string) => {

@@ -9,6 +9,7 @@ import {
   Platform,
   ActivityIndicator,
   FlatList,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -53,6 +54,7 @@ export const CreateIngredientScreen: React.FC = () => {
   const [originalPrice, setOriginalPrice] = useState<number | null>(null);
   const [originalQty, setOriginalQty] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [allNames, setAllNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
@@ -108,9 +110,13 @@ export const CreateIngredientScreen: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = async () => {
+  const handleShowConfirmation = () => {
     if (!validate()) return;
+    setShowConfirmModal(true);
+  };
 
+  const handleSave = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
     try {
       if (isEditing) {
@@ -261,12 +267,63 @@ export const CreateIngredientScreen: React.FC = () => {
 
           <Button
             title={isEditing ? 'Atualizar Ingrediente' : 'Salvar Ingrediente'}
-            onPress={handleSave}
+            onPress={handleShowConfirmation}
             loading={loading}
             style={styles.saveButton}
           />
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <Modal visible={showConfirmModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Confirme os dados</Text>
+            <TouchableOpacity onPress={() => setShowConfirmModal(false)}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.confirmContent} showsVerticalScrollIndicator={false}>
+            <Card style={styles.confirmCard}>
+              <Text style={styles.confirmSectionTitle}>Ingrediente</Text>
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmLabel}>Nome</Text>
+                <Text style={styles.confirmValue}>{name.trim()}</Text>
+              </View>
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmLabel}>Quantidade comprada</Text>
+                <Text style={styles.confirmValue}>{purchaseQuantity} {unit}</Text>
+              </View>
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmLabel}>Preco pago</Text>
+                <Text style={styles.confirmValueHighlight}>R$ {parseFloat(purchasePrice || '0').toFixed(2)}</Text>
+              </View>
+              {purchaseQuantity && purchasePrice && parseFloat(purchaseQuantity) > 0 && (
+                <View style={styles.confirmRow}>
+                  <Text style={styles.confirmLabel}>Preco por {unit}</Text>
+                  <Text style={styles.confirmValueHighlight}>
+                    {(parseFloat(purchasePrice) / parseFloat(purchaseQuantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                  </Text>
+                </View>
+              )}
+            </Card>
+
+            <View style={styles.confirmActions}>
+              <Button
+                title="Voltar e corrigir"
+                variant="outline"
+                onPress={() => setShowConfirmModal(false)}
+                style={{ flex: 1, marginRight: 8 }}
+              />
+              <Button
+                title="Confirmar"
+                onPress={handleSave}
+                loading={loading}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -309,6 +366,32 @@ const styles = StyleSheet.create({
   previewValue: { ...typography.h4, color: colors.secondary },
   saveButton: { marginBottom: 32 },
   nameWrapper: { zIndex: 10 },
+  modalContainer: { flex: 1, backgroundColor: colors.background },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  modalTitle: { ...typography.h3, color: colors.text },
+  confirmContent: { padding: 20 },
+  confirmCard: { marginBottom: 12 },
+  confirmSectionTitle: { ...typography.h4, color: colors.text, marginBottom: 12 },
+  confirmRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  confirmLabel: { ...typography.body, color: colors.textSecondary, flex: 1 },
+  confirmValue: { ...typography.body, color: colors.text, fontWeight: '600' as const, textAlign: 'right' as const },
+  confirmValueHighlight: { ...typography.body, color: colors.primary, fontWeight: '700' as const, textAlign: 'right' as const },
+  confirmActions: { flexDirection: 'row', marginTop: 8, marginBottom: 32 },
   suggestionsBox: {
     position: 'absolute',
     top: 74,

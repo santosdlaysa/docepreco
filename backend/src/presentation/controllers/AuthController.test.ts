@@ -1,0 +1,199 @@
+import { Request, Response } from 'express';
+
+// ── Mocks (declared before jest.mock hoisting) ─────────────────────────────
+
+const mockFindByEmail = jest.fn();
+const mockCreatePasswordResetCode = jest.fn();
+const mockVerifyPasswordResetCode = jest.fn();
+const mockUpdatePassword = jest.fn();
+const mockMarkResetCodeUsed = jest.fn();
+const mockSendEmail = jest.fn();
+
+jest.mock('../../infrastructure/repositories/PostgresUserRepository', () => ({
+  PostgresUserRepository: jest.fn(() => ({
+    findByEmail: mockFindByEmail,
+    createPasswordResetCode: mockCreatePasswordResetCode,
+    verifyPasswordResetCode: mockVerifyPasswordResetCode,
+    updatePassword: mockUpdatePassword,
+    markResetCodeUsed: mockMarkResetCodeUsed,
+  })),
+}));
+
+jest.mock('../../infrastructure/services/emailService', () => ({
+  sendPasswordResetCode: (...args: unknown[]) => mockSendEmail(...args),
+}));
+
+jest.mock('../../infrastructure/services/telegramService', () => ({
+  notifyNewUser: jest.fn(),
+  notifyUserMilestone: jest.fn(),
+}));
+
+import { AuthController } from './AuthController';
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function mockReqRes(body: Record<string, unknown> = {}) {
+  const req = { body } as Request;
+  const res = {
+    status: jest.fn().mockReturnThis(),
+    json: jest.fn().mockReturnThis(),
+    locals: {},
+  } as unknown as Response;
+  return { req, res };
+}
+
+// ── Tests ──────────────────────────────────────────────────────────────────
+
+describe('AuthController – Redefinir Senha', () => {
+  const controller = new AuthController();
+
+  beforeEach(() => jest.clearAllMocks());
+
+  // ── forgotPassword ───────────────────────────────────────────────────────
+
+  describe('forgotPassword', () => {
+    it('retorna erro quando email não é informado', async () => {
+      const { req, res } = mockReqRes({});
+      await controller.forgotPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('obrigatório') })
+      );
+    });
+
+    it('retorna erro quando email é inválido', async () => {
+      const { req, res } = mockReqRes({ email: 'nao-eh-email' });
+      await controller.forgotPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('inválido') })
+      );
+    });
+
+    it('retorna sucesso mesmo quando email não existe (segurança)', async () => {
+      mockFindByEmail.mockResolvedValue(null);
+      const { req, res } = mockReqRes({ email: 'naoexiste@test.com' });
+      await controller.forgotPassword(req, res);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true })
+      );
+      expect(mockCreatePasswordResetCode).not.toHaveBeenCalled();
+      expect(mockSendEmail).not.toHaveBeenCalled();
+    });
+
+    it('gera código e envia email quando usuário existe', async () => {
+      const user = { id: 'user-1', email: 'maria@test.com' };
+      mockFindByEmail.mockResolvedValue(user);
+      mockCreatePasswordResetCode.mockResolvedValue('123456');
+      mockSendEmail.mockResolvedValue(undefined);
+
+      const { req, res } = mockReqRes({ email: 'maria@test.com' });
+      await controller.forgotPassword(req, res);
+
+      expect(mockCreatePasswordResetCode).toHaveBeenCalledWith('user-1');
+      expect(mockSendEmail).toHaveBeenCalledWith('maria@test.com', '123456');
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true })
+      );
+    });
+
+    it('retorna erro 500 se ocorrer exceção interna', async () => {
+      mockFindByEmail.mockRejectedValue(new Error('DB down'));
+      const { req, res } = mockReqRes({ email: 'maria@test.com' });
+      await controller.forgotPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  // ── resetPassword ────────────────────────────────────────────────────────
+
+  describe('resetPassword', () => {
+    it('retorna erro quando campos obrigatórios faltam', async () => {
+      const cases = [
+        { email: 'a@b.com', code: '123456' },
+        { email: 'a@b.com', newPassword: 'nova123' },
+        { code: '123456', newPassword: 'nova123' },
+      ];
+      for (const body of cases) {
+        const { req, res } = mockReqRes(body);
+        await controller.resetPassword(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ error: expect.stringContaining('obrigatórios') })
+        );
+      }
+    });
+
+    it('retorna erro quando senha tem menos de 6 caracteres', async () => {
+      const { req, res } = mockReqRes({
+        email: 'a@b.com', code: '123456', newPassword: '12345',
+      });
+      await controller.resetPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('6 caracteres') })
+      );
+    });
+
+    it('retorna erro quando código é inválido ou expirado', async () => {
+      mockVerifyPasswordResetCode.mockResolvedValue({ valid: false, userId: null });
+      const { req, res } = mockReqRes({
+        email: 'a@b.com', code: '999999', newPassword: 'nova123456',
+      });
+      await controller.resetPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('inválido ou expirado') })
+      );
+      expect(mockUpdatePassword).not.toHaveBeenCalled();
+    });
+
+    it('atualiza senha e marca código como usado quando válido', async () => {
+      mockVerifyPasswordResetCode.mockResolvedValue({ valid: true, userId: 'user-1' });
+      mockUpdatePassword.mockResolvedValue(undefined);
+      mockMarkResetCodeUsed.mockResolvedValue(undefined);
+
+      const { req, res } = mockReqRes({
+        email: 'maria@test.com', code: '123456', newPassword: 'novaSenha123',
+      });
+      await controller.resetPassword(req, res);
+
+      expect(mockVerifyPasswordResetCode).toHaveBeenCalledWith('maria@test.com', '123456');
+      expect(mockUpdatePassword).toHaveBeenCalledWith('user-1', 'novaSenha123');
+      expect(mockMarkResetCodeUsed).toHaveBeenCalledWith('user-1', '123456');
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, message: expect.stringContaining('atualizada') })
+      );
+    });
+
+    it('não permite reusar código já utilizado', async () => {
+      // Primeiro uso: sucesso
+      mockVerifyPasswordResetCode.mockResolvedValue({ valid: true, userId: 'user-1' });
+      mockUpdatePassword.mockResolvedValue(undefined);
+      mockMarkResetCodeUsed.mockResolvedValue(undefined);
+
+      const { req: req1, res: res1 } = mockReqRes({
+        email: 'maria@test.com', code: '123456', newPassword: 'novaSenha1',
+      });
+      await controller.resetPassword(req1, res1);
+      expect(res1.json).toHaveBeenCalledWith(expect.objectContaining({ success: true }));
+
+      // Segundo uso: código já marcado como usado
+      mockVerifyPasswordResetCode.mockResolvedValue({ valid: false, userId: null });
+      const { req: req2, res: res2 } = mockReqRes({
+        email: 'maria@test.com', code: '123456', newPassword: 'novaSenha2',
+      });
+      await controller.resetPassword(req2, res2);
+      expect(res2.status).toHaveBeenCalledWith(400);
+    });
+
+    it('retorna erro 500 se ocorrer exceção interna', async () => {
+      mockVerifyPasswordResetCode.mockRejectedValue(new Error('DB down'));
+      const { req, res } = mockReqRes({
+        email: 'a@b.com', code: '123456', newPassword: 'nova123456',
+      });
+      await controller.resetPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+});
