@@ -23,6 +23,8 @@ import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { usePremium } from '../context/PremiumContext';
+import { FREE_LIMITS } from '../premium/limits';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -32,6 +34,7 @@ export const RecipesScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
+  const { isPremium } = usePremium();
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const loadRecipes = async () => {
     try {
@@ -167,11 +170,47 @@ export const RecipesScreen: React.FC = () => {
         }
         ListHeaderComponent={
           recipes.length > 0 ? (
-            <View style={styles.infoCard}>
-              <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-              <Text style={styles.infoText}>
-                Aqui ficam todas as suas receitas. Cada uma calcula automaticamente o preco de venda com base nos ingredientes, custos e margem de lucro.
-              </Text>
+            <View>
+              {!isPremium && (
+                <View style={styles.progressCard}>
+                  <View style={styles.progressHeader}>
+                    <View style={styles.progressLabelRow}>
+                      <Ionicons name="book-outline" size={16} color={colors.primary} />
+                      <Text style={styles.progressLabel}>Receitas cadastradas</Text>
+                    </View>
+                    <Text style={styles.progressCount}>
+                      <Text style={styles.progressCurrent}>{Math.min(recipes.length, FREE_LIMITS.recipes)}</Text>
+                      /{FREE_LIMITS.recipes}
+                    </Text>
+                  </View>
+                  <View style={styles.progressBarBg}>
+                    <View
+                      style={[
+                        styles.progressBarFill,
+                        {
+                          width: `${Math.min((recipes.length / FREE_LIMITS.recipes) * 100, 100)}%`,
+                          backgroundColor: recipes.length >= FREE_LIMITS.recipes ? colors.warning : colors.primary,
+                        },
+                      ]}
+                    />
+                  </View>
+                  {recipes.length >= FREE_LIMITS.recipes ? (
+                    <Text style={styles.progressHint}>
+                      Você atingiu o limite! Vire Premium para receitas ilimitadas.
+                    </Text>
+                  ) : (
+                    <Text style={styles.progressHint}>
+                      Restam {FREE_LIMITS.recipes - recipes.length} receita{FREE_LIMITS.recipes - recipes.length !== 1 ? 's' : ''} no plano gratuito
+                    </Text>
+                  )}
+                </View>
+              )}
+              <View style={styles.infoCard}>
+                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+                <Text style={styles.infoText}>
+                  Aqui ficam todas as suas receitas. Cada uma calcula automaticamente o preco de venda com base nos ingredientes, custos e margem de lucro.
+                </Text>
+              </View>
             </View>
           ) : null
         }
@@ -244,6 +283,54 @@ const styles = StyleSheet.create({
   deleteBtn: {
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
+  },
+  progressCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 12,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  progressLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  progressLabel: {
+    ...typography.bodySmall,
+    color: colors.text,
+    fontWeight: '600',
+  },
+  progressCount: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+  },
+  progressCurrent: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    fontWeight: '700',
+  },
+  progressBarBg: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.primaryLight,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  progressHint: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 6,
   },
   infoCard: {
     flexDirection: 'row',
