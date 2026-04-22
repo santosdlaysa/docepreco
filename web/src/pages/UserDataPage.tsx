@@ -234,6 +234,21 @@ export function UserDataPage({ userId, onBack }: Props) {
                             </div>
                           </div>
                         )}
+                        {r.additionalCosts && r.additionalCosts.length > 0 && (
+                          <div className="mt-3 border-t border-gray-200 pt-3">
+                            <p className="text-xs font-semibold text-gray-500 mb-2">Custos adicionais</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                              {r.additionalCosts.map((ac, idx) => (
+                                <div key={idx} className="flex items-center justify-between bg-white rounded px-3 py-1.5 text-sm">
+                                  <span className="text-gray-700">{ac.name}</span>
+                                  <span className="text-gray-500 font-medium ml-2 shrink-0">
+                                    {fmtCurrency(ac.value)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         <p className="text-xs text-gray-400 mt-3">Criada em {fmtDate(r.createdAt)}</p>
                       </div>
                     )}

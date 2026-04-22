@@ -109,6 +109,11 @@ export interface RecipeIngredient {
   unit: string;
 }
 
+export interface RecipeAdditionalCost {
+  name: string;
+  value: number;
+}
+
 export interface UserRecipe {
   id: string;
   name: string;
@@ -119,6 +124,7 @@ export interface UserRecipe {
   ingredientCount: number;
   totalCost: number;
   ingredients: RecipeIngredient[];
+  additionalCosts: RecipeAdditionalCost[];
 }
 
 export interface UserIngredient {

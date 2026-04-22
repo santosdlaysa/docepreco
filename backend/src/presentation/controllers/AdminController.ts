@@ -364,27 +364,42 @@ export class AdminController {
         return;
       }
 
-      // Fetch ingredients for each recipe
+      // Fetch ingredients and additional costs for each recipe
       const recipeIds = recipesRes.rows.map((r: any) => r.id);
       let recipeIngredientsMap: Record<string, any[]> = {};
+      let recipeAdditionalCostsMap: Record<string, any[]> = {};
       if (recipeIds.length > 0) {
-        const riRes = await pool.query(
-          `SELECT ri.recipe_id AS "recipeId", i.name, ri.quantity_used::float AS "quantityUsed", ri.unit
-           FROM recipe_ingredients ri
-           JOIN ingredients i ON i.id = ri.ingredient_id
-           WHERE ri.recipe_id = ANY($1)
-           ORDER BY i.name ASC`,
-          [recipeIds]
-        );
+        const [riRes, acRes] = await Promise.all([
+          pool.query(
+            `SELECT ri.recipe_id AS "recipeId", i.name, ri.quantity_used::float AS "quantityUsed", ri.unit
+             FROM recipe_ingredients ri
+             JOIN ingredients i ON i.id = ri.ingredient_id
+             WHERE ri.recipe_id = ANY($1)
+             ORDER BY i.name ASC`,
+            [recipeIds]
+          ),
+          pool.query(
+            `SELECT recipe_id AS "recipeId", name, value::float
+             FROM recipe_additional_costs
+             WHERE recipe_id = ANY($1)
+             ORDER BY name ASC`,
+            [recipeIds]
+          ),
+        ]);
         for (const row of riRes.rows) {
           if (!recipeIngredientsMap[row.recipeId]) recipeIngredientsMap[row.recipeId] = [];
           recipeIngredientsMap[row.recipeId].push({ name: row.name, quantityUsed: row.quantityUsed, unit: row.unit });
+        }
+        for (const row of acRes.rows) {
+          if (!recipeAdditionalCostsMap[row.recipeId]) recipeAdditionalCostsMap[row.recipeId] = [];
+          recipeAdditionalCostsMap[row.recipeId].push({ name: row.name, value: row.value });
         }
       }
 
       const recipesWithIngredients = recipesRes.rows.map((r: any) => ({
         ...r,
         ingredients: recipeIngredientsMap[r.id] ?? [],
+        additionalCosts: recipeAdditionalCostsMap[r.id] ?? [],
       }));
 
       res.json({
