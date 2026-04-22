@@ -64,6 +64,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [ingredientUnit, setIngredientUnit] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [recipeCount, setRecipeCount] = useState(0);
   const [laborExpanded, setLaborExpanded] = useState(false);
@@ -230,25 +231,30 @@ export const CreateRecipeScreen: React.FC = () => {
     setLaborExpanded(!laborExpanded);
   };
 
-  const handleSave = async () => {
+  const handleShowConfirmation = () => {
     if (!validate()) return;
-    // Client-side limit check (only when creating new)
-    if (!isEditing && !checkLimit('recipes', recipeCount)) {
-      return;
+    if (!isEditing && !checkLimit('recipes', recipeCount)) return;
+    setShowConfirmModal(true);
+  };
+
+  const getFinalCosts = () => {
+    let finalCosts = additionalCosts.filter(c => c.name !== 'Mão de obra (profissional)');
+    if (laborCostValue > 0) {
+      finalCosts = [...finalCosts, { name: 'Mão de obra (profissional)', value: laborCostValue }];
     }
+    return finalCosts;
+  };
+
+  const handleConfirmSave = async () => {
+    setShowConfirmModal(false);
     setLoading(true);
     try {
-      // Merge labor cost into additionalCosts
-      let finalCosts = additionalCosts.filter(c => c.name !== 'Mão de obra (profissional)');
-      if (laborCostValue > 0) {
-        finalCosts = [...finalCosts, { name: 'Mão de obra (profissional)', value: laborCostValue }];
-      }
       const payload = {
         name: name.trim(),
         yield: parseInt(yieldAmount),
         profitMargin: parseFloat(profitMargin) || 30,
         ingredients,
-        additionalCosts: finalCosts,
+        additionalCosts: getFinalCosts(),
       };
       if (isEditing) {
         await rApi.update(recipeId!, payload);
@@ -261,7 +267,6 @@ export const CreateRecipeScreen: React.FC = () => {
       }
     } catch (error) {
       const err = error as Error & { code?: string; current?: number };
-      // Server-side fallback: backend enforced the limit
       if (err.code === 'RECIPE_LIMIT') {
         openPaywall({
           kind: 'limit',
@@ -459,7 +464,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
           <Button
             title={isEditing ? 'Atualizar Receita' : 'Salvar Receita'}
-            onPress={handleSave}
+            onPress={handleShowConfirmation}
             loading={loading}
             size="lg"
             style={styles.saveButton}
@@ -551,6 +556,78 @@ export const CreateRecipeScreen: React.FC = () => {
               }
             />
           )}
+        </SafeAreaView>
+      </Modal>
+
+      {/* Confirmation Modal */}
+      <Modal visible={showConfirmModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Confirme os dados</Text>
+            <TouchableOpacity onPress={() => setShowConfirmModal(false)}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          <ScrollView style={styles.confirmContent} showsVerticalScrollIndicator={false}>
+            <Card style={styles.confirmCard}>
+              <Text style={styles.confirmSectionTitle}>Receita</Text>
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmLabel}>Nome</Text>
+                <Text style={styles.confirmValue}>{name.trim()}</Text>
+              </View>
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmLabel}>Rendimento</Text>
+                <Text style={styles.confirmValue}>{yieldAmount} un</Text>
+              </View>
+              <View style={styles.confirmRow}>
+                <Text style={styles.confirmLabel}>Margem de lucro</Text>
+                <Text style={styles.confirmValue}>{profitMargin}%</Text>
+              </View>
+            </Card>
+
+            <Card style={styles.confirmCard}>
+              <Text style={styles.confirmSectionTitle}>
+                Ingredientes ({ingredients.length})
+              </Text>
+              {ingredients.map((ing, idx) => (
+                <View key={idx} style={styles.confirmRow}>
+                  <Text style={styles.confirmLabel}>{ing.ingredientName}</Text>
+                  <Text style={styles.confirmValueHighlight}>
+                    {ing.quantityUsed} {ing.unit}
+                  </Text>
+                </View>
+              ))}
+            </Card>
+
+            {getFinalCosts().length > 0 && (
+              <Card style={styles.confirmCard}>
+                <Text style={styles.confirmSectionTitle}>Custos Adicionais</Text>
+                {getFinalCosts().map((c, idx) => (
+                  <View key={idx} style={styles.confirmRow}>
+                    <Text style={styles.confirmLabel}>{c.name}</Text>
+                    <Text style={styles.confirmValueHighlight}>
+                      R$ {c.value.toFixed(2)}
+                    </Text>
+                  </View>
+                ))}
+              </Card>
+            )}
+
+            <View style={styles.confirmActions}>
+              <Button
+                title="Voltar e corrigir"
+                variant="outline"
+                onPress={() => setShowConfirmModal(false)}
+                style={{ flex: 1, marginRight: 8 }}
+              />
+              <Button
+                title="Confirmar"
+                onPress={handleConfirmSave}
+                loading={loading}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </ScrollView>
         </SafeAreaView>
       </Modal>
     </SafeAreaView>
@@ -689,4 +766,19 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   laborResultText: { ...typography.body, color: colors.primary, fontWeight: '700' as const },
+  confirmContent: { padding: 20 },
+  confirmCard: { marginBottom: 12 },
+  confirmSectionTitle: { ...typography.h4, color: colors.text, marginBottom: 12 },
+  confirmRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  confirmLabel: { ...typography.body, color: colors.textSecondary, flex: 1 },
+  confirmValue: { ...typography.body, color: colors.text, fontWeight: '600' as const, textAlign: 'right' as const },
+  confirmValueHighlight: { ...typography.body, color: colors.primary, fontWeight: '700' as const, textAlign: 'right' as const },
+  confirmActions: { flexDirection: 'row', marginTop: 8, marginBottom: 32 },
 });
