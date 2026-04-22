@@ -364,11 +364,34 @@ export class AdminController {
         return;
       }
 
+      // Fetch ingredients for each recipe
+      const recipeIds = recipesRes.rows.map((r: any) => r.id);
+      let recipeIngredientsMap: Record<string, any[]> = {};
+      if (recipeIds.length > 0) {
+        const riRes = await pool.query(
+          `SELECT ri.recipe_id AS "recipeId", i.name, ri.quantity_used::float AS "quantityUsed", ri.unit
+           FROM recipe_ingredients ri
+           JOIN ingredients i ON i.id = ri.ingredient_id
+           WHERE ri.recipe_id = ANY($1)
+           ORDER BY i.name ASC`,
+          [recipeIds]
+        );
+        for (const row of riRes.rows) {
+          if (!recipeIngredientsMap[row.recipeId]) recipeIngredientsMap[row.recipeId] = [];
+          recipeIngredientsMap[row.recipeId].push({ name: row.name, quantityUsed: row.quantityUsed, unit: row.unit });
+        }
+      }
+
+      const recipesWithIngredients = recipesRes.rows.map((r: any) => ({
+        ...r,
+        ingredients: recipeIngredientsMap[r.id] ?? [],
+      }));
+
       res.json({
         success: true,
         data: {
           user: userRes.rows[0],
-          recipes: recipesRes.rows,
+          recipes: recipesWithIngredients,
           ingredients: ingredientsRes.rows,
           sales: salesRes.rows,
         },
