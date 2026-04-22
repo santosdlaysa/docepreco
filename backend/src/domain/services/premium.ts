@@ -1,7 +1,7 @@
 import { User } from '../entities/User';
 
 export const FREE_LIMITS = {
-  recipes: 6,
+  recipes: 5,
 } as const;
 
 export type LimitedFeature = keyof typeof FREE_LIMITS;
