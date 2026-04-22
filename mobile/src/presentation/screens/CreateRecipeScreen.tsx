@@ -10,6 +10,7 @@ import {
   Modal,
   FlatList,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -122,6 +123,35 @@ export const CreateRecipeScreen: React.FC = () => {
     return unit;
   };
 
+  const convertToSameUnit = (qty: number, from: string, to: string): number => {
+    if (from === to) return qty;
+    if (from === 'g' && to === 'kg') return qty / 1000;
+    if (from === 'kg' && to === 'g') return qty * 1000;
+    if (from === 'ml' && to === 'l') return qty / 1000;
+    if (from === 'l' && to === 'ml') return qty * 1000;
+    return qty;
+  };
+
+  const confirmAndAddIngredient = () => {
+    if (!selectedIngredient) return;
+    const qty = parseFloat(ingredientQuantity);
+    const unit = ingredientUnit || selectedIngredient.unit;
+
+    setIngredients(prev => [
+      ...prev,
+      {
+        ingredientId: selectedIngredient.id,
+        ingredientName: selectedIngredient.name,
+        quantityUsed: qty,
+        unit,
+      },
+    ]);
+    setSelectedIngredient(null);
+    setIngredientQuantity('');
+    setIngredientUnit('');
+    setShowIngredientModal(false);
+  };
+
   const addIngredient = () => {
     if (!selectedIngredient || !ingredientQuantity || parseFloat(ingredientQuantity) <= 0) return;
     const existing = ingredients.find(i => i.ingredientId === selectedIngredient.id);
@@ -129,19 +159,38 @@ export const CreateRecipeScreen: React.FC = () => {
       showToast('Este ingrediente já foi adicionado', 'warning');
       return;
     }
-    setIngredients(prev => [
-      ...prev,
-      {
-        ingredientId: selectedIngredient.id,
-        ingredientName: selectedIngredient.name,
-        quantityUsed: parseFloat(ingredientQuantity),
-        unit: ingredientUnit || selectedIngredient.unit,
-      },
-    ]);
-    setSelectedIngredient(null);
-    setIngredientQuantity('');
-    setIngredientUnit('');
-    setShowIngredientModal(false);
+
+    const qty = parseFloat(ingredientQuantity);
+    const unit = ingredientUnit || selectedIngredient.unit;
+    const qtyInPurchaseUnit = convertToSameUnit(qty, unit, selectedIngredient.unit);
+    const ratio = qtyInPurchaseUnit / selectedIngredient.purchaseQuantity;
+
+    if (ratio > 3) {
+      const pkgCount = ratio.toFixed(1);
+      Alert.alert(
+        'Quantidade alta',
+        `Você está usando ${qty} ${unit} de ${selectedIngredient.name}.\n\nIsso equivale a ${pkgCount}x a embalagem (${selectedIngredient.purchaseQuantity} ${selectedIngredient.unit}).\n\nEstá correto?`,
+        [
+          { text: 'Corrigir', style: 'cancel' },
+          { text: 'Sim, está certo', onPress: confirmAndAddIngredient },
+        ]
+      );
+      return;
+    }
+
+    if (ratio < 0.01) {
+      Alert.alert(
+        'Quantidade muito baixa',
+        `Você está usando ${qty} ${unit} de ${selectedIngredient.name}.\n\nIsso é menos de 1% da embalagem (${selectedIngredient.purchaseQuantity} ${selectedIngredient.unit}).\n\nEstá correto?`,
+        [
+          { text: 'Corrigir', style: 'cancel' },
+          { text: 'Sim, está certo', onPress: confirmAndAddIngredient },
+        ]
+      );
+      return;
+    }
+
+    confirmAndAddIngredient();
   };
 
   const removeIngredient = (id: string) => {
