@@ -219,7 +219,22 @@ export function UserDataPage({ userId, onBack }: Props) {
                             <p className="font-semibold text-primary-600">{fmtCurrency(sellingPrice)}</p>
                           </div>
                         </div>
-                        <p className="text-xs text-gray-400">Criada em {fmtDate(r.createdAt)}</p>
+                        {r.ingredients && r.ingredients.length > 0 && (
+                          <div className="mt-3 border-t border-gray-200 pt-3">
+                            <p className="text-xs font-semibold text-gray-500 mb-2">Ingredientes</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                              {r.ingredients.map((ing, idx) => (
+                                <div key={idx} className="flex items-center justify-between bg-white rounded px-3 py-1.5 text-sm">
+                                  <span className="text-gray-700">{ing.name}</span>
+                                  <span className="text-gray-500 font-medium ml-2 shrink-0">
+                                    {ing.quantityUsed} {ing.unit}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        <p className="text-xs text-gray-400 mt-3">Criada em {fmtDate(r.createdAt)}</p>
                       </div>
                     )}
                   </div>

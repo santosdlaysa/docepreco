@@ -103,6 +103,12 @@ export interface UsersResponse {
   limit: number;
 }
 
+export interface RecipeIngredient {
+  name: string;
+  quantityUsed: number;
+  unit: string;
+}
+
 export interface UserRecipe {
   id: string;
   name: string;
@@ -112,6 +118,7 @@ export interface UserRecipe {
   updatedAt: string;
   ingredientCount: number;
   totalCost: number;
+  ingredients: RecipeIngredient[];
 }
 
 export interface UserIngredient {
