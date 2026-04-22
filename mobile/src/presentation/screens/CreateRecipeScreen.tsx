@@ -32,11 +32,33 @@ import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { usePremium } from '../context/PremiumContext';
+import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggestedRecipes';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
 
-const DEFAULT_ADDITIONAL_COSTS = ['Embalagem', 'Gas', 'Energia', 'Mao de obra'];
+const DEFAULT_ADDITIONAL_COSTS = [
+  {
+    name: 'Embalagem',
+    icon: 'gift-outline' as const,
+    hint: 'Some caixas, sacolas, fitas, papel. Ex: se a caixa custa R$1,50 e usa 10, coloque R$15.',
+  },
+  {
+    name: 'Gas',
+    icon: 'flame-outline' as const,
+    hint: 'Divida sua conta de gas pelo numero de receitas que faz no mes. Ex: conta R$80 / 20 receitas = R$4.',
+  },
+  {
+    name: 'Energia',
+    icon: 'flash-outline' as const,
+    hint: 'Mesmo calculo do gas. Ex: conta R$150 / 20 receitas = R$7,50 por receita.',
+  },
+  {
+    name: 'Mao de obra',
+    icon: 'time-outline' as const,
+    hint: 'Quanto voce quer ganhar por hora? Multiplique pelo tempo. Ex: R$20/h x 2h = R$40.',
+  },
+];
 
 const MARGIN_PRESETS = [
   { value: 30,  label: 'Básico',      emoji: '🟢', desc: 'Cobre custos, lucro baixo' },
@@ -70,6 +92,8 @@ export const CreateRecipeScreen: React.FC = () => {
   const [laborExpanded, setLaborExpanded] = useState(false);
   const [hourlyRate, setHourlyRate] = useState('');
   const [prepTimeMinutes, setPrepTimeMinutes] = useState('');
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [applyingSuggestion, setApplyingSuggestion] = useState(false);
   const { showToast } = useToast();
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
@@ -234,6 +258,50 @@ export const CreateRecipeScreen: React.FC = () => {
     return 0;
   })();
 
+  const handleSelectSuggestion = async (suggestion: SuggestedRecipe) => {
+    if (!requirePremium('smartShoppingList')) return;
+    setShowSuggestions(false);
+    setApplyingSuggestion(true);
+    try {
+      setName(suggestion.name);
+      setYieldAmount(String(suggestion.yield));
+      setProfitMargin(String(suggestion.profitMargin));
+
+      // Reload current ingredients from API to match by name
+      const existing = await iApi.getAll();
+      const recipeIngredients: RecipeIngredient[] = [];
+
+      for (const si of suggestion.ingredients) {
+        const normalizedName = si.name.toLowerCase().trim();
+        let found = existing.find(e => e.name.toLowerCase().trim() === normalizedName);
+        if (!found) {
+          // Auto-create the ingredient
+          found = await iApi.create({
+            name: si.name,
+            purchaseQuantity: si.purchaseQuantity,
+            purchasePrice: si.purchasePrice,
+            unit: si.unit,
+          });
+          existing.push(found);
+        }
+        recipeIngredients.push({
+          ingredientId: found.id,
+          ingredientName: found.name,
+          quantityUsed: si.quantityUsed,
+          unit: si.unit,
+        });
+      }
+
+      setIngredients(recipeIngredients);
+      setAvailableIngredients(existing);
+      showToast('Receita preenchida! Revise os dados e salve.', 'success');
+    } catch {
+      showToast('Erro ao aplicar sugestão', 'error');
+    } finally {
+      setApplyingSuggestion(false);
+    }
+  };
+
   const handleToggleLabor = () => {
     if (!laborExpanded) {
       if (!requirePremium('laborCostCalc')) return;
@@ -322,9 +390,62 @@ export const CreateRecipeScreen: React.FC = () => {
               label="Nome da receita *"
               placeholder="Ex: Brigadeiro, Bolo de Pote..."
               value={name}
-              onChangeText={setName}
+              onChangeText={(text) => { setName(text); setShowSuggestions(false); }}
               error={errors.name}
             />
+            {!isEditing && (
+              <TouchableOpacity
+                onPress={() => setShowSuggestions(!showSuggestions)}
+                style={styles.suggestionsToggle}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="sparkles" size={16} color={isPremium ? colors.primary : colors.textMuted} />
+                <Text style={[styles.suggestionsToggleText, !isPremium && { color: colors.textMuted }]}>
+                  Sugestoes de receitas
+                </Text>
+                {!isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#fff" />
+                    <Text style={styles.premiumBadgeText}>Premium</Text>
+                  </View>
+                )}
+                <Ionicons
+                  name={showSuggestions ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={isPremium ? colors.primary : colors.textMuted}
+                />
+              </TouchableOpacity>
+            )}
+            {showSuggestions && (
+              <View style={styles.suggestionsContainer}>
+                {applyingSuggestion ? (
+                  <View style={styles.suggestionsLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.suggestionsLoadingText}>Preparando receita...</Text>
+                  </View>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.suggestionsScroll}
+                  >
+                    {SUGGESTED_RECIPES.map((recipe) => (
+                      <TouchableOpacity
+                        key={recipe.name}
+                        onPress={() => handleSelectSuggestion(recipe)}
+                        style={styles.suggestionChip}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.suggestionChipName}>{recipe.name}</Text>
+                        <Text style={styles.suggestionChipInfo}>
+                          {recipe.ingredients.length} ingr. · {recipe.yield} un
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
             <Input
               label="Quantidade produzida *"
               placeholder="20"
@@ -400,16 +521,23 @@ export const CreateRecipeScreen: React.FC = () => {
           <Card style={styles.section}>
             <Text style={styles.sectionTitle}>Custos Adicionais</Text>
             <Text style={styles.sectionSubtitle}>Opcional — adicione valores se aplicavel</Text>
-            {DEFAULT_ADDITIONAL_COSTS.map(costName => (
-              <Input
-                key={costName}
-                label={costName}
-                placeholder="0,00"
-                value={getAdditionalCostValue(costName)}
-                onChangeText={val => updateAdditionalCost(costName, val)}
-                keyboardType="decimal-pad"
-                suffix="R$"
-              />
+            {DEFAULT_ADDITIONAL_COSTS.map(cost => (
+              <View key={cost.name}>
+                <View style={styles.costInputRow}>
+                  <Ionicons name={cost.icon} size={18} color={colors.primary} style={styles.costIcon} />
+                  <View style={styles.costInputWrapper}>
+                    <Input
+                      label={cost.name}
+                      placeholder="0,00"
+                      value={getAdditionalCostValue(cost.name)}
+                      onChangeText={val => updateAdditionalCost(cost.name, val)}
+                      keyboardType="decimal-pad"
+                      suffix="R$"
+                    />
+                  </View>
+                </View>
+                <Text style={styles.costHint}>{cost.hint}</Text>
+              </View>
             ))}
           </Card>
 
@@ -745,6 +873,75 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     flex: 1,
     lineHeight: 18,
+  },
+  costInputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  costIcon: {
+    marginTop: 32,
+    marginRight: 8,
+  },
+  costInputWrapper: {
+    flex: 1,
+  },
+  costHint: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginTop: -8,
+    marginBottom: 12,
+    marginLeft: 26,
+    lineHeight: 16,
+  },
+  suggestionsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  suggestionsToggleText: {
+    ...typography.bodySmall,
+    color: colors.primary,
+    fontWeight: '600',
+    flex: 1,
+  },
+  suggestionsContainer: {
+    marginBottom: 8,
+  },
+  suggestionsScroll: {
+    gap: 8,
+    paddingVertical: 4,
+  },
+  suggestionChip: {
+    backgroundColor: colors.cream,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minWidth: 130,
+  },
+  suggestionChipName: {
+    ...typography.bodySmall,
+    color: colors.text,
+    fontWeight: '700',
+  },
+  suggestionChipInfo: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  suggestionsLoading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+  },
+  suggestionsLoadingText: {
+    ...typography.bodySmall,
+    color: colors.primary,
   },
   laborHeader: {
     flexDirection: 'row',
