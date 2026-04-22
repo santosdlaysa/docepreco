@@ -109,10 +109,19 @@ export function AppNavigator() {
     })();
   }, []);
 
-  // Registra push token sempre que o usuario entra no app (apos login/registro)
+  // Carrega o nome da confeiteira do storage ao entrar no app (login/registro)
   useEffect(() => {
-    if (authState === 'app' && !demoMode) {
-      void registerPushToken();
+    if (authState === 'app') {
+      if (!demoMode) {
+        void registerPushToken();
+      }
+      if (!companyName) {
+        tokenStorage.getUser().then(user => {
+          if (user?.companyName) {
+            setCompanyName(user.companyName);
+          }
+        });
+      }
     }
   }, [authState]);
 
