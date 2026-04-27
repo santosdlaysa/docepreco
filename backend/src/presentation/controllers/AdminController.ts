@@ -95,7 +95,7 @@ export class AdminController {
     let idx = 1;
 
     if (search) {
-      conditions.push(`(u.company_name ILIKE $${idx} OR u.email ILIKE $${idx})`);
+      conditions.push(`(u.company_name ILIKE $${idx} OR u.email ILIKE $${idx} OR u.phone ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -112,6 +112,7 @@ export class AdminController {
             u.id,
             u.company_name              AS "companyName",
             u.email,
+            u.phone,
             u.created_at               AS "createdAt",
             u.is_premium               AS "isPremium",
             u.premium_until            AS "premiumUntil",
@@ -164,6 +165,7 @@ export class AdminController {
             u.id,
             u.company_name              AS "companyName",
             u.email,
+            u.phone,
             u.created_at               AS "createdAt",
             u.is_premium               AS "isPremium",
             u.premium_until            AS "premiumUntil",

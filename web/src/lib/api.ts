@@ -75,6 +75,7 @@ export interface AdminUser {
   id: string;
   companyName: string;
   email: string;
+  phone: string | null;
   createdAt: string;
   isPremium: boolean;
   premiumUntil: string | null;

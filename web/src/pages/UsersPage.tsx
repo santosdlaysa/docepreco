@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -98,6 +98,12 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
             <div>
               <p className="font-semibold text-gray-900">{user.companyName}</p>
               <p className="text-sm text-gray-500">{user.email}</p>
+              {user.phone && (
+                <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                  <Phone size={13} className="text-gray-400" />
+                  {user.phone}
+                </p>
+              )}
               <p className="text-xs text-gray-400 mt-1">Cadastrado em {fmtDate(user.createdAt)}</p>
               {user.lastSeenAt && (
                 <p className="text-xs text-gray-400">Último acesso: {new Date(user.lastSeenAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(user.lastSeenAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
@@ -287,11 +293,12 @@ export function UsersPage({ toast, onImpersonate }: Props) {
       {/* Tabela */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[800px]">
+          <table className="w-full text-sm min-w-[900px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Confeitaria</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Email</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Telefone</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Plano</th>
                 <ColHeader label="Receitas"      sortKey="recipeCount" />
                 <ColHeader label="Ingredientes"  sortKey="ingredientCount" />
@@ -314,14 +321,14 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             <tbody className="divide-y divide-gray-100">
               {loading && (
                 <tr>
-                  <td colSpan={9}>
+                  <td colSpan={10}>
                     <TableSkeleton rows={8} cols={8} />
                   </td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
+                  <td colSpan={10} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
                 </tr>
               )}
               {!loading && users.map((u, i) => (
@@ -333,6 +340,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                 >
                   <td className="px-4 py-3 font-medium text-gray-900">{u.companyName}</td>
                   <td className="px-4 py-3 text-gray-500">{u.email}</td>
+                  <td className="px-4 py-3 text-gray-500">{u.phone || '—'}</td>
                   <td className="px-4 py-3">
                     <PremiumBadge isPremium={u.isPremium} platform={u.premiumPlatform} />
                   </td>
