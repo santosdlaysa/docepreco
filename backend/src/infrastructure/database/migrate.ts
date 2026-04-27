@@ -345,6 +345,15 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
 
+    // Rename yield -> recipe_yield (yield is a reserved word in PostgreSQL)
+    const hasYieldCol = await client.query(
+      `SELECT 1 FROM information_schema.columns WHERE table_name = 'featured_recipes' AND column_name = 'yield'`
+    );
+    if (hasYieldCol.rows.length > 0) {
+      await client.query(`ALTER TABLE featured_recipes RENAME COLUMN "yield" TO recipe_yield`);
+      console.log('Renamed featured_recipes.yield -> recipe_yield');
+    }
+
     // Schedule config for notification templates
     await addColumnIfMissing(client, 'notification_templates', 'schedule_type', "VARCHAR(20) NOT NULL DEFAULT 'daily'");
     await addColumnIfMissing(client, 'notification_templates', 'schedule_hour', 'INTEGER');
