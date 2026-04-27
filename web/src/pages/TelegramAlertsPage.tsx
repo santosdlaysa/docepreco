@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, TelegramAlert } from '../lib/api';
-import { TableSkeleton, ToastFn } from '../components';
-import { ToggleLeft, ToggleRight, Bell, BarChart3 } from 'lucide-react';
+import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
+import { ToggleLeft, ToggleRight, Bell, BarChart3, Plus, Pencil, Trash2 } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -24,9 +24,15 @@ const KEY_EMOJIS: Record<string, string> = {
   goal_progress: '🎯',
 };
 
+const EMPTY = { key: '', label: '', description: '', isEnabled: true, category: 'alerts' };
+
 export function TelegramAlertsPage({ toast }: Props) {
   const [alerts, setAlerts] = useState<TelegramAlert[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editing, setEditing] = useState<TelegramAlert | null>(null);
+  const [form, setForm] = useState(EMPTY);
+  const [confirmDelete, setConfirmDelete] = useState<TelegramAlert | null>(null);
 
   const load = async () => {
     try {
@@ -50,13 +56,59 @@ export function TelegramAlertsPage({ toast }: Props) {
     }
   };
 
+  const openNew = () => {
+    setEditing(null);
+    setForm({ ...EMPTY });
+    setShowModal(true);
+  };
+
+  const openEdit = (a: TelegramAlert) => {
+    setEditing(a);
+    setForm({ key: a.key, label: a.label, description: a.description, isEnabled: a.isEnabled, category: a.category });
+    setShowModal(true);
+  };
+
+  const save = async () => {
+    try {
+      if (editing) {
+        await api.updateTelegramAlert(editing.id, { label: form.label, description: form.description });
+        toast.success('Alerta atualizado!');
+      } else {
+        await api.createTelegramAlert(form);
+        toast.success('Alerta criado!');
+      }
+      setShowModal(false);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const remove = async (a: TelegramAlert) => {
+    try {
+      await api.deleteTelegramAlert(a.id);
+      toast.success('Alerta excluído.');
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
   const categories = [...new Set(alerts.map(a => a.category))];
+  // Garante que alerts e reports aparecem mesmo se vazio
+  if (!categories.includes('alerts')) categories.unshift('alerts');
+  if (!categories.includes('reports')) categories.push('reports');
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900">Telegram</h2>
-        <p className="text-sm text-gray-500 mt-1">Controle quais alertas e relatórios são enviados para o Telegram.</p>
+      <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900">Telegram</h2>
+          <p className="text-sm text-gray-500 mt-1">Controle quais alertas e relatórios são enviados para o Telegram.</p>
+        </div>
+        <button onClick={openNew} className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
+          <Plus size={16} /> Novo alerta
+        </button>
       </div>
 
       {loading ? (
@@ -79,32 +131,100 @@ export function TelegramAlertsPage({ toast }: Props) {
                 </div>
                 <span className="text-xs text-gray-400">{enabledCount}/{items.length} ativos</span>
               </div>
-              <div className="divide-y divide-gray-50">
-                {items.map(a => (
-                  <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
-                    <button onClick={() => toggle(a)} className="shrink-0">
-                      {a.isEnabled ? (
-                        <ToggleRight size={28} className="text-green-500" />
-                      ) : (
-                        <ToggleLeft size={28} className="text-gray-300" />
-                      )}
-                    </button>
-                    <span className="text-xl shrink-0">{KEY_EMOJIS[a.key] ?? '📌'}</span>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-medium text-gray-900">{a.label}</p>
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded ${a.isEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                          {a.isEnabled ? 'ON' : 'OFF'}
-                        </span>
+              {items.length === 0 ? (
+                <p className="text-center text-gray-400 py-6 text-sm">Nenhum alerta nesta categoria</p>
+              ) : (
+                <div className="divide-y divide-gray-50">
+                  {items.map(a => (
+                    <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                      <button onClick={() => toggle(a)} className="shrink-0">
+                        {a.isEnabled ? (
+                          <ToggleRight size={28} className="text-green-500" />
+                        ) : (
+                          <ToggleLeft size={28} className="text-gray-300" />
+                        )}
+                      </button>
+                      <span className="text-xl shrink-0">{KEY_EMOJIS[a.key] ?? '📌'}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-medium text-gray-900">{a.label}</p>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${a.isEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {a.isEnabled ? 'ON' : 'OFF'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">{a.description}</p>
                       </div>
-                      <p className="text-xs text-gray-500 mt-0.5">{a.description}</p>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => openEdit(a)} className="inline-flex items-center text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                          <Pencil size={12} />
+                        </button>
+                        <button onClick={() => setConfirmDelete(a)} className="inline-flex items-center text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })
+      )}
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        title="Excluir alerta"
+        message={`Tem certeza que deseja excluir "${confirmDelete?.label}"?`}
+        confirmLabel="Excluir"
+        confirmColor="red"
+        onConfirm={() => { if (confirmDelete) remove(confirmDelete); setConfirmDelete(null); }}
+        onCancel={() => setConfirmDelete(null)}
+      />
+
+      {showModal && (
+        <ModalOverlay onClose={() => setShowModal(false)}>
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 mb-4">
+              {editing ? 'Editar alerta' : 'Novo alerta'}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Chave</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  value={form.key} onChange={e => setForm({ ...form, key: e.target.value.replace(/\s/g, '_').toLowerCase() })}
+                  placeholder="ex: custom_alert" disabled={!!editing} />
+                {!editing && <p className="text-xs text-gray-400 mt-1">Identificador único usado no código para checar se está ativo</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Ex: Alerta de estoque" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Quando isso deve ser disparado?" />
+              </div>
+              {!editing && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                    value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
+                    <option value="alerts">Alertas em tempo real</option>
+                    <option value="reports">Relatórios periódicos</option>
+                  </select>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+              <button onClick={save} disabled={!form.key || !form.label}
+                className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium">
+                {editing ? 'Salvar' : 'Criar'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
       )}
     </div>
   );

@@ -332,8 +332,12 @@ export const api = {
 
   // ── Telegram Alerts ──
   listTelegramAlerts: () => req<TelegramAlert[]>('/admin/telegram-alerts'),
+  createTelegramAlert: (data: { key: string; label: string; description: string; isEnabled: boolean; category: string }) =>
+    req<TelegramAlert>('/admin/telegram-alerts', { method: 'POST', body: JSON.stringify(data) }),
   updateTelegramAlert: (id: string, data: Partial<TelegramAlert>) =>
     req<TelegramAlert>(`/admin/telegram-alerts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteTelegramAlert: (id: string) =>
+    req<void>(`/admin/telegram-alerts/${id}`, { method: 'DELETE' }),
 
   // ── Onboarding ──
   listOnboarding: () => req<OnboardingStep[]>('/admin/onboarding'),

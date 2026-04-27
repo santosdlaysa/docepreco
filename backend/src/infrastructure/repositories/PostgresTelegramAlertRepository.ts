@@ -22,6 +22,19 @@ export class PostgresTelegramAlertRepository {
     return result.rows[0].is_enabled as boolean;
   }
 
+  async create(data: { key: string; label: string; description: string; isEnabled: boolean; category: string }): Promise<TelegramAlert> {
+    const result = await pool.query(
+      `INSERT INTO telegram_alerts (key, label, description, is_enabled, category) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [data.key, data.label, data.description, data.isEnabled, data.category ?? 'alerts']
+    );
+    return this.mapRow(result.rows[0]);
+  }
+
+  async delete(id: string): Promise<boolean> {
+    const result = await pool.query('DELETE FROM telegram_alerts WHERE id = $1', [id]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async update(id: string, data: Partial<{ label: string; description: string; isEnabled: boolean }>): Promise<TelegramAlert | null> {
     const result = await pool.query(
       `UPDATE telegram_alerts SET
