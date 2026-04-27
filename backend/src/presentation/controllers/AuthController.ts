@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
+import { User } from '../../domain/entities/User';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
@@ -10,7 +11,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { companyName, email, password } = req.body;
+      const { companyName, email, password, phone } = req.body;
       if (!companyName || !email || !password) {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
         return;
@@ -23,12 +24,19 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Senha deve ter pelo menos 6 caracteres' });
         return;
       }
+      if (phone !== undefined && phone !== null && phone !== '') {
+        const digits = String(phone).replace(/\D/g, '');
+        if (digits.length < 10 || digits.length > 13) {
+          res.status(400).json({ success: false, error: 'Número de celular inválido' });
+          return;
+        }
+      }
       const existing = await userRepo.findByEmail(email);
       if (existing) {
         res.status(409).json({ success: false, error: 'Email já cadastrado' });
         return;
       }
-      const user = await userRepo.create({ companyName, email, password });
+      const user = await userRepo.create({ companyName, email, password, phone });
       notifyNewUser(companyName, email);
       userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
@@ -122,7 +130,9 @@ export class AuthController {
 
   async updateProfile(req: Request & { userId?: string }, res: Response): Promise<void> {
     try {
-      const { instagramHandle } = req.body;
+      const { instagramHandle, phone } = req.body;
+      let user: (User & { passwordHash: string }) | null = null;
+
       if (instagramHandle !== undefined && instagramHandle !== null) {
         const handle = String(instagramHandle).replace(/^@/, '').trim();
         if (handle.length > 30) {
@@ -133,13 +143,29 @@ export class AuthController {
           res.status(400).json({ success: false, error: 'Instagram inválido (apenas letras, números, . e _)' });
           return;
         }
-        const user = await userRepo.updateInstagramHandle(req.userId!, handle || null);
-        if (!user) { res.status(404).json({ success: false, error: 'Usuário não encontrado' }); return; }
-        const { passwordHash, ...safeUser } = user;
-        res.json({ success: true, data: safeUser });
+        user = await userRepo.updateInstagramHandle(req.userId!, handle || null);
+      }
+
+      if (phone !== undefined) {
+        const cleanPhone = phone === null || phone === '' ? null : String(phone).replace(/\D/g, '');
+        if (cleanPhone !== null && (cleanPhone.length < 10 || cleanPhone.length > 13)) {
+          res.status(400).json({ success: false, error: 'Número de celular inválido' });
+          return;
+        }
+        user = await userRepo.updatePhone(req.userId!, cleanPhone);
+      }
+
+      if (!user) {
+        if (instagramHandle === undefined && phone === undefined) {
+          res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+          return;
+        }
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
         return;
       }
-      res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
+
+      const { passwordHash, ...safeUser } = user;
+      res.json({ success: true, data: safeUser });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });

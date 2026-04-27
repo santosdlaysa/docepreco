@@ -17,9 +17,10 @@ export class PostgresUserRepository {
 
   async create(data: RegisterDTO): Promise<User> {
     const passwordHash = await bcrypt.hash(data.password, 10);
+    const phone = data.phone?.replace(/\D/g, '') || null;
     const result = await pool.query(
-      `INSERT INTO users (company_name, email, password_hash) VALUES ($1, $2, $3) RETURNING *`,
-      [data.companyName, data.email.toLowerCase(), passwordHash]
+      `INSERT INTO users (company_name, email, password_hash, phone) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [data.companyName, data.email.toLowerCase(), passwordHash, phone]
     );
     return this.mapRow(result.rows[0]);
   }
@@ -32,6 +33,15 @@ export class PostgresUserRepository {
     const result = await pool.query(
       `UPDATE users SET instagram_handle = $2 WHERE id = $1 RETURNING *`,
       [userId, instagramHandle]
+    );
+    if (result.rows.length === 0) return null;
+    return this.mapRow(result.rows[0]);
+  }
+
+  async updatePhone(userId: string, phone: string | null): Promise<(User & { passwordHash: string }) | null> {
+    const result = await pool.query(
+      `UPDATE users SET phone = $2 WHERE id = $1 RETURNING *`,
+      [userId, phone]
     );
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
@@ -126,6 +136,7 @@ export class PostgresUserRepository {
       id: row.id as string,
       companyName: row.company_name as string,
       email: row.email as string,
+      phone: (row.phone as string | null) ?? null,
       instagramHandle: (row.instagram_handle as string | null) ?? null,
       passwordHash: row.password_hash as string,
       createdAt: (row.created_at as Date).toISOString(),

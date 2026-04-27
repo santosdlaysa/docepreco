@@ -25,6 +25,7 @@ interface Props {
 export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => {
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -38,6 +39,10 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       e.email = 'Email inválido';
     }
+    if (phone.trim()) {
+      const digits = phone.replace(/\D/g, '');
+      if (digits.length < 10 || digits.length > 13) e.phone = 'Número de celular inválido';
+    }
     if (!password || password.length < 6) e.password = 'Senha deve ter pelo menos 6 caracteres';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -47,7 +52,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     if (!validate()) return;
     setLoading(true);
     try {
-      const user = await authApi.register(companyName.trim(), email.trim(), password);
+      const user = await authApi.register(companyName.trim(), email.trim(), password, phone.trim() || undefined);
       await identifyRevenueCatUser(user.id);
       onRegister();
     } catch (error) {
@@ -96,6 +101,14 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               keyboardType="email-address"
               autoCapitalize="none"
               error={errors.email}
+            />
+            <Input
+              label="Celular"
+              placeholder="(99) 99999-9999"
+              value={phone}
+              onChangeText={setPhone}
+              keyboardType="phone-pad"
+              error={errors.phone}
             />
             <Input
               label="Senha *"

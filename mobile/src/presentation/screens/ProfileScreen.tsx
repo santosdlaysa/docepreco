@@ -22,15 +22,18 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, isDemoMode } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
-  const [user, setUser] = useState<{ companyName: string; email: string; instagramHandle?: string | null } | null>(null);
+  const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [instagramInput, setInstagramInput] = useState('');
   const [savingInstagram, setSavingInstagram] = useState(false);
+  const [phoneInput, setPhoneInput] = useState('');
+  const [savingPhone, setSavingPhone] = useState(false);
 
   useEffect(() => {
     tokenStorage.getUser().then((u) => {
       setUser(u);
       setInstagramInput(u?.instagramHandle || '');
+      setPhoneInput(u?.phone || '');
     });
     void refresh();
     getNotificationsEnabled().then(setNotificationsOn);
@@ -63,6 +66,26 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
+  const handleSavePhone = async () => {
+    const digits = phoneInput.replace(/\D/g, '');
+    if (digits && (digits.length < 10 || digits.length > 13)) {
+      Alert.alert('Celular inválido', 'Informe um número válido com DDD');
+      return;
+    }
+    setSavingPhone(true);
+    try {
+      const updated = await authApi.updateProfile({ phone: digits || null });
+      setUser(updated);
+      setPhoneInput(updated.phone || '');
+      Alert.alert('Salvo', 'Celular atualizado com sucesso!');
+    } catch {
+      Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
+    } finally {
+      setSavingPhone(false);
+    }
+  };
+
+  const phoneChanged = (phoneInput.replace(/\D/g, '')) !== (user?.phone || '');
   const instagramChanged = (instagramInput.replace(/^@/, '').trim()) !== (user?.instagramHandle || '');
 
   const handleLogout = () => {
@@ -109,6 +132,41 @@ export const ProfileScreen: React.FC = () => {
                     <Ionicons name="sparkles" size={10} color="#fff" />
                     <Text style={styles.premiumBadgeText}>Premium</Text>
                   </View>
+                )}
+              </View>
+            </View>
+          </View>
+        </Card>
+
+        <Card style={styles.card}>
+          <View style={styles.menuItem}>
+            <View style={[styles.iconBadge, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="call-outline" size={20} color="#1976D2" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.menuText}>Celular</Text>
+              <View style={styles.instagramRow}>
+                <TextInput
+                  style={[styles.instagramInput, { marginLeft: 0 }]}
+                  placeholder="(99) 99999-9999"
+                  placeholderTextColor={colors.textMuted}
+                  value={phoneInput}
+                  onChangeText={setPhoneInput}
+                  keyboardType="phone-pad"
+                  maxLength={20}
+                />
+                {phoneChanged && (
+                  <TouchableOpacity
+                    style={styles.instagramSaveBtn}
+                    onPress={handleSavePhone}
+                    disabled={savingPhone}
+                  >
+                    {savingPhone ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Ionicons name="checkmark" size={18} color="#fff" />
+                    )}
+                  </TouchableOpacity>
                 )}
               </View>
             </View>

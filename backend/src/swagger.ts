@@ -51,6 +51,8 @@ const spec = {
           id: { type: 'string', format: 'uuid' },
           companyName: { type: 'string' },
           email: { type: 'string' },
+          phone: { type: 'string', nullable: true, description: 'Celular (apenas dígitos, 10-13 chars)' },
+          instagramHandle: { type: 'string', nullable: true },
           isPremium: { type: 'boolean' },
           premiumUntil: { type: 'string', nullable: true },
           premiumPlatform: { type: 'string', nullable: true },
@@ -343,7 +345,7 @@ const spec = {
     '/auth/register': {
       post: {
         tags: ['Auth'], summary: 'Registrar usuário',
-        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['companyName', 'email', 'password'], properties: { companyName: { type: 'string' }, email: { type: 'string' }, password: { type: 'string' } } } } } },
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['companyName', 'email', 'password'], properties: { companyName: { type: 'string' }, email: { type: 'string' }, password: { type: 'string' }, phone: { type: 'string', description: 'Celular (opcional, 10-13 dígitos)' } } } } } },
         responses: { 201: { description: 'Usuário criado + token JWT' }, 400: { description: 'Dados inválidos ou email já existe' } },
       },
     },
@@ -352,6 +354,13 @@ const spec = {
         tags: ['Auth'], summary: 'Login',
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['email', 'password'], properties: { email: { type: 'string' }, password: { type: 'string' } } } } } },
         responses: { 200: { description: 'Token JWT (30 dias)' }, 401: { description: 'Credenciais inválidas' } },
+      },
+    },
+    '/auth/profile': {
+      patch: {
+        tags: ['Auth'], summary: 'Atualizar perfil', security: [{ BearerAuth: [] }],
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { instagramHandle: { type: 'string', nullable: true, description: 'Handle do Instagram (sem @)' }, phone: { type: 'string', nullable: true, description: 'Celular (10-13 dígitos). Enviar null ou "" para remover' } } } } } },
+        responses: { 200: { description: 'Perfil atualizado', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } }, 400: { description: 'Dados inválidos' } },
       },
     },
     '/auth/me': {

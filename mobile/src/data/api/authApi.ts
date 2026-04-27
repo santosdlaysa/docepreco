@@ -7,6 +7,7 @@ export interface AuthUser {
   id: string;
   companyName: string;
   email: string;
+  phone: string | null;
   instagramHandle: string | null;
   isPremium: boolean;
   premiumUntil: string | null;
@@ -17,6 +18,7 @@ const normalizeUser = (raw: any): AuthUser => ({
   id: raw.id,
   companyName: raw.companyName,
   email: raw.email,
+  phone: raw.phone ?? null,
   instagramHandle: raw.instagramHandle ?? null,
   isPremium: Boolean(raw.isPremium),
   premiumUntil: raw.premiumUntil ?? null,
@@ -24,8 +26,8 @@ const normalizeUser = (raw: any): AuthUser => ({
 });
 
 export const authApi = {
-  register: async (companyName: string, email: string, password: string): Promise<AuthUser> => {
-    const response = await apiClient.post('/auth/register', { companyName, email, password });
+  register: async (companyName: string, email: string, password: string, phone?: string): Promise<AuthUser> => {
+    const response = await apiClient.post('/auth/register', { companyName, email, password, phone });
     const { user, token } = response.data.data;
     const normalized = normalizeUser(user);
     await tokenStorage.saveToken(token);
@@ -59,7 +61,7 @@ export const authApi = {
     return response.data.message;
   },
 
-  updateProfile: async (data: { instagramHandle?: string | null }): Promise<AuthUser> => {
+  updateProfile: async (data: { instagramHandle?: string | null; phone?: string | null }): Promise<AuthUser> => {
     const response = await apiClient.patch('/auth/profile', data);
     const normalized = normalizeUser(response.data.data);
     await tokenStorage.saveUser(normalized);
