@@ -6,12 +6,14 @@ Aplicativo mobile para precificacao de doces, desenvolvido para confeiteiras ini
 
 | Camada | Stack |
 |--------|-------|
-| **Mobile** | React Native + Expo 53 + TypeScript |
+| **Mobile** | React Native 0.83 + Expo 55 + TypeScript |
 | **Backend** | Node.js + Express + TypeScript |
 | **Banco de dados** | PostgreSQL (UUID) |
 | **Arquitetura** | Clean Architecture (Domain/Application/Infrastructure/Presentation) |
 | **Assinaturas** | RevenueCat (react-native-purchases) |
 | **Monitoramento** | Sentry (@sentry/react-native) |
+| **Notificacoes** | Expo Notifications + Push Tokens |
+| **Email** | Resend |
 | **Deploy** | Render (backend) + EAS (mobile builds) |
 
 ## Funcionalidades
@@ -35,6 +37,9 @@ Aplicativo mobile para precificacao de doces, desenvolvido para confeiteiras ini
 - Sistema de pedidos/agendamentos
 - Calculo de mao de obra profissional
 - Lista de compras inteligente
+- Sugestoes de receitas com orientacao de custos
+- Precos sazonais (multiplicadores por temporada)
+- Historico de precos de ingredientes
 
 **Planos:** Mensal (R$ 14,90) | Anual (R$ 89,90)
 
@@ -90,12 +95,64 @@ docepreco/
 | POST | `/` | Registrar venda |
 | DELETE | `/:id` | Excluir venda |
 
+### Metas (`/api/goals`) - requer auth
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/?month=X&year=Y` | Obter meta de receita do mes |
+| PUT | `/` | Criar/atualizar meta mensal |
+
+### Temporadas (`/api/seasons`) - requer auth
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/` | Listar temporadas |
+| GET | `/:id` | Detalhe da temporada |
+| POST | `/` | Criar temporada |
+| PUT | `/:id` | Atualizar temporada |
+| DELETE | `/:id` | Excluir temporada |
+
+### Historico de Precos (`/api/ingredients/:id/price-history`) - requer auth
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/` | Listar historico de precos do ingrediente |
+
+### Push Tokens (`/api/push-tokens`) - requer auth
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| POST | `/register` | Registrar token de push |
+| POST | `/unregister` | Remover token de push |
+
+### Banners (`/api/banners`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar banners ativos (publico) |
+| GET | `/` | Listar todos (admin) |
+| POST | `/` | Criar banner (admin) |
+| PUT | `/:id` | Atualizar banner (admin) |
+| DELETE | `/:id` | Excluir banner (admin) |
+
+### Notificacoes (`/api/notifications`) - admin
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/` | Listar notificacoes |
+| POST | `/` | Criar notificacao |
+| POST | `/send` | Enviar notificacao push |
+| DELETE | `/:id` | Excluir notificacao |
+
+### Dicas (`/api/tips`) - admin
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar dicas ativas (publico) |
+| GET | `/` | Listar todas (admin) |
+| POST | `/` | Criar dica (admin) |
+| PUT | `/:id` | Atualizar dica (admin) |
+| DELETE | `/:id` | Excluir dica (admin) |
+
 ### Outros
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
 | GET | `/api/stats` | Dashboard de estatisticas |
-| POST | `/api/webhooks/revenuecat` | Webhook do RevenueCat |
-| POST | `/api/admin/users/:id/premium` | Admin: toggle premium |
+| POST | `/api/premium/webhooks/revenuecat` | Webhook do RevenueCat |
+| POST | `/api/premium/admin/users/:id/premium` | Admin: toggle premium |
 | GET | `/health` | Health check |
 
 ## Telas do App
@@ -104,13 +161,21 @@ docepreco/
 |------|-----------|
 | Onboarding | Introducao para novos usuarios |
 | Login / Registro | Autenticacao com email e senha |
+| Esqueci a Senha | Recuperacao de senha por email |
 | Home | Dashboard com stats, acoes rapidas e banners |
-| Receitas | Listagem, criacao e edicao de receitas |
+| Receitas | Listagem, criacao e edicao de receitas (com sugestoes) |
 | Detalhe da Receita | Calculo completo, compartilhar PDF |
 | Ingredientes | Listagem, criacao e edicao de ingredientes |
+| Historico de Precos | Evolucao de preco de um ingrediente ao longo do tempo |
 | Vendas | Registro e historico de vendas por periodo |
+| Clientes | Gestao de clientes (contato, aniversario, WhatsApp) |
+| Pedidos | Gestao de pedidos/agendamentos |
+| Relatorios | Graficos e analise de desempenho |
+| Temporadas | Multiplicadores de preco sazonais |
+| Config. PDF | Personalizacao do PDF de orcamento |
 | Perfil | Info do usuario, status premium, suporte WhatsApp |
 | Paywall | Tela de assinatura premium |
+| Premium Ad | Promocao do plano premium (pos-login) |
 | Politica de Privacidade | Texto da politica |
 
 ## Como Rodar
@@ -154,6 +219,11 @@ REVENUECAT_WEBHOOK_SECRET=<token>
 ADMIN_SECRET=<token>
 TELEGRAM_BOT_TOKEN=<token do bot>
 TELEGRAM_CHAT_ID=<id do chat/grupo>
+RESEND_API_KEY=<chave da API Resend>
+ASC_ISSUER_ID=<Apple App Store Connect issuer ID>
+ASC_KEY_ID=<App Store Connect key ID>
+ASC_PRIVATE_KEY=<App Store Connect private key>
+ASC_VENDOR_NUMBER=<App Store Connect vendor number>
 ```
 
 ### Mobile (`.env` / EAS Secrets)
@@ -169,12 +239,23 @@ EXPO_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
 
 | Tabela | Descricao |
 |--------|-----------|
-| `users` | Usuarios (email, senha, empresa, status premium) |
+| `users` | Usuarios (email, senha, empresa, status premium, last_seen_at) |
 | `ingredients` | Ingredientes (nome, qtd compra, preco, unidade) |
+| `ingredient_price_history` | Historico de precos de ingredientes |
 | `recipes` | Receitas (nome, rendimento, margem de lucro) |
 | `recipe_ingredients` | Ingredientes da receita (quantidade usada) |
 | `recipe_additional_costs` | Custos adicionais da receita |
 | `sales` | Vendas (receita, quantidade, preco, data) |
+| `revenue_goals` | Metas de receita mensal (por usuario/mes/ano) |
+| `seasons` | Temporadas com multiplicadores de preco |
+| `password_reset_codes` | Codigos de recuperacao de senha |
+| `push_tokens` | Tokens de push notification por dispositivo |
+| `notifications` | Fila de notificacoes push |
+| `notification_templates` | Templates reutilizaveis de notificacao |
+| `banners` | Banners gerenciados pelo admin |
+| `motivational_tips` | Dicas motivacionais para usuarios |
+| `request_logs` | Log de requisicoes da API (monitoramento) |
+| `app_settings` | Configuracoes globais do app (key-value) |
 
 ## Integracao Premium (RevenueCat)
 
@@ -209,6 +290,23 @@ TELEGRAM_CHAT_ID=<id do chat/grupo>
 | **Erro no servidor** | Rota retorna status >= 500 | `🚨 Erro no servidor POST /api/sales Status: 500` |
 | **Rota lenta** | Rota demora > 2000ms | `🐢 Rota lenta GET /api/recipes Duracao: 3200ms` |
 
+### Comandos do Bot
+
+| Comando | Descricao |
+|---------|-----------|
+| `/ajuda` | Lista todos os comandos disponiveis |
+| `/downloads` | Stats de registros por periodo + split iOS/Android + dados App Store Connect |
+| `/premium` | Lista todos os usuarios premium com datas de expiracao |
+| `/vendashoje` | Resumo de vendas do dia |
+| `/top` | Top 10 usuarios por receita (ultimos 30 dias) |
+| `/erros` | Ultimos 10 erros do servidor (status 5xx) |
+| `/lentas` | Ultimas 10 rotas lentas (>2s) |
+| `/logs` | Ultimas 20 requisicoes da API |
+| `/atualizar` | Envio de email em massa para todos os usuarios |
+| `/relatorio` | Relatorio diario sob demanda |
+| `/semanal` | Relatorio semanal sob demanda |
+| `/meta` | Status da meta diaria de registros |
+
 ### Relatorios periodicos
 
 | Relatorio | Horario | Conteudo |
@@ -218,7 +316,8 @@ TELEGRAM_CHAT_ID=<id do chat/grupo>
 
 ### Arquitetura
 
-Todas as funcoes ficam em `backend/src/infrastructure/services/telegramService.ts` e sao chamadas nos controllers/middleware:
+Servico principal: `backend/src/infrastructure/services/telegramService.ts`
+Rotas de comandos: `backend/src/presentation/routes/telegramRoutes.ts`
 
 | Funcao | Onde e chamada |
 |--------|---------------|
@@ -232,6 +331,20 @@ Todas as funcoes ficam em `backend/src/infrastructure/services/telegramService.t
 | `sendWeeklyReport` | Cron `0 9 * * 1` (`server.ts`) |
 
 Todas as notificacoes sao **fire-and-forget** — nao bloqueiam a resposta da API nem causam erro se o Telegram estiver indisponivel.
+
+## Integracoes Externas
+
+### App Store Connect
+
+Integrado via JWT para consultar dados reais de downloads da App Store (usado pelo comando `/downloads` do Telegram).
+
+Variaveis necessarias: `ASC_ISSUER_ID`, `ASC_KEY_ID`, `ASC_PRIVATE_KEY`, `ASC_VENDOR_NUMBER`.
+
+### Resend (Email)
+
+Usado para envio de emails transacionais (recuperacao de senha) e campanhas em massa (comando `/atualizar`).
+
+Variavel necessaria: `RESEND_API_KEY`.
 
 ## Suporte
 
