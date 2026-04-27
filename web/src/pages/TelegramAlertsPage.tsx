@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, TelegramAlert } from '../lib/api';
 import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
-import { ToggleLeft, ToggleRight, Bell, BarChart3, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Bell, BarChart3, Plus, Pencil, Trash2, Clock } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -13,15 +13,8 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Bell; color:
 };
 
 const KEY_EMOJIS: Record<string, string> = {
-  new_user: '🆕',
-  new_sale: '🧁',
-  premium_event: '💎',
-  user_milestone: '🎉',
-  error_alert: '🚨',
-  slow_api: '🐢',
-  daily_report: '📊',
-  weekly_report: '📈',
-  goal_progress: '🎯',
+  new_user: '🆕', new_sale: '🧁', premium_event: '💎', user_milestone: '🎉',
+  error_alert: '🚨', slow_api: '🐢', daily_report: '📊', weekly_report: '📈', goal_progress: '🎯',
 };
 
 const KEY_VARS: Record<string, string[]> = {
@@ -36,7 +29,25 @@ const KEY_VARS: Record<string, string[]> = {
   goal_progress: ['progressBar', 'percent', 'today', 'goal', 'status', 'time'],
 };
 
-const EMPTY = { key: '', label: '', description: '', isEnabled: true, category: 'alerts', messageTemplate: '' };
+const CRON_PRESETS = [
+  { label: 'Todo dia às 8h', cron: '0 8 * * *' },
+  { label: 'Todo dia às 9h', cron: '0 9 * * *' },
+  { label: 'Todo dia às 10h', cron: '0 10 * * *' },
+  { label: 'Todo dia às 12h', cron: '0 12 * * *' },
+  { label: 'Todo dia às 18h', cron: '0 18 * * *' },
+  { label: 'Todo dia às 19h', cron: '0 19 * * *' },
+  { label: 'Todo dia às 20h', cron: '0 20 * * *' },
+  { label: 'Todo dia às 21h', cron: '0 21 * * *' },
+  { label: 'Segunda às 9h', cron: '0 9 * * 1' },
+  { label: 'Segunda às 8h', cron: '0 8 * * 1' },
+  { label: 'Sexta às 18h', cron: '0 18 * * 5' },
+  { label: '12h, 15h, 18h e 21h', cron: '0 12,15,18,21 * * *' },
+  { label: '9h, 12h, 15h, 18h', cron: '0 9,12,15,18 * * *' },
+  { label: 'A cada 3 horas', cron: '0 */3 * * *' },
+  { label: 'A cada 6 horas', cron: '0 */6 * * *' },
+];
+
+const EMPTY = { key: '', label: '', description: '', isEnabled: true, category: 'alerts', messageTemplate: '', scheduleCron: '', scheduleDescription: '' };
 
 export function TelegramAlertsPage({ toast }: Props) {
   const [alerts, setAlerts] = useState<TelegramAlert[]>([]);
@@ -47,13 +58,7 @@ export function TelegramAlertsPage({ toast }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<TelegramAlert | null>(null);
 
   const load = async () => {
-    try {
-      setAlerts(await api.listTelegramAlerts());
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
-    }
+    try { setAlerts(await api.listTelegramAlerts()); } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
   useEffect(() => { load(); }, []);
@@ -63,27 +68,30 @@ export function TelegramAlertsPage({ toast }: Props) {
       await api.updateTelegramAlert(a.id, { isEnabled: !a.isEnabled });
       toast.success(`${a.label} ${a.isEnabled ? 'desativado' : 'ativado'}!`);
       load();
-    } catch (e: any) {
-      toast.error(e.message);
-    }
+    } catch (e: any) { toast.error(e.message); }
   };
 
-  const openNew = () => {
-    setEditing(null);
-    setForm({ ...EMPTY });
-    setShowModal(true);
-  };
+  const openNew = () => { setEditing(null); setForm({ ...EMPTY }); setShowModal(true); };
 
   const openEdit = (a: TelegramAlert) => {
     setEditing(a);
-    setForm({ key: a.key, label: a.label, description: a.description, isEnabled: a.isEnabled, category: a.category, messageTemplate: a.messageTemplate ?? '' });
+    setForm({
+      key: a.key, label: a.label, description: a.description, isEnabled: a.isEnabled,
+      category: a.category, messageTemplate: a.messageTemplate ?? '',
+      scheduleCron: a.scheduleCron ?? '', scheduleDescription: a.scheduleDescription ?? '',
+    });
     setShowModal(true);
   };
 
   const save = async () => {
     try {
       if (editing) {
-        await api.updateTelegramAlert(editing.id, { label: form.label, description: form.description, messageTemplate: form.messageTemplate || null } as any);
+        await api.updateTelegramAlert(editing.id, {
+          label: form.label, description: form.description,
+          messageTemplate: form.messageTemplate || null,
+          scheduleCron: form.scheduleCron || null,
+          scheduleDescription: form.scheduleDescription || null,
+        } as any);
         toast.success('Alerta atualizado!');
       } else {
         await api.createTelegramAlert({ ...form, messageTemplate: form.messageTemplate || undefined } as any);
@@ -91,19 +99,15 @@ export function TelegramAlertsPage({ toast }: Props) {
       }
       setShowModal(false);
       load();
-    } catch (e: any) {
-      toast.error(e.message);
-    }
+    } catch (e: any) { toast.error(e.message); }
   };
 
   const remove = async (a: TelegramAlert) => {
-    try {
-      await api.deleteTelegramAlert(a.id);
-      toast.success('Alerta excluído.');
-      load();
-    } catch (e: any) {
-      toast.error(e.message);
-    }
+    try { await api.deleteTelegramAlert(a.id); toast.success('Alerta excluído.'); load(); } catch (e: any) { toast.error(e.message); }
+  };
+
+  const selectPreset = (preset: typeof CRON_PRESETS[0]) => {
+    setForm({ ...form, scheduleCron: preset.cron, scheduleDescription: preset.label });
   };
 
   const categories = [...new Set(alerts.map(a => a.category))];
@@ -111,23 +115,26 @@ export function TelegramAlertsPage({ toast }: Props) {
   if (!categories.includes('reports')) categories.push('reports');
 
   const vars = editing ? (KEY_VARS[editing.key] ?? []) : [];
+  const isReport = (editing?.category ?? form.category) === 'reports';
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Telegram</h2>
-          <p className="text-sm text-gray-500 mt-1">Controle quais alertas são enviados e personalize as mensagens.</p>
+          <p className="text-sm text-gray-500 mt-1">Controle alertas, mensagens e horários de envio do bot.</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
           <Plus size={16} /> Novo alerta
         </button>
       </div>
 
+      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-xs text-amber-700">
+        <strong>Nota:</strong> Alterações nos horários de disparo só entram em vigor após reiniciar o servidor.
+      </div>
+
       {loading ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <TableSkeleton rows={6} cols={2} />
-        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-4"><TableSkeleton rows={6} cols={2} /></div>
       ) : (
         categories.map(cat => {
           const cfg = CATEGORY_CONFIG[cat] ?? { label: cat, icon: Bell, color: 'text-gray-500' };
@@ -151,11 +158,7 @@ export function TelegramAlertsPage({ toast }: Props) {
                   {items.map(a => (
                     <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
                       <button onClick={() => toggle(a)} className="shrink-0">
-                        {a.isEnabled ? (
-                          <ToggleRight size={28} className="text-green-500" />
-                        ) : (
-                          <ToggleLeft size={28} className="text-gray-300" />
-                        )}
+                        {a.isEnabled ? <ToggleRight size={28} className="text-green-500" /> : <ToggleLeft size={28} className="text-gray-300" />}
                       </button>
                       <span className="text-xl shrink-0">{KEY_EMOJIS[a.key] ?? '📌'}</span>
                       <div className="flex-1 min-w-0">
@@ -166,6 +169,11 @@ export function TelegramAlertsPage({ toast }: Props) {
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">{a.description}</p>
+                        {a.scheduleDescription && (
+                          <p className="text-xs text-purple-500 mt-0.5 flex items-center gap-1">
+                            <Clock size={10} /> {a.scheduleDescription}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <button onClick={() => openEdit(a)} className="inline-flex items-center text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
@@ -184,15 +192,10 @@ export function TelegramAlertsPage({ toast }: Props) {
         })
       )}
 
-      <ConfirmModal
-        open={!!confirmDelete}
-        title="Excluir alerta"
-        message={`Tem certeza que deseja excluir "${confirmDelete?.label}"?`}
-        confirmLabel="Excluir"
-        confirmColor="red"
+      <ConfirmModal open={!!confirmDelete} title="Excluir alerta" message={`Tem certeza que deseja excluir "${confirmDelete?.label}"?`}
+        confirmLabel="Excluir" confirmColor="red"
         onConfirm={() => { if (confirmDelete) remove(confirmDelete); setConfirmDelete(null); }}
-        onCancel={() => setConfirmDelete(null)}
-      />
+        onCancel={() => setConfirmDelete(null)} />
 
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
@@ -210,7 +213,7 @@ export function TelegramAlertsPage({ toast }: Props) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
                 <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
-                  value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Ex: Alerta de estoque" />
+                  value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Ex: Relatório diário" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
@@ -228,14 +231,43 @@ export function TelegramAlertsPage({ toast }: Props) {
                 </div>
               )}
 
+              {/* Agendamento - só para relatórios */}
+              {isReport && (
+                <div className="border-t border-gray-100 pt-4">
+                  <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                    <Clock size={14} /> Horário de disparo
+                  </label>
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {CRON_PRESETS.map(p => (
+                      <button key={p.cron} onClick={() => selectPreset(p)}
+                        className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${form.scheduleCron === p.cron ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Cron expression</label>
+                      <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 outline-none"
+                        value={form.scheduleCron} onChange={e => setForm({ ...form, scheduleCron: e.target.value })} placeholder="0 8 * * *" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Descrição do horário</label>
+                      <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                        value={form.scheduleDescription} onChange={e => setForm({ ...form, scheduleDescription: e.target.value })} placeholder="Todo dia às 8h" />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Formato: minuto hora dia mês dia-semana (0=Dom, 1=Seg... 6=Sáb). Requer reiniciar o servidor.</p>
+                </div>
+              )}
+
               {/* Template da mensagem */}
               <div className="border-t border-gray-100 pt-4">
                 <label className="block text-sm font-bold text-gray-700 mb-1">Mensagem do Telegram</label>
-                <p className="text-xs text-gray-400 mb-2">Use {'{{variavel}}'} para inserir dados dinâmicos. Use \n para quebra de linha.</p>
+                <p className="text-xs text-gray-400 mb-2">Use {'{{variavel}}'} para dados dinâmicos. Use \n para quebra de linha.</p>
                 <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   rows={6} value={form.messageTemplate} onChange={e => setForm({ ...form, messageTemplate: e.target.value })}
                   placeholder="Ex: 🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}" />
-
                 {vars.length > 0 && (
                   <div className="mt-2">
                     <p className="text-xs font-medium text-gray-500 mb-1">Variáveis disponíveis:</p>

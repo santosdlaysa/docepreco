@@ -425,6 +425,8 @@ export interface TelegramAlert {
   isEnabled: boolean;
   category: string;
   messageTemplate: string | null;
+  scheduleCron: string | null;
+  scheduleDescription: string | null;
   createdAt: string;
 }
 
