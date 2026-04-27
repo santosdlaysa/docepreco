@@ -52,7 +52,7 @@ export class PostgresFeaturedRecipeRepository {
     try {
       await client.query('BEGIN');
       const res = await client.query(
-        `INSERT INTO featured_recipes (name, yield, profit_margin, is_active, sort_order)
+        `INSERT INTO featured_recipes (name, recipe_yield, profit_margin, is_active, sort_order)
          VALUES ($1, $2, $3, $4, $5) RETURNING *`,
         [data.name, data.yield, data.profitMargin, data.isActive, data.sortOrder]
       );
@@ -82,7 +82,7 @@ export class PostgresFeaturedRecipeRepository {
       const res = await client.query(
         `UPDATE featured_recipes SET
           name = COALESCE($2, name),
-          yield = COALESCE($3, yield),
+          recipe_yield = COALESCE($3, recipe_yield),
           profit_margin = COALESCE($4, profit_margin),
           is_active = COALESCE($5, is_active),
           sort_order = COALESCE($6, sort_order)
@@ -142,7 +142,7 @@ export class PostgresFeaturedRecipeRepository {
     return {
       id: row.id as string,
       name: row.name as string,
-      yield: row.yield as number,
+      yield: row.recipe_yield as number,
       profitMargin: parseFloat(row.profit_margin as string),
       isActive: row.is_active as boolean,
       sortOrder: row.sort_order as number,
