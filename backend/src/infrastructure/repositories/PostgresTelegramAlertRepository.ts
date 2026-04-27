@@ -7,6 +7,7 @@ export interface TelegramAlert {
   description: string;
   isEnabled: boolean;
   category: string;
+  messageTemplate: string | null;
   createdAt: string;
 }
 
@@ -22,10 +23,10 @@ export class PostgresTelegramAlertRepository {
     return result.rows[0].is_enabled as boolean;
   }
 
-  async create(data: { key: string; label: string; description: string; isEnabled: boolean; category: string }): Promise<TelegramAlert> {
+  async create(data: { key: string; label: string; description: string; isEnabled: boolean; category: string; messageTemplate?: string }): Promise<TelegramAlert> {
     const result = await pool.query(
-      `INSERT INTO telegram_alerts (key, label, description, is_enabled, category) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [data.key, data.label, data.description, data.isEnabled, data.category ?? 'alerts']
+      `INSERT INTO telegram_alerts (key, label, description, is_enabled, category, message_template) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [data.key, data.label, data.description, data.isEnabled, data.category ?? 'alerts', data.messageTemplate ?? null]
     );
     return this.mapRow(result.rows[0]);
   }
@@ -35,14 +36,21 @@ export class PostgresTelegramAlertRepository {
     return (result.rowCount ?? 0) > 0;
   }
 
-  async update(id: string, data: Partial<{ label: string; description: string; isEnabled: boolean }>): Promise<TelegramAlert | null> {
+  async getTemplate(key: string): Promise<string | null> {
+    const result = await pool.query('SELECT message_template FROM telegram_alerts WHERE key = $1', [key]);
+    if (result.rows.length === 0) return null;
+    return (result.rows[0].message_template as string) ?? null;
+  }
+
+  async update(id: string, data: Partial<{ label: string; description: string; isEnabled: boolean; messageTemplate: string }>): Promise<TelegramAlert | null> {
     const result = await pool.query(
       `UPDATE telegram_alerts SET
         label = COALESCE($2, label),
         description = COALESCE($3, description),
-        is_enabled = COALESCE($4, is_enabled)
+        is_enabled = COALESCE($4, is_enabled),
+        message_template = COALESCE($5, message_template)
        WHERE id = $1 RETURNING *`,
-      [id, data.label ?? null, data.description ?? null, data.isEnabled ?? null]
+      [id, data.label ?? null, data.description ?? null, data.isEnabled ?? null, data.messageTemplate ?? null]
     );
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
@@ -56,6 +64,7 @@ export class PostgresTelegramAlertRepository {
       description: (row.description as string) ?? '',
       isEnabled: row.is_enabled as boolean,
       category: (row.category as string) ?? 'alerts',
+      messageTemplate: (row.message_template as string) ?? null,
       createdAt: (row.created_at as Date).toISOString(),
     };
   }

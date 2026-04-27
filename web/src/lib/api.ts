@@ -424,6 +424,7 @@ export interface TelegramAlert {
   description: string;
   isEnabled: boolean;
   category: string;
+  messageTemplate: string | null;
   createdAt: string;
 }
 

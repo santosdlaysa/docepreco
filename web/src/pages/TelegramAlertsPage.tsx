@@ -24,7 +24,19 @@ const KEY_EMOJIS: Record<string, string> = {
   goal_progress: '🎯',
 };
 
-const EMPTY = { key: '', label: '', description: '', isEnabled: true, category: 'alerts' };
+const KEY_VARS: Record<string, string[]> = {
+  new_user: ['companyName', 'email', 'time'],
+  new_sale: ['companyName', 'recipeName', 'quantity', 'revenue', 'time'],
+  premium_event: ['eventLabel', 'companyName', 'eventType', 'platform', 'time'],
+  user_milestone: ['total', 'time'],
+  error_alert: ['method', 'path', 'statusCode', 'duration', 'error', 'time'],
+  slow_api: ['method', 'path', 'duration', 'time'],
+  daily_report: ['total', 'premium', 'today', 'time'],
+  weekly_report: ['newUsers', 'newRecipes', 'totalSales', 'revenue', 'time'],
+  goal_progress: ['progressBar', 'percent', 'today', 'goal', 'status', 'time'],
+};
+
+const EMPTY = { key: '', label: '', description: '', isEnabled: true, category: 'alerts', messageTemplate: '' };
 
 export function TelegramAlertsPage({ toast }: Props) {
   const [alerts, setAlerts] = useState<TelegramAlert[]>([]);
@@ -64,17 +76,17 @@ export function TelegramAlertsPage({ toast }: Props) {
 
   const openEdit = (a: TelegramAlert) => {
     setEditing(a);
-    setForm({ key: a.key, label: a.label, description: a.description, isEnabled: a.isEnabled, category: a.category });
+    setForm({ key: a.key, label: a.label, description: a.description, isEnabled: a.isEnabled, category: a.category, messageTemplate: a.messageTemplate ?? '' });
     setShowModal(true);
   };
 
   const save = async () => {
     try {
       if (editing) {
-        await api.updateTelegramAlert(editing.id, { label: form.label, description: form.description });
+        await api.updateTelegramAlert(editing.id, { label: form.label, description: form.description, messageTemplate: form.messageTemplate || null } as any);
         toast.success('Alerta atualizado!');
       } else {
-        await api.createTelegramAlert(form);
+        await api.createTelegramAlert({ ...form, messageTemplate: form.messageTemplate || undefined } as any);
         toast.success('Alerta criado!');
       }
       setShowModal(false);
@@ -95,16 +107,17 @@ export function TelegramAlertsPage({ toast }: Props) {
   };
 
   const categories = [...new Set(alerts.map(a => a.category))];
-  // Garante que alerts e reports aparecem mesmo se vazio
   if (!categories.includes('alerts')) categories.unshift('alerts');
   if (!categories.includes('reports')) categories.push('reports');
+
+  const vars = editing ? (KEY_VARS[editing.key] ?? []) : [];
 
   return (
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-bold text-gray-900">Telegram</h2>
-          <p className="text-sm text-gray-500 mt-1">Controle quais alertas e relatórios são enviados para o Telegram.</p>
+          <p className="text-sm text-gray-500 mt-1">Controle quais alertas são enviados e personalize as mensagens.</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
           <Plus size={16} /> Novo alerta
@@ -183,7 +196,7 @@ export function TelegramAlertsPage({ toast }: Props) {
 
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editing ? 'Editar alerta' : 'Novo alerta'}
             </h3>
@@ -193,7 +206,6 @@ export function TelegramAlertsPage({ toast }: Props) {
                 <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.key} onChange={e => setForm({ ...form, key: e.target.value.replace(/\s/g, '_').toLowerCase() })}
                   placeholder="ex: custom_alert" disabled={!!editing} />
-                {!editing && <p className="text-xs text-gray-400 mt-1">Identificador único usado no código para checar se está ativo</p>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
@@ -215,6 +227,29 @@ export function TelegramAlertsPage({ toast }: Props) {
                   </select>
                 </div>
               )}
+
+              {/* Template da mensagem */}
+              <div className="border-t border-gray-100 pt-4">
+                <label className="block text-sm font-bold text-gray-700 mb-1">Mensagem do Telegram</label>
+                <p className="text-xs text-gray-400 mb-2">Use {'{{variavel}}'} para inserir dados dinâmicos. Use \n para quebra de linha.</p>
+                <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  rows={6} value={form.messageTemplate} onChange={e => setForm({ ...form, messageTemplate: e.target.value })}
+                  placeholder="Ex: 🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}" />
+
+                {vars.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs font-medium text-gray-500 mb-1">Variáveis disponíveis:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {vars.map(v => (
+                        <button key={v} onClick={() => setForm({ ...form, messageTemplate: form.messageTemplate + `{{${v}}}` })}
+                          className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors font-mono">
+                          {`{{${v}}}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
               <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>

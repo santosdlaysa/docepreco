@@ -402,6 +402,7 @@ export async function runMigrations() {
     await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 120 WHERE slug = 'inactivity_5d' AND schedule_hour IS NULL`);
     await client.query(`UPDATE notification_templates SET schedule_type = 'daily', schedule_hour = 19, schedule_minute = 0 WHERE slug = 'daily_sales' AND schedule_hour IS NULL`);
     await client.query(`UPDATE notification_templates SET schedule_type = 'weekly', schedule_hour = 9, schedule_minute = 0, schedule_weekday = 2 WHERE slug = 'weekly_reminder' AND schedule_hour IS NULL`);
+    await addColumnIfMissing(client, 'telegram_alerts', 'message_template', "TEXT");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon', "VARCHAR(50)");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon_color', "VARCHAR(20)");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon_bg', "VARCHAR(20)");
@@ -458,10 +459,21 @@ export async function runMigrations() {
         { key: 'weekly_report', label: 'Relatório semanal', description: 'Enviado toda segunda às 9h com resumo da semana', category: 'reports' },
         { key: 'goal_progress', label: 'Progresso da meta', description: 'Enviado às 12h, 15h, 18h e 21h com progresso de cadastros', category: 'reports' },
       ];
+      const templates: Record<string, string> = {
+        new_user: '🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}\n🕐 {{time}}',
+        new_sale: '🧁 Nova venda!\n\n🏪 {{companyName}}\n🍰 {{recipeName}} × {{quantity}}\n💰 {{revenue}}\n🕐 {{time}}',
+        premium_event: '{{eventLabel}}\n\n🏪 {{companyName}}\n🕐 {{time}}',
+        user_milestone: '🎉 Marco atingido!\n\n👥 {{total}} usuários cadastrados!\n🕐 {{time}}',
+        error_alert: '🚨 Erro no servidor\n\n{{method}} {{path}}\nStatus: {{statusCode}}\nDuração: {{duration}}ms\n🕐 {{time}}',
+        slow_api: '🐢 Rota lenta\n\n{{method}} {{path}}\nDuração: {{duration}}ms\n🕐 {{time}}',
+        daily_report: '📊 Relatório diário\n\n👥 Total de usuários: {{total}}\n⭐ Premium: {{premium}}\n🆕 Novos hoje: {{today}}\n🕐 {{time}}',
+        weekly_report: '📊 Relatório semanal\n\n🆕 Novos usuários: {{newUsers}}\n🍰 Receitas criadas: {{newRecipes}}\n🧁 Vendas registradas: {{totalSales}}\n💰 Receita total: {{revenue}}\n🕐 {{time}}',
+        goal_progress: '📈 Meta de cadastros\n\n{{progressBar}} {{percent}}%\n👥 {{today}}/{{goal}} hoje\n{{status}}\n🕐 {{time}}',
+      };
       for (const a of alerts) {
         await client.query(
-          `INSERT INTO telegram_alerts (key, label, description, is_enabled, category) VALUES ($1, $2, $3, TRUE, $4)`,
-          [a.key, a.label, a.description, a.category]
+          `INSERT INTO telegram_alerts (key, label, description, is_enabled, category, message_template) VALUES ($1, $2, $3, TRUE, $4, $5)`,
+          [a.key, a.label, a.description, a.category, templates[a.key] ?? null]
         );
       }
     }

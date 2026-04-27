@@ -20,37 +20,48 @@ async function isAlertEnabled(key: string): Promise<boolean> {
   try {
     return await alertRepo.isEnabled(key);
   } catch {
-    return true; // default enabled if DB not ready
+    return true;
   }
+}
+
+async function getTemplate(key: string): Promise<string | null> {
+  try {
+    return await alertRepo.getTemplate(key);
+  } catch {
+    return null;
+  }
+}
+
+function applyTemplate(template: string, vars: Record<string, string | number>): string {
+  let text = template;
+  for (const [k, v] of Object.entries(vars)) {
+    text = text.replace(new RegExp(`\\{\\{${k}\\}\\}`, 'g'), String(v));
+  }
+  return text;
 }
 
 function brNow(): string {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
 
-// ── Existing notifications ──────────────────────────────────────────
-
-export async function sendDailyUserReport(): Promise<void> {
-  if (!await isAlertEnabled('daily_report')) return;
-  const { rows } = await pool.query(`
-    SELECT
-      COUNT(*)::int AS total,
-      COUNT(*) FILTER (WHERE is_premium = TRUE)::int AS premium,
-      COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '1 day')::int AS today
-    FROM users
-  `);
-  const { total, premium, today } = rows[0];
-  const text = `📊 Relatório diário\n\n👥 Total de usuários: ${total}\n⭐ Premium: ${premium}\n🆕 Novos hoje: ${today}\n🕐 ${brNow()}`;
-  sendTelegramMessage(text);
-}
+// ── Alerts ──────────────────────────────────────────────────────────
 
 export async function notifyNewUser(companyName: string, email: string): Promise<void> {
   if (!await isAlertEnabled('new_user')) return;
-  const text = `🆕 Novo cadastro!\n\n🏪 ${companyName}\n📧 ${email}\n🕐 ${brNow()}`;
+  const tpl = await getTemplate('new_user');
+  const fallback = `🆕 Novo cadastro!\n\n🏪 ${companyName}\n📧 ${email}\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { companyName, email, time: brNow() }) : fallback;
   sendTelegramMessage(text);
 }
 
-// ── Premium events ──────────────────────────────────────────────────
+export async function notifySale(companyName: string, recipeName: string, quantity: number, totalRevenue: number): Promise<void> {
+  if (!await isAlertEnabled('new_sale')) return;
+  const revenue = totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const tpl = await getTemplate('new_sale');
+  const fallback = `🧁 Nova venda!\n\n🏪 ${companyName}\n🍰 ${recipeName} × ${quantity}\n💰 ${revenue}\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { companyName, recipeName, quantity, revenue, time: brNow() }) : fallback;
+  sendTelegramMessage(text);
+}
 
 const premiumEventLabels: Record<string, string> = {
   INITIAL_PURCHASE: '💎 Nova assinatura',
@@ -65,51 +76,60 @@ const premiumEventLabels: Record<string, string> = {
 
 export async function notifyPremiumEvent(companyName: string, eventType: string, platform: string | null): Promise<void> {
   if (!await isAlertEnabled('premium_event')) return;
-  const label = premiumEventLabels[eventType] || `📌 ${eventType}`;
+  const eventLabel = premiumEventLabels[eventType] || `📌 ${eventType}`;
   const plat = platform ? ` (${platform})` : '';
-  const text = `${label}${plat}\n\n🏪 ${companyName}\n🕐 ${brNow()}`;
+  const tpl = await getTemplate('premium_event');
+  const fallback = `${eventLabel}${plat}\n\n🏪 ${companyName}\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { eventLabel: eventLabel + plat, companyName, eventType, platform: platform ?? '', time: brNow() }) : fallback;
   sendTelegramMessage(text);
 }
-
-// ── Sale created ────────────────────────────────────────────────────
-
-export async function notifySale(companyName: string, recipeName: string, quantity: number, totalRevenue: number): Promise<void> {
-  if (!await isAlertEnabled('new_sale')) return;
-  const revenue = totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  const text = `🧁 Nova venda!\n\n🏪 ${companyName}\n🍰 ${recipeName} × ${quantity}\n💰 ${revenue}\n🕐 ${brNow()}`;
-  sendTelegramMessage(text);
-}
-
-// ── User milestone ──────────────────────────────────────────────────
 
 const MILESTONES = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
 
 export async function notifyUserMilestone(total: number): Promise<void> {
   if (!MILESTONES.includes(total)) return;
   if (!await isAlertEnabled('user_milestone')) return;
-  const text = `🎉 Marco atingido!\n\n👥 ${total} usuários cadastrados!\n🕐 ${brNow()}`;
+  const tpl = await getTemplate('user_milestone');
+  const fallback = `🎉 Marco atingido!\n\n👥 ${total} usuários cadastrados!\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { total, time: brNow() }) : fallback;
   sendTelegramMessage(text);
 }
 
-// ── Error & slow API alerts ─────────────────────────────────────────
-
 export async function sendErrorAlert(method: string, path: string, statusCode: number, durationMs: number, errorMessage?: string): Promise<void> {
   if (!await isAlertEnabled('error_alert')) return;
-  let text = `🚨 Erro no servidor\n\n${method} ${path}\nStatus: ${statusCode}\nDuração: ${durationMs}ms`;
-  if (errorMessage) {
-    text += `\nErro: ${errorMessage}`;
-  }
-  text += `\n🕐 ${brNow()}`;
+  const tpl = await getTemplate('error_alert');
+  let fallback = `🚨 Erro no servidor\n\n${method} ${path}\nStatus: ${statusCode}\nDuração: ${durationMs}ms`;
+  if (errorMessage) fallback += `\nErro: ${errorMessage}`;
+  fallback += `\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { method, path, statusCode, duration: durationMs, error: errorMessage ?? '', time: brNow() }) : fallback;
   sendTelegramMessage(text);
 }
 
 export async function sendSlowApiAlert(method: string, path: string, durationMs: number): Promise<void> {
   if (!await isAlertEnabled('slow_api')) return;
-  const text = `🐢 Rota lenta\n\n${method} ${path}\nDuração: ${durationMs}ms\n🕐 ${brNow()}`;
+  const tpl = await getTemplate('slow_api');
+  const fallback = `🐢 Rota lenta\n\n${method} ${path}\nDuração: ${durationMs}ms\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { method, path, duration: durationMs, time: brNow() }) : fallback;
   sendTelegramMessage(text);
 }
 
-// ── Daily registration goal progress ────────────────────────────────
+// ── Reports ─────────────────────────────────────────────────────────
+
+export async function sendDailyUserReport(): Promise<void> {
+  if (!await isAlertEnabled('daily_report')) return;
+  const { rows } = await pool.query(`
+    SELECT
+      COUNT(*)::int AS total,
+      COUNT(*) FILTER (WHERE is_premium = TRUE)::int AS premium,
+      COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '1 day')::int AS today
+    FROM users
+  `);
+  const { total, premium, today } = rows[0];
+  const tpl = await getTemplate('daily_report');
+  const fallback = `📊 Relatório diário\n\n👥 Total de usuários: ${total}\n⭐ Premium: ${premium}\n🆕 Novos hoje: ${today}\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { total, premium, today, time: brNow() }) : fallback;
+  sendTelegramMessage(text);
+}
 
 export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}): Promise<void> {
   if (!await isAlertEnabled('goal_progress')) return;
@@ -129,13 +149,13 @@ export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}
 
   if (opts.silentIfMet && remaining === 0) return;
 
-  const bar = '█'.repeat(Math.round(percent / 10)) + '░'.repeat(10 - Math.round(percent / 10));
+  const progressBar = '█'.repeat(Math.round(percent / 10)) + '░'.repeat(10 - Math.round(percent / 10));
   const status = remaining === 0 ? '🎯 Meta batida!' : `Faltam ${remaining} para bater a meta`;
-  const text = `📈 Meta de cadastros\n\n${bar} ${percent}%\n👥 ${today}/${goal} hoje\n${status}\n🕐 ${brNow()}`;
+  const tpl = await getTemplate('goal_progress');
+  const fallback = `📈 Meta de cadastros\n\n${progressBar} ${percent}%\n👥 ${today}/${goal} hoje\n${status}\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { progressBar, percent, today, goal, status, time: brNow() }) : fallback;
   sendTelegramMessage(text);
 }
-
-// ── Weekly report ───────────────────────────────────────────────────
 
 export async function sendWeeklyReport(): Promise<void> {
   if (!await isAlertEnabled('weekly_report')) return;
@@ -159,15 +179,26 @@ export async function sendWeeklyReport(): Promise<void> {
   `);
 
   const revenue = Number(week_revenue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  let text = `📊 Relatório semanal\n\n🆕 Novos usuários: ${new_users}\n🍰 Receitas criadas: ${new_recipes}\n🧁 Vendas registradas: ${total_sales}\n💰 Receita total: ${revenue}`;
+  const tpl = await getTemplate('weekly_report');
 
-  if (topUsers.length > 0) {
-    text += `\n\n🏆 Top 5 ativos:`;
-    topUsers.forEach((u: { company_name: string; sales_count: number }, i: number) => {
-      text += `\n${i + 1}. ${u.company_name} (${u.sales_count} vendas)`;
-    });
+  if (tpl) {
+    let text = applyTemplate(tpl, { newUsers: new_users, newRecipes: new_recipes, totalSales: total_sales, revenue, time: brNow() });
+    if (topUsers.length > 0) {
+      text += `\n\n🏆 Top 5 ativos:`;
+      topUsers.forEach((u: { company_name: string; sales_count: number }, i: number) => {
+        text += `\n${i + 1}. ${u.company_name} (${u.sales_count} vendas)`;
+      });
+    }
+    sendTelegramMessage(text);
+  } else {
+    let text = `📊 Relatório semanal\n\n🆕 Novos usuários: ${new_users}\n🍰 Receitas criadas: ${new_recipes}\n🧁 Vendas registradas: ${total_sales}\n💰 Receita total: ${revenue}`;
+    if (topUsers.length > 0) {
+      text += `\n\n🏆 Top 5 ativos:`;
+      topUsers.forEach((u: { company_name: string; sales_count: number }, i: number) => {
+        text += `\n${i + 1}. ${u.company_name} (${u.sales_count} vendas)`;
+      });
+    }
+    text += `\n\n🕐 ${brNow()}`;
+    sendTelegramMessage(text);
   }
-
-  text += `\n\n🕐 ${brNow()}`;
-  sendTelegramMessage(text);
 }
