@@ -250,6 +250,90 @@ export const api = {
     req<AppNotification>(`/notifications/${id}/send`, { method: 'POST' }),
   deleteNotification: (id: string) =>
     req<void>(`/notifications/${id}`, { method: 'DELETE' }),
+
+  // ── Global Ingredients ──
+  listGlobalIngredients: () => req<GlobalIngredient[]>('/admin/global-ingredients'),
+  createGlobalIngredient: (data: Omit<GlobalIngredient, 'id' | 'createdAt' | 'updatedAt'>) =>
+    req<GlobalIngredient>('/admin/global-ingredients', { method: 'POST', body: JSON.stringify(data) }),
+  updateGlobalIngredient: (id: string, data: Partial<GlobalIngredient>) =>
+    req<GlobalIngredient>(`/admin/global-ingredients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteGlobalIngredient: (id: string) =>
+    req<void>(`/admin/global-ingredients/${id}`, { method: 'DELETE' }),
+
+  // ── Featured Recipes ──
+  listFeaturedRecipes: () => req<FeaturedRecipe[]>('/admin/featured-recipes'),
+  createFeaturedRecipe: (data: Omit<FeaturedRecipe, 'id' | 'createdAt'>) =>
+    req<FeaturedRecipe>('/admin/featured-recipes', { method: 'POST', body: JSON.stringify(data) }),
+  updateFeaturedRecipe: (id: string, data: Partial<FeaturedRecipe>) =>
+    req<FeaturedRecipe>(`/admin/featured-recipes/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFeaturedRecipe: (id: string) =>
+    req<void>(`/admin/featured-recipes/${id}`, { method: 'DELETE' }),
+
+  // ── Plan Config ──
+  getPlanConfig: () => req<PlanConfig>('/admin/settings/plans'),
+  updatePlanConfig: (data: PlanConfig) =>
+    req<PlanConfig>('/admin/settings/plans', { method: 'PUT', body: JSON.stringify(data) }),
+
+  // ── Feature Flags ──
+  listFeatureFlags: () => req<FeatureFlag[]>('/admin/feature-flags'),
+  createFeatureFlag: (data: { key: string; description: string; isEnabled: boolean }) =>
+    req<FeatureFlag>('/admin/feature-flags', { method: 'POST', body: JSON.stringify(data) }),
+  updateFeatureFlag: (id: string, data: Partial<FeatureFlag>) =>
+    req<FeatureFlag>(`/admin/feature-flags/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFeatureFlag: (id: string) =>
+    req<void>(`/admin/feature-flags/${id}`, { method: 'DELETE' }),
+
+  // ── FAQ ──
+  listFaq: () => req<FaqItem[]>('/admin/faq'),
+  createFaq: (data: Omit<FaqItem, 'id' | 'createdAt'>) =>
+    req<FaqItem>('/admin/faq', { method: 'POST', body: JSON.stringify(data) }),
+  updateFaq: (id: string, data: Partial<FaqItem>) =>
+    req<FaqItem>(`/admin/faq/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteFaq: (id: string) =>
+    req<void>(`/admin/faq/${id}`, { method: 'DELETE' }),
+
+  // ── Coupons ──
+  listCoupons: () => req<Coupon[]>('/admin/coupons'),
+  createCoupon: (data: Omit<Coupon, 'id' | 'createdAt' | 'usedCount'>) =>
+    req<Coupon>('/admin/coupons', { method: 'POST', body: JSON.stringify(data) }),
+  updateCoupon: (id: string, data: Partial<Coupon>) =>
+    req<Coupon>(`/admin/coupons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCoupon: (id: string) =>
+    req<void>(`/admin/coupons/${id}`, { method: 'DELETE' }),
+
+  // ── Recipe Categories ──
+  listCategories: () => req<RecipeCategory[]>('/admin/categories'),
+  createCategory: (data: Omit<RecipeCategory, 'id' | 'createdAt'>) =>
+    req<RecipeCategory>('/admin/categories', { method: 'POST', body: JSON.stringify(data) }),
+  updateCategory: (id: string, data: Partial<RecipeCategory>) =>
+    req<RecipeCategory>(`/admin/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteCategory: (id: string) =>
+    req<void>(`/admin/categories/${id}`, { method: 'DELETE' }),
+
+  // ── Feedbacks ──
+  listFeedbacks: () => req<Feedback[]>('/admin/feedbacks'),
+  replyFeedback: (id: string, reply: string) =>
+    req<Feedback>(`/admin/feedbacks/${id}/reply`, { method: 'POST', body: JSON.stringify({ reply }) }),
+  updateFeedbackStatus: (id: string, status: Feedback['status']) =>
+    req<Feedback>(`/admin/feedbacks/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+
+  // ── Changelog ──
+  listChangelog: () => req<ChangelogEntry[]>('/admin/changelog'),
+  createChangelog: (data: Omit<ChangelogEntry, 'id' | 'createdAt'>) =>
+    req<ChangelogEntry>('/admin/changelog', { method: 'POST', body: JSON.stringify(data) }),
+  updateChangelog: (id: string, data: Partial<ChangelogEntry>) =>
+    req<ChangelogEntry>(`/admin/changelog/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteChangelog: (id: string) =>
+    req<void>(`/admin/changelog/${id}`, { method: 'DELETE' }),
+
+  // ── Onboarding ──
+  listOnboarding: () => req<OnboardingStep[]>('/admin/onboarding'),
+  createOnboarding: (data: Omit<OnboardingStep, 'id' | 'createdAt'>) =>
+    req<OnboardingStep>('/admin/onboarding', { method: 'POST', body: JSON.stringify(data) }),
+  updateOnboarding: (id: string, data: Partial<OnboardingStep>) =>
+    req<OnboardingStep>(`/admin/onboarding/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteOnboarding: (id: string) =>
+    req<void>(`/admin/onboarding/${id}`, { method: 'DELETE' }),
 };
 
 export interface Tip {
@@ -310,5 +394,124 @@ export interface AppNotification {
   sentAt: string | null;
   status: 'pending' | 'scheduled' | 'sent' | 'failed';
   recipientsCount: number;
+  createdAt: string;
+}
+
+// ── Global Ingredients ──
+
+export interface GlobalIngredient {
+  id: string;
+  name: string;
+  price: number;
+  unit: string;
+  packageAmount: number;
+  category: string;
+  updatedAt: string;
+  createdAt: string;
+}
+
+// ── Featured Recipes ──
+
+export interface FeaturedRecipe {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  category: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+}
+
+// ── Plan Config ──
+
+export interface PlanConfig {
+  freeRecipeLimit: number;
+  premiumPrice: number;
+  premiumFeatures: string[];
+  freeFeatures: string[];
+}
+
+// ── Feature Flags ──
+
+export interface FeatureFlag {
+  id: string;
+  key: string;
+  description: string;
+  isEnabled: boolean;
+  createdAt: string;
+}
+
+// ── FAQ ──
+
+export interface FaqItem {
+  id: string;
+  question: string;
+  answer: string;
+  category: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// ── Coupons ──
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountPercent: number;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// ── Recipe Categories ──
+
+export interface RecipeCategory {
+  id: string;
+  name: string;
+  icon: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+// ── Feedbacks ──
+
+export interface Feedback {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  message: string;
+  rating: number;
+  status: 'pending' | 'read' | 'replied';
+  reply: string | null;
+  createdAt: string;
+}
+
+// ── Changelog ──
+
+export interface ChangelogEntry {
+  id: string;
+  version: string;
+  title: string;
+  description: string;
+  features: string[];
+  isActive: boolean;
+  createdAt: string;
+}
+
+// ── Onboarding ──
+
+export interface OnboardingStep {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+  sortOrder: number;
+  isActive: boolean;
   createdAt: string;
 }

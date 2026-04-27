@@ -173,6 +173,98 @@ CREATE TABLE IF NOT EXISTS app_settings (
   value TEXT NOT NULL,
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS global_ingredients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  price DECIMAL(10,2) NOT NULL,
+  unit VARCHAR(10) NOT NULL CHECK (unit IN ('g', 'kg', 'ml', 'L', 'un')),
+  package_amount DECIMAL(10,3) NOT NULL DEFAULT 1000,
+  category VARCHAR(100) NOT NULL DEFAULT '',
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS featured_recipes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  image_url TEXT,
+  category VARCHAR(100) NOT NULL DEFAULT '',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS recipe_categories (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  icon VARCHAR(10) NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS feature_flags (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  key VARCHAR(100) NOT NULL UNIQUE,
+  description TEXT NOT NULL DEFAULT '',
+  is_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS faq_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  category VARCHAR(100) NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS coupons (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  code VARCHAR(50) NOT NULL UNIQUE,
+  discount_percent INTEGER NOT NULL DEFAULT 10,
+  max_uses INTEGER NOT NULL DEFAULT 0,
+  used_count INTEGER NOT NULL DEFAULT 0,
+  expires_at TIMESTAMP,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS feedbacks (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_name VARCHAR(255) NOT NULL DEFAULT '',
+  user_email VARCHAR(255) NOT NULL DEFAULT '',
+  message TEXT NOT NULL,
+  rating INTEGER NOT NULL DEFAULT 5 CHECK (rating BETWEEN 1 AND 5),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'read', 'replied')),
+  reply TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS changelog_entries (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  version VARCHAR(20) NOT NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  features TEXT[] NOT NULL DEFAULT '{}',
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS onboarding_steps (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  image_url TEXT,
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
 `;
 
 async function addColumnIfMissing(

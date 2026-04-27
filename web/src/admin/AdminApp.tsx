@@ -10,6 +10,16 @@ import { NotificationsPage } from '../pages/NotificationsPage';
 import { TipsPage } from '../pages/TipsPage';
 import { SettingsPage } from '../pages/SettingsPage';
 import { UserDataPage } from '../pages/UserDataPage';
+import { GlobalIngredientsPage } from '../pages/GlobalIngredientsPage';
+import { FeaturedRecipesPage } from '../pages/FeaturedRecipesPage';
+import { PlanConfigPage } from '../pages/PlanConfigPage';
+import { FeatureFlagsPage } from '../pages/FeatureFlagsPage';
+import { FaqPage } from '../pages/FaqPage';
+import { CouponsPage } from '../pages/CouponsPage';
+import { CategoriesPage } from '../pages/CategoriesPage';
+import { FeedbacksPage } from '../pages/FeedbacksPage';
+import { ChangelogPage } from '../pages/ChangelogPage';
+import { OnboardingPage } from '../pages/OnboardingPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -24,20 +34,52 @@ import {
   Cake,
   Menu,
   X,
+  Package,
+  ChefHat,
+  CreditCard,
+  ToggleLeft,
+  HelpCircle,
+  Ticket,
+  Tag,
+  MessageCircle,
+  Rocket,
+  Smartphone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings';
+type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'changelog' | 'onboarding';
 
-const NAV: Array<{ id: Page; label: string; icon: LucideIcon }> = [
+interface NavItem {
+  id: Page;
+  label: string;
+  icon: LucideIcon;
+  section?: string;
+}
+
+const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'users', label: 'Usuários', icon: Users },
-  { id: 'banners', label: 'Banners', icon: Megaphone },
+
+  { id: 'ingredients', label: 'Ingredientes', icon: Package, section: 'Conteúdo' },
+  { id: 'recipes', label: 'Receitas destaque', icon: ChefHat },
+  { id: 'categories', label: 'Categorias', icon: Tag },
+  { id: 'faq', label: 'FAQ / Ajuda', icon: HelpCircle },
+  { id: 'changelog', label: 'Novidades', icon: Rocket },
+  { id: 'onboarding', label: 'Onboarding', icon: Smartphone },
+
+  { id: 'banners', label: 'Banners', icon: Megaphone, section: 'Comunicação' },
   { id: 'notifications', label: 'Notificações', icon: Bell },
   { id: 'tips', label: 'Dicas', icon: Lightbulb },
-  { id: 'logs', label: 'Logs do sistema', icon: ScrollText },
-  { id: 'requests', label: 'Rotas HTTP', icon: Globe },
+  { id: 'feedbacks', label: 'Feedbacks', icon: MessageCircle },
+
+  { id: 'plans', label: 'Planos', icon: CreditCard, section: 'Configuração' },
+  { id: 'coupons', label: 'Cupons', icon: Ticket },
+  { id: 'flags', label: 'Feature flags', icon: ToggleLeft },
   { id: 'settings', label: 'Configurações', icon: Settings },
+
+  { id: 'logs', label: 'Logs do sistema', icon: ScrollText, section: 'Sistema' },
+  { id: 'requests', label: 'Rotas HTTP', icon: Globe },
 ];
 
 export default function AdminApp() {
@@ -80,26 +122,30 @@ export default function AdminApp() {
         </div>
       </div>
 
-      <nav className="flex-1 p-3 space-y-0.5">
+      <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
         {NAV.map(n => {
           const Icon = n.icon;
           const active = page === n.id;
           return (
-            <button
-              key={n.id}
-              onClick={() => navigate(n.id)}
-              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium transition-all text-left relative ${
-                active
-                  ? 'bg-primary-50 text-primary-700'
-                  : 'text-gray-600 hover:bg-gray-50'
-              }`}
-            >
-              {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary-500 rounded-r-full" />
+            <div key={n.id}>
+              {n.section && (
+                <p className="text-[10px] uppercase font-semibold text-gray-400 tracking-wider px-3 pt-4 pb-1">{n.section}</p>
               )}
-              <Icon size={18} className={active ? 'text-primary-500' : 'text-gray-400'} />
-              {n.label}
-            </button>
+              <button
+                onClick={() => navigate(n.id)}
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all text-left relative ${
+                  active
+                    ? 'bg-primary-50 text-primary-700'
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                {active && (
+                  <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary-500 rounded-r-full" />
+                )}
+                <Icon size={16} className={active ? 'text-primary-500' : 'text-gray-400'} />
+                {n.label}
+              </button>
+            </div>
           );
         })}
       </nav>
@@ -171,6 +217,16 @@ export default function AdminApp() {
             {page === 'logs' && <LogsPage />}
             {page === 'requests' && <RequestLogsPage />}
             {page === 'settings' && <SettingsPage toast={toast} />}
+            {page === 'ingredients' && <GlobalIngredientsPage toast={toast} />}
+            {page === 'recipes' && <FeaturedRecipesPage toast={toast} />}
+            {page === 'plans' && <PlanConfigPage toast={toast} />}
+            {page === 'flags' && <FeatureFlagsPage toast={toast} />}
+            {page === 'faq' && <FaqPage toast={toast} />}
+            {page === 'coupons' && <CouponsPage toast={toast} />}
+            {page === 'categories' && <CategoriesPage toast={toast} />}
+            {page === 'feedbacks' && <FeedbacksPage toast={toast} />}
+            {page === 'changelog' && <ChangelogPage toast={toast} />}
+            {page === 'onboarding' && <OnboardingPage toast={toast} />}
           </PageTransition>
         </div>
       </main>
