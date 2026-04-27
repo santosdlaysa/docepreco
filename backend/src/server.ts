@@ -32,11 +32,13 @@ import categoryRoutes from './presentation/routes/categoryRoutes';
 import feedbackRoutes from './presentation/routes/feedbackRoutes';
 import changelogRoutes from './presentation/routes/changelogRoutes';
 import onboardingRoutes from './presentation/routes/onboardingRoutes';
+import telegramAlertRoutes from './presentation/routes/telegramAlertRoutes';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
 import { PostgresNotificationRepository } from './infrastructure/repositories/PostgresNotificationRepository';
 import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from './infrastructure/services/pushService';
+import { setupSwagger } from './swagger';
 
 dotenv.config();
 
@@ -105,6 +107,9 @@ app.use('/api/admin/categories', categoryRoutes);
 app.use('/api/admin/feedbacks', feedbackRoutes);
 app.use('/api/admin/changelog', changelogRoutes);
 app.use('/api/admin/onboarding', onboardingRoutes);
+app.use('/api/admin/telegram-alerts', telegramAlertRoutes);
+
+setupSwagger(app);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

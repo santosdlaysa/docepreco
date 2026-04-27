@@ -20,6 +20,7 @@ import { CategoriesPage } from '../pages/CategoriesPage';
 import { FeedbacksPage } from '../pages/FeedbacksPage';
 import { ChangelogPage } from '../pages/ChangelogPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
+import { TelegramAlertsPage } from '../pages/TelegramAlertsPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -44,11 +45,12 @@ import {
   MessageCircle,
   Rocket,
   Smartphone,
+  Bot,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'changelog' | 'onboarding';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'changelog' | 'onboarding' | 'telegram';
 
 interface NavItem {
   id: Page;
@@ -76,6 +78,7 @@ const NAV: NavItem[] = [
   { id: 'plans', label: 'Planos', icon: CreditCard, section: 'Configuração' },
   { id: 'coupons', label: 'Cupons', icon: Ticket },
   { id: 'flags', label: 'Feature flags', icon: ToggleLeft },
+  { id: 'telegram', label: 'Telegram', icon: Bot },
   { id: 'settings', label: 'Configurações', icon: Settings },
 
   { id: 'logs', label: 'Logs do sistema', icon: ScrollText, section: 'Sistema' },
@@ -227,6 +230,7 @@ export default function AdminApp() {
             {page === 'feedbacks' && <FeedbacksPage toast={toast} />}
             {page === 'changelog' && <ChangelogPage toast={toast} />}
             {page === 'onboarding' && <OnboardingPage toast={toast} />}
+            {page === 'telegram' && <TelegramAlertsPage toast={toast} />}
           </PageTransition>
         </div>
       </main>

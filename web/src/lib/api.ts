@@ -330,6 +330,11 @@ export const api = {
   deleteChangelog: (id: string) =>
     req<void>(`/admin/changelog/${id}`, { method: 'DELETE' }),
 
+  // ── Telegram Alerts ──
+  listTelegramAlerts: () => req<TelegramAlert[]>('/admin/telegram-alerts'),
+  updateTelegramAlert: (id: string, data: Partial<TelegramAlert>) =>
+    req<TelegramAlert>(`/admin/telegram-alerts/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
   // ── Onboarding ──
   listOnboarding: () => req<OnboardingStep[]>('/admin/onboarding'),
   createOnboarding: (data: Omit<OnboardingStep, 'id' | 'createdAt'>) =>
@@ -403,6 +408,18 @@ export interface AppNotification {
   sentAt: string | null;
   status: 'pending' | 'scheduled' | 'sent' | 'failed';
   recipientsCount: number;
+  createdAt: string;
+}
+
+// ── Telegram Alerts ──
+
+export interface TelegramAlert {
+  id: string;
+  key: string;
+  label: string;
+  description: string;
+  isEnabled: boolean;
+  category: string;
   createdAt: string;
 }
 

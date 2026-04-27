@@ -9,6 +9,7 @@ Aplicativo mobile para precificacao de doces, desenvolvido para confeiteiras ini
 | **Mobile** | React Native 0.83 + Expo 55 + TypeScript |
 | **Backend** | Node.js + Express + TypeScript |
 | **Banco de dados** | PostgreSQL (UUID) |
+| **Painel Admin** | React + Vite + Tailwind CSS + TypeScript |
 | **Arquitetura** | Clean Architecture (Domain/Application/Infrastructure/Presentation) |
 | **Assinaturas** | RevenueCat (react-native-purchases) |
 | **Monitoramento** | Sentry (@sentry/react-native) |
@@ -43,6 +44,43 @@ Aplicativo mobile para precificacao de doces, desenvolvido para confeiteiras ini
 
 **Planos:** Mensal (R$ 14,90) | Anual (R$ 89,90)
 
+## Painel Admin (Web)
+
+Painel de administracao em React para gerenciar o app remotamente. Acessivel em `/admin` com autenticacao via header `X-Admin-Secret`.
+
+### Dashboard e Usuarios
+
+- **Dashboard** - Estatisticas em tempo real (usuarios, receitas, vendas, receita) + envio de email em massa
+- **Usuarios** - Listar, filtrar, ativar/desativar premium, ver dados do usuario (receitas, ingredientes, vendas)
+
+### Conteudo
+
+- **Ingredientes Globais** - Precos de referencia sugeridos aos usuarios ao cadastrar ingredientes
+- **Receitas Sugeridas** - Receitas prontas com ingredientes que usuarios premium usam como base (substitui hardcoded)
+- **Categorias** - Categorias de receitas com emoji, seletor visual com 32 opcoes
+- **FAQ / Ajuda** - Perguntas frequentes exibidas no app, organizadas por categoria
+- **Changelog** - Tela "O que ha de novo" com novidades por versao
+- **Onboarding** - Telas de boas-vindas configuráveis com preview de celular interativo
+
+### Comunicacao
+
+- **Banners** - Banners no app com agendamento, tipos (info, aviso, promocao, update)
+- **Notificacoes Push** - Criar e enviar push segmentado (todos, premium, free) com agendamento
+- **Dicas Motivacionais** - Dicas diarias + templates de notificacoes locais com agendamento editavel
+- **Feedbacks** - Avaliacoes dos usuarios (1-5 estrelas) com resposta individual
+
+### Configuracao
+
+- **Planos** - Limite de receitas free, preco premium, lista de features de cada plano
+- **Cupons** - Codigos de desconto com %, limite de usos, validade e validacao via API
+- **Feature Flags** - Liga/desliga funcionalidades do app remotamente (9 flags pre-populadas)
+- **Configuracoes** - Meta diaria de cadastros integrada com bot Telegram
+
+### Sistema
+
+- **Logs** - Feed de atividades em tempo real (cadastros, vendas, premium)
+- **Rotas HTTP** - Monitoramento de requisicoes da API com metricas
+
 ## Estrutura do Projeto
 
 ```
@@ -58,6 +96,12 @@ docepreco/
 │       ├── domain/          # Entidades
 │       ├── data/            # API client, premium (RevenueCat), demo, storage
 │       └── presentation/    # Screens, components, contexts, navigation, theme
+├── web/
+│   └── src/
+│       ├── admin/           # Shell do painel admin (sidebar, navegacao)
+│       ├── pages/           # Paginas do painel (28 paginas)
+│       ├── lib/             # API client + tipos TypeScript
+│       └── components.tsx   # Componentes compartilhados (toast, modal, skeleton)
 ```
 
 ## Rotas da API
@@ -138,7 +182,15 @@ docepreco/
 | POST | `/send` | Enviar notificacao push |
 | DELETE | `/:id` | Excluir notificacao |
 
-### Dicas (`/api/tips`) - admin
+### Templates de Notificacao (`/api/notification-templates`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar templates ativos com agendamento (publico) |
+| GET | `/` | Listar todos (admin) |
+| PUT | `/:id` | Atualizar template + agendamento (admin) |
+| POST | `/:id/send` | Enviar push do template (admin) |
+
+### Dicas (`/api/tips`)
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
 | GET | `/active` | Listar dicas ativas (publico) |
@@ -146,6 +198,92 @@ docepreco/
 | POST | `/` | Criar dica (admin) |
 | PUT | `/:id` | Atualizar dica (admin) |
 | DELETE | `/:id` | Excluir dica (admin) |
+
+### Ingredientes Globais (`/api/admin/global-ingredients`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar ingredientes com precos de referencia (publico) |
+| GET | `/` | Listar todos (admin) |
+| POST | `/` | Criar ingrediente (admin) |
+| PUT | `/:id` | Atualizar ingrediente (admin) |
+| DELETE | `/:id` | Excluir ingrediente (admin) |
+
+### Receitas Sugeridas (`/api/admin/featured-recipes`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar receitas ativas com ingredientes (publico) |
+| GET | `/` | Listar todas (admin) |
+| POST | `/` | Criar receita com ingredientes (admin) |
+| PUT | `/:id` | Atualizar receita com ingredientes (admin) |
+| DELETE | `/:id` | Excluir receita em cascata (admin) |
+
+### Configuracao de Planos (`/api/admin/settings/plans`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/` | Ler configuracao de planos (publico) |
+| PUT | `/` | Atualizar limites, preco e features (admin) |
+
+### Feature Flags (`/api/admin/feature-flags`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar flags ativas (publico) |
+| GET | `/` | Listar todas (admin) |
+| POST | `/` | Criar flag (admin) |
+| PUT | `/:id` | Atualizar flag (admin) |
+| DELETE | `/:id` | Excluir flag (admin) |
+
+### FAQ (`/api/admin/faq`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar FAQs ativas (publico) |
+| GET | `/` | Listar todas (admin) |
+| POST | `/` | Criar FAQ (admin) |
+| PUT | `/:id` | Atualizar FAQ (admin) |
+| DELETE | `/:id` | Excluir FAQ (admin) |
+
+### Cupons (`/api/admin/coupons`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/validate/:code` | Validar cupom e retornar desconto (publico) |
+| GET | `/` | Listar todos (admin) |
+| POST | `/` | Criar cupom (admin) |
+| PUT | `/:id` | Atualizar cupom (admin) |
+| DELETE | `/:id` | Excluir cupom (admin) |
+
+### Categorias (`/api/admin/categories`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar categorias ativas (publico) |
+| GET | `/` | Listar todas (admin) |
+| POST | `/` | Criar categoria (admin) |
+| PUT | `/:id` | Atualizar categoria (admin) |
+| DELETE | `/:id` | Excluir categoria (admin) |
+
+### Feedbacks (`/api/admin/feedbacks`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| POST | `/` | Enviar feedback (requer auth do usuario) |
+| GET | `/` | Listar todos (admin) |
+| PUT | `/:id` | Atualizar status (admin) |
+| POST | `/:id/reply` | Responder feedback (admin) |
+
+### Changelog (`/api/admin/changelog`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar changelog ativo (publico) |
+| GET | `/` | Listar todos (admin) |
+| POST | `/` | Criar entrada (admin) |
+| PUT | `/:id` | Atualizar entrada (admin) |
+| DELETE | `/:id` | Excluir entrada (admin) |
+
+### Onboarding (`/api/admin/onboarding`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/active` | Listar etapas ativas (publico) |
+| GET | `/` | Listar todas (admin) |
+| POST | `/` | Criar etapa (admin) |
+| PUT | `/:id` | Atualizar etapa (admin) |
+| DELETE | `/:id` | Excluir etapa (admin) |
 
 ### Outros
 | Metodo | Rota | Descricao |
@@ -159,11 +297,11 @@ docepreco/
 
 | Tela | Descricao |
 |------|-----------|
-| Onboarding | Introducao para novos usuarios |
+| Onboarding | Introducao para novos usuarios (configuravel pelo admin) |
 | Login / Registro | Autenticacao com email e senha |
 | Esqueci a Senha | Recuperacao de senha por email |
 | Home | Dashboard com stats, acoes rapidas e banners |
-| Receitas | Listagem, criacao e edicao de receitas (com sugestoes) |
+| Receitas | Listagem, criacao e edicao de receitas (com sugestoes premium) |
 | Detalhe da Receita | Calculo completo, compartilhar PDF |
 | Ingredientes | Listagem, criacao e edicao de ingredientes |
 | Historico de Precos | Evolucao de preco de um ingrediente ao longo do tempo |
@@ -199,6 +337,14 @@ npm install
 npm start
 ```
 
+### Painel Admin (Web)
+
+```bash
+cd web
+npm install
+npm run dev
+```
+
 ### Build (EAS)
 
 ```bash
@@ -215,8 +361,8 @@ eas build --profile development --platform ios
 PORT=3000
 DATABASE_URL=postgresql://user:pass@localhost:5432/docepreco
 JWT_SECRET=your-secret-key
+DOCEPRECO_ADMIN_SECRET=<token para acesso ao painel admin>
 REVENUECAT_WEBHOOK_SECRET=<token>
-ADMIN_SECRET=<token>
 TELEGRAM_BOT_TOKEN=<token do bot>
 TELEGRAM_CHAT_ID=<id do chat/grupo>
 RESEND_API_KEY=<chave da API Resend>
@@ -235,6 +381,12 @@ EXPO_PUBLIC_REVENUECAT_ANDROID_KEY=goog_XXXX
 EXPO_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
 ```
 
+### Painel Admin Web
+
+```
+VITE_API_URL=https://docepreco.onrender.com/api
+```
+
 ## Banco de Dados
 
 | Tabela | Descricao |
@@ -251,17 +403,27 @@ EXPO_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
 | `password_reset_codes` | Codigos de recuperacao de senha |
 | `push_tokens` | Tokens de push notification por dispositivo |
 | `notifications` | Fila de notificacoes push |
-| `notification_templates` | Templates reutilizaveis de notificacao |
+| `notification_templates` | Templates de notificacao com agendamento configuravel |
 | `banners` | Banners gerenciados pelo admin |
 | `motivational_tips` | Dicas motivacionais para usuarios |
 | `request_logs` | Log de requisicoes da API (monitoramento) |
 | `app_settings` | Configuracoes globais do app (key-value) |
+| `global_ingredients` | Ingredientes com precos de referencia (sugestao) |
+| `featured_recipes` | Receitas sugeridas para usuarios premium |
+| `featured_recipe_ingredients` | Ingredientes das receitas sugeridas |
+| `recipe_categories` | Categorias de receitas com emoji |
+| `feature_flags` | Feature flags para controle remoto de funcionalidades |
+| `faq_items` | Perguntas frequentes (FAQ) |
+| `coupons` | Cupons de desconto para o plano premium |
+| `feedbacks` | Feedbacks dos usuarios com nota e resposta |
+| `changelog_entries` | Changelog com novidades por versao |
+| `onboarding_steps` | Telas de onboarding configuráveis |
 
 ## Integracao Premium (RevenueCat)
 
 **Fluxo:** App (SDK) -> RevenueCat -> Webhook -> Backend (atualiza DB) -> App (refresh)
 
-- **Limites free:** 15 ingredientes, 5 receitas
+- **Limites free:** 15 ingredientes, 5 receitas (configuravel pelo painel admin)
 - **Entitlement:** `premium`
 - **Webhook events:** INITIAL_PURCHASE, RENEWAL, EXPIRATION, CANCELLATION, etc.
 - **Admin override:** `POST /api/admin/users/:id/premium` com header `X-Admin-Secret`
@@ -313,6 +475,7 @@ TELEGRAM_CHAT_ID=<id do chat/grupo>
 |-----------|---------|----------|
 | **Diario** | Todo dia as 8h (Sao Paulo) | Total de usuarios, premium, novos do dia |
 | **Semanal** | Segunda-feira as 9h (Sao Paulo) | Novos usuarios, receitas criadas, vendas, receita total, top 5 usuarios ativos |
+| **Meta diaria** | 12h, 15h, 18h e 21h (Sao Paulo) | Progresso da meta de cadastros (configuravel pelo painel) |
 
 ### Arquitetura
 
@@ -329,6 +492,7 @@ Rotas de comandos: `backend/src/presentation/routes/telegramRoutes.ts`
 | `sendSlowApiAlert` | Middleware de request logs (`server.ts`) |
 | `sendDailyUserReport` | Cron `0 8 * * *` (`server.ts`) |
 | `sendWeeklyReport` | Cron `0 9 * * 1` (`server.ts`) |
+| `sendDailyGoalProgress` | Cron `0 12,15,18,21 * * *` (`server.ts`) |
 
 Todas as notificacoes sao **fire-and-forget** — nao bloqueiam a resposta da API nem causam erro se o Telegram estiver indisponivel.
 
@@ -346,8 +510,22 @@ Usado para envio de emails transacionais (recuperacao de senha) e campanhas em m
 
 Variavel necessaria: `RESEND_API_KEY`.
 
+## Seeds Automaticos
+
+Na primeira execucao da migration, os seguintes dados sao criados automaticamente:
+
+| Dados | Quantidade | Origem |
+|-------|-----------|--------|
+| Dicas motivacionais | 8 | Textos padrao |
+| Templates de notificacao | 4 | inactivity_2d, inactivity_5d, daily_sales, weekly_reminder |
+| Feature flags | 9 | Funcionalidades premium do app (todas ativas) |
+| Receitas sugeridas | 12 | SUGGESTED_RECIPES do mobile (com ingredientes) |
+| Telas de onboarding | 4 | SLIDES do OnboardingScreen (com icones e cores) |
+| Agendamento de notificacoes | 4 | Horarios originais hardcoded no mobile |
+
 ## Suporte
 
 - WhatsApp integrado na tela de perfil
 - Sentry para monitoramento de erros em producao
 - Modo demo para testes e avaliacao na loja
+- Painel admin para gerenciamento remoto do app

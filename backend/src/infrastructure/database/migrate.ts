@@ -174,6 +174,16 @@ CREATE TABLE IF NOT EXISTS app_settings (
   updated_at TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS telegram_alerts (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  key VARCHAR(50) NOT NULL UNIQUE,
+  label VARCHAR(100) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+  category VARCHAR(50) NOT NULL DEFAULT 'alerts',
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS global_ingredients (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
@@ -429,6 +439,29 @@ export async function runMigrations() {
         await client.query(
           'INSERT INTO notification_templates (slug, title, body) VALUES ($1, $2, $3)',
           [t.slug, t.title, t.body]
+        );
+      }
+    }
+
+    // Seed telegram alerts (only if table is empty)
+    const telegramCount = await client.query('SELECT COUNT(*) FROM telegram_alerts');
+    if (parseInt(telegramCount.rows[0].count) === 0) {
+      console.log('Seeding telegram alerts...');
+      const alerts = [
+        { key: 'new_user', label: 'Novo cadastro', description: 'Notifica quando um novo usuário se registra', category: 'alerts' },
+        { key: 'new_sale', label: 'Nova venda', description: 'Notifica quando um usuário registra uma venda', category: 'alerts' },
+        { key: 'premium_event', label: 'Evento premium', description: 'Assinatura, renovação, cancelamento, expiração', category: 'alerts' },
+        { key: 'user_milestone', label: 'Marco de usuários', description: 'Quando atinge 50, 100, 200, 500, 1000, 2000, 5000, 10000', category: 'alerts' },
+        { key: 'error_alert', label: 'Erro no servidor', description: 'Quando uma rota retorna status 500+', category: 'alerts' },
+        { key: 'slow_api', label: 'Rota lenta', description: 'Quando uma rota demora mais de 2 segundos', category: 'alerts' },
+        { key: 'daily_report', label: 'Relatório diário', description: 'Enviado todo dia às 8h com total de usuários', category: 'reports' },
+        { key: 'weekly_report', label: 'Relatório semanal', description: 'Enviado toda segunda às 9h com resumo da semana', category: 'reports' },
+        { key: 'goal_progress', label: 'Progresso da meta', description: 'Enviado às 12h, 15h, 18h e 21h com progresso de cadastros', category: 'reports' },
+      ];
+      for (const a of alerts) {
+        await client.query(
+          `INSERT INTO telegram_alerts (key, label, description, is_enabled, category) VALUES ($1, $2, $3, TRUE, $4)`,
+          [a.key, a.label, a.description, a.category]
         );
       }
     }

@@ -1,7 +1,9 @@
 import { pool } from '../database/connection';
+import { PostgresTelegramAlertRepository } from '../repositories/PostgresTelegramAlertRepository';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
+const alertRepo = new PostgresTelegramAlertRepository();
 
 function sendTelegramMessage(text: string): void {
   if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
@@ -14,6 +16,14 @@ function sendTelegramMessage(text: string): void {
   });
 }
 
+async function isAlertEnabled(key: string): Promise<boolean> {
+  try {
+    return await alertRepo.isEnabled(key);
+  } catch {
+    return true; // default enabled if DB not ready
+  }
+}
+
 function brNow(): string {
   return new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
 }
@@ -21,6 +31,7 @@ function brNow(): string {
 // ── Existing notifications ──────────────────────────────────────────
 
 export async function sendDailyUserReport(): Promise<void> {
+  if (!await isAlertEnabled('daily_report')) return;
   const { rows } = await pool.query(`
     SELECT
       COUNT(*)::int AS total,
@@ -33,7 +44,8 @@ export async function sendDailyUserReport(): Promise<void> {
   sendTelegramMessage(text);
 }
 
-export function notifyNewUser(companyName: string, email: string): void {
+export async function notifyNewUser(companyName: string, email: string): Promise<void> {
+  if (!await isAlertEnabled('new_user')) return;
   const text = `🆕 Novo cadastro!\n\n🏪 ${companyName}\n📧 ${email}\n🕐 ${brNow()}`;
   sendTelegramMessage(text);
 }
@@ -51,7 +63,8 @@ const premiumEventLabels: Record<string, string> = {
   NON_RENEWING_PURCHASE: '💎 Compra avulsa',
 };
 
-export function notifyPremiumEvent(companyName: string, eventType: string, platform: string | null): void {
+export async function notifyPremiumEvent(companyName: string, eventType: string, platform: string | null): Promise<void> {
+  if (!await isAlertEnabled('premium_event')) return;
   const label = premiumEventLabels[eventType] || `📌 ${eventType}`;
   const plat = platform ? ` (${platform})` : '';
   const text = `${label}${plat}\n\n🏪 ${companyName}\n🕐 ${brNow()}`;
@@ -60,7 +73,8 @@ export function notifyPremiumEvent(companyName: string, eventType: string, platf
 
 // ── Sale created ────────────────────────────────────────────────────
 
-export function notifySale(companyName: string, recipeName: string, quantity: number, totalRevenue: number): void {
+export async function notifySale(companyName: string, recipeName: string, quantity: number, totalRevenue: number): Promise<void> {
+  if (!await isAlertEnabled('new_sale')) return;
   const revenue = totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
   const text = `🧁 Nova venda!\n\n🏪 ${companyName}\n🍰 ${recipeName} × ${quantity}\n💰 ${revenue}\n🕐 ${brNow()}`;
   sendTelegramMessage(text);
@@ -70,15 +84,17 @@ export function notifySale(companyName: string, recipeName: string, quantity: nu
 
 const MILESTONES = [50, 100, 200, 500, 1000, 2000, 5000, 10000];
 
-export function notifyUserMilestone(total: number): void {
+export async function notifyUserMilestone(total: number): Promise<void> {
   if (!MILESTONES.includes(total)) return;
+  if (!await isAlertEnabled('user_milestone')) return;
   const text = `🎉 Marco atingido!\n\n👥 ${total} usuários cadastrados!\n🕐 ${brNow()}`;
   sendTelegramMessage(text);
 }
 
 // ── Error & slow API alerts ─────────────────────────────────────────
 
-export function sendErrorAlert(method: string, path: string, statusCode: number, durationMs: number, errorMessage?: string): void {
+export async function sendErrorAlert(method: string, path: string, statusCode: number, durationMs: number, errorMessage?: string): Promise<void> {
+  if (!await isAlertEnabled('error_alert')) return;
   let text = `🚨 Erro no servidor\n\n${method} ${path}\nStatus: ${statusCode}\nDuração: ${durationMs}ms`;
   if (errorMessage) {
     text += `\nErro: ${errorMessage}`;
@@ -87,7 +103,8 @@ export function sendErrorAlert(method: string, path: string, statusCode: number,
   sendTelegramMessage(text);
 }
 
-export function sendSlowApiAlert(method: string, path: string, durationMs: number): void {
+export async function sendSlowApiAlert(method: string, path: string, durationMs: number): Promise<void> {
+  if (!await isAlertEnabled('slow_api')) return;
   const text = `🐢 Rota lenta\n\n${method} ${path}\nDuração: ${durationMs}ms\n🕐 ${brNow()}`;
   sendTelegramMessage(text);
 }
@@ -95,6 +112,7 @@ export function sendSlowApiAlert(method: string, path: string, durationMs: numbe
 // ── Daily registration goal progress ────────────────────────────────
 
 export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}): Promise<void> {
+  if (!await isAlertEnabled('goal_progress')) return;
   const { rows: settingRows } = await pool.query(
     `SELECT value FROM app_settings WHERE key = 'daily_registration_goal'`
   );
@@ -120,6 +138,7 @@ export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}
 // ── Weekly report ───────────────────────────────────────────────────
 
 export async function sendWeeklyReport(): Promise<void> {
+  if (!await isAlertEnabled('weekly_report')) return;
   const { rows } = await pool.query(`
     SELECT
       (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '7 days') AS new_users,
