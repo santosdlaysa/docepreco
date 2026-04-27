@@ -345,15 +345,40 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
 
-    // Ensure recipe_yield column exists (yield is a reserved word in PostgreSQL)
-    const hasOldYield = await client.query(
-      `SELECT 1 FROM information_schema.columns WHERE table_name = 'featured_recipes' AND column_name = 'yield'`
+    // Recreate featured_recipes with correct schema if it has the old columns
+    const hasOldSchema = await client.query(
+      `SELECT 1 FROM information_schema.columns WHERE table_name = 'featured_recipes' AND column_name = 'description'`
     );
-    if (hasOldYield.rows.length > 0) {
-      await client.query(`ALTER TABLE featured_recipes RENAME COLUMN "yield" TO recipe_yield`);
-      console.log('Renamed featured_recipes.yield -> recipe_yield');
+    if (hasOldSchema.rows.length > 0) {
+      console.log('Recreating featured_recipes with correct schema...');
+      await client.query('DROP TABLE IF EXISTS featured_recipe_ingredients');
+      await client.query('DROP TABLE IF EXISTS featured_recipes');
+      await client.query(`
+        CREATE TABLE featured_recipes (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          name VARCHAR(255) NOT NULL,
+          recipe_yield INTEGER NOT NULL DEFAULT 1,
+          profit_margin DECIMAL(5,2) NOT NULL DEFAULT 70,
+          is_active BOOLEAN NOT NULL DEFAULT TRUE,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW()
+        )
+      `);
+      await client.query(`
+        CREATE TABLE featured_recipe_ingredients (
+          id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+          recipe_id UUID NOT NULL REFERENCES featured_recipes(id) ON DELETE CASCADE,
+          name VARCHAR(255) NOT NULL,
+          quantity_used DECIMAL(10,3) NOT NULL,
+          unit VARCHAR(10) NOT NULL CHECK (unit IN ('g', 'kg', 'ml', 'l', 'unit')),
+          purchase_quantity DECIMAL(10,3) NOT NULL DEFAULT 1000,
+          purchase_price DECIMAL(10,2) NOT NULL DEFAULT 0
+        )
+      `);
     }
+    // Also ensure recipe_yield exists for fresh installs where CREATE TABLE already has it
     await addColumnIfMissing(client, 'featured_recipes', 'recipe_yield', 'INTEGER NOT NULL DEFAULT 1');
+    await addColumnIfMissing(client, 'featured_recipes', 'profit_margin', 'DECIMAL(5,2) NOT NULL DEFAULT 70');
 
     // Schedule config for notification templates
     await addColumnIfMissing(client, 'notification_templates', 'schedule_type', "VARCHAR(20) NOT NULL DEFAULT 'daily'");
