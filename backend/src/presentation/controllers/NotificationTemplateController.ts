@@ -32,9 +32,9 @@ export class NotificationTemplateController {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { title, body, isActive } = req.body;
+      const { title, body, isActive, scheduleType, scheduleHour, scheduleMinute, scheduleWeekday, scheduleIntervalHours } = req.body;
 
-      const updated = await repo.update(id, { title, body, isActive });
+      const updated = await repo.update(id, { title, body, isActive, scheduleType, scheduleHour, scheduleMinute, scheduleWeekday, scheduleIntervalHours });
       if (!updated) {
         res.status(404).json({ success: false, error: 'Template não encontrado' });
         return;

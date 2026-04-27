@@ -344,6 +344,19 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
+
+    // Schedule config for notification templates
+    await addColumnIfMissing(client, 'notification_templates', 'schedule_type', "VARCHAR(20) NOT NULL DEFAULT 'daily'");
+    await addColumnIfMissing(client, 'notification_templates', 'schedule_hour', 'INTEGER');
+    await addColumnIfMissing(client, 'notification_templates', 'schedule_minute', 'INTEGER DEFAULT 0');
+    await addColumnIfMissing(client, 'notification_templates', 'schedule_weekday', 'INTEGER');
+    await addColumnIfMissing(client, 'notification_templates', 'schedule_interval_hours', 'INTEGER');
+
+    // Seed schedule config for existing templates (only if schedule_hour is null)
+    await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 48 WHERE slug = 'inactivity_2d' AND schedule_hour IS NULL`);
+    await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 120 WHERE slug = 'inactivity_5d' AND schedule_hour IS NULL`);
+    await client.query(`UPDATE notification_templates SET schedule_type = 'daily', schedule_hour = 19, schedule_minute = 0 WHERE slug = 'daily_sales' AND schedule_hour IS NULL`);
+    await client.query(`UPDATE notification_templates SET schedule_type = 'weekly', schedule_hour = 9, schedule_minute = 0, schedule_weekday = 2 WHERE slug = 'weekly_reminder' AND schedule_hour IS NULL`);
     await addColumnIfMissing(client, 'onboarding_steps', 'icon', "VARCHAR(50)");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon_color', "VARCHAR(20)");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon_bg', "VARCHAR(20)");

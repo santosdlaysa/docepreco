@@ -228,7 +228,11 @@ export const api = {
 
   // ── Notification Templates ──
   listNotificationTemplates: () => req<NotificationTemplate[]>('/notification-templates'),
-  updateNotificationTemplate: (id: string, data: { title?: string; body?: string; isActive?: boolean }) =>
+  updateNotificationTemplate: (id: string, data: {
+    title?: string; body?: string; isActive?: boolean;
+    scheduleType?: string; scheduleHour?: number | null; scheduleMinute?: number | null;
+    scheduleWeekday?: number | null; scheduleIntervalHours?: number | null;
+  }) =>
     req<NotificationTemplate>(`/notification-templates/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   sendNotificationTemplate: (id: string, target: 'all' | 'premium' | 'free' = 'all') =>
     req<AppNotification>(`/notification-templates/${id}/send`, { method: 'POST', body: JSON.stringify({ target }) }),
@@ -380,6 +384,11 @@ export interface NotificationTemplate {
   title: string;
   body: string;
   isActive: boolean;
+  scheduleType: 'daily' | 'weekly' | 'interval';
+  scheduleHour: number | null;
+  scheduleMinute: number | null;
+  scheduleWeekday: number | null;
+  scheduleIntervalHours: number | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -14,6 +14,22 @@ const SLUG_LABELS: Record<string, string> = {
   weekly_reminder: 'Lembrete semanal',
 };
 
+const WEEKDAY_LABELS: Record<number, string> = {
+  1: 'Domingo', 2: 'Segunda', 3: 'Terça', 4: 'Quarta', 5: 'Quinta', 6: 'Sexta', 7: 'Sábado',
+};
+
+function describeSchedule(t: { scheduleType: string; scheduleHour: number | null; scheduleMinute: number | null; scheduleWeekday: number | null; scheduleIntervalHours: number | null }): string {
+  const h = t.scheduleHour != null ? String(t.scheduleHour).padStart(2, '0') : '--';
+  const m = t.scheduleMinute != null ? String(t.scheduleMinute).padStart(2, '0') : '00';
+  if (t.scheduleType === 'interval') {
+    return `A cada ${t.scheduleIntervalHours ?? '?'}h de inatividade`;
+  }
+  if (t.scheduleType === 'weekly') {
+    return `${WEEKDAY_LABELS[t.scheduleWeekday ?? 2] ?? '?'} às ${h}:${m}`;
+  }
+  return `Diariamente às ${h}:${m}`;
+}
+
 function fmtDate(iso: string) {
   return new Date(iso).toLocaleString('pt-BR', {
     day: '2-digit', month: '2-digit', year: 'numeric',
@@ -37,6 +53,11 @@ export function TipsPage({ toast }: Props) {
   const [editingTemplate, setEditingTemplate] = useState<NotificationTemplate | null>(null);
   const [templateTitle, setTemplateTitle] = useState('');
   const [templateBody, setTemplateBody] = useState('');
+  const [templateScheduleType, setTemplateScheduleType] = useState<'daily' | 'weekly' | 'interval'>('daily');
+  const [templateScheduleHour, setTemplateScheduleHour] = useState<number>(19);
+  const [templateScheduleMinute, setTemplateScheduleMinute] = useState<number>(0);
+  const [templateScheduleWeekday, setTemplateScheduleWeekday] = useState<number>(2);
+  const [templateScheduleIntervalHours, setTemplateScheduleIntervalHours] = useState<number>(48);
   const [confirmSendTemplate, setConfirmSendTemplate] = useState<NotificationTemplate | null>(null);
 
   const loadTips = async () => {
@@ -117,6 +138,11 @@ export function TipsPage({ toast }: Props) {
     setEditingTemplate(t);
     setTemplateTitle(t.title);
     setTemplateBody(t.body);
+    setTemplateScheduleType(t.scheduleType ?? 'daily');
+    setTemplateScheduleHour(t.scheduleHour ?? 19);
+    setTemplateScheduleMinute(t.scheduleMinute ?? 0);
+    setTemplateScheduleWeekday(t.scheduleWeekday ?? 2);
+    setTemplateScheduleIntervalHours(t.scheduleIntervalHours ?? 48);
     setShowTemplateModal(true);
   };
 
@@ -126,7 +152,12 @@ export function TipsPage({ toast }: Props) {
       await api.updateNotificationTemplate(editingTemplate.id, {
         title: templateTitle,
         body: templateBody,
-      });
+        scheduleType: templateScheduleType,
+        scheduleHour: templateScheduleType !== 'interval' ? templateScheduleHour : null,
+        scheduleMinute: templateScheduleType !== 'interval' ? templateScheduleMinute : null,
+        scheduleWeekday: templateScheduleType === 'weekly' ? templateScheduleWeekday : null,
+        scheduleIntervalHours: templateScheduleType === 'interval' ? templateScheduleIntervalHours : null,
+      } as any);
       setShowTemplateModal(false);
       toast.success('Template atualizado!');
       loadTemplates();
@@ -262,6 +293,7 @@ export function TipsPage({ toast }: Props) {
                   <th className="px-5 py-3 w-44">Tipo</th>
                   <th className="px-3 py-3">Título</th>
                   <th className="px-3 py-3">Corpo</th>
+                  <th className="px-3 py-3">Agendamento</th>
                   <th className="px-3 py-3 w-24">Status</th>
                   <th className="px-3 py-3 text-right">Ações</th>
                 </tr>
@@ -274,6 +306,9 @@ export function TipsPage({ toast }: Props) {
                     </td>
                     <td className="px-3 py-3 text-gray-900">{t.title}</td>
                     <td className="px-3 py-3 text-gray-600 text-xs max-w-xs truncate">{t.body}</td>
+                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+                      {describeSchedule(t)}
+                    </td>
                     <td className="px-3 py-3">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                         t.isActive
@@ -403,6 +438,73 @@ export function TipsPage({ toast }: Props) {
                   value={templateBody}
                   onChange={e => setTemplateBody(e.target.value)}
                 />
+              </div>
+
+              {/* Agendamento */}
+              <div className="border-t border-gray-100 pt-4">
+                <label className="block text-sm font-bold text-gray-700 mb-3">Agendamento</label>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                    <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                      value={templateScheduleType} onChange={e => setTemplateScheduleType(e.target.value as any)}>
+                      <option value="daily">Diariamente</option>
+                      <option value="weekly">Semanalmente</option>
+                      <option value="interval">Por inatividade (intervalo)</option>
+                    </select>
+                  </div>
+
+                  {templateScheduleType !== 'interval' ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Hora</label>
+                        <input type="number" min="0" max="23"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                          value={templateScheduleHour} onChange={e => setTemplateScheduleHour(parseInt(e.target.value) || 0)} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Minuto</label>
+                        <input type="number" min="0" max="59"
+                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                          value={templateScheduleMinute} onChange={e => setTemplateScheduleMinute(parseInt(e.target.value) || 0)} />
+                      </div>
+                      {templateScheduleType === 'weekly' && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-500 mb-1">Dia da semana</label>
+                          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                            value={templateScheduleWeekday} onChange={e => setTemplateScheduleWeekday(parseInt(e.target.value))}>
+                            <option value={1}>Domingo</option>
+                            <option value={2}>Segunda</option>
+                            <option value={3}>Terça</option>
+                            <option value={4}>Quarta</option>
+                            <option value={5}>Quinta</option>
+                            <option value={6}>Sexta</option>
+                            <option value={7}>Sábado</option>
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Horas de inatividade</label>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min="1"
+                          className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                          value={templateScheduleIntervalHours} onChange={e => setTemplateScheduleIntervalHours(parseInt(e.target.value) || 1)} />
+                        <span className="text-sm text-gray-500">horas sem abrir o app</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                    {templateScheduleType === 'interval'
+                      ? `Será disparada ${templateScheduleIntervalHours}h após o usuário parar de usar o app`
+                      : templateScheduleType === 'weekly'
+                        ? `Toda ${WEEKDAY_LABELS[templateScheduleWeekday]} às ${String(templateScheduleHour).padStart(2, '0')}:${String(templateScheduleMinute).padStart(2, '0')}`
+                        : `Todo dia às ${String(templateScheduleHour).padStart(2, '0')}:${String(templateScheduleMinute).padStart(2, '0')}`
+                    }
+                  </p>
+                </div>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">

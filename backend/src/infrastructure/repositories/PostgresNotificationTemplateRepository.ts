@@ -6,6 +6,11 @@ export interface NotificationTemplate {
   title: string;
   body: string;
   isActive: boolean;
+  scheduleType: 'daily' | 'weekly' | 'interval';
+  scheduleHour: number | null;
+  scheduleMinute: number | null;
+  scheduleWeekday: number | null;
+  scheduleIntervalHours: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -36,24 +41,29 @@ export class PostgresNotificationTemplateRepository {
 
   async update(
     id: string,
-    data: { title?: string; body?: string; isActive?: boolean }
+    data: {
+      title?: string;
+      body?: string;
+      isActive?: boolean;
+      scheduleType?: string;
+      scheduleHour?: number | null;
+      scheduleMinute?: number | null;
+      scheduleWeekday?: number | null;
+      scheduleIntervalHours?: number | null;
+    }
   ): Promise<NotificationTemplate | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
     let idx = 1;
 
-    if (data.title !== undefined) {
-      fields.push(`title = $${idx++}`);
-      values.push(data.title);
-    }
-    if (data.body !== undefined) {
-      fields.push(`body = $${idx++}`);
-      values.push(data.body);
-    }
-    if (data.isActive !== undefined) {
-      fields.push(`is_active = $${idx++}`);
-      values.push(data.isActive);
-    }
+    if (data.title !== undefined) { fields.push(`title = $${idx++}`); values.push(data.title); }
+    if (data.body !== undefined) { fields.push(`body = $${idx++}`); values.push(data.body); }
+    if (data.isActive !== undefined) { fields.push(`is_active = $${idx++}`); values.push(data.isActive); }
+    if (data.scheduleType !== undefined) { fields.push(`schedule_type = $${idx++}`); values.push(data.scheduleType); }
+    if (data.scheduleHour !== undefined) { fields.push(`schedule_hour = $${idx++}`); values.push(data.scheduleHour); }
+    if (data.scheduleMinute !== undefined) { fields.push(`schedule_minute = $${idx++}`); values.push(data.scheduleMinute); }
+    if (data.scheduleWeekday !== undefined) { fields.push(`schedule_weekday = $${idx++}`); values.push(data.scheduleWeekday); }
+    if (data.scheduleIntervalHours !== undefined) { fields.push(`schedule_interval_hours = $${idx++}`); values.push(data.scheduleIntervalHours); }
 
     if (fields.length === 0) return null;
 
@@ -75,6 +85,11 @@ export class PostgresNotificationTemplateRepository {
       title: row.title as string,
       body: row.body as string,
       isActive: row.is_active as boolean,
+      scheduleType: (row.schedule_type as string ?? 'daily') as NotificationTemplate['scheduleType'],
+      scheduleHour: row.schedule_hour as number | null,
+      scheduleMinute: (row.schedule_minute as number) ?? 0,
+      scheduleWeekday: row.schedule_weekday as number | null,
+      scheduleIntervalHours: row.schedule_interval_hours as number | null,
       createdAt: (row.created_at as Date).toISOString(),
       updatedAt: (row.updated_at as Date).toISOString(),
     };
