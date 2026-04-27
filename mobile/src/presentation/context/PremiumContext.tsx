@@ -78,7 +78,15 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   useEffect(() => {
-    void loadFromStorage();
+    // Load cached data immediately, then sync with backend
+    loadFromStorage().then(() => {
+      if (!isDemoMode()) {
+        authApi.me().then((fresh) => {
+          setUser(fresh);
+          void tokenStorage.saveUser(fresh);
+        }).catch(() => {});
+      }
+    });
   }, [loadFromStorage]);
 
   const value: PremiumContextData = {

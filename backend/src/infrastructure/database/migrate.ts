@@ -344,6 +344,9 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
+    await addColumnIfMissing(client, 'onboarding_steps', 'icon', "VARCHAR(50)");
+    await addColumnIfMissing(client, 'onboarding_steps', 'icon_color', "VARCHAR(20)");
+    await addColumnIfMissing(client, 'onboarding_steps', 'icon_bg', "VARCHAR(20)");
 
     // Seed motivational tips (only if table is empty)
     const tipCount = await client.query('SELECT COUNT(*) FROM motivational_tips');
