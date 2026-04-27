@@ -22,9 +22,16 @@ export class FeaturedRecipeController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { name, description, imageUrl, category, isActive, sortOrder } = req.body;
+      const { name, yield: recipeYield, profitMargin, isActive, sortOrder, ingredients } = req.body;
       if (!name) { res.status(400).json({ success: false, error: 'name é obrigatório' }); return; }
-      const item = await repo.create({ name, description: description ?? '', imageUrl, category: category ?? '', isActive: isActive ?? true, sortOrder: sortOrder ?? 0 });
+      const item = await repo.create({
+        name,
+        yield: recipeYield ?? 1,
+        profitMargin: profitMargin ?? 70,
+        isActive: isActive ?? true,
+        sortOrder: sortOrder ?? 0,
+        ingredients: ingredients ?? [],
+      });
       res.status(201).json({ success: true, data: item });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);

@@ -7,6 +7,41 @@ interface Props {
   toast: ToastFn;
 }
 
+const EMOJI_SUGGESTIONS = [
+  { emoji: '🎂', label: 'Bolos' },
+  { emoji: '🧁', label: 'Cupcakes' },
+  { emoji: '🍫', label: 'Chocolates' },
+  { emoji: '🍪', label: 'Biscoitos' },
+  { emoji: '🍰', label: 'Tortas' },
+  { emoji: '🍩', label: 'Donuts' },
+  { emoji: '🍮', label: 'Pudins' },
+  { emoji: '🧇', label: 'Waffles' },
+  { emoji: '🥐', label: 'Pães' },
+  { emoji: '🍬', label: 'Doces' },
+  { emoji: '🍭', label: 'Pirulitos' },
+  { emoji: '🥧', label: 'Tortas doces' },
+  { emoji: '🍦', label: 'Sorvetes' },
+  { emoji: '☕', label: 'Bebidas' },
+  { emoji: '🥤', label: 'Sucos' },
+  { emoji: '🧃', label: 'Drinks' },
+  { emoji: '🥖', label: 'Salgados' },
+  { emoji: '🥟', label: 'Frituras' },
+  { emoji: '🫔', label: 'Salgadinhos' },
+  { emoji: '🥗', label: 'Saladas' },
+  { emoji: '🍕', label: 'Pizzas' },
+  { emoji: '🌮', label: 'Mexicano' },
+  { emoji: '🍱', label: 'Marmitas' },
+  { emoji: '🎃', label: 'Sazonal' },
+  { emoji: '🎄', label: 'Natal' },
+  { emoji: '🐣', label: 'Páscoa' },
+  { emoji: '💝', label: 'Namorados' },
+  { emoji: '🎉', label: 'Festas' },
+  { emoji: '👶', label: 'Infantil' },
+  { emoji: '💎', label: 'Premium' },
+  { emoji: '⭐', label: 'Destaque' },
+  { emoji: '🔥', label: 'Populares' },
+];
+
 const EMPTY = { name: '', icon: '', sortOrder: 0, isActive: true };
 
 export function CategoriesPage({ toast }: Props) {
@@ -144,17 +179,33 @@ export function CategoriesPage({ toast }: Props) {
                 <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Bolos" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ícone (emoji)</label>
-                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
-                    value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })} placeholder="🎂" />
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ícone</label>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-2xl border-2 border-dashed border-gray-300">
+                    {form.icon || '?'}
+                  </div>
+                  <input className="w-20 border border-gray-300 rounded-lg px-3 py-2 text-sm text-center focus:border-primary-400 outline-none"
+                    value={form.icon} onChange={e => setForm({ ...form, icon: e.target.value })} placeholder="🎂"
+                    maxLength={4} />
+                  <span className="text-xs text-gray-400">ou escolha abaixo</span>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
-                  <input type="number" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
-                    value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })} />
+                <div className="grid grid-cols-8 gap-1.5 bg-gray-50 rounded-lg p-3 max-h-48 overflow-y-auto">
+                  {EMOJI_SUGGESTIONS.map(({ emoji, label }) => (
+                    <button key={emoji} onClick={() => setForm({ ...form, icon: emoji, name: form.name || label })}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all hover:scale-110 ${form.icon === emoji ? 'bg-primary-100 ring-2 ring-primary-400 shadow-sm' : 'hover:bg-white hover:shadow-sm'}`}
+                      title={label}>
+                      {emoji}
+                    </button>
+                  ))}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
+                <input type="number" min="0" className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })} />
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">

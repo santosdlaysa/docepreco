@@ -412,14 +412,22 @@ export interface GlobalIngredient {
 
 // ── Featured Recipes ──
 
+export interface FeaturedRecipeIngredient {
+  name: string;
+  quantityUsed: number;
+  unit: string;
+  purchaseQuantity: number;
+  purchasePrice: number;
+}
+
 export interface FeaturedRecipe {
   id: string;
   name: string;
-  description: string;
-  imageUrl: string | null;
-  category: string;
+  yield: number;
+  profitMargin: number;
   isActive: boolean;
   sortOrder: number;
+  ingredients: FeaturedRecipeIngredient[];
   createdAt: string;
 }
 
@@ -511,6 +519,9 @@ export interface OnboardingStep {
   title: string;
   description: string;
   imageUrl: string | null;
+  icon: string | null;
+  iconColor: string | null;
+  iconBg: string | null;
   sortOrder: number;
   isActive: boolean;
   createdAt: string;

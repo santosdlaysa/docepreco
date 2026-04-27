@@ -188,12 +188,21 @@ CREATE TABLE IF NOT EXISTS global_ingredients (
 CREATE TABLE IF NOT EXISTS featured_recipes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   name VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL DEFAULT '',
-  image_url TEXT,
-  category VARCHAR(100) NOT NULL DEFAULT '',
+  yield INTEGER NOT NULL DEFAULT 1,
+  profit_margin DECIMAL(5,2) NOT NULL DEFAULT 70,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   sort_order INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS featured_recipe_ingredients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  recipe_id UUID NOT NULL REFERENCES featured_recipes(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  quantity_used DECIMAL(10,3) NOT NULL,
+  unit VARCHAR(10) NOT NULL CHECK (unit IN ('g', 'kg', 'ml', 'l', 'unit')),
+  purchase_quantity DECIMAL(10,3) NOT NULL DEFAULT 1000,
+  purchase_price DECIMAL(10,2) NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS recipe_categories (
@@ -261,6 +270,9 @@ CREATE TABLE IF NOT EXISTS onboarding_steps (
   title VARCHAR(255) NOT NULL,
   description TEXT NOT NULL DEFAULT '',
   image_url TEXT,
+  icon VARCHAR(50),
+  icon_color VARCHAR(20),
+  icon_bg VARCHAR(20),
   sort_order INTEGER NOT NULL DEFAULT 0,
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT NOW()
@@ -366,6 +378,49 @@ export async function runMigrations() {
         await client.query(
           'INSERT INTO notification_templates (slug, title, body) VALUES ($1, $2, $3)',
           [t.slug, t.title, t.body]
+        );
+      }
+    }
+
+    // Seed onboarding steps (only if table is empty)
+    const onboardingCount = await client.query('SELECT COUNT(*) FROM onboarding_steps');
+    if (parseInt(onboardingCount.rows[0].count) === 0) {
+      console.log('Seeding onboarding steps...');
+      const steps = [
+        { title: 'Você sabe se está lucrando?', description: 'Muitas confeiteiras vendem muito, mas no final do mês o dinheiro some. O problema está no preço — calculado no "achismo", sem considerar todos os custos.', icon: 'sad-outline', iconColor: '#E91E8C', iconBg: '#F8BBD9' },
+        { title: 'Calcule o custo real de cada receita', description: 'Cadastre seus ingredientes com preço e quantidade. O DocePreço calcula automaticamente quanto custa cada grama, cada unidade e cada receita completa.', icon: 'calculator-outline', iconColor: '#8B4513', iconBg: '#F5E6D0' },
+        { title: 'Defina sua margem de lucro', description: 'Escolha quanto quer lucrar — 30%, 50%, 100% ou mais. O app mostra o preço de venda ideal para você nunca mais trabalhar no prejuízo.', icon: 'trending-up-outline', iconColor: '#4CAF50', iconBg: '#E8F5E9' },
+        { title: 'Acompanhe suas vendas', description: 'Registre o que vendeu, em qual quantidade e por qual preço. Veja seu faturamento por dia, semana ou mês e entenda quando seu negócio cresce.', icon: 'cash-outline', iconColor: '#FF9800', iconBg: '#FFF3E0' },
+      ];
+      for (let i = 0; i < steps.length; i++) {
+        const s = steps[i];
+        await client.query(
+          `INSERT INTO onboarding_steps (title, description, icon, icon_color, icon_bg, sort_order, is_active)
+           VALUES ($1, $2, $3, $4, $5, $6, TRUE)`,
+          [s.title, s.description, s.icon, s.iconColor, s.iconBg, i]
+        );
+      }
+    }
+
+    // Seed feature flags from existing premium features (only if table is empty)
+    const flagCount = await client.query('SELECT COUNT(*) FROM feature_flags');
+    if (parseInt(flagCount.rows[0].count) === 0) {
+      console.log('Seeding feature flags...');
+      const flags = [
+        { key: 'pdfCustomBranding', description: 'PDF personalizado — logo, cores e sem marca DocePreço nos orçamentos' },
+        { key: 'advancedReports', description: 'Relatórios completos — gráficos de faturamento, receitas mais vendidas e margem real' },
+        { key: 'clientsManagement', description: 'Gestão de clientes — cadastro, histórico e aniversários' },
+        { key: 'ordersManagement', description: 'Agenda de encomendas — pedidos, status de produção e lembretes de entrega' },
+        { key: 'laborCostCalc', description: 'Cálculo profissional — mão de obra e custos fixos no preço real da receita' },
+        { key: 'smartShoppingList', description: 'Lista de compras inteligente — calcula o que precisa comprar pras encomendas' },
+        { key: 'ingredientPriceHistory', description: 'Histórico de preços — evolução do custo dos ingredientes ao longo do tempo' },
+        { key: 'seasonalPricing', description: 'Precificação por temporada — ajuste automático no Natal, Páscoa e datas especiais' },
+        { key: 'suggestedRecipes', description: 'Receitas sugeridas — receitas prontas como base para usuários premium' },
+      ];
+      for (const f of flags) {
+        await client.query(
+          'INSERT INTO feature_flags (key, description, is_enabled) VALUES ($1, $2, TRUE)',
+          [f.key, f.description]
         );
       }
     }

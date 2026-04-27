@@ -1,16 +1,38 @@
 import { useEffect, useState } from 'react';
 import { api, OnboardingStep } from '../lib/api';
 import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
-import { Pencil, Trash2, Plus, Power, GripVertical, Smartphone } from 'lucide-react';
+import { Pencil, Trash2, Plus, Power, GripVertical, Smartphone, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
 }
 
+const ICON_SUGGESTIONS = [
+  { icon: 'sad-outline', label: 'Triste', color: '#E91E8C', bg: '#F8BBD9' },
+  { icon: 'calculator-outline', label: 'Calculadora', color: '#8B4513', bg: '#F5E6D0' },
+  { icon: 'trending-up-outline', label: 'Crescimento', color: '#4CAF50', bg: '#E8F5E9' },
+  { icon: 'cash-outline', label: 'Dinheiro', color: '#FF9800', bg: '#FFF3E0' },
+  { icon: 'heart-outline', label: 'Coração', color: '#E91E63', bg: '#FCE4EC' },
+  { icon: 'star-outline', label: 'Estrela', color: '#FFC107', bg: '#FFF8E1' },
+  { icon: 'cart-outline', label: 'Carrinho', color: '#2196F3', bg: '#E3F2FD' },
+  { icon: 'rocket-outline', label: 'Foguete', color: '#9C27B0', bg: '#F3E5F5' },
+  { icon: 'gift-outline', label: 'Presente', color: '#F44336', bg: '#FFEBEE' },
+  { icon: 'sparkles', label: 'Brilho', color: '#FF9800', bg: '#FFF3E0' },
+  { icon: 'ribbon-outline', label: 'Fita', color: '#E91E8C', bg: '#F8BBD9' },
+  { icon: 'pie-chart-outline', label: 'Gráfico', color: '#3F51B5', bg: '#E8EAF6' },
+  { icon: 'time-outline', label: 'Relógio', color: '#607D8B', bg: '#ECEFF1' },
+  { icon: 'checkmark-circle-outline', label: 'Check', color: '#4CAF50', bg: '#E8F5E9' },
+  { icon: 'bulb-outline', label: 'Lâmpada', color: '#FFC107', bg: '#FFF8E1' },
+  { icon: 'shield-checkmark-outline', label: 'Segurança', color: '#2196F3', bg: '#E3F2FD' },
+];
+
 const EMPTY = {
   title: '',
   description: '',
   imageUrl: null as string | null,
+  icon: null as string | null,
+  iconColor: null as string | null,
+  iconBg: null as string | null,
   sortOrder: 0,
   isActive: true,
 };
@@ -23,6 +45,7 @@ export function OnboardingPage({ toast }: Props) {
   const [form, setForm] = useState(EMPTY);
   const [confirmDelete, setConfirmDelete] = useState<OnboardingStep | null>(null);
   const [preview, setPreview] = useState(false);
+  const [previewIndex, setPreviewIndex] = useState(0);
 
   const load = async () => {
     try {
@@ -39,7 +62,11 @@ export function OnboardingPage({ toast }: Props) {
   const openNew = () => { setEditing(null); setForm({ ...EMPTY, sortOrder: steps.length }); setShowModal(true); };
   const openEdit = (step: OnboardingStep) => {
     setEditing(step);
-    setForm({ title: step.title, description: step.description, imageUrl: step.imageUrl, sortOrder: step.sortOrder, isActive: step.isActive });
+    setForm({
+      title: step.title, description: step.description, imageUrl: step.imageUrl,
+      icon: step.icon, iconColor: step.iconColor, iconBg: step.iconBg,
+      sortOrder: step.sortOrder, isActive: step.isActive,
+    });
     setShowModal(true);
   };
 
@@ -90,7 +117,7 @@ export function OnboardingPage({ toast }: Props) {
           <p className="text-sm text-gray-500 mt-0.5">Configure as telas de boas-vindas para novos usuários</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setPreview(!preview)}
+          <button onClick={() => { setPreview(!preview); setPreviewIndex(0); }}
             className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors font-medium border ${preview ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
             <Smartphone size={16} /> {preview ? 'Fechar preview' : 'Preview'}
           </button>
@@ -112,12 +139,14 @@ export function OnboardingPage({ toast }: Props) {
               {sorted.map((step, idx) => (
                 <div key={step.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors ${!step.isActive ? 'opacity-50' : ''}`}>
                   <GripVertical size={14} className="text-gray-300 shrink-0" />
-                  <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center text-sm font-bold shrink-0">
+                  <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
+                    style={{ backgroundColor: step.iconBg ?? '#F3E8FF', color: step.iconColor ?? '#7C3AED' }}>
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">{step.title}</p>
                     <p className="text-xs text-gray-500 line-clamp-1">{step.description}</p>
+                    {step.icon && <p className="text-xs text-gray-400 mt-0.5">Ícone: {step.icon}</p>}
                   </div>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${step.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                     {step.isActive ? 'Ativo' : 'Inativo'}
@@ -144,30 +173,45 @@ export function OnboardingPage({ toast }: Props) {
         {preview && (
           <div className="w-72 shrink-0">
             <div className="bg-gray-900 rounded-[2rem] p-3 shadow-xl">
-              <div className="bg-white rounded-[1.5rem] overflow-hidden" style={{ height: 480 }}>
+              <div className="bg-white rounded-[1.5rem] overflow-hidden" style={{ height: 500 }}>
                 {activeSteps.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-gray-400 text-sm">Sem etapas ativas</div>
                 ) : (
                   <div className="h-full flex flex-col">
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
-                      {activeSteps[0].imageUrl ? (
-                        <img src={activeSteps[0].imageUrl} alt="" className="w-32 h-32 object-contain mb-4" />
-                      ) : (
-                        <div className="w-32 h-32 rounded-full bg-primary-100 flex items-center justify-center mb-4">
-                          <Smartphone size={40} className="text-primary-400" />
-                        </div>
-                      )}
-                      <h3 className="text-lg font-bold text-gray-900">{activeSteps[0].title}</h3>
-                      <p className="text-sm text-gray-500 mt-2">{activeSteps[0].description}</p>
+                    {/* Skip */}
+                    <div className="flex justify-end p-3">
+                      <span className="text-xs text-gray-400">Pular</span>
                     </div>
-                    <div className="p-4">
-                      <div className="flex justify-center gap-1.5 mb-4">
+
+                    {/* Content */}
+                    <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+                      <div className="w-24 h-24 rounded-full flex items-center justify-center mb-5"
+                        style={{ backgroundColor: activeSteps[previewIndex]?.iconBg ?? '#F3E8FF' }}>
+                        <span className="text-3xl" style={{ color: activeSteps[previewIndex]?.iconColor ?? '#7C3AED' }}>
+                          {activeSteps[previewIndex]?.icon ? '●' : '?'}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-gray-900 leading-tight">{activeSteps[previewIndex]?.title}</h3>
+                      <p className="text-xs text-gray-500 mt-2 leading-relaxed">{activeSteps[previewIndex]?.description}</p>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-4 space-y-3">
+                      <div className="flex justify-center gap-1.5">
                         {activeSteps.map((_, i) => (
-                          <div key={i} className={`w-2 h-2 rounded-full ${i === 0 ? 'bg-primary-500' : 'bg-gray-200'}`} />
+                          <div key={i} className={`h-2 rounded-full transition-all ${i === previewIndex ? 'w-6 bg-primary-500' : 'w-2 bg-gray-200'}`} />
                         ))}
                       </div>
-                      <div className="bg-primary-500 text-white text-center py-2.5 rounded-xl text-sm font-medium">
-                        Continuar
+                      <div className="flex gap-2">
+                        <button disabled={previewIndex === 0} onClick={() => setPreviewIndex(previewIndex - 1)}
+                          className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center disabled:opacity-30">
+                          <ChevronLeft size={16} className="text-gray-600" />
+                        </button>
+                        <button onClick={() => setPreviewIndex(Math.min(previewIndex + 1, activeSteps.length - 1))}
+                          className="flex-1 h-10 rounded-xl bg-primary-500 text-white text-sm font-medium flex items-center justify-center gap-1">
+                          {previewIndex === activeSteps.length - 1 ? 'Começar agora' : 'Próximo'}
+                          <ChevronRight size={14} />
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -190,7 +234,7 @@ export function OnboardingPage({ toast }: Props) {
 
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editing ? 'Editar etapa' : 'Nova etapa'}
             </h3>
@@ -205,6 +249,59 @@ export function OnboardingPage({ toast }: Props) {
                 <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none" rows={3}
                   value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
               </div>
+
+              {/* Icon picker */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Ícone e cores</label>
+                <div className="grid grid-cols-8 gap-1.5 bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                  {ICON_SUGGESTIONS.map(({ icon, label, color, bg }) => (
+                    <button key={icon} onClick={() => setForm({ ...form, icon, iconColor: color, iconBg: bg })}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:scale-110 ${form.icon === icon ? 'ring-2 ring-primary-400 shadow-sm' : 'hover:shadow-sm'}`}
+                      style={{ backgroundColor: bg }}
+                      title={label}>
+                      <span className="w-4 h-4 rounded-full" style={{ backgroundColor: color }} />
+                    </button>
+                  ))}
+                </div>
+                {form.icon && (
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                    <div className="w-8 h-8 rounded-full flex items-center justify-center"
+                      style={{ backgroundColor: form.iconBg ?? '#eee' }}>
+                      <span className="text-sm font-bold" style={{ color: form.iconColor ?? '#333' }}>●</span>
+                    </div>
+                    <span>Ícone: <code className="bg-gray-100 px-1 rounded">{form.icon}</code></span>
+                    <button onClick={() => setForm({ ...form, icon: null, iconColor: null, iconBg: null })} className="text-red-400 hover:text-red-600">Remover</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Manual color overrides */}
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Nome ícone (Ionicons)</label>
+                  <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-primary-400 outline-none"
+                    value={form.icon ?? ''} onChange={e => setForm({ ...form, icon: e.target.value || null })} placeholder="calculator-outline" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Cor do ícone</label>
+                  <div className="flex gap-1">
+                    <input type="color" className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+                      value={form.iconColor ?? '#7C3AED'} onChange={e => setForm({ ...form, iconColor: e.target.value })} />
+                    <input className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-primary-400 outline-none"
+                      value={form.iconColor ?? ''} onChange={e => setForm({ ...form, iconColor: e.target.value || null })} placeholder="#E91E8C" />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Cor de fundo</label>
+                  <div className="flex gap-1">
+                    <input type="color" className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+                      value={form.iconBg ?? '#F3E8FF'} onChange={e => setForm({ ...form, iconBg: e.target.value })} />
+                    <input className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-primary-400 outline-none"
+                      value={form.iconBg ?? ''} onChange={e => setForm({ ...form, iconBg: e.target.value || null })} placeholder="#F8BBD9" />
+                  </div>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">URL da imagem (opcional)</label>
