@@ -8,6 +8,8 @@ export interface TelegramAlert {
   isEnabled: boolean;
   category: string;
   messageTemplate: string | null;
+  scheduleCron: string | null;
+  scheduleDescription: string | null;
   createdAt: string;
 }
 
@@ -42,15 +44,24 @@ export class PostgresTelegramAlertRepository {
     return (result.rows[0].message_template as string) ?? null;
   }
 
-  async update(id: string, data: Partial<{ label: string; description: string; isEnabled: boolean; messageTemplate: string }>): Promise<TelegramAlert | null> {
+  async getSchedules(): Promise<Array<{ key: string; scheduleCron: string }>> {
+    const result = await pool.query(
+      `SELECT key, schedule_cron FROM telegram_alerts WHERE is_enabled = TRUE AND schedule_cron IS NOT NULL`
+    );
+    return result.rows.map(r => ({ key: r.key as string, scheduleCron: r.schedule_cron as string }));
+  }
+
+  async update(id: string, data: Partial<{ label: string; description: string; isEnabled: boolean; messageTemplate: string; scheduleCron: string; scheduleDescription: string }>): Promise<TelegramAlert | null> {
     const result = await pool.query(
       `UPDATE telegram_alerts SET
         label = COALESCE($2, label),
         description = COALESCE($3, description),
         is_enabled = COALESCE($4, is_enabled),
-        message_template = COALESCE($5, message_template)
+        message_template = COALESCE($5, message_template),
+        schedule_cron = COALESCE($6, schedule_cron),
+        schedule_description = COALESCE($7, schedule_description)
        WHERE id = $1 RETURNING *`,
-      [id, data.label ?? null, data.description ?? null, data.isEnabled ?? null, data.messageTemplate ?? null]
+      [id, data.label ?? null, data.description ?? null, data.isEnabled ?? null, data.messageTemplate ?? null, data.scheduleCron ?? null, data.scheduleDescription ?? null]
     );
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
@@ -65,6 +76,8 @@ export class PostgresTelegramAlertRepository {
       isEnabled: row.is_enabled as boolean,
       category: (row.category as string) ?? 'alerts',
       messageTemplate: (row.message_template as string) ?? null,
+      scheduleCron: (row.schedule_cron as string) ?? null,
+      scheduleDescription: (row.schedule_description as string) ?? null,
       createdAt: (row.created_at as Date).toISOString(),
     };
   }

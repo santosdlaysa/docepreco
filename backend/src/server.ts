@@ -35,6 +35,7 @@ import onboardingRoutes from './presentation/routes/onboardingRoutes';
 import telegramAlertRoutes from './presentation/routes/telegramAlertRoutes';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
+import { PostgresTelegramAlertRepository } from './infrastructure/repositories/PostgresTelegramAlertRepository';
 import { PostgresNotificationRepository } from './infrastructure/repositories/PostgresNotificationRepository';
 import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from './infrastructure/services/pushService';
@@ -122,12 +123,29 @@ async function bootstrap() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
-    // Relatório diário às 8h (horário de Brasília)
-    cron.schedule('0 8 * * *', () => sendDailyUserReport(), { timezone: 'America/Sao_Paulo' });
-    // Relatório semanal toda segunda às 9h (horário de Brasília)
-    cron.schedule('0 9 * * 1', () => sendWeeklyReport(), { timezone: 'America/Sao_Paulo' });
-    // Progresso da meta de cadastros: 12h, 15h, 18h e 21h (horário de Brasília)
-    cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
+    // Telegram reports — lê crons do banco
+    const telegramAlertRepo = new PostgresTelegramAlertRepository();
+    const cronHandlers: Record<string, () => void> = {
+      daily_report: () => sendDailyUserReport(),
+      weekly_report: () => sendWeeklyReport(),
+      goal_progress: () => sendDailyGoalProgress({ silentIfMet: true }),
+    };
+    try {
+      const schedules = await telegramAlertRepo.getSchedules();
+      for (const { key, scheduleCron } of schedules) {
+        const handler = cronHandlers[key];
+        if (handler && cron.validate(scheduleCron)) {
+          cron.schedule(scheduleCron, handler, { timezone: 'America/Sao_Paulo' });
+          console.log(`[Cron] Telegram "${key}" agendado: ${scheduleCron}`);
+        }
+      }
+    } catch {
+      // Fallback hardcoded caso o banco não esteja pronto
+      console.log('[Cron] Usando horários padrão para Telegram');
+      cron.schedule('0 8 * * *', () => sendDailyUserReport(), { timezone: 'America/Sao_Paulo' });
+      cron.schedule('0 9 * * 1', () => sendWeeklyReport(), { timezone: 'America/Sao_Paulo' });
+      cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
+    }
 
     // Cron: envia notificações agendadas a cada minuto
     const notifRepo = new PostgresNotificationRepository();

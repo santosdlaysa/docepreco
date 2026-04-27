@@ -403,6 +403,33 @@ export async function runMigrations() {
     await client.query(`UPDATE notification_templates SET schedule_type = 'daily', schedule_hour = 19, schedule_minute = 0 WHERE slug = 'daily_sales' AND schedule_hour IS NULL`);
     await client.query(`UPDATE notification_templates SET schedule_type = 'weekly', schedule_hour = 9, schedule_minute = 0, schedule_weekday = 2 WHERE slug = 'weekly_reminder' AND schedule_hour IS NULL`);
     await addColumnIfMissing(client, 'telegram_alerts', 'message_template', "TEXT");
+    await addColumnIfMissing(client, 'telegram_alerts', 'schedule_cron', "VARCHAR(30)");
+    await addColumnIfMissing(client, 'telegram_alerts', 'schedule_description', "VARCHAR(100)");
+
+    // Seed schedule for existing report alerts
+    await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 8 * * *', schedule_description = 'Todo dia às 8h' WHERE key = 'daily_report' AND schedule_cron IS NULL`);
+    await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 9 * * 1', schedule_description = 'Segunda às 9h' WHERE key = 'weekly_report' AND schedule_cron IS NULL`);
+    await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 12,15,18,21 * * *', schedule_description = '12h, 15h, 18h e 21h' WHERE key = 'goal_progress' AND schedule_cron IS NULL`);
+
+    // Seed message templates for existing telegram alerts (only if message_template is null)
+    const templateUpdates: [string, string][] = [
+      ['new_user', '🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}\n🕐 {{time}}'],
+      ['new_sale', '🧁 Nova venda!\n\n🏪 {{companyName}}\n🍰 {{recipeName}} × {{quantity}}\n💰 {{revenue}}\n🕐 {{time}}'],
+      ['premium_event', '{{eventLabel}}\n\n🏪 {{companyName}}\n🕐 {{time}}'],
+      ['user_milestone', '🎉 Marco atingido!\n\n👥 {{total}} usuários cadastrados!\n🕐 {{time}}'],
+      ['error_alert', '🚨 Erro no servidor\n\n{{method}} {{path}}\nStatus: {{statusCode}}\nDuração: {{duration}}ms\n🕐 {{time}}'],
+      ['slow_api', '🐢 Rota lenta\n\n{{method}} {{path}}\nDuração: {{duration}}ms\n🕐 {{time}}'],
+      ['daily_report', '📊 Relatório diário\n\n👥 Total de usuários: {{total}}\n⭐ Premium: {{premium}}\n🆕 Novos hoje: {{today}}\n🕐 {{time}}'],
+      ['weekly_report', '📊 Relatório semanal\n\n🆕 Novos usuários: {{newUsers}}\n🍰 Receitas criadas: {{newRecipes}}\n🧁 Vendas registradas: {{totalSales}}\n💰 Receita total: {{revenue}}\n🕐 {{time}}'],
+      ['goal_progress', '📈 Meta de cadastros\n\n{{progressBar}} {{percent}}%\n👥 {{today}}/{{goal}} hoje\n{{status}}\n🕐 {{time}}'],
+    ];
+    for (const [key, tpl] of templateUpdates) {
+      await client.query(
+        `UPDATE telegram_alerts SET message_template = $2 WHERE key = $1 AND message_template IS NULL`,
+        [key, tpl]
+      );
+    }
+
     await addColumnIfMissing(client, 'onboarding_steps', 'icon', "VARCHAR(50)");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon_color', "VARCHAR(20)");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon_bg', "VARCHAR(20)");
