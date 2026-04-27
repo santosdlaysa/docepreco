@@ -31,4 +31,5 @@ export type RootStackParamList = {
   Seasons: undefined;
   CreateSeason: undefined;
   EditSeason: { seasonId: string };
+  BeginnerGuide: undefined;
 };

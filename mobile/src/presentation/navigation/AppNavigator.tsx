@@ -31,6 +31,7 @@ import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
 import { IngredientPriceHistoryScreen } from '../screens/IngredientPriceHistoryScreen';
 import { SeasonsScreen } from '../screens/SeasonsScreen';
 import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
+import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
@@ -235,6 +236,7 @@ export function AppNavigator() {
           <Stack.Screen name="Seasons" component={SeasonsScreen} />
           <Stack.Screen name="CreateSeason" component={CreateSeasonScreen} />
           <Stack.Screen name="EditSeason" component={CreateSeasonScreen} />
+          <Stack.Screen name="BeginnerGuide" component={BeginnerGuideScreen} />
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}

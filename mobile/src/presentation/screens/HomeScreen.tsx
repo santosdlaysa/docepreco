@@ -32,6 +32,8 @@ import { usePremium } from '../context/PremiumContext';
 import { goalApi, RevenueGoal } from '../../data/api/goalApi';
 import { bannerApi, Banner } from '../../data/api/bannerApi';
 import { bannerStorage } from '../../data/storage/bannerStorage';
+import { generateInsights, Insight } from '../utils/generateInsights';
+import { isGuideAvailable } from './BeginnerGuideScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -221,6 +223,8 @@ export const HomeScreen: React.FC = () => {
   const [stats, setStats] = useState<AppStats | null>(null);
   const [goal, setGoal] = useState<RevenueGoal | null>(null);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [showGuide, setShowGuide] = useState(false);
+  const [insightsCollapsed, setInsightsCollapsed] = useState(false);
   const api = isDemoMode() ? demoStatsApi : statsApi;
 
   useEffect(() => {
@@ -236,6 +240,15 @@ export const HomeScreen: React.FC = () => {
       const dismissed = await bannerStorage.getDismissedIds();
       await bannerStorage.clearExpired(active.map(b => b.id));
       setBanners(active.filter(b => !dismissed.includes(b.id)));
+    }).catch(() => {});
+
+    // Check beginner guide: show only if user hasn't completed all steps
+    Promise.all([
+      isGuideAvailable(),
+      api.getStats(),
+    ]).then(([notDismissed, s]) => {
+      const allDone = s.ingredientsCount >= 1 && s.recipesCount >= 1;
+      setShowGuide(notDismissed && !allDone);
     }).catch(() => {});
   }, []);
 
@@ -352,6 +365,26 @@ export const HomeScreen: React.FC = () => {
           );
         })}
 
+        {showGuide && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('BeginnerGuide' as never)}
+          >
+            <Card style={styles.guideCard}>
+              <View style={styles.guideIconWrap}>
+                <Ionicons name="school-outline" size={28} color={colors.primary} />
+              </View>
+              <View style={styles.guideContent}>
+                <Text style={styles.guideTitle}>Modo Iniciante</Text>
+                <Text style={styles.guideSubtitle}>
+                  3 passos para comecar a precificar seus doces
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={colors.primary} />
+            </Card>
+          </TouchableOpacity>
+        )}
+
         <Card style={styles.heroBanner}>
           <View style={styles.heroContent}>
             <Text style={styles.heroTitle}>Garanta seu lucro!</Text>
@@ -440,6 +473,57 @@ export const HomeScreen: React.FC = () => {
                 )}
               </Card>
             </TouchableOpacity>
+          );
+        })()}
+
+        {(() => {
+          if (!stats) return null;
+          const now2 = new Date();
+          const isCurrentMonth2 = goal && goal.month === now2.getMonth() + 1 && goal.year === now2.getFullYear();
+          const insights = generateInsights(stats, isCurrentMonth2 ? goal : null);
+          if (insights.length === 0) return null;
+
+          const insightColors: Record<Insight['type'], { bg: string; border: string; text: string }> = {
+            positive: { bg: '#ECFDF5', border: '#A7F3D0', text: '#065F46' },
+            warning:  { bg: '#FFF8E1', border: '#FFE082', text: '#6D5000' },
+            neutral:  { bg: '#EBF5FF', border: '#BFDBFE', text: '#1E40AF' },
+            tip:      { bg: '#F3E8FF', border: '#C4B5FD', text: '#5B21B6' },
+          };
+
+          return (
+            <>
+              <TouchableOpacity
+                style={styles.insightsHeader}
+                onPress={() => setInsightsCollapsed(!insightsCollapsed)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { flex: 1 }]}>Insights</Text>
+                <Ionicons
+                  name={insightsCollapsed ? 'chevron-down' : 'chevron-up'}
+                  size={18}
+                  color={colors.textMuted}
+                />
+              </TouchableOpacity>
+              {!insightsCollapsed && insights.map((insight) => {
+                const c = insightColors[insight.type];
+                return (
+                  <View
+                    key={insight.id}
+                    style={[styles.insightCard, { backgroundColor: c.bg, borderColor: c.border }]}
+                  >
+                    <Ionicons
+                      name={insight.icon as keyof typeof Ionicons.glyphMap}
+                      size={20}
+                      color={c.text}
+                    />
+                    <Text style={[styles.insightText, { color: c.text }]}>
+                      {insight.message}
+                    </Text>
+                  </View>
+                );
+              })}
+            </>
           );
         })()}
 
@@ -640,6 +724,28 @@ const styles = StyleSheet.create({
   },
   goalBar: { height: '100%', backgroundColor: colors.primary, borderRadius: 4 },
   goalSub: { ...typography.caption, color: colors.textSecondary },
+  insightsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+    paddingVertical: 8,
+  },
+  insightCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+  },
+  insightText: {
+    ...typography.bodySmall,
+    flex: 1,
+    lineHeight: 20,
+    fontWeight: '500',
+  },
   sectionTitle: {
     ...typography.h4,
     color: colors.text,
@@ -861,5 +967,34 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     flex: 1,
     lineHeight: 18,
+  },
+  guideCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderColor: colors.primary,
+    borderWidth: 1.5,
+    backgroundColor: '#FFF0F6',
+  },
+  guideIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  guideContent: {
+    flex: 1,
+  },
+  guideTitle: {
+    ...typography.h4,
+    color: colors.primary,
+  },
+  guideSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
   },
 });
