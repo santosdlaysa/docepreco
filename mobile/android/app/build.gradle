@@ -95,7 +95,7 @@ android {
         applicationId 'com.laysadiniz.sweetpricing'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 16
+        versionCode 17
         versionName "2.3.0"
     }
     signingConfigs {
