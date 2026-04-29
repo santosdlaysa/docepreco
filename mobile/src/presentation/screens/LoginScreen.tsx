@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { authApi } from '../../data/api/authApi';
 import { identifyRevenueCatUser } from '../../data/premium/revenueCat';
 import { colors } from '../theme/colors';
@@ -142,6 +143,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
             </View>
           )}
 
+          <Text style={styles.versionText}>v{Constants.expoConfig?.version ?? '?'}</Text>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -201,4 +204,5 @@ const styles = StyleSheet.create({
   },
   demoButtonText: { ...typography.body, color: colors.secondary, fontWeight: '600' },
   demoButtonSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  versionText: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: 24 },
 });

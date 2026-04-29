@@ -6,7 +6,7 @@ const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -32,7 +32,10 @@ apiClient.interceptors.response.use(
     const method = error.config?.method?.toUpperCase();
     const url = error.config?.url;
     const status = error.response?.status ?? 'ERR';
-    const message = error.response?.data?.error || error.message || 'Unknown error';
+    const rawMessage = error.response?.data?.error || error.message || 'Unknown error';
+    const message = !error.response && (error.code === 'ECONNABORTED' || error.message?.includes('Network Error'))
+      ? 'Sem conexão com o servidor. Tente novamente em alguns segundos.'
+      : rawMessage;
     console.error(`[API] ✗ ${status} ${method} ${url} — ${message}`);
     // Reporta erros de servidor (5xx) e de rede pro Sentry
     if (typeof status !== 'number' || status >= 500) {
