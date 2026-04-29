@@ -22,9 +22,11 @@ import {
   fetchOfferings,
   purchasePackage,
   restorePurchases,
+  getActiveEntitlementExpiration,
   PremiumPackage,
   isRevenueCatConfigured,
 } from '../../data/premium/revenueCat';
+import { authApi } from '../../data/api/authApi';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
 type RouteType = RouteProp<RootStackParamList, 'Paywall'>;
@@ -108,6 +110,17 @@ export const PaywallScreen: React.FC = () => {
     return 'Ferramentas pra levar sua confeitaria pro próximo nível.';
   })();
 
+  const syncPremiumWithBackend = async () => {
+    try {
+      const expiresAt = await getActiveEntitlementExpiration();
+      const platform = Platform.OS === 'android' ? 'android' : 'ios';
+      await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android');
+    } catch (error) {
+      console.warn('[Paywall] syncPremium failed, falling back to refresh:', error);
+    }
+    await refresh();
+  };
+
   const handlePurchase = async () => {
     if (!selected) return;
     const pkg = packages?.find(p => p.identifier === selected);
@@ -117,7 +130,7 @@ export const PaywallScreen: React.FC = () => {
       const result = await purchasePackage(pkg);
       if (result === 'success') {
         showToast('Bem-vindo ao Premium! 🎉', 'success');
-        await refresh();
+        await syncPremiumWithBackend();
         navigation.goBack();
       } else if (result === 'cancelled') {
         // silent
@@ -138,7 +151,7 @@ export const PaywallScreen: React.FC = () => {
       const active = await restorePurchases();
       if (active) {
         showToast('Compras restauradas! 🎉', 'success');
-        await refresh();
+        await syncPremiumWithBackend();
         navigation.goBack();
       } else {
         showToast('Nenhuma compra ativa encontrada', 'info');

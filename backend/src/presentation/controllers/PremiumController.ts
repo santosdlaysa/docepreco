@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PremiumPlatform } from '../../domain/entities/User';
 import { notifyPremiumEvent } from '../../infrastructure/services/telegramService';
+import { AuthRequest } from '../middleware/authMiddleware';
 
 const userRepo = new PostgresUserRepository();
 
@@ -72,8 +73,16 @@ export class PremiumController {
     console.log(`[Premium] Webhook ${event.type} for ${event.app_user_id}`);
 
     try {
-      const userId = event.app_user_id;
-      const user = await userRepo.findById(userId);
+      // RevenueCat may send an anonymous ID ($RCAnonymousID:...) as app_user_id
+      // when the purchase happened before identifyRevenueCatUser() was called.
+      // Try app_user_id first, then fall back to original_app_user_id.
+      let userId = event.app_user_id;
+      let user = await userRepo.findById(userId);
+      if (!user && event.original_app_user_id && event.original_app_user_id !== userId) {
+        console.log(`[Premium] Trying original_app_user_id: ${event.original_app_user_id}`);
+        user = await userRepo.findById(event.original_app_user_id);
+        if (user) userId = event.original_app_user_id;
+      }
       if (!user) {
         console.warn(`[Premium] User ${userId} not found — ignoring`);
         // Return 200 so RevenueCat doesn't keep retrying
@@ -103,6 +112,11 @@ export class PremiumController {
           // Keep premium true, but the client-side can show "cancelled, ends on X"
           break;
 
+        case 'TRANSFER':
+          // User alias merged — grant premium to the new user
+          await userRepo.updatePremiumStatus(userId, true, expiresAt, platform);
+          break;
+
         default:
           console.log(`[Premium] Unhandled event type: ${event.type}`);
       }
@@ -112,6 +126,62 @@ export class PremiumController {
     } catch (error) {
       console.error('[Premium] Webhook processing error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
+   * Authenticated endpoint called by the mobile app after a successful purchase
+   * or restore. The client sends entitlement data from RevenueCat SDK (already
+   * validated by Apple/Google), and we update the DB so the user gets premium
+   * even if the webhook failed or was processed with an anonymous ID.
+   *
+   * Body: { active: boolean, expiresAt?: string | null, platform?: 'ios' | 'android' }
+   */
+  async syncPremium(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    const { active, expiresAt, platform } = req.body as {
+      active: boolean;
+      expiresAt?: string | null;
+      platform?: 'ios' | 'android';
+    };
+
+    if (typeof active !== 'boolean') {
+      res.status(400).json({ success: false, error: 'active boolean required' });
+      return;
+    }
+
+    try {
+      const user = await userRepo.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      // Only allow upgrading to premium via sync (not downgrading)
+      // Downgrades are handled exclusively by webhooks (EXPIRATION, BILLING_ISSUE)
+      if (!active) {
+        res.json({ success: true, data: user });
+        return;
+      }
+
+      const until = expiresAt ? new Date(expiresAt) : null;
+      const plat: PremiumPlatform = platform === 'android' ? 'android' : 'ios';
+      const updated = await userRepo.updatePremiumStatus(userId, true, until, plat);
+
+      console.log(`[Premium] Sync: ${userId} → premium=true via ${plat}`);
+      if (!user.isPremium) {
+        notifyPremiumEvent(user.companyName, 'INITIAL_PURCHASE', plat);
+      }
+
+      res.json({ success: true, data: updated });
+    } catch (error) {
+      console.error('[Premium] Sync error:', error);
       res.status(500).json({ success: false, error: 'Internal error' });
     }
   }

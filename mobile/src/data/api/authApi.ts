@@ -68,6 +68,13 @@ export const authApi = {
     return normalized;
   },
 
+  syncPremium: async (active: boolean, expiresAt: string | null, platform: 'ios' | 'android'): Promise<AuthUser> => {
+    const response = await apiClient.post('/premium/sync', { active, expiresAt, platform });
+    const normalized = normalizeUser(response.data.data);
+    await tokenStorage.saveUser(normalized);
+    return normalized;
+  },
+
   logout: async (): Promise<void> => {
     await tokenStorage.clear();
   },

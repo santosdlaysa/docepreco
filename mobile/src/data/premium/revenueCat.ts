@@ -199,3 +199,19 @@ export async function getActiveEntitlements(): Promise<string[]> {
     return [];
   }
 }
+
+/**
+ * Returns the expiration date of the first active entitlement, or null.
+ */
+export async function getActiveEntitlementExpiration(): Promise<string | null> {
+  const Purchases = getPurchases();
+  if (!Purchases || !configured) return null;
+  try {
+    const customerInfo = await Purchases.getCustomerInfo();
+    const entitlements = customerInfo?.entitlements?.active ?? {};
+    const first = Object.values(entitlements)[0] as any;
+    return first?.expirationDate ?? null;
+  } catch {
+    return null;
+  }
+}
