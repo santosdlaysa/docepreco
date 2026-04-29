@@ -97,7 +97,7 @@ export function RequestLogsPage() {
   }, [autoRefresh, methodFilter, search]);
 
   const filtered = search
-    ? logs.filter(l => l.path.toLowerCase().includes(search.toLowerCase()))
+    ? logs.filter(l => l.path.toLowerCase().includes(search.toLowerCase()) || (l.bodyEmail && l.bodyEmail.toLowerCase().includes(search.toLowerCase())))
     : logs;
 
   const methodCounts = logs.reduce((acc, l) => {
@@ -187,7 +187,7 @@ export function RequestLogsPage() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Filtrar por rota..."
+            placeholder="Filtrar por rota ou email..."
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
@@ -229,7 +229,10 @@ export function RequestLogsPage() {
                     <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                       {log.method}
                     </span>
-                    <span className="flex-1 font-mono text-gray-700 truncate" title={log.path}>{log.path}</span>
+                    <span className="flex-1 font-mono text-gray-700 truncate" title={log.path}>
+                      {log.path}
+                      {log.bodyEmail && <span className="ml-2 text-xs text-purple-600 font-sans font-medium">{log.bodyEmail}</span>}
+                    </span>
                     <span className={`shrink-0 font-bold ${statusColor(log.statusCode)}`}>{log.statusCode}</span>
                     <span className="shrink-0 text-gray-400 text-xs w-14 text-right">{log.durationMs}ms</span>
                     <span className="shrink-0 text-gray-300 text-xs w-20 text-right hidden lg:block">{log.ip ?? '—'}</span>
@@ -244,6 +247,7 @@ export function RequestLogsPage() {
                         <div><span className="text-gray-400 text-xs">Status:</span> <span className={`font-bold ${statusColor(log.statusCode)}`}>{log.statusCode}</span></div>
                         <div><span className="text-gray-400 text-xs">Duração:</span> {log.durationMs}ms</div>
                         <div><span className="text-gray-400 text-xs">IP:</span> {log.ip ?? '—'}</div>
+                        {log.bodyEmail && <div><span className="text-gray-400 text-xs">Email:</span> <span className="text-purple-600 font-medium">{log.bodyEmail}</span></div>}
                         <div className="col-span-2 lg:col-span-4"><span className="text-gray-400 text-xs">Data:</span> {fmtTs(log.ts)}</div>
                       </div>
                       {hasError && (

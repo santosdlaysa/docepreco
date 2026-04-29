@@ -28,6 +28,11 @@ export const ProfileScreen: React.FC = () => {
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
   const [savingPhone, setSavingPhone] = useState(false);
+  const [showPasswordSection, setShowPasswordSection] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
 
   useEffect(() => {
     tokenStorage.getUser().then((u) => {
@@ -82,6 +87,35 @@ export const ProfileScreen: React.FC = () => {
       Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
     } finally {
       setSavingPhone(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      Alert.alert('Erro', 'Preencha todos os campos');
+      return;
+    }
+    if (newPassword.length < 6) {
+      Alert.alert('Erro', 'A nova senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      Alert.alert('Erro', 'As senhas não coincidem');
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await authApi.changePassword(currentPassword, newPassword);
+      Alert.alert('Sucesso', 'Senha alterada com sucesso!');
+      setShowPasswordSection(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || 'Não foi possível alterar a senha';
+      Alert.alert('Erro', msg);
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -270,6 +304,57 @@ export const ProfileScreen: React.FC = () => {
             </Card>
           </>
         )}
+
+        <Text style={styles.sectionTitle}>Seguranca</Text>
+        <Card style={styles.menuCard}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => setShowPasswordSection(!showPasswordSection)}
+          >
+            <View style={[styles.iconBadge, { backgroundColor: '#EDE7F6' }]}>
+              <Ionicons name="lock-closed-outline" size={20} color="#7B1FA2" />
+            </View>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuText}>Alterar Senha</Text>
+              <Text style={styles.menuSubtext}>Troque sua senha de acesso</Text>
+            </View>
+            <Ionicons name={showPasswordSection ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+          {showPasswordSection && (
+            <View style={styles.passwordSection}>
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Senha atual"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                value={currentPassword}
+                onChangeText={setCurrentPassword}
+              />
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Nova senha"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                value={newPassword}
+                onChangeText={setNewPassword}
+              />
+              <TextInput
+                style={styles.passwordInput}
+                placeholder="Confirmar nova senha"
+                placeholderTextColor={colors.textMuted}
+                secureTextEntry
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}
+              />
+              <Button
+                title={savingPassword ? 'Salvando...' : 'Alterar Senha'}
+                onPress={handleChangePassword}
+                disabled={savingPassword}
+                style={{ marginTop: 8 }}
+              />
+            </View>
+          )}
+        </Card>
 
         <Text style={styles.sectionTitle}>Preferencias</Text>
         <Card style={styles.menuCard}>
@@ -474,6 +559,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginLeft: 8,
+  },
+  passwordSection: {
+    marginTop: 12,
+    gap: 10,
+  },
+  passwordInput: {
+    ...typography.body,
+    color: colors.text,
+    fontSize: 15,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
   },
   dangerCard: { borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
   logoutBtn: { borderColor: colors.error },

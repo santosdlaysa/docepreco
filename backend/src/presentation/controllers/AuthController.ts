@@ -50,24 +50,29 @@ export class AuthController {
   async login(req: Request, res: Response): Promise<void> {
     try {
       const { email, password } = req.body;
+      console.log(`[Auth] Login attempt: ${email ?? '(empty)'}`);
       if (!email || !password) {
         res.status(400).json({ success: false, error: 'Email e senha são obrigatórios' });
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        console.log(`[Auth] Login failed: invalid email format — ${email}`);
         res.status(400).json({ success: false, error: 'Email inválido' });
         return;
       }
       const user = await userRepo.findByEmail(email);
       if (!user) {
+        console.log(`[Auth] Login failed: email not found — ${email}`);
         res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
         return;
       }
       const valid = await userRepo.verifyPassword(password, user.passwordHash);
       if (!valid) {
+        console.log(`[Auth] Login failed: wrong password — ${email}`);
         res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
         return;
       }
+      console.log(`[Auth] Login success: ${email} (${user.companyName})`);
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
       const { passwordHash, ...safeUser } = user;
       res.json({ success: true, data: { user: safeUser, token } });
@@ -166,6 +171,35 @@ export class AuthController {
 
       const { passwordHash, ...safeUser } = user;
       res.json({ success: true, data: safeUser });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  async changePassword(req: Request & { userId?: string }, res: Response): Promise<void> {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!currentPassword || !newPassword) {
+        res.status(400).json({ success: false, error: 'Senha atual e nova senha são obrigatórias' });
+        return;
+      }
+      if (newPassword.length < 6) {
+        res.status(400).json({ success: false, error: 'Nova senha deve ter pelo menos 6 caracteres' });
+        return;
+      }
+      const user = await userRepo.findByIdFull(req.userId!);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const valid = await userRepo.verifyPassword(currentPassword, user.passwordHash);
+      if (!valid) {
+        res.status(401).json({ success: false, error: 'Senha atual incorreta' });
+        return;
+      }
+      await userRepo.updatePassword(req.userId!, newPassword);
+      res.json({ success: true, message: 'Senha alterada com sucesso' });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });

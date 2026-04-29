@@ -372,6 +372,7 @@ export interface RequestLog {
   durationMs: number;
   ip: string | null;
   errorMessage: string | null;
+  bodyEmail: string | null;
   ts: string;
 }
 

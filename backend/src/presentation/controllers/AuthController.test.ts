@@ -3,6 +3,8 @@ import { Request, Response } from 'express';
 // ── Mocks (declared before jest.mock hoisting) ─────────────────────────────
 
 const mockFindByEmail = jest.fn();
+const mockFindByIdFull = jest.fn();
+const mockVerifyPassword = jest.fn();
 const mockCreatePasswordResetCode = jest.fn();
 const mockVerifyPasswordResetCode = jest.fn();
 const mockUpdatePassword = jest.fn();
@@ -12,6 +14,8 @@ const mockSendEmail = jest.fn();
 jest.mock('../../infrastructure/repositories/PostgresUserRepository', () => ({
   PostgresUserRepository: jest.fn(() => ({
     findByEmail: mockFindByEmail,
+    findByIdFull: mockFindByIdFull,
+    verifyPassword: mockVerifyPassword,
     createPasswordResetCode: mockCreatePasswordResetCode,
     verifyPasswordResetCode: mockVerifyPasswordResetCode,
     updatePassword: mockUpdatePassword,
@@ -32,8 +36,8 @@ import { AuthController } from './AuthController';
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-function mockReqRes(body: Record<string, unknown> = {}) {
-  const req = { body } as Request;
+function mockReqRes(body: Record<string, unknown> = {}, userId?: string) {
+  const req = { body, userId } as Request & { userId?: string };
   const res = {
     status: jest.fn().mockReturnThis(),
     json: jest.fn().mockReturnThis(),
@@ -193,6 +197,102 @@ describe('AuthController – Redefinir Senha', () => {
         email: 'a@b.com', code: '123456', newPassword: 'nova123456',
       });
       await controller.resetPassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  // ── changePassword ────────────────────────────────────────────────────────
+
+  describe('changePassword', () => {
+    it('retorna erro quando campos obrigatórios faltam', async () => {
+      const cases = [
+        { currentPassword: 'abc123' },
+        { newPassword: 'nova123' },
+        {},
+      ];
+      for (const body of cases) {
+        const { req, res } = mockReqRes(body, 'user-1');
+        await controller.changePassword(req, res);
+        expect(res.status).toHaveBeenCalledWith(400);
+        expect(res.json).toHaveBeenCalledWith(
+          expect.objectContaining({ error: expect.stringContaining('obrigatórias') })
+        );
+      }
+    });
+
+    it('retorna erro quando nova senha tem menos de 6 caracteres', async () => {
+      const { req, res } = mockReqRes(
+        { currentPassword: 'senhaAtual', newPassword: '12345' },
+        'user-1',
+      );
+      await controller.changePassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('6 caracteres') })
+      );
+    });
+
+    it('retorna erro quando usuário não é encontrado', async () => {
+      mockFindByIdFull.mockResolvedValue(null);
+      const { req, res } = mockReqRes(
+        { currentPassword: 'senhaAtual', newPassword: 'nova123456' },
+        'user-inexistente',
+      );
+      await controller.changePassword(req, res);
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it('retorna erro quando senha atual está incorreta', async () => {
+      mockFindByIdFull.mockResolvedValue({
+        id: 'user-1',
+        email: 'maria@test.com',
+        passwordHash: 'hash-antigo',
+      });
+      mockVerifyPassword.mockResolvedValue(false);
+
+      const { req, res } = mockReqRes(
+        { currentPassword: 'senhaErrada', newPassword: 'nova123456' },
+        'user-1',
+      );
+      await controller.changePassword(req, res);
+
+      expect(mockVerifyPassword).toHaveBeenCalledWith('senhaErrada', 'hash-antigo');
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('incorreta') })
+      );
+      expect(mockUpdatePassword).not.toHaveBeenCalled();
+    });
+
+    it('altera a senha com sucesso quando dados são válidos', async () => {
+      mockFindByIdFull.mockResolvedValue({
+        id: 'user-1',
+        email: 'maria@test.com',
+        passwordHash: 'hash-antigo',
+      });
+      mockVerifyPassword.mockResolvedValue(true);
+      mockUpdatePassword.mockResolvedValue(undefined);
+
+      const { req, res } = mockReqRes(
+        { currentPassword: 'senhaCorreta', newPassword: 'novaSenha123' },
+        'user-1',
+      );
+      await controller.changePassword(req, res);
+
+      expect(mockVerifyPassword).toHaveBeenCalledWith('senhaCorreta', 'hash-antigo');
+      expect(mockUpdatePassword).toHaveBeenCalledWith('user-1', 'novaSenha123');
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, message: expect.stringContaining('alterada') })
+      );
+    });
+
+    it('retorna erro 500 se ocorrer exceção interna', async () => {
+      mockFindByIdFull.mockRejectedValue(new Error('DB down'));
+      const { req, res } = mockReqRes(
+        { currentPassword: 'abc', newPassword: 'nova123456' },
+        'user-1',
+      );
+      await controller.changePassword(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
     });
   });

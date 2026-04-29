@@ -67,9 +67,12 @@ app.use((req, res, next) => {
     const path = req.originalUrl.split('?')[0];
     console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} ${res.statusCode} ${duration}ms`);
     const errorMsg = res.locals.errorMessage || null;
+    // Capture email from login/register attempts
+    const isAuthRoute = path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/auth/forgot-password';
+    const bodyEmail = isAuthRoute && req.body?.email ? String(req.body.email).toLowerCase() : null;
     pool.query(
-      `INSERT INTO request_logs (method, path, status_code, duration_ms, ip, error_message) VALUES ($1, $2, $3, $4, $5, $6)`,
-      [req.method, path, res.statusCode, duration, ip, errorMsg]
+      `INSERT INTO request_logs (method, path, status_code, duration_ms, ip, error_message, body_email) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [req.method, path, res.statusCode, duration, ip, errorMsg, bodyEmail]
     ).catch(() => {});
 
     if (res.statusCode >= 500) {

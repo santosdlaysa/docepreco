@@ -355,6 +355,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'users', 'phone', 'VARCHAR(20) NULL');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
+    await addColumnIfMissing(client, 'request_logs', 'body_email', 'VARCHAR(255)');
 
     // Recreate featured_recipes with correct schema if it has the old columns
     const hasOldSchema = await client.query(

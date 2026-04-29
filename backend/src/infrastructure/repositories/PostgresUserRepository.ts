@@ -15,6 +15,12 @@ export class PostgresUserRepository {
     return this.mapRow(result.rows[0]);
   }
 
+  async findByIdFull(id: string): Promise<(User & { passwordHash: string }) | null> {
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
+    if (result.rows.length === 0) return null;
+    return this.mapRow(result.rows[0]);
+  }
+
   async create(data: RegisterDTO): Promise<User> {
     const passwordHash = await bcrypt.hash(data.password, 10);
     const phone = data.phone?.replace(/\D/g, '') || null;

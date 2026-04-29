@@ -61,6 +61,11 @@ export const authApi = {
     return response.data.message;
   },
 
+  changePassword: async (currentPassword: string, newPassword: string): Promise<string> => {
+    const response = await apiClient.post('/auth/change-password', { currentPassword, newPassword });
+    return response.data.message;
+  },
+
   updateProfile: async (data: { instagramHandle?: string | null; phone?: string | null }): Promise<AuthUser> => {
     const response = await apiClient.patch('/auth/profile', data);
     const normalized = normalizeUser(response.data.data);
