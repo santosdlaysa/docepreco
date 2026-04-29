@@ -163,6 +163,15 @@ export function AppNavigator() {
     return <OnboardingScreen onDone={() => setAuthState('auth')} />;
   }
 
+  const handleAuthSuccess = async () => {
+    const user = await tokenStorage.getUser();
+    if (user?.isPremium) {
+      setAuthState('app');
+    } else {
+      setAuthState('premiumAd');
+    }
+  };
+
   if (authState === 'auth') {
     if (showForgotPassword) {
       return (
@@ -174,14 +183,14 @@ export function AppNavigator() {
     if (showRegister) {
       return (
         <RegisterScreen
-          onRegister={() => setAuthState('premiumAd')}
+          onRegister={() => void handleAuthSuccess()}
           onGoToLogin={() => setShowRegister(false)}
         />
       );
     }
     return (
       <LoginScreen
-        onLogin={() => setAuthState('premiumAd')}
+        onLogin={() => void handleAuthSuccess()}
         onGoToRegister={() => setShowRegister(true)}
         onGoToForgotPassword={() => setShowForgotPassword(true)}
         onDemoLogin={loginAsDemo}
