@@ -455,7 +455,7 @@ export function TipsPage({ toast }: Props) {
                   </div>
 
                   {templateScheduleType !== 'interval' ? (
-                    <div className="grid grid-cols-3 gap-3">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <div>
                         <label className="block text-xs font-medium text-gray-500 mb-1">Hora</label>
                         <input type="number" min="0" max="23"
