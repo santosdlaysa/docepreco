@@ -99,10 +99,15 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
               <p className="font-semibold text-gray-900">{user.companyName}</p>
               <p className="text-sm text-gray-500">{user.email}</p>
               {user.phone && (
-                <p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-                  <Phone size={13} className="text-gray-400" />
+                <a
+                  href={`https://wa.me/${user.phone.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1 mt-0.5"
+                >
+                  <Phone size={13} />
                   {user.phone}
-                </p>
+                </a>
               )}
               <p className="text-xs text-gray-400 mt-1">Cadastrado em {fmtDate(user.createdAt)}</p>
               {user.lastSeenAt && (
@@ -340,7 +345,19 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                 >
                   <td className="px-4 py-3 font-medium text-gray-900">{u.companyName}</td>
                   <td className="px-4 py-3 text-gray-500">{u.email}</td>
-                  <td className="px-4 py-3 text-gray-500">{u.phone || '—'}</td>
+                  <td className="px-4 py-3">
+                    {u.phone ? (
+                      <a
+                        href={`https://wa.me/${u.phone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-green-600 hover:text-green-700"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        {u.phone}
+                      </a>
+                    ) : '—'}
+                  </td>
                   <td className="px-4 py-3">
                     <PremiumBadge isPremium={u.isPremium} platform={u.premiumPlatform} />
                   </td>
