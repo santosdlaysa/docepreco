@@ -160,10 +160,14 @@ export class AdminController {
 
   async grantTrial(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { days } = req.body;
+    const { days, notificationTitle, notificationBody } = req.body;
 
     if (!days || days <= 0) {
       res.status(400).json({ success: false, error: 'days é obrigatório e deve ser maior que 0' });
+      return;
+    }
+    if (!notificationTitle || !notificationBody) {
+      res.status(400).json({ success: false, error: 'notificationTitle e notificationBody são obrigatórios' });
       return;
     }
 
@@ -191,8 +195,8 @@ export class AdminController {
         const tokenStrings = tokens.map(t => t.token);
         recipientsCount = await sendPushNotifications(
           tokenStrings,
-          'Presente especial para você!',
-          `Você ganhou ${days} dias grátis de acesso Premium! Aproveite todos os recursos exclusivos do DocePreço.`,
+          notificationTitle,
+          notificationBody,
           { type: 'trial_granted', days }
         );
       }

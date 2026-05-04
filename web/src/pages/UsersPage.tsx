@@ -33,6 +33,8 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
   const [premiumDays, setPremiumDays] = useState('30');
   const [grantingTrial, setGrantingTrial] = useState(false);
   const [trialDays, setTrialDays] = useState('3');
+  const [notifTitle, setNotifTitle] = useState('Presente especial para você!');
+  const [notifBody, setNotifBody] = useState('Você ganhou 3 dias grátis de acesso Premium! Aproveite todos os recursos exclusivos do DocePreço.');
 
   useEffect(() => {
     api.getUser(userId).then(setUser).catch(console.error);
@@ -72,9 +74,13 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
       toast.error('Informe um período válido');
       return;
     }
+    if (!notifTitle.trim() || !notifBody.trim()) {
+      toast.error('Preencha o título e a mensagem da notificação');
+      return;
+    }
     setGrantingTrial(true);
     try {
-      const res = await api.grantTrial(user.id, days);
+      const res = await api.grantTrial(user.id, days, notifTitle.trim(), notifBody.trim());
       const until = new Date(res.premiumUntil);
       setUser(prev => prev ? { ...prev, isPremium: true, premiumUntil: res.premiumUntil, premiumPlatform: 'manual' } : prev);
       const notifMsg = res.notificationSent
@@ -191,8 +197,9 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
                   <Gift size={16} className="text-green-600" />
                   <p className="text-sm font-medium text-green-800">Dar dias grátis + notificar</p>
                 </div>
-                <p className="text-xs text-green-600">Ativa o premium e envia uma notificação push avisando o usuário.</p>
+                <p className="text-xs text-green-600">Ativa o premium e envia uma notificação push com a mensagem que você escrever.</p>
                 <div className="flex items-center gap-2">
+                  <label className="text-xs text-green-700">Dias:</label>
                   <select
                     value={trialDays}
                     onChange={e => setTrialDays(e.target.value)}
@@ -205,15 +212,35 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
                     <option value="14">14 dias</option>
                     <option value="30">30 dias</option>
                   </select>
-                  <button
-                    onClick={grantTrial}
-                    disabled={grantingTrial}
-                    className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
-                  >
-                    <Gift size={14} />
-                    {grantingTrial ? 'Enviando...' : 'Dar dias grátis'}
-                  </button>
                 </div>
+                <div>
+                  <label className="text-xs text-green-700 block mb-1">Título da notificação</label>
+                  <input
+                    type="text"
+                    value={notifTitle}
+                    onChange={e => setNotifTitle(e.target.value)}
+                    className="w-full text-sm border border-green-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-300"
+                    placeholder="Ex: Presente especial para você!"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-green-700 block mb-1">Mensagem da notificação</label>
+                  <textarea
+                    value={notifBody}
+                    onChange={e => setNotifBody(e.target.value)}
+                    rows={3}
+                    className="w-full text-sm border border-green-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-300 resize-none"
+                    placeholder="Ex: Você ganhou 3 dias grátis de acesso Premium!"
+                  />
+                </div>
+                <button
+                  onClick={grantTrial}
+                  disabled={grantingTrial}
+                  className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
+                >
+                  <Gift size={14} />
+                  {grantingTrial ? 'Enviando...' : 'Dar dias grátis e notificar'}
+                </button>
               </div>
             )}
 
