@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -31,6 +31,8 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [saving, setSaving] = useState(false);
   const [premiumDays, setPremiumDays] = useState('30');
+  const [grantingTrial, setGrantingTrial] = useState(false);
+  const [trialDays, setTrialDays] = useState('3');
 
   useEffect(() => {
     api.getUser(userId).then(setUser).catch(console.error);
@@ -60,6 +62,29 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
       toast.error(e instanceof Error ? e.message : 'Erro');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const grantTrial = async () => {
+    if (!user) return;
+    const days = parseInt(trialDays);
+    if (!days || days <= 0) {
+      toast.error('Informe um período válido');
+      return;
+    }
+    setGrantingTrial(true);
+    try {
+      const res = await api.grantTrial(user.id, days);
+      const until = new Date(res.premiumUntil);
+      setUser(prev => prev ? { ...prev, isPremium: true, premiumUntil: res.premiumUntil, premiumPlatform: 'manual' } : prev);
+      const notifMsg = res.notificationSent
+        ? ' Notificação enviada!'
+        : ' (usuário sem token de push — notificação não enviada)';
+      toast.success(`Premium ativado por ${days} dias até ${until.toLocaleDateString('pt-BR')}.${notifMsg}`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao dar dias grátis');
+    } finally {
+      setGrantingTrial(false);
     }
   };
 
@@ -143,6 +168,7 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
                     onChange={e => setPremiumDays(e.target.value)}
                     className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
                   >
+                    <option value="3">3 dias</option>
                     <option value="7">7 dias</option>
                     <option value="15">15 dias</option>
                     <option value="30">30 dias</option>
@@ -153,6 +179,38 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
                 </div>
               )}
             </div>
+
+            {!user.isPremium && (
+              <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Gift size={16} className="text-green-600" />
+                  <p className="text-sm font-medium text-green-800">Dar dias grátis + notificar</p>
+                </div>
+                <p className="text-xs text-green-600">Ativa o premium e envia uma notificação push avisando o usuário.</p>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={trialDays}
+                    onChange={e => setTrialDays(e.target.value)}
+                    className="text-sm border border-green-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-300"
+                  >
+                    <option value="1">1 dia</option>
+                    <option value="3">3 dias</option>
+                    <option value="5">5 dias</option>
+                    <option value="7">7 dias</option>
+                    <option value="14">14 dias</option>
+                    <option value="30">30 dias</option>
+                  </select>
+                  <button
+                    onClick={grantTrial}
+                    disabled={grantingTrial}
+                    className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
+                  >
+                    <Gift size={14} />
+                    {grantingTrial ? 'Enviando...' : 'Dar dias grátis'}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-3">
               {[

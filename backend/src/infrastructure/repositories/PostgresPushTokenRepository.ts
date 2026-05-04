@@ -39,6 +39,14 @@ export class PostgresPushTokenRepository {
     return result.rows.map(this.mapRow);
   }
 
+  async findByUserId(userId: string): Promise<PushToken[]> {
+    const result = await pool.query(
+      'SELECT * FROM push_tokens WHERE user_id = $1',
+      [userId]
+    );
+    return result.rows.map(this.mapRow);
+  }
+
   async removeByToken(token: string): Promise<void> {
     await pool.query('DELETE FROM push_tokens WHERE token = $1', [token]);
   }

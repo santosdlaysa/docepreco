@@ -193,6 +193,12 @@ export const api = {
       body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null }),
     }),
 
+  grantTrial: (id: string, days: number) =>
+    req<{ premiumUntil: string; notificationSent: boolean; recipientsCount: number }>(`/admin/users/${id}/grant-trial`, {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    }),
+
   sendUpdateEmail: (content?: { subject?: string; intro?: string; features?: string[]; ctaText?: string; ctaUrl?: string }) =>
     req<{ sent: number; failed: number }>('/admin/send-update-email', {
       method: 'POST',

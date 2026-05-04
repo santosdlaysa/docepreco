@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
+import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { sendPushNotifications } from '../../infrastructure/services/pushService';
 
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
@@ -151,6 +153,60 @@ export class AdminController {
       res.json({ success: true });
     } catch (error) {
       console.error('[Admin] setPremium error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async grantTrial(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { days } = req.body;
+
+    if (!days || days <= 0) {
+      res.status(400).json({ success: false, error: 'days é obrigatório e deve ser maior que 0' });
+      return;
+    }
+
+    try {
+      const userRes = await pool.query('SELECT id, company_name FROM users WHERE id = $1', [id]);
+      if (userRes.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+
+      const until = new Date();
+      until.setDate(until.getDate() + days);
+      const premiumUntil = until.toISOString();
+
+      await pool.query(
+        `UPDATE users SET is_premium = true, premium_until = $1, premium_platform = 'manual' WHERE id = $2`,
+        [premiumUntil, id]
+      );
+
+      // Send push notification to this specific user
+      const tokenRepo = new PostgresPushTokenRepository();
+      const tokens = await tokenRepo.findByUserId(id);
+      let recipientsCount = 0;
+      if (tokens.length > 0) {
+        const tokenStrings = tokens.map(t => t.token);
+        recipientsCount = await sendPushNotifications(
+          tokenStrings,
+          'Presente especial para você!',
+          `Você ganhou ${days} dias grátis de acesso Premium! Aproveite todos os recursos exclusivos do DocePreço.`,
+          { type: 'trial_granted', days }
+        );
+      }
+
+      res.json({
+        success: true,
+        data: {
+          premiumUntil,
+          notificationSent: recipientsCount > 0,
+          recipientsCount,
+        },
+      });
+    } catch (error) {
+      console.error('[Admin] grantTrial error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
