@@ -160,8 +160,8 @@ export function FeaturedRecipesPage({ toast }: Props) {
                   </div>
                 </div>
                 {expanded === item.id && item.ingredients.length > 0 && (
-                  <div className="px-5 pb-3 pl-12">
-                    <table className="w-full text-xs">
+                  <div className="px-5 pb-3 pl-12 overflow-x-auto">
+                    <table className="w-full text-xs min-w-[320px]">
                       <thead>
                         <tr className="text-gray-400 text-left">
                           <th className="pb-1">Ingrediente</th>
@@ -211,7 +211,7 @@ export function FeaturedRecipesPage({ toast }: Props) {
                 <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Ex: Brigadeiro Gourmet" />
               </div>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Rendimento (un)</label>
                   <input type="number" min="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"

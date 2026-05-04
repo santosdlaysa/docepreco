@@ -76,7 +76,7 @@ const TOAST_STYLES = {
 export function ToastContainer({ toasts, onRemove }: { toasts: ToastMessage[]; onRemove: (id: number) => void }) {
   if (toasts.length === 0) return null;
   return (
-    <div className="fixed top-4 right-4 z-[100] space-y-2 max-w-sm">
+    <div className="fixed top-4 left-4 right-4 sm:left-auto sm:right-4 z-[100] space-y-2 sm:max-w-sm">
       {toasts.map(t => {
         const Icon = TOAST_ICON[t.type];
         return (
@@ -143,8 +143,8 @@ export function ConfirmModal({ open, title, message, confirmLabel = 'Confirmar',
 
 export function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-end md:items-center justify-center z-50 md:p-4 animate-fade-in" onClick={onClose}>
-      <div className="animate-scale-in w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
+      <div className="animate-scale-in w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         {children}
       </div>
     </div>

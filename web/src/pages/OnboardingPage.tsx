@@ -276,7 +276,7 @@ export function OnboardingPage({ toast }: Props) {
               </div>
 
               {/* Manual color overrides */}
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Nome ícone (Ionicons)</label>
                   <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-primary-400 outline-none"
