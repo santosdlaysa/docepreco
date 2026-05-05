@@ -13,11 +13,9 @@ import {
   startUsageTracking,
   stopUsageTracking,
 } from './src/presentation/utils/review';
-import { initSentry, Sentry } from './src/presentation/utils/sentry';
 import { initializeNotifications, onAppForeground } from './src/presentation/utils/notifications';
 import { configureRevenueCat } from './src/data/premium/revenueCat';
 
-initSentry();
 configureRevenueCat();
 
 function App() {
@@ -83,4 +81,4 @@ function App() {
   );
 }
 
-export default Sentry.wrap(App);
+export default App;

@@ -3,7 +3,7 @@
     "name": "DocePreço",
     "slug": "sweet-pricing",
     "owner": "doce-preco",
-    "version": "2.3.0",
+    "version": "2.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -32,8 +32,8 @@
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.laysadiniz.sweetpricing",
-      "versionCode": 19,
-      "googleServicesFile": "./android/app/google-services.json"
+      "versionCode": 20,
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -48,8 +48,7 @@
       "url": "https://u.expo.dev/2e86f353-1d41-47cc-b552-3e242b8430f4"
     },
     "plugins": [
-      "@sentry/react-native",
-      [
+[
         "expo-notifications",
         {
           "color": "#E91E8C"

@@ -1,6 +1,5 @@
 import axios from 'axios';
 import { tokenStorage } from '../storage/tokenStorage';
-import { captureError } from '../../presentation/utils/sentry';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
@@ -37,10 +36,6 @@ apiClient.interceptors.response.use(
       ? 'Sem conexão com o servidor. Tente novamente em alguns segundos.'
       : rawMessage;
     console.error(`[API] ✗ ${status} ${method} ${url} — ${message}`);
-    // Reporta erros de servidor (5xx) e de rede pro Sentry
-    if (typeof status !== 'number' || status >= 500) {
-      captureError(error, { method, url, status, message });
-    }
     const apiError: Error & {
       status?: number;
       code?: string;
