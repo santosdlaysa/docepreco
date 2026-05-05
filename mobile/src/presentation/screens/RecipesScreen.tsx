@@ -7,6 +7,11 @@ import {
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
+  Alert,
+  Platform,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,6 +29,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
+import { usePaywall } from '../premium/usePaywall';
 import { FREE_LIMITS } from '../premium/limits';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -35,7 +41,10 @@ export const RecipesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
   const { isPremium } = usePremium();
+  const { requirePremium } = usePaywall();
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
+  const [duplicateTarget, setDuplicateTarget] = useState<Recipe | null>(null);
+  const [duplicateName, setDuplicateName] = useState('');
   const loadRecipes = async () => {
     try {
       const data = await api.getAll();
@@ -83,6 +92,54 @@ export const RecipesScreen: React.FC = () => {
     });
   };
 
+  const handleDuplicate = (recipe: Recipe) => {
+    if (!requirePremium('duplicateRecipe')) return;
+
+    const defaultName = `${recipe.name} (cópia)`;
+
+    if (Platform.OS === 'ios') {
+      Alert.prompt(
+        'Duplicar receita',
+        'Escolha um nome para a cópia:',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Duplicar',
+            onPress: (name) => executeDuplicate(recipe, (name || '').trim() || defaultName),
+          },
+        ],
+        'plain-text',
+        defaultName,
+      );
+    } else {
+      setDuplicateName(defaultName);
+      setDuplicateTarget(recipe);
+    }
+  };
+
+  const executeDuplicate = async (recipe: Recipe, name: string) => {
+    try {
+      await api.create({
+        name,
+        yield: recipe.yield,
+        profitMargin: recipe.profitMargin,
+        ingredients: recipe.ingredients.map(ing => ({
+          ingredientId: ing.ingredientId,
+          quantityUsed: ing.quantityUsed,
+          unit: ing.unit,
+        })),
+        additionalCosts: recipe.additionalCosts.map(c => ({
+          name: c.name,
+          value: c.value,
+        })),
+      });
+      showToast('Receita duplicada!', 'success');
+      loadRecipes();
+    } catch {
+      showToast('Erro ao duplicar receita', 'error');
+    }
+  };
+
   const renderItem = ({ item }: { item: Recipe }) => (
     <Card style={styles.recipeCard}>
       <TouchableOpacity
@@ -115,14 +172,20 @@ export const RecipesScreen: React.FC = () => {
       </TouchableOpacity>
       <View style={styles.recipeActions}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('EditRecipe', { recipeId: item.id })}
+          onPress={() => handleDuplicate(item)}
           style={styles.actionBtn}
+        >
+          <Ionicons name="copy-outline" size={18} color={colors.secondary} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('EditRecipe', { recipeId: item.id })}
+          style={[styles.actionBtn, styles.actionBtnBorder]}
         >
           <Ionicons name="pencil-outline" size={18} color={colors.primary} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => handleDelete(item)}
-          style={[styles.actionBtn, styles.deleteBtn]}
+          style={[styles.actionBtn, styles.actionBtnBorder]}
         >
           <Ionicons name="trash-outline" size={18} color={colors.error} />
         </TouchableOpacity>
@@ -224,6 +287,44 @@ export const RecipesScreen: React.FC = () => {
           />
         }
       />
+
+      {/* Modal de nome para duplicar (Android) */}
+      <Modal visible={!!duplicateTarget} transparent animationType="fade">
+        <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
+          <View style={styles.modalBox}>
+            <Text style={styles.modalTitle}>Duplicar receita</Text>
+            <Text style={styles.modalSubtitle}>Escolha um nome para a cópia:</Text>
+            <TextInput
+              style={styles.modalInput}
+              value={duplicateName}
+              onChangeText={setDuplicateName}
+              placeholder="Nome da receita"
+              autoFocus
+              selectTextOnFocus
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => setDuplicateTarget(null)}
+                style={styles.modalCancel}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => {
+                  if (duplicateTarget) {
+                    const name = duplicateName.trim() || `${duplicateTarget.name} (cópia)`;
+                    executeDuplicate(duplicateTarget, name);
+                  }
+                  setDuplicateTarget(null);
+                }}
+                style={styles.modalSave}
+              >
+                <Text style={styles.modalSaveText}>Duplicar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -280,7 +381,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
   },
-  deleteBtn: {
+  actionBtnBorder: {
     borderLeftWidth: 1,
     borderLeftColor: colors.border,
   },
@@ -349,4 +450,18 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 32 },
+  modalBox: { backgroundColor: colors.surface, borderRadius: 16, padding: 24 },
+  modalTitle: { ...typography.h3, color: colors.text, marginBottom: 6 },
+  modalSubtitle: { ...typography.body, color: colors.textSecondary, marginBottom: 16 },
+  modalInput: {
+    borderWidth: 1.5, borderColor: colors.border, borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12,
+    ...typography.body, color: colors.text, marginBottom: 20,
+  },
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 },
+  modalCancel: { padding: 10 },
+  modalCancelText: { ...typography.body, color: colors.textSecondary, fontWeight: '600' },
+  modalSave: { backgroundColor: colors.primary, borderRadius: 10, paddingHorizontal: 20, paddingVertical: 10 },
+  modalSaveText: { ...typography.body, color: '#fff', fontWeight: '700' },
 });
