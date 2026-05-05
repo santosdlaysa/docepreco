@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -20,7 +21,7 @@ const SUPPORT_WHATSAPP = '5595991371313';
 
 export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout, isDemoMode } = useAuth();
+  const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
@@ -122,6 +123,28 @@ export const ProfileScreen: React.FC = () => {
   const phoneChanged = (phoneInput.replace(/\D/g, '')) !== (user?.phone || '');
   const instagramChanged = (instagramInput.replace(/^@/, '').trim()) !== (user?.instagramHandle || '');
 
+  const pickCompanyLogo = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]?.base64) {
+      const asset = result.assets[0];
+      const mime = asset.mimeType || 'image/jpeg';
+      setCompanyLogo(`data:${mime};base64,${asset.base64}`);
+    }
+  };
+
+  const removeCompanyLogo = () => {
+    Alert.alert('Remover logo', 'Deseja remover a logo da empresa?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Remover', style: 'destructive', onPress: () => setCompanyLogo(null) },
+    ]);
+  };
+
   const handleLogout = () => {
     Alert.alert('Sair', 'Deseja sair da sua conta?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -149,9 +172,23 @@ export const ProfileScreen: React.FC = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <Card style={styles.card}>
           <View style={styles.avatarRow}>
-            <View style={styles.avatar}>
-              <Ionicons name="storefront" size={32} color={colors.primary} />
-            </View>
+            <TouchableOpacity
+              style={styles.avatarWrap}
+              onPress={pickCompanyLogo}
+              onLongPress={companyLogo ? removeCompanyLogo : undefined}
+              activeOpacity={0.7}
+            >
+              {companyLogo ? (
+                <Image source={{ uri: companyLogo }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatar}>
+                  <Ionicons name="storefront" size={32} color={colors.primary} />
+                </View>
+              )}
+              <View style={styles.avatarEditBadge}>
+                <Ionicons name="camera" size={12} color="#fff" />
+              </View>
+            </TouchableOpacity>
             <View style={styles.userInfo}>
               <Text style={styles.companyName}>{user?.companyName || '—'}</Text>
               <View style={styles.emailRow}>
@@ -427,6 +464,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, padding: 20 },
   card: { marginBottom: 16 },
   avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  avatarWrap: { position: 'relative' },
   avatar: {
     width: 60,
     height: 60,
@@ -434,6 +472,24 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  avatarImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 18,
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.surface,
   },
   userInfo: { flex: 1 },
   companyName: { ...typography.h3, color: colors.text },

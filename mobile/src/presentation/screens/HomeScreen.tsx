@@ -218,7 +218,7 @@ const quickActions: QuickActionItem[] = [
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { companyName, isDemoMode: isDemo } = useAuth();
+  const { companyName, isDemoMode: isDemo, companyLogo } = useAuth();
   const { isPremium } = usePremium();
   const [stats, setStats] = useState<AppStats | null>(null);
   const [goal, setGoal] = useState<RevenueGoal | null>(null);
@@ -316,7 +316,7 @@ export const HomeScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.greeting}>Olá, {companyName || 'Confeiteira'}!</Text>
             <Text style={styles.subtitle}>Precifique seus doces com confianca</Text>
           </View>
@@ -325,7 +325,11 @@ export const HomeScreen: React.FC = () => {
             onPress={() => navigation.navigate('Profile' as never)}
             activeOpacity={0.7}
           >
-            <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+            {companyLogo ? (
+              <Image source={{ uri: companyLogo }} style={styles.logoImage} />
+            ) : (
+              <Ionicons name="person-circle-outline" size={32} color={colors.primary} />
+            )}
           </TouchableOpacity>
         </View>
 
@@ -639,6 +643,12 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  logoImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   demoBanner: {
     flexDirection: 'row',

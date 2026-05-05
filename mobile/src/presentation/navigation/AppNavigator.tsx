@@ -33,6 +33,7 @@ import { SeasonsScreen } from '../screens/SeasonsScreen';
 import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
 import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
+import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -82,6 +83,7 @@ export function AppNavigator() {
   const [showRegister, setShowRegister] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [companyName, setCompanyName] = useState('');
+  const [companyLogo, setCompanyLogoState] = useState<string | null>(null);
   const [demoMode, setDemoModeState] = useState(false);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
@@ -91,6 +93,8 @@ export function AppNavigator() {
       try {
         const isDemo = await loadDemoMode();
         const token = await tokenStorage.getToken();
+        const savedLogo = await companyLogoStorage.get();
+        if (savedLogo) setCompanyLogoState(savedLogo);
         if (token) {
           const user = await tokenStorage.getUser();
           setCompanyName(user?.companyName || '');
@@ -126,12 +130,22 @@ export function AppNavigator() {
     }
   }, [authState]);
 
+  const handleSetCompanyLogo = async (logo: string | null) => {
+    if (logo) {
+      await companyLogoStorage.save(logo);
+    } else {
+      await companyLogoStorage.remove();
+    }
+    setCompanyLogoState(logo);
+  };
+
   const logout = async () => {
     await setDemoMode(false);
     setDemoModeState(false);
     await authApi.logout();
     await logoutRevenueCatUser();
     setCompanyName('');
+    setCompanyLogoState(null);
     setAuthState('auth');
   };
 
@@ -211,7 +225,7 @@ export function AppNavigator() {
   }
 
   return (
-    <AuthContext.Provider value={{ logout, companyName, isDemoMode: demoMode }}>
+    <AuthContext.Provider value={{ logout, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
       <NavigationContainer
         ref={navigationRef}
         onReady={() => {

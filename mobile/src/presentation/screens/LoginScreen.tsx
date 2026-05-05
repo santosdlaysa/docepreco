@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,15 +7,15 @@ import {
   KeyboardAvoidingView,
   Platform,
   TouchableOpacity,
+  Animated,
+  Image,
+  StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { authApi } from '../../data/api/authApi';
 import { identifyRevenueCatUser } from '../../data/premium/revenueCat';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 
 interface Props {
@@ -31,6 +31,18 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const fadeIn = useRef(new Animated.Value(0)).current;
+  const cardSlide = useRef(new Animated.Value(60)).current;
+  const logoScale = useRef(new Animated.Value(0.7)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
+      Animated.timing(fadeIn, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.spring(cardSlide, { toValue: 0, tension: 40, friction: 9, useNativeDriver: true }),
+    ]).start();
+  }, []);
 
   const validate = () => {
     const e: Record<string, string> = {};
@@ -60,25 +72,38 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.root}>
+      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-
-          <View style={styles.logoArea}>
-            <View style={styles.logoIcon}>
-              <Ionicons name="storefront" size={40} color={colors.primary} />
-            </View>
-            <Text style={styles.appName}>Precifica Doces</Text>
-            <Text style={styles.appSubtitle}>Gestão inteligente para confeiteiros</Text>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces={false}
+        >
+          {/* Header colorido */}
+          <View style={styles.header}>
+            <Animated.View style={[styles.logoArea, { opacity: fadeIn, transform: [{ scale: logoScale }] }]}>
+              <View style={styles.logoWrap}>
+                <Image
+                  source={require('../../../assets/icon.png')}
+                  style={styles.logoImg}
+                  resizeMode="contain"
+                />
+              </View>
+              <Text style={styles.brand}>Doce Preço</Text>
+              <Text style={styles.tagline}>Precifique seus doces com inteligência</Text>
+            </Animated.View>
           </View>
 
-          <View style={styles.form}>
-            <Text style={styles.title}>Entrar</Text>
+          {/* Card sobreposto */}
+          <Animated.View style={[styles.card, { opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
+            <Text style={styles.cardTitle}>Entrar na sua conta</Text>
 
             {errors.general && (
               <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle-outline" size={16} color={colors.error} />
-                <Text style={styles.errorBannerText}>{errors.general}</Text>
+                <Ionicons name="alert-circle" size={16} color={colors.error} />
+                <Text style={styles.errorText}>{errors.general}</Text>
               </View>
             )}
 
@@ -86,123 +111,200 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               label="Email"
               placeholder="seu@email.com"
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(t) => { setEmail(t); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
               keyboardType="email-address"
               autoCapitalize="none"
               error={errors.email}
             />
+
             <Input
               label="Senha"
-              placeholder="••••••"
+              placeholder="Digite sua senha"
               value={password}
-              onChangeText={setPassword}
+              onChangeText={(t) => { setPassword(t); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
               secureTextEntry={!showPassword}
               error={errors.password}
               rightElement={
-                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 4 }}>
-                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={colors.textMuted} />
+                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 6 }}>
+                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               }
             />
 
             {onGoToForgotPassword && (
-              <TouchableOpacity onPress={onGoToForgotPassword} style={styles.forgotLink}>
-                <Text style={styles.forgotText}>Esqueci minha senha</Text>
+              <TouchableOpacity onPress={onGoToForgotPassword} style={styles.forgotRow}>
+                <Text style={styles.forgotText}>Esqueceu a senha?</Text>
               </TouchableOpacity>
             )}
 
-            <Button
-              title="Entrar"
+            <TouchableOpacity
+              style={[styles.loginBtn, loading && { opacity: 0.6 }]}
               onPress={handleLogin}
-              loading={loading}
-              size="lg"
-              style={styles.btn}
-            />
-
-            <TouchableOpacity onPress={onGoToRegister} style={styles.switchLink}>
-              <Text style={styles.switchText}>
-                Não tem conta? <Text style={styles.switchTextBold}>Cadastre-se</Text>
-              </Text>
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.loginBtnText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
+              {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </TouchableOpacity>
-          </View>
 
-          {onDemoLogin && (
-            <View style={styles.demoSection}>
-              <View style={styles.separator}>
-                <View style={styles.separatorLine} />
-                <Text style={styles.separatorText}>ou</Text>
-                <View style={styles.separatorLine} />
-              </View>
-              <TouchableOpacity onPress={onDemoLogin} style={styles.demoButton} activeOpacity={0.8}>
-                <Ionicons name="play-outline" size={20} color={colors.secondary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.demoButtonText}>Entrar em modo demonstração</Text>
-                  <Text style={styles.demoButtonSub}>Explore o app sem criar conta</Text>
-                </View>
+            <View style={styles.registerRow}>
+              <Text style={styles.registerLabel}>Não tem conta?</Text>
+              <TouchableOpacity onPress={onGoToRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.registerLink}>Criar conta</Text>
               </TouchableOpacity>
             </View>
-          )}
 
-          <Text style={styles.versionText}>v{Constants.expoConfig?.version ?? '?'}</Text>
+            {onDemoLogin && (
+              <>
+                <View style={styles.orRow}>
+                  <View style={styles.orLine} />
+                  <Text style={styles.orText}>ou</Text>
+                  <View style={styles.orLine} />
+                </View>
 
+                <TouchableOpacity onPress={onDemoLogin} style={styles.demoBtn} activeOpacity={0.7}>
+                  <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
+                  <Text style={styles.demoBtnText}>Experimentar sem conta</Text>
+                </TouchableOpacity>
+              </>
+            )}
+
+            <Text style={styles.version}>v{Constants.expoConfig?.version ?? '?'}</Text>
+          </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </View>
   );
 };
 
+const CARD_OVERLAP = 40;
+
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  container: { flexGrow: 1, padding: 24, justifyContent: 'center' },
-  logoArea: { alignItems: 'center', marginBottom: 40 },
-  logoIcon: {
-    width: 80, height: 80, borderRadius: 24,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 12,
+  root: { flex: 1, backgroundColor: colors.surface },
+  scrollContent: { flexGrow: 1 },
+
+  // Header rosa
+  header: {
+    backgroundColor: colors.primary,
+    paddingTop: Platform.OS === 'ios' ? 60 : 50,
+    paddingBottom: CARD_OVERLAP + 32,
+    alignItems: 'center',
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
-  appName: { ...typography.h1, color: colors.text },
-  appSubtitle: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 4 },
-  form: {
+  logoArea: { alignItems: 'center' },
+  logoWrap: {
+    width: 90,
+    height: 90,
+    borderRadius: 26,
+    overflow: 'hidden',
+    marginBottom: 14,
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.3)',
+  },
+  logoImg: { width: 90, height: 90 },
+  brand: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.5,
+  },
+  tagline: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 4,
+  },
+
+  // Card sobreposto
+  card: {
     backgroundColor: colors.surface,
-    borderRadius: 20,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: colors.border,
+    marginTop: -CARD_OVERLAP,
+    marginHorizontal: 20,
+    borderRadius: 24,
+    padding: 28,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    elevation: 8,
+    marginBottom: 32,
   },
-  title: { ...typography.h2, color: colors.text, marginBottom: 20 },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.text,
+    marginBottom: 24,
+  },
+
+  // Error
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#FFEBEE',
-    borderRadius: 10,
     padding: 12,
+    borderRadius: 12,
     marginBottom: 16,
   },
-  errorBannerText: { ...typography.bodySmall, color: colors.error, flex: 1 },
-  forgotLink: { alignItems: 'flex-end', marginTop: -8, marginBottom: 8 },
-  forgotText: { ...typography.bodySmall, color: colors.primary, fontWeight: '600' },
-  btn: { marginTop: 8 },
-  switchLink: { marginTop: 16, alignItems: 'center' },
-  switchText: { ...typography.body, color: colors.textSecondary },
-  switchTextBold: { color: colors.primary, fontWeight: '700' },
-  demoSection: { marginTop: 24, alignItems: 'center' },
-  separator: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 16 },
-  separatorLine: { flex: 1, height: 1, backgroundColor: colors.border },
-  separatorText: { ...typography.bodySmall, color: colors.textMuted, marginHorizontal: 12 },
-  demoButton: {
+  errorText: { fontSize: 13, color: colors.error, flex: 1, fontWeight: '500' },
+
+  // Forgot
+  forgotRow: { alignSelf: 'flex-end', marginTop: -8, marginBottom: 16 },
+  forgotText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
+
+  // Login button
+  loginBtn: {
+    backgroundColor: colors.primary,
+    borderRadius: 16,
+    paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    borderWidth: 1.5,
-    borderColor: colors.secondary,
-    borderRadius: 14,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  loginBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+  },
+
+  // Register
+  registerRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 20,
+  },
+  registerLabel: { fontSize: 14, color: colors.textSecondary },
+  registerLink: { fontSize: 14, color: colors.primary, fontWeight: '700' },
+
+  // Demo
+  orRow: { flexDirection: 'row', alignItems: 'center', marginTop: 24, marginBottom: 16 },
+  orLine: { flex: 1, height: 1, backgroundColor: colors.border },
+  orText: { marginHorizontal: 12, fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+  demoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     paddingVertical: 14,
-    width: '100%',
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: colors.border,
     backgroundColor: colors.cream,
   },
-  demoButtonText: { ...typography.body, color: colors.secondary, fontWeight: '600' },
-  demoButtonSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  versionText: { ...typography.caption, color: colors.textMuted, textAlign: 'center', marginTop: 24 },
+  demoBtnText: { fontSize: 14, fontWeight: '600', color: colors.text },
+
+  version: {
+    fontSize: 11,
+    color: colors.textMuted,
+    textAlign: 'center',
+    marginTop: 24,
+  },
 });
