@@ -7,6 +7,7 @@ import {
   Alert,
   ActivityIndicator,
   TouchableOpacity,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -29,12 +30,20 @@ import { shareRecipeQuote } from '../utils/pdfQuote';
 import { pdfSettingsStorage, PdfSettings } from '../../data/storage/pdfSettingsStorage';
 import { seasonApi, Season } from '../../data/api/seasonApi';
 import { usePremium } from '../context/PremiumContext';
+import { usePaywall } from '../premium/usePaywall';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
 
 const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const formatQuantity = (value: number) => {
+  if (value >= 1000) return value.toFixed(0);
+  if (value >= 100) return value.toFixed(1);
+  if (value >= 1) return value.toFixed(2);
+  return value.toFixed(3);
+};
 
 export const RecipeDetailScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -48,10 +57,13 @@ export const RecipeDetailScreen: React.FC = () => {
   const [sharing, setSharing] = useState(false);
   const [pdfSettings, setPdfSettings] = useState<PdfSettings | undefined>();
   const [activeSeason, setActiveSeason] = useState<Season | null>(null);
+  const [scaleInput, setScaleInput] = useState('');
+  const [scaleOpen, setScaleOpen] = useState(false);
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const { companyName } = useAuth();
   const { showToast } = useToast();
   const { isPremium } = usePremium();
+  const { requirePremium } = usePaywall();
 
   useEffect(() => {
     loadRecipe();
@@ -95,6 +107,11 @@ export const RecipeDetailScreen: React.FC = () => {
       setSharing(false);
     }
   };
+
+  // Scale calculator
+  const scaleQty = parseFloat(scaleInput.replace(',', '.'));
+  const scaleValid = !isNaN(scaleQty) && scaleQty > 0;
+  const scaleFactor = recipe && scaleValid ? scaleQty / recipe.yield : null;
 
   if (loading) {
     return (
@@ -263,6 +280,116 @@ export const RecipeDetailScreen: React.FC = () => {
                 </Text>
               </View>
             ))}
+          </Card>
+        )}
+
+        {/* Calculadora de Escala */}
+        {recipe.ingredients.length > 0 && calculation && (
+          <Card style={styles.scaleCard}>
+            <TouchableOpacity
+              style={styles.scaleHeader}
+              onPress={() => {
+                if (!scaleOpen && !requirePremium('scaleCalculator')) return;
+                setScaleOpen(!scaleOpen);
+              }}
+              activeOpacity={0.7}
+            >
+              <View style={styles.scaleIconWrap}>
+                <Ionicons name="resize-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.scaleTitle}>Calculadora de Escala</Text>
+                <Text style={styles.scaleSubtitle}>Ajuste a receita para qualquer quantidade</Text>
+              </View>
+              <Ionicons
+                name={scaleOpen ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+
+            {scaleOpen && (
+              <View style={styles.scaleBody}>
+                <Text style={styles.scaleLabel}>
+                  Receita original: <Text style={styles.scaleBold}>{recipe.yield} unidades</Text>
+                </Text>
+                <View style={styles.scaleInputRow}>
+                  <Text style={styles.scaleInputLabel}>Quero fazer</Text>
+                  <TextInput
+                    style={styles.scaleInput}
+                    value={scaleInput}
+                    onChangeText={setScaleInput}
+                    keyboardType="numeric"
+                    placeholder={String(recipe.yield)}
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  <Text style={styles.scaleInputLabel}>unidades</Text>
+                </View>
+
+                {scaleFactor !== null && (
+                  <>
+                    <View style={styles.scaleMultiplier}>
+                      <Ionicons name="swap-vertical-outline" size={16} color={colors.primary} />
+                      <Text style={styles.scaleMultiplierText}>
+                        Multiplicador: <Text style={styles.scaleBold}>{scaleFactor.toFixed(2)}x</Text>
+                      </Text>
+                    </View>
+
+                    {/* Ingredientes escalados */}
+                    <View style={styles.scaleIngredients}>
+                      <Text style={styles.scaleIngredientsTitle}>Ingredientes necessários</Text>
+                      {recipe.ingredients.map((ing, idx) => {
+                        const scaled = ing.quantityUsed * scaleFactor;
+                        return (
+                          <View key={idx} style={styles.scaleIngRow}>
+                            <Text style={styles.scaleIngName}>
+                              {ing.ingredientName || `Ingrediente ${idx + 1}`}
+                            </Text>
+                            <Text style={styles.scaleIngQty}>
+                              {formatQuantity(scaled)} {ing.unit}
+                            </Text>
+                          </View>
+                        );
+                      })}
+                    </View>
+
+                    {/* Resumo financeiro escalado */}
+                    <View style={styles.scaleSummary}>
+                      <View style={styles.scaleSummaryRow}>
+                        <Text style={styles.scaleSummaryLabel}>Custo total</Text>
+                        <Text style={styles.scaleSummaryValue}>
+                          {formatCurrency(calculation.totalCost * scaleFactor)}
+                        </Text>
+                      </View>
+                      {calculation.additionalCostTotal > 0 && (
+                        <View style={styles.scaleSummaryRow}>
+                          <Text style={styles.scaleSummaryLabel}>Custos adicionais</Text>
+                          <Text style={styles.scaleSummaryValue}>
+                            {formatCurrency(calculation.additionalCostTotal * scaleFactor)}
+                          </Text>
+                        </View>
+                      )}
+                      <View style={styles.scaleSummaryRow}>
+                        <Text style={styles.scaleSummaryLabel}>Preço de venda total</Text>
+                        <Text style={[styles.scaleSummaryValue, { color: colors.primary, fontWeight: '800' }]}>
+                          {formatCurrency(calculation.suggestedPrice * scaleQty)}
+                        </Text>
+                      </View>
+                      <View style={styles.scaleSummaryRow}>
+                        <Text style={styles.scaleSummaryLabel}>Lucro estimado</Text>
+                        <Text style={[styles.scaleSummaryValue, { color: colors.success }]}>
+                          {formatCurrency((calculation.suggestedPrice * scaleQty) - (calculation.totalCost * scaleFactor))}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                )}
+
+                {scaleInput !== '' && !scaleValid && (
+                  <Text style={styles.scaleError}>Digite um número válido maior que zero</Text>
+                )}
+              </View>
+            )}
           </Card>
         )}
 
@@ -443,4 +570,103 @@ const styles = StyleSheet.create({
   seasonLabel: { ...typography.bodySmall, color: colors.text, fontWeight: '700', marginBottom: 2 },
   seasonPrice: { ...typography.bodySmall, color: colors.textSecondary },
   seasonPriceValue: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
+
+  // Calculadora de Escala
+  scaleCard: { marginBottom: 16, padding: 0, overflow: 'hidden' },
+  scaleHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 16,
+  },
+  scaleIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scaleTitle: { ...typography.h4, color: colors.text },
+  scaleSubtitle: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
+  scaleBody: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingTop: 16,
+  },
+  scaleLabel: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: 12 },
+  scaleBold: { fontWeight: '700', color: colors.text },
+  scaleInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  scaleInputLabel: { ...typography.body, color: colors.textSecondary },
+  scaleInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    ...typography.h3,
+    color: colors.primary,
+    textAlign: 'center',
+    backgroundColor: colors.cream,
+  },
+  scaleMultiplier: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primaryLight,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
+  },
+  scaleMultiplierText: { ...typography.bodySmall, color: colors.primary },
+  scaleIngredients: {
+    backgroundColor: colors.background,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+  },
+  scaleIngredientsTitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  scaleIngRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  scaleIngName: { ...typography.body, color: colors.text, flex: 1 },
+  scaleIngQty: { ...typography.body, color: colors.primary, fontWeight: '700' },
+  scaleSummary: {
+    backgroundColor: colors.cream,
+    borderRadius: 12,
+    padding: 14,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: colors.primaryLight,
+  },
+  scaleSummaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  scaleSummaryLabel: { ...typography.body, color: colors.textSecondary },
+  scaleSummaryValue: { ...typography.body, color: colors.text, fontWeight: '700' },
+  scaleError: { ...typography.bodySmall, color: colors.error, marginTop: 4 },
 });

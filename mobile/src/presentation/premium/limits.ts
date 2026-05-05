@@ -21,6 +21,7 @@ export const PREMIUM_FEATURES = {
   ingredientPriceHistory: 'ingredientPriceHistory',
   seasonalPricing: 'seasonalPricing',
   duplicateRecipe: 'duplicateRecipe',
+  scaleCalculator: 'scaleCalculator',
 } as const;
 
 export type PremiumFeature = keyof typeof PREMIUM_FEATURES;
@@ -61,6 +62,10 @@ export const FEATURE_COPY: Record<PremiumFeature, { title: string; description: 
   duplicateRecipe: {
     title: 'Duplicar receita',
     description: 'Copie uma receita existente para criar variações sem começar do zero.',
+  },
+  scaleCalculator: {
+    title: 'Calculadora de escala',
+    description: 'Ajuste a receita para qualquer quantidade e veja os ingredientes proporcionais.',
   },
 };
 

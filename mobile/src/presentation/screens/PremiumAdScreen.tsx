@@ -23,6 +23,16 @@ const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; des
     description: 'Chega de limite. Cadastre quantas receitas quiser.',
   },
   {
+    icon: 'resize-outline',
+    title: 'Calculadora de escala',
+    description: 'Ajuste receitas para qualquer quantidade automaticamente.',
+  },
+  {
+    icon: 'copy-outline',
+    title: 'Duplicar receitas',
+    description: 'Copie receitas para criar variações em segundos.',
+  },
+  {
     icon: 'calendar-outline',
     title: 'Agenda de encomendas',
     description: 'Organize os pedidos, status e lembretes de entrega.',

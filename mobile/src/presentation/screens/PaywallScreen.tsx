@@ -38,6 +38,16 @@ const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; des
     description: 'Chega de limite. Cadastre quantas receitas quiser.',
   },
   {
+    icon: 'resize-outline',
+    title: 'Calculadora de escala',
+    description: 'Ajuste receitas para qualquer quantidade automaticamente.',
+  },
+  {
+    icon: 'copy-outline',
+    title: 'Duplicar receitas',
+    description: 'Copie receitas para criar variações em segundos.',
+  },
+  {
     icon: 'calendar-outline',
     title: 'Agenda de encomendas',
     description: 'Organize os pedidos, status e lembretes de entrega.',
@@ -56,6 +66,16 @@ const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; des
     icon: 'stats-chart-outline',
     title: 'Relatórios completos',
     description: 'Gráficos de faturamento e receitas mais lucrativas.',
+  },
+  {
+    icon: 'pricetag-outline',
+    title: 'Preços por temporada',
+    description: 'Ajuste automático no Natal, Páscoa e datas especiais.',
+  },
+  {
+    icon: 'time-outline',
+    title: 'Histórico de preços',
+    description: 'Acompanhe a evolução do custo dos ingredientes.',
   },
   {
     icon: 'document-text-outline',
