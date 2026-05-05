@@ -20,6 +20,7 @@ export const PREMIUM_FEATURES = {
   smartShoppingList: 'smartShoppingList',
   ingredientPriceHistory: 'ingredientPriceHistory',
   seasonalPricing: 'seasonalPricing',
+  duplicateRecipe: 'duplicateRecipe',
 } as const;
 
 export type PremiumFeature = keyof typeof PREMIUM_FEATURES;
@@ -56,6 +57,10 @@ export const FEATURE_COPY: Record<PremiumFeature, { title: string; description: 
   seasonalPricing: {
     title: 'Precificação por temporada',
     description: 'Ajuste os preços automaticamente no Natal, Páscoa e outras datas especiais.',
+  },
+  duplicateRecipe: {
+    title: 'Duplicar receita',
+    description: 'Copie uma receita existente para criar variações sem começar do zero.',
   },
 };
 
