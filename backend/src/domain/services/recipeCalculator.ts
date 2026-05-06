@@ -30,7 +30,7 @@ export function convertUnit(quantity: number, fromUnit: string, toUnit: string):
  */
 export function calculateRecipe(
   recipe: RecipeCalculationInput,
-  ingredientsById: Map<string, Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit'>>
+  ingredientsById: Map<string, Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit' | 'purchaseUnitWeight'>>
 ): CalculationResult {
   if (recipe.yield <= 0) {
     throw new Error('Recipe yield must be greater than 0');
@@ -45,7 +45,10 @@ export function calculateRecipe(
         `Ingredient ${ingredient.id} has invalid purchaseQuantity (must be > 0)`
       );
     }
-    const pricePerUnit = ingredient.purchasePrice / ingredient.purchaseQuantity;
+    const effectiveQuantity = ingredient.purchaseUnitWeight
+      ? ingredient.purchaseQuantity * ingredient.purchaseUnitWeight
+      : ingredient.purchaseQuantity;
+    const pricePerUnit = ingredient.purchasePrice / effectiveQuantity;
     const convertedQuantity = convertUnit(ri.quantityUsed, ri.unit, ingredient.unit);
     ingredientsCost += pricePerUnit * convertedQuantity;
   }

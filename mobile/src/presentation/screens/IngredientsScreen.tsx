@@ -110,8 +110,13 @@ export const IngredientsScreen: React.FC = () => {
   const formatPrice = (price: number) =>
     price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const effectiveQuantity = (ingredient: Ingredient) =>
+    ingredient.purchaseUnitWeight
+      ? ingredient.purchaseQuantity * ingredient.purchaseUnitWeight
+      : ingredient.purchaseQuantity;
+
   const pricePerUnit = (ingredient: Ingredient) =>
-    ingredient.purchasePrice / ingredient.purchaseQuantity;
+    ingredient.purchasePrice / effectiveQuantity(ingredient);
 
   const renderItem = ({ item }: { item: Ingredient }) => (
     <Card style={styles.ingredientCard}>
@@ -122,7 +127,9 @@ export const IngredientsScreen: React.FC = () => {
         <View style={styles.ingredientInfo}>
           <Text style={styles.ingredientName}>{item.name}</Text>
           <Text style={styles.ingredientQuantity}>
-            {item.purchaseQuantity} {item.unit} por {formatPrice(item.purchasePrice)}
+            {item.purchaseUnitLabel
+              ? `${item.purchaseQuantity} ${item.purchaseUnitLabel}(s) (${effectiveQuantity(item)} ${item.unit}) por ${formatPrice(item.purchasePrice)}`
+              : `${item.purchaseQuantity} ${item.unit} por ${formatPrice(item.purchasePrice)}`}
           </Text>
           <Text style={styles.pricePerUnit}>
             {formatPrice(pricePerUnit(item))} por {item.unit}

@@ -6,6 +6,8 @@ export interface Ingredient {
   purchaseQuantity: number;
   purchasePrice: number;
   unit: Unit;
+  purchaseUnitLabel?: string;
+  purchaseUnitWeight?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -15,4 +17,6 @@ export interface CreateIngredientDTO {
   purchaseQuantity: number;
   purchasePrice: number;
   unit: Unit;
+  purchaseUnitLabel?: string;
+  purchaseUnitWeight?: number;
 }

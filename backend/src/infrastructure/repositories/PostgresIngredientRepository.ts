@@ -42,9 +42,9 @@ export class PostgresIngredientRepository implements IIngredientRepository {
 
   async create(data: CreateIngredientDTO, userId: string): Promise<Ingredient> {
     const result = await pool.query(
-      `INSERT INTO ingredients (user_id, name, purchase_quantity, purchase_price, unit)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [userId, data.name, data.purchaseQuantity, data.purchasePrice, data.unit]
+      `INSERT INTO ingredients (user_id, name, purchase_quantity, purchase_price, unit, purchase_unit_label, purchase_unit_weight)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [userId, data.name, data.purchaseQuantity, data.purchasePrice, data.unit, data.purchaseUnitLabel ?? null, data.purchaseUnitWeight ?? null]
     );
     return this.mapRow(result.rows[0]);
   }
@@ -58,6 +58,8 @@ export class PostgresIngredientRepository implements IIngredientRepository {
     if (data.purchaseQuantity !== undefined) { fields.push(`purchase_quantity = $${idx++}`); values.push(data.purchaseQuantity); }
     if (data.purchasePrice !== undefined) { fields.push(`purchase_price = $${idx++}`); values.push(data.purchasePrice); }
     if (data.unit !== undefined) { fields.push(`unit = $${idx++}`); values.push(data.unit); }
+    if (data.purchaseUnitLabel !== undefined) { fields.push(`purchase_unit_label = $${idx++}`); values.push(data.purchaseUnitLabel || null); }
+    if (data.purchaseUnitWeight !== undefined) { fields.push(`purchase_unit_weight = $${idx++}`); values.push(data.purchaseUnitWeight || null); }
 
     if (fields.length === 0) return this.findById(id, userId);
 
@@ -88,6 +90,8 @@ export class PostgresIngredientRepository implements IIngredientRepository {
       purchaseQuantity: parseFloat(row.purchase_quantity as string),
       purchasePrice: parseFloat(row.purchase_price as string),
       unit: row.unit as Ingredient['unit'],
+      purchaseUnitLabel: row.purchase_unit_label as string | undefined,
+      purchaseUnitWeight: row.purchase_unit_weight ? parseFloat(row.purchase_unit_weight as string) : undefined,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };

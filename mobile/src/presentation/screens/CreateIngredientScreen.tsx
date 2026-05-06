@@ -37,6 +37,8 @@ const UNITS: { value: Unit; label: string }[] = [
   { value: 'unit', label: 'Unidade' },
 ];
 
+const PURCHASE_UNIT_SUGGESTIONS = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote', 'Bisnaga', 'Tablete'];
+
 type RouteProps = RouteProp<RootStackParamList, 'EditIngredient'>;
 
 export const CreateIngredientScreen: React.FC = () => {
@@ -49,6 +51,9 @@ export const CreateIngredientScreen: React.FC = () => {
   const [purchaseQuantity, setPurchaseQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [unit, setUnit] = useState<Unit>('g');
+  const [useCustomUnit, setUseCustomUnit] = useState(false);
+  const [purchaseUnitLabel, setPurchaseUnitLabel] = useState('');
+  const [purchaseUnitWeight, setPurchaseUnitWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
   const [originalPrice, setOriginalPrice] = useState<number | null>(null);
@@ -94,6 +99,11 @@ export const CreateIngredientScreen: React.FC = () => {
         setUnit(ingredient.unit);
         setOriginalPrice(ingredient.purchasePrice);
         setOriginalQty(ingredient.purchaseQuantity);
+        if (ingredient.purchaseUnitLabel) {
+          setUseCustomUnit(true);
+          setPurchaseUnitLabel(ingredient.purchaseUnitLabel);
+          setPurchaseUnitWeight(String(ingredient.purchaseUnitWeight ?? ''));
+        }
       })
       .catch(() => showToast('Não foi possível carregar o ingrediente', 'error'))
       .finally(() => setLoadingData(false));
@@ -106,6 +116,11 @@ export const CreateIngredientScreen: React.FC = () => {
       newErrors.purchaseQuantity = 'Quantidade deve ser maior que 0';
     if (!purchasePrice || parseFloat(purchasePrice) <= 0)
       newErrors.purchasePrice = 'Preco deve ser maior que 0';
+    if (useCustomUnit) {
+      if (!purchaseUnitLabel.trim()) newErrors.purchaseUnitLabel = 'Informe o tipo (ex: Lata)';
+      if (!purchaseUnitWeight || parseFloat(purchaseUnitWeight) <= 0)
+        newErrors.purchaseUnitWeight = 'Informe o peso por unidade';
+    }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -127,6 +142,8 @@ export const CreateIngredientScreen: React.FC = () => {
           purchaseQuantity: newQty,
           purchasePrice: newPrice,
           unit,
+          purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
+          purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight) : undefined,
         });
         // Save price history if price or quantity changed
         if (originalPrice !== null && (newPrice !== originalPrice || newQty !== originalQty)) {
@@ -144,6 +161,8 @@ export const CreateIngredientScreen: React.FC = () => {
           purchaseQuantity: parseFloat(purchaseQuantity),
           purchasePrice: parseFloat(purchasePrice),
           unit,
+          purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
+          purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight) : undefined,
         });
         showToast('Ingrediente cadastrado!', 'success');
         navigation.goBack();
@@ -220,8 +239,8 @@ export const CreateIngredientScreen: React.FC = () => {
             </View>
             <View style={styles.row}>
               <Input
-                label="Quantidade comprada *"
-                placeholder="0"
+                label={useCustomUnit && purchaseUnitLabel ? `Qtd de ${purchaseUnitLabel.toLowerCase()}(s) *` : 'Quantidade comprada *'}
+                placeholder={useCustomUnit ? 'Ex: 1' : '0'}
                 value={purchaseQuantity}
                 onChangeText={setPurchaseQuantity}
                 keyboardType="decimal-pad"
@@ -254,14 +273,98 @@ export const CreateIngredientScreen: React.FC = () => {
                 </TouchableOpacity>
               ))}
             </View>
+
+            <TouchableOpacity
+              style={styles.customUnitToggle}
+              onPress={() => {
+                setUseCustomUnit(!useCustomUnit);
+                if (useCustomUnit) {
+                  setPurchaseUnitLabel('');
+                  setPurchaseUnitWeight('');
+                }
+              }}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={useCustomUnit ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={useCustomUnit ? colors.primary : colors.textSecondary}
+              />
+              <Text style={[styles.customUnitToggleText, useCustomUnit && { color: colors.primary }]}>
+                Comprei por embalagem (lata, pacote, saco...)
+              </Text>
+            </TouchableOpacity>
+
+            {useCustomUnit && (
+              <View style={styles.customUnitSection}>
+                <Text style={styles.unitLabel}>Tipo da embalagem *</Text>
+                <View style={styles.unitGrid}>
+                  {PURCHASE_UNIT_SUGGESTIONS.map(label => (
+                    <TouchableOpacity
+                      key={label}
+                      onPress={() => setPurchaseUnitLabel(label)}
+                      style={[styles.unitButton, purchaseUnitLabel === label && styles.unitButtonSelected]}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.unitButtonText, purchaseUnitLabel === label && styles.unitButtonTextSelected]}>
+                        {label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <Input
+                  label=""
+                  placeholder="Ou digite: ex. Balde, Sache..."
+                  value={purchaseUnitLabel}
+                  onChangeText={setPurchaseUnitLabel}
+                  error={errors.purchaseUnitLabel}
+                  containerStyle={{ marginTop: 8 }}
+                />
+                <Input
+                  label={`Peso por ${purchaseUnitLabel || 'embalagem'} (${unit}) *`}
+                  placeholder={`Ex: 550 (em ${unit})`}
+                  value={purchaseUnitWeight}
+                  onChangeText={setPurchaseUnitWeight}
+                  keyboardType="decimal-pad"
+                  error={errors.purchaseUnitWeight}
+                />
+              </View>
+            )}
           </Card>
 
           {purchaseQuantity && purchasePrice && parseFloat(purchaseQuantity) > 0 && (
             <Card style={styles.previewCard}>
-              <Text style={styles.previewTitle}>Preco por unidade:</Text>
-              <Text style={styles.previewValue}>
-                {(parseFloat(purchasePrice) / parseFloat(purchaseQuantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por {unit}
-              </Text>
+              <View>
+                {useCustomUnit && purchaseUnitWeight && parseFloat(purchaseUnitWeight) > 0 ? (
+                  <>
+                    <View style={styles.previewRow}>
+                      <Text style={styles.previewTitle}>Preco por {purchaseUnitLabel || 'embalagem'}:</Text>
+                      <Text style={styles.previewValue}>
+                        {(parseFloat(purchasePrice) / parseFloat(purchaseQuantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </Text>
+                    </View>
+                    <View style={styles.previewRow}>
+                      <Text style={styles.previewTitle}>Preco por {unit}:</Text>
+                      <Text style={styles.previewValue}>
+                        {(parseFloat(purchasePrice) / (parseFloat(purchaseQuantity) * parseFloat(purchaseUnitWeight))).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </Text>
+                    </View>
+                    <View style={styles.previewRow}>
+                      <Text style={styles.previewTitle}>Total:</Text>
+                      <Text style={[styles.previewTitle, { fontWeight: '600' as const }]}>
+                        {parseFloat(purchaseQuantity)} {purchaseUnitLabel || 'embalagem'}(s) = {(parseFloat(purchaseQuantity) * parseFloat(purchaseUnitWeight)).toLocaleString('pt-BR')} {unit}
+                      </Text>
+                    </View>
+                  </>
+                ) : (
+                  <View style={styles.previewRow}>
+                    <Text style={styles.previewTitle}>Preco por {unit}:</Text>
+                    <Text style={styles.previewValue}>
+                      {(parseFloat(purchasePrice) / parseFloat(purchaseQuantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </Text>
+                  </View>
+                )}
+              </View>
             </Card>
           )}
 
@@ -291,7 +394,11 @@ export const CreateIngredientScreen: React.FC = () => {
               </View>
               <View style={styles.confirmRow}>
                 <Text style={styles.confirmLabel}>Quantidade comprada</Text>
-                <Text style={styles.confirmValue}>{purchaseQuantity} {unit}</Text>
+                <Text style={styles.confirmValue}>
+                  {useCustomUnit && purchaseUnitLabel
+                    ? `${purchaseQuantity} ${purchaseUnitLabel}(s) (${(parseFloat(purchaseQuantity || '0') * parseFloat(purchaseUnitWeight || '0')).toLocaleString('pt-BR')} ${unit})`
+                    : `${purchaseQuantity} ${unit}`}
+                </Text>
               </View>
               <View style={styles.confirmRow}>
                 <Text style={styles.confirmLabel}>Preco pago</Text>
@@ -301,7 +408,12 @@ export const CreateIngredientScreen: React.FC = () => {
                 <View style={styles.confirmRow}>
                   <Text style={styles.confirmLabel}>Preco por {unit}</Text>
                   <Text style={styles.confirmValueHighlight}>
-                    {(parseFloat(purchasePrice) / parseFloat(purchaseQuantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {(() => {
+                      const qty = parseFloat(purchaseQuantity);
+                      const price = parseFloat(purchasePrice);
+                      const effectiveQty = useCustomUnit && purchaseUnitWeight ? qty * parseFloat(purchaseUnitWeight) : qty;
+                      return (price / effectiveQty).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    })()}
                   </Text>
                 </View>
               )}
@@ -358,12 +470,31 @@ const styles = StyleSheet.create({
     backgroundColor: colors.beige,
     borderColor: colors.secondaryLight,
     marginBottom: 16,
+  },
+  previewRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingVertical: 2,
   },
   previewTitle: { ...typography.body, color: colors.text },
   previewValue: { ...typography.h4, color: colors.secondary },
+  customUnitToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 16,
+    gap: 8,
+  },
+  customUnitToggleText: {
+    ...typography.body,
+    color: colors.textSecondary,
+  },
+  customUnitSection: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
   saveButton: { marginBottom: 32 },
   nameWrapper: { zIndex: 10 },
   modalContainer: { flex: 1, backgroundColor: colors.background },
