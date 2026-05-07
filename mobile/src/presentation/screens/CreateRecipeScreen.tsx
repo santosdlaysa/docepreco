@@ -265,7 +265,8 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const updateAdditionalCost = (name: string, value: string) => {
-    const numValue = parseFloat(value) || 0;
+    const normalized = value.replace(',', '.');
+    const numValue = parseFloat(normalized) || 0;
     if (numValue <= 0) {
       setAdditionalCosts(prev => prev.filter(c => c.name !== name));
     } else {
@@ -280,11 +281,12 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const getAdditionalCostValue = (name: string) => {
-    return additionalCosts.find(c => c.name === name)?.value.toString() || '';
+    const val = additionalCosts.find(c => c.name === name)?.value;
+    return val ? val.toString().replace('.', ',') : '';
   };
 
   const laborCostValue = (() => {
-    const rate = parseFloat(hourlyRate);
+    const rate = parseFloat(hourlyRate.replace(',', '.'));
     const mins = parseFloat(prepTimeMinutes);
     if (rate > 0 && mins > 0) return Math.round(((rate / 60) * mins) * 100) / 100;
     return 0;
