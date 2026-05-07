@@ -23,9 +23,11 @@ import { Input } from '../components/Input';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 export const CreateSaleScreen: React.FC = () => {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
@@ -45,10 +47,10 @@ export const CreateSaleScreen: React.FC = () => {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!selectedRecipe) newErrors.recipe = 'Selecione uma receita';
-    if (!quantity || parseInt(quantity) <= 0) newErrors.quantity = 'Quantidade deve ser maior que 0';
-    if (!salePrice || parseFloat(salePrice) <= 0) newErrors.salePrice = 'Preco deve ser maior que 0';
-    if (!saleDate) newErrors.saleDate = 'Data é obrigatória';
+    if (!selectedRecipe) newErrors.recipe = t('createSale.recipeRequired');
+    if (!quantity || parseInt(quantity) <= 0) newErrors.quantity = t('createSale.quantityRequired');
+    if (!salePrice || parseFloat(salePrice) <= 0) newErrors.salePrice = t('createSale.priceRequired');
+    if (!saleDate) newErrors.saleDate = t('createSale.dateRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -64,10 +66,10 @@ export const CreateSaleScreen: React.FC = () => {
         saleDate,
         notes: notes.trim() || undefined,
       });
-      showToast('Venda registrada!', 'success');
+      showToast(t('createSale.success'), 'success');
       navigation.goBack();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Erro ao registrar venda';
+      const msg = error instanceof Error ? error.message : t('createSale.error');
       showToast(msg, 'error');
     } finally {
       setLoading(false);
@@ -80,26 +82,26 @@ export const CreateSaleScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="Registrar Venda" showBack onBack={() => navigation.goBack()} />
+      <Header title={t('createSale.title')} showBack onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
             <Text style={styles.infoText}>
-              Selecione a receita vendida, informe a quantidade e o preco por unidade. O total sera calculado automaticamente.
+              {t('createSale.infoText')}
             </Text>
           </View>
 
           <Card style={styles.section}>
-            <Text style={styles.label}>Receita vendida *</Text>
+            <Text style={styles.label}>{t('createSale.recipeLabel')}</Text>
             <TouchableOpacity
               style={[styles.picker, errors.recipe && styles.pickerError]}
               onPress={() => setShowRecipePicker(!showRecipePicker)}
               activeOpacity={0.8}
             >
               <Text style={selectedRecipe ? styles.pickerText : styles.pickerPlaceholder}>
-                {selectedRecipe ? selectedRecipe.name : 'Selecione uma receita...'}
+                {selectedRecipe ? selectedRecipe.name : t('createSale.recipePlaceholder')}
               </Text>
               <Ionicons name={showRecipePicker ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textMuted} />
             </TouchableOpacity>
@@ -108,7 +110,7 @@ export const CreateSaleScreen: React.FC = () => {
             {showRecipePicker && (
               <View style={styles.dropdownList}>
                 {recipes.length === 0 ? (
-                  <Text style={styles.dropdownEmpty}>Nenhuma receita cadastrada</Text>
+                  <Text style={styles.dropdownEmpty}>{t('createSale.noRecipes')}</Text>
                 ) : (
                   recipes.map(r => (
                     <TouchableOpacity
@@ -132,7 +134,7 @@ export const CreateSaleScreen: React.FC = () => {
           <Card style={styles.section}>
             <View style={styles.row}>
               <Input
-                label="Quantidade vendida *"
+                label={t('createSale.quantityLabel')}
                 placeholder="0"
                 value={quantity}
                 onChangeText={setQuantity}
@@ -142,7 +144,7 @@ export const CreateSaleScreen: React.FC = () => {
                 containerStyle={{ flex: 1, marginRight: 8 }}
               />
               <Input
-                label="Preco por unidade *"
+                label={t('createSale.priceLabel')}
                 placeholder="0,00"
                 value={salePrice}
                 onChangeText={setSalePrice}
@@ -153,15 +155,15 @@ export const CreateSaleScreen: React.FC = () => {
               />
             </View>
             <Input
-              label="Data da venda *"
-              placeholder="AAAA-MM-DD"
+              label={t('createSale.dateLabel')}
+              placeholder={t('createSale.datePlaceholder')}
               value={saleDate}
               onChangeText={setSaleDate}
               error={errors.saleDate}
             />
             <Input
-              label="Observações"
-              placeholder="Ex: Festa de aniversário, encomenda..."
+              label={t('createSale.notesLabel')}
+              placeholder={t('createSale.notesPlaceholder')}
               value={notes}
               onChangeText={setNotes}
             />
@@ -169,7 +171,7 @@ export const CreateSaleScreen: React.FC = () => {
 
           {totalRevenue !== null && !isNaN(totalRevenue) && (
             <Card style={styles.totalCard}>
-              <Text style={styles.totalLabel}>Total da venda</Text>
+              <Text style={styles.totalLabel}>{t('createSale.totalLabel')}</Text>
               <Text style={styles.totalValue}>
                 {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </Text>
@@ -180,7 +182,7 @@ export const CreateSaleScreen: React.FC = () => {
           )}
 
           <Button
-            title="Registrar Venda"
+            title={t('createSale.saveButton')}
             onPress={handleSave}
             loading={loading}
             size="lg"

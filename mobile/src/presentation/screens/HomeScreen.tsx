@@ -34,6 +34,7 @@ import { bannerApi, Banner } from '../../data/api/bannerApi';
 import { bannerStorage } from '../../data/storage/bannerStorage';
 import { generateInsights, Insight } from '../utils/generateInsights';
 import { isGuideAvailable } from './BeginnerGuideScreen';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -129,6 +130,7 @@ const ShopeeBannerCard: React.FC<{ product: ShopeeBanner; onPress: () => void }>
   product,
   onPress,
 }) => {
+  const { t } = useTranslation();
   const { imageUrl, loading } = useOgImage(product.url, product.image);
   return (
     <TouchableOpacity
@@ -143,7 +145,7 @@ const ShopeeBannerCard: React.FC<{ product: ShopeeBanner; onPress: () => void }>
         <Text style={styles.shopeeFeaturedName}>{product.name}</Text>
         <Text style={styles.shopeeFeaturedDesc}>{product.description}</Text>
         <View style={styles.shopeeButton}>
-          <Text style={styles.shopeeButtonText}>Ver na Shopee</Text>
+          <Text style={styles.shopeeButtonText}>{t('home.viewOnShopee')}</Text>
           <Ionicons name="open-outline" size={13} color="#fff" />
         </View>
       </View>
@@ -160,63 +162,10 @@ const ShopeeBannerCard: React.FC<{ product: ShopeeBanner; onPress: () => void }>
   );
 };
 
-const quickActions: QuickActionItem[] = [
-  {
-    icon: 'book-outline',
-    label: 'Minhas Receitas',
-    description: 'Gerencie suas receitas',
-    route: 'Recipes',
-    color: colors.primary,
-  },
-  {
-    icon: 'basket-outline',
-    label: 'Ingredientes',
-    description: 'Cadastre ingredientes',
-    route: 'Ingredients',
-    color: colors.secondary,
-  },
-  {
-    icon: 'calculator-outline',
-    label: 'Nova Receita',
-    description: 'Calcule o preco ideal',
-    route: 'CreateRecipe',
-    color: '#9C27B0',
-  },
-  {
-    icon: 'calendar-outline',
-    label: 'Encomendas',
-    description: 'Gerencie seus pedidos',
-    route: 'Orders',
-    color: '#FF6B35',
-    premium: true,
-  },
-  {
-    icon: 'people-outline',
-    label: 'Clientes',
-    description: 'Cadastro de clientes',
-    route: 'Clients',
-    color: '#4CAF50',
-    premium: true,
-  },
-  {
-    icon: 'stats-chart-outline',
-    label: 'Relatórios',
-    description: 'Faturamento e estatísticas',
-    route: 'Reports',
-    color: '#2196F3',
-    premium: true,
-  },
-  {
-    icon: 'pricetag-outline',
-    label: 'Temporadas',
-    description: 'Preços para datas especiais',
-    route: 'Seasons',
-    color: '#9C27B0',
-    premium: true,
-  },
-];
+// quickActions moved inside component for i18n
 
 export const HomeScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { companyName, isDemoMode: isDemo, companyLogo } = useAuth();
   const { isPremium } = usePremium();
@@ -226,6 +175,62 @@ export const HomeScreen: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [insightsCollapsed, setInsightsCollapsed] = useState(false);
   const api = isDemoMode() ? demoStatsApi : statsApi;
+
+  const quickActions: QuickActionItem[] = [
+    {
+      icon: 'book-outline',
+      label: t('home.myRecipes'),
+      description: t('home.manageRecipes'),
+      route: 'Recipes',
+      color: colors.primary,
+    },
+    {
+      icon: 'basket-outline',
+      label: t('home.ingredientsLabel'),
+      description: t('home.registerIngredients'),
+      route: 'Ingredients',
+      color: colors.secondary,
+    },
+    {
+      icon: 'calculator-outline',
+      label: t('home.newRecipe'),
+      description: t('home.calculateIdealPrice'),
+      route: 'CreateRecipe',
+      color: '#9C27B0',
+    },
+    {
+      icon: 'calendar-outline',
+      label: t('home.orders'),
+      description: t('home.manageOrders'),
+      route: 'Orders',
+      color: '#FF6B35',
+      premium: true,
+    },
+    {
+      icon: 'people-outline',
+      label: t('home.clients'),
+      description: t('home.clientRegistry'),
+      route: 'Clients',
+      color: '#4CAF50',
+      premium: true,
+    },
+    {
+      icon: 'stats-chart-outline',
+      label: t('home.reports'),
+      description: t('home.revenueAndStats'),
+      route: 'Reports',
+      color: '#2196F3',
+      premium: true,
+    },
+    {
+      icon: 'pricetag-outline',
+      label: t('home.seasons'),
+      description: t('home.seasonalPrices'),
+      route: 'Seasons',
+      color: '#9C27B0',
+      premium: true,
+    },
+  ];
 
   useEffect(() => {
     api.getStats().then(setStats).catch(() => {});
@@ -258,12 +263,12 @@ export const HomeScreen: React.FC = () => {
   const handleSetGoal = () => {
     if (Platform.OS === 'ios') {
       Alert.prompt(
-        'Meta do mês',
-        'Qual é o seu objetivo de faturamento este mês? (R$)',
+        t('home.goalPromptTitle'),
+        t('home.goalPromptMessage'),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Salvar',
+            text: t('common.save'),
             onPress: async (value) => {
               const amount = parseFloat((value ?? '').replace(',', '.'));
               if (!isNaN(amount) && amount > 0) {
@@ -301,14 +306,14 @@ export const HomeScreen: React.FC = () => {
 
   const openShopeeLink = async (url: string) => {
     if (url === 'SEU_LINK_AFILIADO_AQUI') {
-      Alert.alert('Configure o link', 'Substitua "SEU_LINK_AFILIADO_AQUI" pelo seu link de afiliado no arquivo HomeScreen.tsx.');
+      Alert.alert(t('home.configureLink'), t('home.configureLinkMessage'));
       return;
     }
     const supported = await Linking.canOpenURL(url);
     if (supported) {
       await Linking.openURL(url);
     } else {
-      Alert.alert('Erro', 'Não foi possível abrir o link da Shopee.');
+      Alert.alert(t('common.error'), t('home.cannotOpenShopee'));
     }
   };
 
@@ -317,8 +322,8 @@ export const HomeScreen: React.FC = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.greeting}>Olá, {companyName || 'Confeiteira'}!</Text>
-            <Text style={styles.subtitle}>Precifique seus doces com confianca</Text>
+            <Text style={styles.greeting}>{t('home.greeting', { name: companyName || t('home.greetingDefault') })}</Text>
+            <Text style={styles.subtitle}>{t('home.subtitle')}</Text>
           </View>
           <TouchableOpacity
             style={styles.logoContainer}
@@ -336,7 +341,7 @@ export const HomeScreen: React.FC = () => {
         {isDemo && (
           <View style={styles.demoBanner}>
             <Ionicons name="information-circle-outline" size={18} color="#6D5000" />
-            <Text style={styles.demoBannerText}>Modo Demonstração — dados fictícios</Text>
+            <Text style={styles.demoBannerText}>{t('home.demoMode')}</Text>
           </View>
         )}
 
@@ -358,7 +363,7 @@ export const HomeScreen: React.FC = () => {
                 <Text style={[styles.appBannerMessage, { color: cfg.text }]}>{b.message}</Text>
                 {b.actionUrl && (
                   <TouchableOpacity onPress={() => Linking.openURL(b.actionUrl!)}>
-                    <Text style={[styles.appBannerLink, { color: cfg.text }]}>Saiba mais →</Text>
+                    <Text style={[styles.appBannerLink, { color: cfg.text }]}>{t('common.learnMore')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -379,9 +384,9 @@ export const HomeScreen: React.FC = () => {
                 <Ionicons name="school-outline" size={28} color={colors.primary} />
               </View>
               <View style={styles.guideContent}>
-                <Text style={styles.guideTitle}>Modo Iniciante</Text>
+                <Text style={styles.guideTitle}>{t('home.beginnerGuide')}</Text>
                 <Text style={styles.guideSubtitle}>
-                  3 passos para comecar a precificar seus doces
+                  {t('home.beginnerGuideSubtitle')}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.primary} />
@@ -391,9 +396,9 @@ export const HomeScreen: React.FC = () => {
 
         <Card style={styles.heroBanner}>
           <View style={styles.heroContent}>
-            <Text style={styles.heroTitle}>Garanta seu lucro!</Text>
+            <Text style={styles.heroTitle}>{t('home.heroTitle')}</Text>
             <Text style={styles.heroText}>
-              Calcule o preco ideal de venda para cada receita e nunca mais tenha prejuizo.
+              {t('home.heroText')}
             </Text>
           </View>
           <View style={styles.heroDecoration}>
@@ -404,7 +409,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
           <Text style={styles.infoText}>
-            Cadastre ingredientes, crie receitas e o app calcula o preco ideal de venda automaticamente. Use o menu abaixo para comecar!
+            {t('home.infoText')}
           </Text>
         </View>
 
@@ -414,17 +419,17 @@ export const HomeScreen: React.FC = () => {
               <View style={styles.statItem}>
                 <Ionicons name="book-outline" size={20} color={colors.primary} />
                 <Text style={styles.statValue}>{stats.recipesCount}</Text>
-                <Text style={styles.statLabel}>Receitas</Text>
+                <Text style={styles.statLabel}>{t('home.recipes')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Ionicons name="basket-outline" size={20} color={colors.secondary} />
                 <Text style={styles.statValue}>{stats.ingredientsCount}</Text>
-                <Text style={styles.statLabel}>Ingredientes</Text>
+                <Text style={styles.statLabel}>{t('home.ingredients')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Ionicons name="cash-outline" size={20} color={colors.success} />
                 <Text style={styles.statValue}>{stats.monthlySalesCount}</Text>
-                <Text style={styles.statLabel}>Vendas/mês</Text>
+                <Text style={styles.statLabel}>{t('home.salesMonth')}</Text>
               </View>
               <View style={styles.statItem}>
                 <Ionicons name="trending-up-outline" size={20} color={colors.warning} />
@@ -436,7 +441,7 @@ export const HomeScreen: React.FC = () => {
                     maximumFractionDigits: 0,
                   })}
                 </Text>
-                <Text style={styles.statLabel}>Faturamento</Text>
+                <Text style={styles.statLabel}>{t('home.revenue')}</Text>
               </View>
             </View>
           </Card>
@@ -456,7 +461,7 @@ export const HomeScreen: React.FC = () => {
                     <Ionicons name="flag-outline" size={18} color={colors.primary} />
                   </View>
                   <Text style={styles.goalTitle}>
-                    {isCurrentMonth ? `Meta do mês: ${pct}%` : 'Meta do mês'}
+                    {isCurrentMonth ? t('home.monthGoalPercent', { pct }) : t('home.monthGoal')}
                   </Text>
                   <Ionicons name="pencil-outline" size={14} color={colors.textMuted} />
                 </View>
@@ -467,13 +472,13 @@ export const HomeScreen: React.FC = () => {
                     </View>
                     <Text style={styles.goalSub}>
                       {revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      {' de '}
+                      {' ' + t('home.of') + ' '}
                       {goal!.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-                      {pct >= 100 ? ' 🎉 Meta atingida!' : ''}
+                      {pct >= 100 ? ` 🎉 ${t('home.goalReached')}` : ''}
                     </Text>
                   </>
                 ) : (
-                  <Text style={styles.goalSub}>Toque para definir uma meta de faturamento</Text>
+                  <Text style={styles.goalSub}>{t('home.tapToSetGoal')}</Text>
                 )}
               </Card>
             </TouchableOpacity>
@@ -502,7 +507,7 @@ export const HomeScreen: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { flex: 1 }]}>Insights</Text>
+                <Text style={[styles.sectionTitle, { flex: 1 }]}>{t('home.insights')}</Text>
                 <Ionicons
                   name={insightsCollapsed ? 'chevron-down' : 'chevron-up'}
                   size={18}
@@ -531,7 +536,7 @@ export const HomeScreen: React.FC = () => {
           );
         })()}
 
-        <Text style={styles.sectionTitle}>Acesso Rapido</Text>
+        <Text style={styles.sectionTitle}>{t('home.quickAccess')}</Text>
 
         {quickActions.map((action) => (
           <TouchableOpacity
@@ -566,7 +571,7 @@ export const HomeScreen: React.FC = () => {
             <View style={styles.shopeeBadge}>
               <Text style={styles.shopeeBadgeText}>SHOPEE</Text>
             </View>
-            <Text style={styles.shopeeSectionTitle}>Produtos para Confeitaria</Text>
+            <Text style={styles.shopeeSectionTitle}>{t('home.shopeeProducts')}</Text>
           </View>
 
           {/* Banners em scroll horizontal com snap */}
@@ -590,7 +595,7 @@ export const HomeScreen: React.FC = () => {
         <View style={styles.tip}>
           <Ionicons name="bulb-outline" size={20} color={colors.warning} />
           <Text style={styles.tipText}>
-            Dica: Adicione todos os ingredientes antes de criar suas receitas!
+            {t('home.tip')}
           </Text>
         </View>
       </ScrollView>
@@ -599,8 +604,8 @@ export const HomeScreen: React.FC = () => {
       <Modal visible={showGoalInput} transparent animationType="fade">
         <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Meta do mês</Text>
-            <Text style={styles.modalSubtitle}>Qual é o seu objetivo de faturamento? (R$)</Text>
+            <Text style={styles.modalTitle}>{t('home.goalPromptTitle')}</Text>
+            <Text style={styles.modalSubtitle}>{t('home.goalPromptMessage')}</Text>
             <TextInput
               style={styles.modalInput}
               value={goalInputValue}
@@ -611,10 +616,10 @@ export const HomeScreen: React.FC = () => {
             />
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setShowGoalInput(false)} style={styles.modalCancel}>
-                <Text style={styles.modalCancelText}>Cancelar</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={saveGoalAndroid} style={styles.modalSave}>
-                <Text style={styles.modalSaveText}>Salvar</Text>
+                <Text style={styles.modalSaveText}>{t('common.save')}</Text>
               </TouchableOpacity>
             </View>
           </View>

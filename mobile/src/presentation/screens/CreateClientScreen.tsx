@@ -20,6 +20,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditClient'>;
@@ -40,6 +41,7 @@ export const CreateClientScreen: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const { showToast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (clientId) {
@@ -61,12 +63,12 @@ export const CreateClientScreen: React.FC = () => {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'Nome é obrigatório';
+    if (!name.trim()) newErrors.name = t('createClient.nameRequired');
     if (birthdayDay || birthdayMonth) {
       const d = parseInt(birthdayDay);
       const m = parseInt(birthdayMonth);
-      if (!d || d < 1 || d > 31) newErrors.birthdayDay = 'Dia inválido';
-      if (!m || m < 1 || m > 12) newErrors.birthdayMonth = 'Mês inválido';
+      if (!d || d < 1 || d > 31) newErrors.birthdayDay = t('createClient.dayInvalid');
+      if (!m || m < 1 || m > 12) newErrors.birthdayMonth = t('createClient.monthInvalid');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -91,14 +93,14 @@ export const CreateClientScreen: React.FC = () => {
       };
       if (isEditing) {
         await clientStorage.update(clientId!, data);
-        showToast('Cliente atualizado!', 'success');
+        showToast(t('createClient.updated'), 'success');
       } else {
         await clientStorage.create(data);
-        showToast('Cliente cadastrado!', 'success');
+        showToast(t('createClient.created'), 'success');
       }
       navigation.goBack();
     } catch {
-      showToast('Erro ao salvar cliente', 'error');
+      showToast(t('createClient.saveError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -107,32 +109,32 @@ export const CreateClientScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title={isEditing ? 'Editar Cliente' : 'Novo Cliente'}
-        subtitle="Aniversário será usado para lembretes. Telefone para contato via WhatsApp."
+        title={isEditing ? t('createClient.titleEdit') : t('createClient.titleNew')}
+        subtitle={t('createClient.subtitle')}
         showBack
         onBack={() => navigation.goBack()}
       />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Dados pessoais</Text>
+            <Text style={styles.sectionTitle}>{t('createClient.personalData')}</Text>
             <Input
-              label="Nome *"
-              placeholder="Ex: Maria Silva"
+              label={t('createClient.nameLabel')}
+              placeholder={t('createClient.namePlaceholder')}
               value={name}
               onChangeText={setName}
               error={errors.name}
             />
             <Input
-              label="Telefone"
-              placeholder="(00) 00000-0000"
+              label={t('common.phone')}
+              placeholder={t('createClient.phonePlaceholder')}
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
             />
             <Input
-              label="E-mail"
-              placeholder="maria@email.com"
+              label={t('common.email')}
+              placeholder={t('createClient.emailPlaceholder')}
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -141,12 +143,12 @@ export const CreateClientScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Aniversário</Text>
-            <Text style={styles.sectionSubtitle}>Receba lembretes de aniversário dos seus clientes</Text>
+            <Text style={styles.sectionTitle}>{t('createClient.birthdaySection')}</Text>
+            <Text style={styles.sectionSubtitle}>{t('createClient.birthdayHint')}</Text>
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Input
-                  label="Dia"
+                  label={t('createClient.day')}
                   placeholder="15"
                   value={birthdayDay}
                   onChangeText={setBirthdayDay}
@@ -156,7 +158,7 @@ export const CreateClientScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Input
-                  label="Mês"
+                  label={t('createClient.month')}
                   placeholder="03"
                   value={birthdayMonth}
                   onChangeText={setBirthdayMonth}
@@ -168,9 +170,9 @@ export const CreateClientScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Endereço</Text>
+            <Text style={styles.sectionTitle}>{t('createClient.addressSection')}</Text>
             <Input
-              placeholder="Rua, número, bairro..."
+              placeholder={t('createClient.addressPlaceholder')}
               value={address}
               onChangeText={setAddress}
               multiline
@@ -179,9 +181,9 @@ export const CreateClientScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Observações</Text>
+            <Text style={styles.sectionTitle}>{t('common.notes')}</Text>
             <Input
-              placeholder="Preferências, alergias, informações importantes..."
+              placeholder={t('createClient.notesPlaceholder')}
               value={notes}
               onChangeText={setNotes}
               multiline
@@ -190,7 +192,7 @@ export const CreateClientScreen: React.FC = () => {
           </Card>
 
           <Button
-            title={isEditing ? 'Atualizar Cliente' : 'Salvar Cliente'}
+            title={isEditing ? t('createClient.updateButton') : t('createClient.saveButton')}
             onPress={handleSave}
             loading={loading}
             size="lg"

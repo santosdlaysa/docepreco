@@ -28,14 +28,7 @@ import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
-
-const UNITS: { value: Unit; label: string }[] = [
-  { value: 'g', label: 'Gramas (g)' },
-  { value: 'kg', label: 'Quilos (kg)' },
-  { value: 'ml', label: 'Mililitros (ml)' },
-  { value: 'l', label: 'Litros (l)' },
-  { value: 'unit', label: 'Unidade' },
-];
+import { useTranslation } from 'react-i18next';
 
 const PURCHASE_UNIT_SUGGESTIONS = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote', 'Bisnaga', 'Tablete'];
 
@@ -64,7 +57,16 @@ export const CreateIngredientScreen: React.FC = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
   const { openPaywall } = usePaywall();
+  const { t } = useTranslation();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
+
+  const UNITS: { value: Unit; label: string }[] = [
+    { value: 'g', label: t('createIngredient.units.g') },
+    { value: 'kg', label: t('createIngredient.units.kg') },
+    { value: 'ml', label: t('createIngredient.units.ml') },
+    { value: 'l', label: t('createIngredient.units.l') },
+    { value: 'unit', label: t('createIngredient.units.unit') },
+  ];
 
   useEffect(() => {
     if (!isEditing) {
@@ -105,21 +107,21 @@ export const CreateIngredientScreen: React.FC = () => {
           setPurchaseUnitWeight(String(ingredient.purchaseUnitWeight ?? ''));
         }
       })
-      .catch(() => showToast('Não foi possível carregar o ingrediente', 'error'))
+      .catch(() => showToast(t('createIngredient.loadError'), 'error'))
       .finally(() => setLoadingData(false));
   }, [ingredientId]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'Nome e obrigatorio';
+    if (!name.trim()) newErrors.name = t('createIngredient.nameRequired');
     if (!purchaseQuantity || parseFloat(purchaseQuantity) <= 0)
-      newErrors.purchaseQuantity = 'Quantidade deve ser maior que 0';
+      newErrors.purchaseQuantity = t('createIngredient.quantityRequired');
     if (!purchasePrice || parseFloat(purchasePrice) <= 0)
-      newErrors.purchasePrice = 'Preco deve ser maior que 0';
+      newErrors.purchasePrice = t('createIngredient.priceRequired');
     if (useCustomUnit) {
-      if (!purchaseUnitLabel.trim()) newErrors.purchaseUnitLabel = 'Informe o tipo (ex: Lata)';
+      if (!purchaseUnitLabel.trim()) newErrors.purchaseUnitLabel = t('createIngredient.packageLabelRequired');
       if (!purchaseUnitWeight || parseFloat(purchaseUnitWeight) <= 0)
-        newErrors.purchaseUnitWeight = 'Informe o peso por unidade';
+        newErrors.purchaseUnitWeight = t('createIngredient.weightRequired');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -153,7 +155,7 @@ export const CreateIngredientScreen: React.FC = () => {
             unit,
           }).catch(() => {});
         }
-        showToast('Ingrediente atualizado!', 'success');
+        showToast(t('createIngredient.updated'), 'success');
         navigation.goBack();
       } else {
         await api.create({
@@ -164,7 +166,7 @@ export const CreateIngredientScreen: React.FC = () => {
           purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
           purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight) : undefined,
         });
-        showToast('Ingrediente cadastrado!', 'success');
+        showToast(t('createIngredient.created'), 'success');
         navigation.goBack();
       }
     } catch (error) {
@@ -180,7 +182,7 @@ export const CreateIngredientScreen: React.FC = () => {
   if (loadingData) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Editar Ingrediente" showBack onBack={() => navigation.goBack()} />
+        <Header title={t('createIngredient.titleEdit')} showBack onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -191,7 +193,7 @@ export const CreateIngredientScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title={isEditing ? 'Editar Ingrediente' : 'Novo Ingrediente'}
+        title={isEditing ? t('createIngredient.titleEdit') : t('createIngredient.titleNew')}
         showBack
         onBack={() => navigation.goBack()}
       />
@@ -203,14 +205,14 @@ export const CreateIngredientScreen: React.FC = () => {
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
             <Text style={styles.infoText}>
-              Informe o nome, a quantidade comprada e o preco pago. O custo por unidade sera calculado automaticamente.
+              {t('createIngredient.infoText')}
             </Text>
           </View>
           <Card style={styles.card}>
             <View style={styles.nameWrapper}>
               <Input
-                label="Nome do ingrediente *"
-                placeholder="Ex: Farinha de trigo, Chocolate..."
+                label={t('createIngredient.nameLabel')}
+                placeholder={t('createIngredient.namePlaceholder')}
                 value={name}
                 onChangeText={handleNameChange}
                 error={errors.name}
@@ -239,7 +241,7 @@ export const CreateIngredientScreen: React.FC = () => {
             </View>
             <View style={styles.row}>
               <Input
-                label={useCustomUnit && purchaseUnitLabel ? `Qtd de ${purchaseUnitLabel.toLowerCase()}(s) *` : 'Quantidade comprada *'}
+                label={useCustomUnit && purchaseUnitLabel ? t('createIngredient.quantityLabelCustom', { label: purchaseUnitLabel.toLowerCase() }) : t('createIngredient.quantityLabel')}
                 placeholder={useCustomUnit ? 'Ex: 1' : '0'}
                 value={purchaseQuantity}
                 onChangeText={setPurchaseQuantity}
@@ -248,7 +250,7 @@ export const CreateIngredientScreen: React.FC = () => {
                 containerStyle={{ flex: 1, marginRight: 8 }}
               />
               <Input
-                label="Preco pago (R$) *"
+                label={t('createIngredient.priceLabel')}
                 placeholder="0,00"
                 value={purchasePrice}
                 onChangeText={setPurchasePrice}
@@ -258,7 +260,7 @@ export const CreateIngredientScreen: React.FC = () => {
               />
             </View>
 
-            <Text style={styles.unitLabel}>Unidade de medida *</Text>
+            <Text style={styles.unitLabel}>{t('createIngredient.unitLabel')}</Text>
             <View style={styles.unitGrid}>
               {UNITS.map(u => (
                 <TouchableOpacity
@@ -291,13 +293,13 @@ export const CreateIngredientScreen: React.FC = () => {
                 color={useCustomUnit ? colors.primary : colors.textSecondary}
               />
               <Text style={[styles.customUnitToggleText, useCustomUnit && { color: colors.primary }]}>
-                Comprei por embalagem (lata, pacote, saco...)
+                {t('createIngredient.customUnitToggle')}
               </Text>
             </TouchableOpacity>
 
             {useCustomUnit && (
               <View style={styles.customUnitSection}>
-                <Text style={styles.unitLabel}>Tipo da embalagem *</Text>
+                <Text style={styles.unitLabel}>{t('createIngredient.packageType')}</Text>
                 <View style={styles.unitGrid}>
                   {PURCHASE_UNIT_SUGGESTIONS.map(label => (
                     <TouchableOpacity
@@ -314,15 +316,15 @@ export const CreateIngredientScreen: React.FC = () => {
                 </View>
                 <Input
                   label=""
-                  placeholder="Ou digite: ex. Balde, Sache..."
+                  placeholder={t('createIngredient.packagePlaceholder')}
                   value={purchaseUnitLabel}
                   onChangeText={setPurchaseUnitLabel}
                   error={errors.purchaseUnitLabel}
                   containerStyle={{ marginTop: 8 }}
                 />
                 <Input
-                  label={`Peso por ${purchaseUnitLabel || 'embalagem'} (${unit}) *`}
-                  placeholder={`Ex: 550 (em ${unit})`}
+                  label={t('createIngredient.weightPerPackage', { label: purchaseUnitLabel || 'embalagem', unit })}
+                  placeholder={t('createIngredient.weightPlaceholder', { unit })}
                   value={purchaseUnitWeight}
                   onChangeText={setPurchaseUnitWeight}
                   keyboardType="decimal-pad"
@@ -338,19 +340,19 @@ export const CreateIngredientScreen: React.FC = () => {
                 {useCustomUnit && purchaseUnitWeight && parseFloat(purchaseUnitWeight) > 0 ? (
                   <>
                     <View style={styles.previewRow}>
-                      <Text style={styles.previewTitle}>Preco por {purchaseUnitLabel || 'embalagem'}:</Text>
+                      <Text style={styles.previewTitle}>{t('createIngredient.pricePerPackage', { label: purchaseUnitLabel || 'embalagem' })}</Text>
                       <Text style={styles.previewValue}>
                         {(parseFloat(purchasePrice) / parseFloat(purchaseQuantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </Text>
                     </View>
                     <View style={styles.previewRow}>
-                      <Text style={styles.previewTitle}>Preco por {unit}:</Text>
+                      <Text style={styles.previewTitle}>{t('createIngredient.pricePerUnit', { unit })}</Text>
                       <Text style={styles.previewValue}>
                         {(parseFloat(purchasePrice) / (parseFloat(purchaseQuantity) * parseFloat(purchaseUnitWeight))).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                       </Text>
                     </View>
                     <View style={styles.previewRow}>
-                      <Text style={styles.previewTitle}>Total:</Text>
+                      <Text style={styles.previewTitle}>{t('createIngredient.totalLabel')}</Text>
                       <Text style={[styles.previewTitle, { fontWeight: '600' as const }]}>
                         {parseFloat(purchaseQuantity)} {purchaseUnitLabel || 'embalagem'}(s) = {(parseFloat(purchaseQuantity) * parseFloat(purchaseUnitWeight)).toLocaleString('pt-BR')} {unit}
                       </Text>
@@ -358,7 +360,7 @@ export const CreateIngredientScreen: React.FC = () => {
                   </>
                 ) : (
                   <View style={styles.previewRow}>
-                    <Text style={styles.previewTitle}>Preco por {unit}:</Text>
+                    <Text style={styles.previewTitle}>{t('createIngredient.pricePerUnit', { unit })}</Text>
                     <Text style={styles.previewValue}>
                       {(parseFloat(purchasePrice) / parseFloat(purchaseQuantity)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                     </Text>
@@ -369,7 +371,7 @@ export const CreateIngredientScreen: React.FC = () => {
           )}
 
           <Button
-            title={isEditing ? 'Atualizar Ingrediente' : 'Salvar Ingrediente'}
+            title={isEditing ? t('createIngredient.updateButton') : t('createIngredient.saveButton')}
             onPress={handleShowConfirmation}
             loading={loading}
             style={styles.saveButton}
@@ -380,20 +382,20 @@ export const CreateIngredientScreen: React.FC = () => {
       <Modal visible={showConfirmModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Confirme os dados</Text>
+            <Text style={styles.modalTitle}>{t('common.confirmData')}</Text>
             <TouchableOpacity onPress={() => setShowConfirmModal(false)}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.confirmContent} showsVerticalScrollIndicator={false}>
             <Card style={styles.confirmCard}>
-              <Text style={styles.confirmSectionTitle}>Ingrediente</Text>
+              <Text style={styles.confirmSectionTitle}>{t('createIngredient.ingredient')}</Text>
               <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>Nome</Text>
+                <Text style={styles.confirmLabel}>{t('common.name')}</Text>
                 <Text style={styles.confirmValue}>{name.trim()}</Text>
               </View>
               <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>Quantidade comprada</Text>
+                <Text style={styles.confirmLabel}>{t('createIngredient.quantityBought')}</Text>
                 <Text style={styles.confirmValue}>
                   {useCustomUnit && purchaseUnitLabel
                     ? `${purchaseQuantity} ${purchaseUnitLabel}(s) (${(parseFloat(purchaseQuantity || '0') * parseFloat(purchaseUnitWeight || '0')).toLocaleString('pt-BR')} ${unit})`
@@ -401,12 +403,12 @@ export const CreateIngredientScreen: React.FC = () => {
                 </Text>
               </View>
               <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>Preco pago</Text>
+                <Text style={styles.confirmLabel}>{t('createIngredient.pricePaid')}</Text>
                 <Text style={styles.confirmValueHighlight}>R$ {parseFloat(purchasePrice || '0').toFixed(2)}</Text>
               </View>
               {purchaseQuantity && purchasePrice && parseFloat(purchaseQuantity) > 0 && (
                 <View style={styles.confirmRow}>
-                  <Text style={styles.confirmLabel}>Preco por {unit}</Text>
+                  <Text style={styles.confirmLabel}>{t('createIngredient.pricePerUnit', { unit })}</Text>
                   <Text style={styles.confirmValueHighlight}>
                     {(() => {
                       const qty = parseFloat(purchaseQuantity);
@@ -421,13 +423,13 @@ export const CreateIngredientScreen: React.FC = () => {
 
             <View style={styles.confirmActions}>
               <Button
-                title="Voltar e corrigir"
+                title={t('common.backAndFix')}
                 variant="outline"
                 onPress={() => setShowConfirmModal(false)}
                 style={{ flex: 1, marginRight: 8 }}
               />
               <Button
-                title="Confirmar"
+                title={t('common.confirm')}
                 onPress={handleSave}
                 loading={loading}
                 style={{ flex: 1 }}

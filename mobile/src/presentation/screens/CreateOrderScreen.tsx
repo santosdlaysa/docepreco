@@ -30,22 +30,24 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditOrder'>;
 
-const STATUS_OPTIONS: { key: OrderStatus; label: string; color: string }[] = [
-  { key: 'pending', label: 'Pendente', color: '#FF9800' },
-  { key: 'in_progress', label: 'Em produção', color: '#2196F3' },
-  { key: 'done', label: 'Pronto', color: '#4CAF50' },
-  { key: 'delivered', label: 'Entregue', color: '#9E9E9E' },
-];
-
 export const CreateOrderScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
+  const { t } = useTranslation();
   const orderId = (route.params as any)?.orderId as string | undefined;
   const isEditing = !!orderId;
+
+  const STATUS_OPTIONS: { key: OrderStatus; label: string; color: string }[] = [
+    { key: 'pending', label: t('orders.pending'), color: '#FF9800' },
+    { key: 'in_progress', label: t('orders.inProgress'), color: '#2196F3' },
+    { key: 'done', label: t('orders.done'), color: '#4CAF50' },
+    { key: 'delivered', label: t('orders.delivered'), color: '#9E9E9E' },
+  ];
 
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -108,13 +110,13 @@ export const CreateOrderScreen: React.FC = () => {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!clientName.trim()) newErrors.clientName = 'Nome do cliente é obrigatório';
-    if (!recipeName.trim()) newErrors.recipeName = 'Nome da receita é obrigatório';
-    if (!quantity || parseFloat(quantity) <= 0) newErrors.quantity = 'Quantidade deve ser maior que 0';
-    if (!unitPrice || parseFloat(unitPrice) <= 0) newErrors.unitPrice = 'Preço deve ser maior que 0';
-    if (!deliveryDate.trim()) newErrors.deliveryDate = 'Data de entrega é obrigatória';
+    if (!clientName.trim()) newErrors.clientName = t('createOrder.clientRequired');
+    if (!recipeName.trim()) newErrors.recipeName = t('createOrder.recipeRequired');
+    if (!quantity || parseFloat(quantity) <= 0) newErrors.quantity = t('createOrder.quantityRequired');
+    if (!unitPrice || parseFloat(unitPrice) <= 0) newErrors.unitPrice = t('createOrder.priceRequired');
+    if (!deliveryDate.trim()) newErrors.deliveryDate = t('createOrder.dateRequired');
     if (deliveryDate && !/^\d{2}-\d{2}-\d{4}$/.test(deliveryDate)) {
-      newErrors.deliveryDate = 'Use o formato DD-MM-AAAA';
+      newErrors.deliveryDate = t('createOrder.deliveryDateFormat');
     }
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -140,14 +142,14 @@ export const CreateOrderScreen: React.FC = () => {
       };
       if (isEditing) {
         await orderStorage.update(orderId!, data);
-        showToast('Encomenda atualizada!', 'success');
+        showToast(t('createOrder.updated'), 'success');
       } else {
         await orderStorage.create(data);
-        showToast('Encomenda criada!', 'success');
+        showToast(t('createOrder.created'), 'success');
       }
       navigation.goBack();
     } catch {
-      showToast('Erro ao salvar encomenda', 'error');
+      showToast(t('createOrder.saveError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -171,19 +173,19 @@ export const CreateOrderScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title={isEditing ? 'Editar Encomenda' : 'Nova Encomenda'}
-        subtitle="Selecione uma receita cadastrada ou digite manualmente. Clientes cadastrados aparecem como sugestão."
+        title={isEditing ? t('createOrder.titleEdit') : t('createOrder.titleNew')}
+        subtitle={t('createOrder.subtitle')}
         showBack
         onBack={() => navigation.goBack()}
       />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Cliente</Text>
+            <Text style={styles.sectionTitle}>{t('createOrder.clientSection')}</Text>
             <View>
               <Input
-                label="Nome do cliente *"
-                placeholder="Ex: Maria Silva"
+                label={t('createOrder.clientName')}
+                placeholder={t('createOrder.clientPlaceholder')}
                 value={clientName}
                 onChangeText={(text) => {
                   setClientName(text);
@@ -210,8 +212,8 @@ export const CreateOrderScreen: React.FC = () => {
               )}
             </View>
             <Input
-              label="Telefone"
-              placeholder="(00) 00000-0000"
+              label={t('common.phone')}
+              placeholder={t('createOrder.phonePlaceholder')}
               value={clientPhone}
               onChangeText={setClientPhone}
               keyboardType="phone-pad"
@@ -219,12 +221,12 @@ export const CreateOrderScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Produto</Text>
+            <Text style={styles.sectionTitle}>{t('createOrder.productSection')}</Text>
             <TouchableOpacity activeOpacity={0.7} onPress={() => setShowRecipePicker(true)}>
               <View pointerEvents="none">
                 <Input
-                  label="Receita *"
-                  placeholder="Selecione uma receita"
+                  label={t('createOrder.recipeLabel')}
+                  placeholder={t('createOrder.recipePlaceholder')}
                   value={recipeName}
                   editable={false}
                   error={errors.recipeName}
@@ -237,7 +239,7 @@ export const CreateOrderScreen: React.FC = () => {
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Input
-                  label="Quantidade *"
+                  label={t('createOrder.quantityLabel')}
                   placeholder="10"
                   value={quantity}
                   onChangeText={setQuantity}
@@ -247,7 +249,7 @@ export const CreateOrderScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Input
-                  label="Preço unitário *"
+                  label={t('createOrder.unitPriceLabel')}
                   placeholder="5,00"
                   value={unitPrice}
                   onChangeText={setUnitPrice}
@@ -259,18 +261,18 @@ export const CreateOrderScreen: React.FC = () => {
             </View>
             {totalPrice > 0 && (
               <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalLabel}>{t('common.total')}</Text>
                 <Text style={styles.totalValue}>{formatCurrency(totalPrice)}</Text>
               </View>
             )}
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Entrega</Text>
+            <Text style={styles.sectionTitle}>{t('createOrder.deliverySection')}</Text>
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
                 <Input
-                  label="Data de entrega *"
+                  label={t('createOrder.deliveryDate')}
                   placeholder="15-01-2025"
                   value={deliveryDate}
                   onChangeText={(text) => {
@@ -293,7 +295,7 @@ export const CreateOrderScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Input
-                  label="Horário"
+                  label={t('createOrder.time')}
                   placeholder="14:00"
                   value={deliveryTime}
                   onChangeText={(text) => {
@@ -314,7 +316,7 @@ export const CreateOrderScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Status</Text>
+            <Text style={styles.sectionTitle}>{t('createOrder.statusSection')}</Text>
             <View style={styles.statusGrid}>
               {STATUS_OPTIONS.map(opt => (
                 <TouchableOpacity
@@ -340,10 +342,10 @@ export const CreateOrderScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Pagamento</Text>
-            <Text style={styles.sectionSubtitle}>Informe se o cliente já pagou algum valor (sinal/entrada)</Text>
+            <Text style={styles.sectionTitle}>{t('createOrder.paymentSection')}</Text>
+            <Text style={styles.sectionSubtitle}>{t('createOrder.paymentHint')}</Text>
             <Input
-              label="Valor pago"
+              label={t('createOrder.paidAmount')}
               placeholder="0,00"
               value={paidAmount}
               onChangeText={setPaidAmount}
@@ -354,16 +356,16 @@ export const CreateOrderScreen: React.FC = () => {
               <View style={styles.remainingRow}>
                 <Ionicons name="wallet-outline" size={16} color={colors.warning} />
                 <Text style={styles.remainingText}>
-                  Falta receber: {formatCurrency(Math.max(totalPrice - (parseFloat(paidAmount) || 0), 0))}
+                  {t('createOrder.amountRemaining', { amount: formatCurrency(Math.max(totalPrice - (parseFloat(paidAmount) || 0), 0)) })}
                 </Text>
               </View>
             )}
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Observações</Text>
+            <Text style={styles.sectionTitle}>{t('createOrder.notesSection')}</Text>
             <Input
-              placeholder="Detalhes da encomenda, decoração, sabor..."
+              placeholder={t('createOrder.notesPlaceholder')}
               value={notes}
               onChangeText={setNotes}
               multiline
@@ -372,7 +374,7 @@ export const CreateOrderScreen: React.FC = () => {
           </Card>
 
           <Button
-            title={isEditing ? 'Atualizar Encomenda' : 'Salvar Encomenda'}
+            title={isEditing ? t('createOrder.updateButton') : t('createOrder.saveButton')}
             onPress={handleSave}
             loading={loading}
             size="lg"
@@ -384,7 +386,7 @@ export const CreateOrderScreen: React.FC = () => {
       <Modal visible={showRecipePicker} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Selecionar Receita</Text>
+            <Text style={styles.modalTitle}>{t('createOrder.selectRecipe')}</Text>
             <TouchableOpacity onPress={() => setShowRecipePicker(false)}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -399,7 +401,7 @@ export const CreateOrderScreen: React.FC = () => {
                   <View>
                     <Text style={styles.recipeCardName}>{item.name}</Text>
                     <Text style={styles.recipeCardInfo}>
-                      Rende {item.yield} un • {item.ingredients.length} ingredientes
+                      {t('createOrder.recipeYield', { yield: item.yield, count: item.ingredients.length })}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -407,7 +409,7 @@ export const CreateOrderScreen: React.FC = () => {
               </TouchableOpacity>
             )}
             ListEmptyComponent={
-              <Text style={styles.emptyText}>Nenhuma receita cadastrada</Text>
+              <Text style={styles.emptyText}>{t('createOrder.noRecipes')}</Text>
             }
           />
         </SafeAreaView>

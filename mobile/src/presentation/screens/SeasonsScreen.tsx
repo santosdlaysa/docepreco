@@ -13,6 +13,7 @@ import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
+import { useTranslation } from 'react-i18next';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,6 +26,7 @@ const isActive = (s: Season) => {
 };
 
 export const SeasonsScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<Nav>();
   const { guardScreen } = usePaywall();
   const [seasons, setSeasons] = useState<Season[]>([]);
@@ -37,10 +39,10 @@ export const SeasonsScreen: React.FC = () => {
   );
 
   const handleDelete = (season: Season) => {
-    Alert.alert('Excluir temporada', `Excluir "${season.name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('seasons.deleteTitle'), t('seasons.deleteMessage', { name: season.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Excluir',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           await seasonApi.delete(season.id);
@@ -66,7 +68,7 @@ export const SeasonsScreen: React.FC = () => {
               <Text style={styles.name}>{item.name}</Text>
               {active && (
                 <View style={styles.activeBadge}>
-                  <Text style={styles.activeBadgeText}>Ativa</Text>
+                  <Text style={styles.activeBadgeText}>{t('seasons.active')}</Text>
                 </View>
               )}
             </View>
@@ -74,7 +76,7 @@ export const SeasonsScreen: React.FC = () => {
               {formatDate(item.startDate)} → {formatDate(item.endDate)}
             </Text>
             <Text style={[styles.multiplier, { color: item.multiplier >= 1 ? colors.success : colors.error }]}>
-              {sign}{pct}% nos preços
+              {sign}{pct}% {t('seasons.inPrices')}
             </Text>
           </View>
           <View style={styles.actions}>
@@ -99,8 +101,8 @@ export const SeasonsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Temporadas"
-        subtitle="Ajuste os preços automaticamente em datas especiais."
+        title={t('seasons.title')}
+        subtitle={t('seasons.subtitle')}
         showBack
         onBack={() => navigation.goBack()}
         rightAction={
@@ -121,9 +123,9 @@ export const SeasonsScreen: React.FC = () => {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="pricetag-outline" size={48} color={colors.border} />
-            <Text style={styles.emptyTitle}>Nenhuma temporada</Text>
+            <Text style={styles.emptyTitle}>{t('seasons.emptyTitle')}</Text>
             <Text style={styles.emptyText}>
-              Crie temporadas para ajustar os preços automaticamente em Natal, Páscoa, Dia das Mães e outras datas especiais.
+              {t('seasons.emptyDescription')}
             </Text>
             <TouchableOpacity
               style={styles.emptyBtn}
@@ -131,7 +133,7 @@ export const SeasonsScreen: React.FC = () => {
               activeOpacity={0.8}
             >
               <Ionicons name="add" size={18} color="#fff" />
-              <Text style={styles.emptyBtnText}>Criar primeira temporada</Text>
+              <Text style={styles.emptyBtnText}>{t('seasons.createFirst')}</Text>
             </TouchableOpacity>
           </View>
         }

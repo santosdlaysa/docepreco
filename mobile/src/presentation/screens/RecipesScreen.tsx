@@ -31,11 +31,13 @@ import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
 import { usePaywall } from '../premium/usePaywall';
 import { FREE_LIMITS } from '../premium/limits';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export const RecipesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useTranslation();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -50,7 +52,7 @@ export const RecipesScreen: React.FC = () => {
       const data = await api.getAll();
       setRecipes(data);
     } catch (error) {
-      showToast('Não foi possível carregar as receitas', 'error');
+      showToast(t('recipes.loadError'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -78,7 +80,7 @@ export const RecipesScreen: React.FC = () => {
       });
     };
 
-    showToast(`${recipe.name} excluída`, {
+    showToast(t('recipes.deleted', { name: recipe.name }), {
       type: 'success',
       action: { label: 'Desfazer', onPress: restore },
       onDismiss: async () => {
@@ -86,7 +88,7 @@ export const RecipesScreen: React.FC = () => {
           await api.delete(recipe.id);
         } catch {
           restore();
-          showToast('Não foi possível excluir a receita', 'error');
+          showToast(t('recipes.deleteError'), 'error');
         }
       },
     });
@@ -95,16 +97,16 @@ export const RecipesScreen: React.FC = () => {
   const handleDuplicate = (recipe: Recipe) => {
     if (!requirePremium('duplicateRecipe')) return;
 
-    const defaultName = `${recipe.name} (cópia)`;
+    const defaultName = t('recipes.copyName', { name: recipe.name });
 
     if (Platform.OS === 'ios') {
       Alert.prompt(
-        'Duplicar receita',
-        'Escolha um nome para a cópia:',
+        t('recipes.duplicateTitle'),
+        t('recipes.duplicatePrompt'),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
           {
-            text: 'Duplicar',
+            text: t('recipes.duplicateButton'),
             onPress: (name) => executeDuplicate(recipe, (name || '').trim() || defaultName),
           },
         ],
@@ -133,10 +135,10 @@ export const RecipesScreen: React.FC = () => {
           value: c.value,
         })),
       });
-      showToast('Receita duplicada!', 'success');
+      showToast(t('recipes.duplicated'), 'success');
       loadRecipes();
     } catch {
-      showToast('Erro ao duplicar receita', 'error');
+      showToast(t('recipes.duplicateError'), 'error');
     }
   };
 
@@ -153,16 +155,16 @@ export const RecipesScreen: React.FC = () => {
         <View style={styles.recipeInfo}>
           <Text style={styles.recipeName}>{item.name}</Text>
           <Text style={styles.recipeDetails}>
-            {item.yield} unidades • {item.profitMargin}% lucro
+            {t('recipes.unitsAndProfit', { yield: item.yield, margin: item.profitMargin })}
           </Text>
           <View style={styles.recipeTags}>
             <View style={styles.tag}>
-              <Text style={styles.tagText}>{item.ingredients.length} ingredientes</Text>
+              <Text style={styles.tagText}>{t('recipes.ingredientsCount', { count: item.ingredients.length })}</Text>
             </View>
             {item.additionalCosts.length > 0 && (
               <View style={[styles.tag, styles.tagSecondary]}>
                 <Text style={[styles.tagText, styles.tagTextSecondary]}>
-                  +{item.additionalCosts.length} custos
+                  {t('recipes.costsCount', { count: item.additionalCosts.length })}
                 </Text>
               </View>
             )}
@@ -196,7 +198,7 @@ export const RecipesScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <Header title="Minhas Receitas" />
+        <Header title={t('recipes.title')} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -207,8 +209,8 @@ export const RecipesScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Header
-        title="Minhas Receitas"
-        subtitle={`${recipes.length} receita${recipes.length !== 1 ? 's' : ''} · Toque no + para adicionar`}
+        title={t('recipes.title')}
+        subtitle={t('recipes.subtitle', { count: recipes.length, plural: recipes.length !== 1 ? 's' : '' })}
         rightAction={
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateRecipe')}
@@ -239,7 +241,7 @@ export const RecipesScreen: React.FC = () => {
                   <View style={styles.progressHeader}>
                     <View style={styles.progressLabelRow}>
                       <Ionicons name="book-outline" size={16} color={colors.primary} />
-                      <Text style={styles.progressLabel}>Receitas cadastradas</Text>
+                      <Text style={styles.progressLabel}>{t('recipes.registered')}</Text>
                     </View>
                     <Text style={styles.progressCount}>
                       <Text style={styles.progressCurrent}>{Math.min(recipes.length, FREE_LIMITS.recipes)}</Text>
@@ -259,11 +261,11 @@ export const RecipesScreen: React.FC = () => {
                   </View>
                   {recipes.length >= FREE_LIMITS.recipes ? (
                     <Text style={styles.progressHint}>
-                      Você atingiu o limite! Vire Premium para receitas ilimitadas.
+                      {t('recipes.limitReached')}
                     </Text>
                   ) : (
                     <Text style={styles.progressHint}>
-                      Restam {FREE_LIMITS.recipes - recipes.length} receita{FREE_LIMITS.recipes - recipes.length !== 1 ? 's' : ''} no plano gratuito
+                      {t('recipes.remaining', { count: FREE_LIMITS.recipes - recipes.length, plural: FREE_LIMITS.recipes - recipes.length !== 1 ? 's' : '' })}
                     </Text>
                   )}
                 </View>
@@ -271,7 +273,7 @@ export const RecipesScreen: React.FC = () => {
               <View style={styles.infoCard}>
                 <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
                 <Text style={styles.infoText}>
-                  Aqui ficam todas as suas receitas. Cada uma calcula automaticamente o preco de venda com base nos ingredientes, custos e margem de lucro.
+                  {t('recipes.infoText')}
                 </Text>
               </View>
             </View>
@@ -280,9 +282,9 @@ export const RecipesScreen: React.FC = () => {
         ListEmptyComponent={
           <EmptyState
             icon="book-outline"
-            title="Nenhuma receita ainda"
-            description="Crie sua primeira receita e calcule o preco ideal de venda!"
-            actionLabel="Criar Receita"
+            title={t('recipes.emptyTitle')}
+            description={t('recipes.emptyDescription')}
+            actionLabel={t('recipes.createButton')}
             onAction={() => navigation.navigate('CreateRecipe')}
           />
         }
@@ -292,13 +294,13 @@ export const RecipesScreen: React.FC = () => {
       <Modal visible={!!duplicateTarget} transparent animationType="fade">
         <KeyboardAvoidingView behavior="padding" style={styles.modalOverlay}>
           <View style={styles.modalBox}>
-            <Text style={styles.modalTitle}>Duplicar receita</Text>
-            <Text style={styles.modalSubtitle}>Escolha um nome para a cópia:</Text>
+            <Text style={styles.modalTitle}>{t('recipes.duplicateTitle')}</Text>
+            <Text style={styles.modalSubtitle}>{t('recipes.duplicatePrompt')}</Text>
             <TextInput
               style={styles.modalInput}
               value={duplicateName}
               onChangeText={setDuplicateName}
-              placeholder="Nome da receita"
+              placeholder={t('recipes.recipeName')}
               autoFocus
               selectTextOnFocus
             />
@@ -307,19 +309,19 @@ export const RecipesScreen: React.FC = () => {
                 onPress={() => setDuplicateTarget(null)}
                 style={styles.modalCancel}
               >
-                <Text style={styles.modalCancelText}>Cancelar</Text>
+                <Text style={styles.modalCancelText}>{t('common.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => {
                   if (duplicateTarget) {
-                    const name = duplicateName.trim() || `${duplicateTarget.name} (cópia)`;
+                    const name = duplicateName.trim() || t('recipes.copyName', { name: duplicateTarget.name });
                     executeDuplicate(duplicateTarget, name);
                   }
                   setDuplicateTarget(null);
                 }}
                 style={styles.modalSave}
               >
-                <Text style={styles.modalSaveText}>Duplicar</Text>
+                <Text style={styles.modalSaveText}>{t('recipes.duplicateButton')}</Text>
               </TouchableOpacity>
             </View>
           </View>

@@ -10,56 +10,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   onViewPlans: () => void;
   onSkip: () => void;
 }
 
-const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; description: string }> = [
-  {
-    icon: 'infinite-outline',
-    title: 'Receitas ilimitadas',
-    description: 'Chega de limite. Cadastre quantas receitas quiser.',
-  },
-  {
-    icon: 'resize-outline',
-    title: 'Calculadora de escala',
-    description: 'Ajuste receitas para qualquer quantidade automaticamente.',
-  },
-  {
-    icon: 'copy-outline',
-    title: 'Duplicar receitas',
-    description: 'Copie receitas para criar variações em segundos.',
-  },
-  {
-    icon: 'calendar-outline',
-    title: 'Agenda de encomendas',
-    description: 'Organize os pedidos, status e lembretes de entrega.',
-  },
-  {
-    icon: 'people-outline',
-    title: 'Gestão de clientes',
-    description: 'Histórico, aniversários e WhatsApp direto.',
-  },
-  {
-    icon: 'calculator-outline',
-    title: 'Cálculo profissional',
-    description: 'Inclua mão de obra e custos fixos no preço real.',
-  },
-  {
-    icon: 'stats-chart-outline',
-    title: 'Relatórios completos',
-    description: 'Gráficos de faturamento e receitas mais lucrativas.',
-  },
-  {
-    icon: 'document-text-outline',
-    title: 'PDF personalizado',
-    description: 'Sua logo, suas cores, sem marca do DocePreço.',
-  },
-];
+// BENEFITS moved inside component for i18n
 
 export const PremiumAdScreen: React.FC<Props> = ({ onViewPlans, onSkip }) => {
+  const { t } = useTranslation();
+
+  const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; description: string }> = [
+    { icon: 'infinite-outline', title: t('paywall.unlimitedRecipes'), description: t('paywall.unlimitedRecipesDesc') },
+    { icon: 'resize-outline', title: t('paywall.scaleCalc'), description: t('paywall.scaleCalcDesc') },
+    { icon: 'copy-outline', title: t('paywall.duplicateRecipes'), description: t('paywall.duplicateRecipesDesc') },
+    { icon: 'calendar-outline', title: t('paywall.orderAgenda'), description: t('paywall.orderAgendaDesc') },
+    { icon: 'people-outline', title: t('paywall.clientManagement'), description: t('paywall.clientManagementDesc') },
+    { icon: 'calculator-outline', title: t('paywall.proCalc'), description: t('paywall.proCalcDesc') },
+    { icon: 'stats-chart-outline', title: t('paywall.fullReports'), description: t('paywall.fullReportsDesc') },
+    { icon: 'document-text-outline', title: t('paywall.customPdf'), description: t('paywall.customPdfDesc') },
+  ];
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -67,9 +40,9 @@ export const PremiumAdScreen: React.FC<Props> = ({ onViewPlans, onSkip }) => {
           <View style={styles.badge}>
             <Ionicons name="sparkles" size={32} color="#fff" />
           </View>
-          <Text style={styles.title}>Conheça o DocePreço Premium</Text>
+          <Text style={styles.title}>{t('premiumAd.title')}</Text>
           <Text style={styles.subtitle}>
-            Ferramentas profissionais pra você crescer e lucrar mais com sua confeitaria.
+            {t('premiumAd.subtitle')}
           </Text>
         </View>
 
@@ -89,11 +62,11 @@ export const PremiumAdScreen: React.FC<Props> = ({ onViewPlans, onSkip }) => {
 
         <TouchableOpacity style={styles.cta} onPress={onViewPlans} activeOpacity={0.85}>
           <Ionicons name="sparkles" size={18} color="#fff" />
-          <Text style={styles.ctaText}>Ver planos</Text>
+          <Text style={styles.ctaText}>{t('premiumAd.viewPlans')}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.skipBtn} onPress={onSkip} activeOpacity={0.7}>
-          <Text style={styles.skipText}>Agora não</Text>
+          <Text style={styles.skipText}>{t('premiumAd.notNow')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>

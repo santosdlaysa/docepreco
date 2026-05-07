@@ -13,6 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
+import { useTranslation } from 'react-i18next';
 
 const { width } = Dimensions.get('window');
 
@@ -27,52 +28,34 @@ type Slide = {
   description: string;
 };
 
-const SLIDES: Slide[] = [
-  {
-    id: '1',
-    icon: 'sad-outline',
-    iconColor: '#E91E8C',
-    iconBg: '#F8BBD9',
-    title: 'Você sabe se está lucrando?',
-    description:
-      'Muitas confeiteiras vendem muito, mas no final do mês o dinheiro some. O problema está no preço — calculado no "achismo", sem considerar todos os custos.',
-  },
-  {
-    id: '2',
-    icon: 'calculator-outline',
-    iconColor: '#8B4513',
-    iconBg: '#F5E6D0',
-    title: 'Calcule o custo real de cada receita',
-    description:
-      'Cadastre seus ingredientes com preço e quantidade. O DocePreço calcula automaticamente quanto custa cada grama, cada unidade e cada receita completa.',
-  },
-  {
-    id: '3',
-    icon: 'trending-up-outline',
-    iconColor: '#4CAF50',
-    iconBg: '#E8F5E9',
-    title: 'Defina sua margem de lucro',
-    description:
-      'Escolha quanto quer lucrar — 30%, 50%, 100% ou mais. O app mostra o preço de venda ideal para você nunca mais trabalhar no prejuízo.',
-  },
-  {
-    id: '4',
-    icon: 'cash-outline',
-    iconColor: '#FF9800',
-    iconBg: '#FFF3E0',
-    title: 'Acompanhe suas vendas',
-    description:
-      'Registre o que vendeu, em qual quantidade e por qual preço. Veja seu faturamento por dia, semana ou mês e entenda quando seu negócio cresce.',
-  },
-];
 
 type Props = {
   onDone: () => void;
 };
 
 export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
+
+  const slides: Slide[] = [
+    {
+      id: '1', icon: 'sad-outline', iconColor: '#E91E8C', iconBg: '#F8BBD9',
+      title: t('onboarding.slide1Title'), description: t('onboarding.slide1Desc'),
+    },
+    {
+      id: '2', icon: 'calculator-outline', iconColor: '#8B4513', iconBg: '#F5E6D0',
+      title: t('onboarding.slide2Title'), description: t('onboarding.slide2Desc'),
+    },
+    {
+      id: '3', icon: 'trending-up-outline', iconColor: '#4CAF50', iconBg: '#E8F5E9',
+      title: t('onboarding.slide3Title'), description: t('onboarding.slide3Desc'),
+    },
+    {
+      id: '4', icon: 'cash-outline', iconColor: '#FF9800', iconBg: '#FFF3E0',
+      title: t('onboarding.slide4Title'), description: t('onboarding.slide4Desc'),
+    },
+  ];
 
   const finish = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
@@ -80,7 +63,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
   };
 
   const next = () => {
-    if (currentIndex < SLIDES.length - 1) {
+    if (currentIndex < slides.length - 1) {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1 });
       setCurrentIndex(currentIndex + 1);
     } else {
@@ -88,19 +71,19 @@ export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
     }
   };
 
-  const isLast = currentIndex === SLIDES.length - 1;
+  const isLast = currentIndex === slides.length - 1;
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
 
       <TouchableOpacity style={styles.skipBtn} onPress={finish}>
-        <Text style={styles.skipText}>Pular</Text>
+        <Text style={styles.skipText}>{t('onboarding.skip')}</Text>
       </TouchableOpacity>
 
       <FlatList
         ref={flatListRef}
-        data={SLIDES}
+        data={slides}
         keyExtractor={item => item.id}
         horizontal
         pagingEnabled
@@ -119,7 +102,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
 
       <View style={styles.footer}>
         <View style={styles.dots}>
-          {SLIDES.map((_, i) => (
+          {slides.map((_, i) => (
             <View
               key={i}
               style={[styles.dot, i === currentIndex && styles.dotActive]}
@@ -129,7 +112,7 @@ export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
 
         <TouchableOpacity style={styles.nextBtn} onPress={next} activeOpacity={0.85}>
           <Text style={styles.nextBtnText}>
-            {isLast ? 'Começar agora' : 'Próximo'}
+            {isLast ? t('onboarding.startNow') : t('common.next')}
           </Text>
           <Ionicons
             name={isLast ? 'rocket-outline' : 'arrow-forward'}

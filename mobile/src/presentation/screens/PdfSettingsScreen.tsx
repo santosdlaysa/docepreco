@@ -24,24 +24,28 @@ import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { shareRecipeQuote } from '../utils/pdfQuote';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const COLOR_PRESETS = [
-  { color: '#E91E63', label: 'Rosa' },
-  { color: '#F44336', label: 'Vermelho' },
-  { color: '#9C27B0', label: 'Roxo' },
-  { color: '#2196F3', label: 'Azul' },
-  { color: '#4CAF50', label: 'Verde' },
-  { color: '#FF9800', label: 'Laranja' },
-  { color: '#795548', label: 'Marrom' },
-  { color: '#607D8B', label: 'Cinza' },
-];
+// COLOR_PRESETS moved inside component for i18n
 
 export const PdfSettingsScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { guardScreen } = usePaywall();
   const { showToast } = useToast();
+
+  const COLOR_PRESETS = [
+    { color: '#E91E63', label: t('pdfSettings.colorRosa') },
+    { color: '#F44336', label: t('pdfSettings.colorVermelho') },
+    { color: '#9C27B0', label: t('pdfSettings.colorRoxo') },
+    { color: '#2196F3', label: t('pdfSettings.colorAzul') },
+    { color: '#4CAF50', label: t('pdfSettings.colorVerde') },
+    { color: '#FF9800', label: t('pdfSettings.colorLaranja') },
+    { color: '#795548', label: t('pdfSettings.colorMarrom') },
+    { color: '#607D8B', label: t('pdfSettings.colorCinza') },
+  ];
 
   const [settings, setSettings] = useState<PdfSettings>({
     brandColor: '#E91E63',
@@ -72,7 +76,7 @@ export const PdfSettingsScreen: React.FC = () => {
         const mime = asset.mimeType || 'image/jpeg';
         setSettings(prev => ({ ...prev, logoBase64: `data:${mime};base64,${asset.base64}` }));
       } else {
-        showToast('Erro ao carregar imagem', 'error');
+        showToast(t('pdfSettings.logoError'), 'error');
       }
     }
   };
@@ -91,7 +95,7 @@ export const PdfSettingsScreen: React.FC = () => {
     if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
       setSettings(prev => ({ ...prev, brandColor: hex }));
     } else {
-      showToast('Use o formato #RRGGBB', 'warning');
+      showToast(t('pdfSettings.invalidHex'), 'warning');
     }
   };
 
@@ -99,10 +103,10 @@ export const PdfSettingsScreen: React.FC = () => {
     setLoading(true);
     try {
       await pdfSettingsStorage.save(settings);
-      showToast('Configurações salvas!', 'success');
+      showToast(t('pdfSettings.saved'), 'success');
       navigation.goBack();
     } catch {
-      showToast('Erro ao salvar', 'error');
+      showToast(t('pdfSettings.saveError'), 'error');
     } finally {
       setLoading(false);
     }
@@ -141,45 +145,45 @@ export const PdfSettingsScreen: React.FC = () => {
         settings,
       );
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Erro ao gerar preview';
+      const msg = error instanceof Error ? error.message : t('pdfSettings.previewError');
       showToast(msg, 'error');
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="Personalizar PDF" subtitle="Personalize os orçamentos com a identidade da sua marca." showBack onBack={() => navigation.goBack()} />
+      <Header title={t('pdfSettings.title')} subtitle={t('pdfSettings.subtitle')} showBack onBack={() => navigation.goBack()} />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Logo */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Logo da empresa</Text>
-          <Text style={styles.sectionSubtitle}>Aparece no cabeçalho do orçamento</Text>
+          <Text style={styles.sectionTitle}>{t('pdfSettings.logoSection')}</Text>
+          <Text style={styles.sectionSubtitle}>{t('pdfSettings.logoHint')}</Text>
           {settings.logoBase64 ? (
             <View style={styles.logoPreview}>
               <Image source={{ uri: settings.logoBase64 }} style={styles.logoImage} />
               <View style={styles.logoActions}>
                 <TouchableOpacity onPress={pickLogo} style={styles.logoBtn}>
                   <Ionicons name="swap-horizontal-outline" size={18} color={colors.primary} />
-                  <Text style={styles.logoBtnText}>Trocar</Text>
+                  <Text style={styles.logoBtnText}>{t('pdfSettings.changeLogo')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={removeLogo} style={styles.logoBtn}>
                   <Ionicons name="trash-outline" size={18} color={colors.error} />
-                  <Text style={[styles.logoBtnText, { color: colors.error }]}>Remover</Text>
+                  <Text style={[styles.logoBtnText, { color: colors.error }]}>{t('pdfSettings.removeLogo')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ) : (
             <TouchableOpacity onPress={pickLogo} style={styles.logoPlaceholder}>
               <Ionicons name="image-outline" size={32} color={colors.textMuted} />
-              <Text style={styles.logoPlaceholderText}>Toque para selecionar sua logo</Text>
+              <Text style={styles.logoPlaceholderText}>{t('pdfSettings.selectLogo')}</Text>
             </TouchableOpacity>
           )}
         </Card>
 
         {/* Brand Color */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Cor principal</Text>
-          <Text style={styles.sectionSubtitle}>Usada nos títulos e destaques do PDF</Text>
+          <Text style={styles.sectionTitle}>{t('pdfSettings.colorSection')}</Text>
+          <Text style={styles.sectionSubtitle}>{t('pdfSettings.colorHint')}</Text>
           <View style={styles.colorGrid}>
             {COLOR_PRESETS.map(preset => (
               <TouchableOpacity
@@ -199,28 +203,28 @@ export const PdfSettingsScreen: React.FC = () => {
           </View>
           <View style={styles.customColorRow}>
             <Input
-              label="Cor personalizada (hex)"
+              label={t('pdfSettings.customColor')}
               placeholder="#FF5722"
               value={customColor}
               onChangeText={setCustomColor}
               containerStyle={{ flex: 1, marginRight: 8 }}
             />
             <TouchableOpacity onPress={applyCustomColor} style={styles.applyColorBtn}>
-              <Text style={styles.applyColorText}>Aplicar</Text>
+              <Text style={styles.applyColorText}>{t('common.apply')}</Text>
             </TouchableOpacity>
           </View>
           <View style={styles.colorPreview}>
             <View style={[styles.colorPreviewBox, { backgroundColor: settings.brandColor }]} />
-            <Text style={styles.colorPreviewText}>Cor atual: {settings.brandColor}</Text>
+            <Text style={styles.colorPreviewText}>{t('pdfSettings.currentColor', { color: settings.brandColor })}</Text>
           </View>
         </Card>
 
         {/* Slogan */}
         <Card style={styles.section}>
-          <Text style={styles.sectionTitle}>Slogan</Text>
-          <Text style={styles.sectionSubtitle}>Aparece abaixo do nome da empresa</Text>
+          <Text style={styles.sectionTitle}>{t('pdfSettings.sloganSection')}</Text>
+          <Text style={styles.sectionSubtitle}>{t('pdfSettings.sloganHint')}</Text>
           <Input
-            placeholder="Ex: Doces artesanais feitos com amor"
+            placeholder={t('pdfSettings.sloganPlaceholder')}
             value={settings.companySlogan || ''}
             onChangeText={v => setSettings(prev => ({ ...prev, companySlogan: v }))}
           />
@@ -234,8 +238,8 @@ export const PdfSettingsScreen: React.FC = () => {
             activeOpacity={0.7}
           >
             <View style={styles.toggleInfo}>
-              <Text style={styles.toggleTitle}>Remover marca DocePreço</Text>
-              <Text style={styles.toggleSubtitle}>Remove o rodapé "Gerado por DocePreço"</Text>
+              <Text style={styles.toggleTitle}>{t('pdfSettings.removeWatermark')}</Text>
+              <Text style={styles.toggleSubtitle}>{t('pdfSettings.removeWatermarkHint')}</Text>
             </View>
             <View style={[styles.toggle, settings.hideWatermark && styles.toggleActive]}>
               {settings.hideWatermark && <Ionicons name="checkmark" size={16} color="#fff" />}
@@ -246,11 +250,11 @@ export const PdfSettingsScreen: React.FC = () => {
         {/* Actions */}
         <TouchableOpacity onPress={handlePreview} style={styles.previewBtn}>
           <Ionicons name="eye-outline" size={18} color={colors.primary} />
-          <Text style={styles.previewBtnText}>Visualizar PDF de exemplo</Text>
+          <Text style={styles.previewBtnText}>{t('pdfSettings.previewPdf')}</Text>
         </TouchableOpacity>
 
         <Button
-          title="Salvar Configurações"
+          title={t('pdfSettings.saveButton')}
           onPress={handleSave}
           loading={loading}
           size="lg"

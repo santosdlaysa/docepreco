@@ -23,47 +23,49 @@ import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const formatDateLabel = (dateStr: string) => {
-  const [year, month, day] = dateStr.split('-');
-  const date = new Date(Number(year), Number(month) - 1, Number(day));
-  const today = new Date();
-  const yesterday = new Date();
-  yesterday.setDate(today.getDate() - 1);
-
-  const isToday = date.toDateString() === today.toDateString();
-  const isYesterday = date.toDateString() === yesterday.toDateString();
-
-  if (isToday) return 'Hoje';
-  if (isYesterday) return 'Ontem';
-
-  return date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
-};
-
 type Section = { date: string; label: string; data: Sale[]; total: number };
-
-const groupByDate = (sales: Sale[]): Section[] => {
-  const map = new Map<string, Sale[]>();
-  for (const sale of sales) {
-    const key = sale.saleDate;
-    if (!map.has(key)) map.set(key, []);
-    map.get(key)!.push(sale);
-  }
-  return Array.from(map.entries()).map(([date, data]) => ({
-    date,
-    label: formatDateLabel(date),
-    data,
-    total: data.reduce((sum, s) => sum + s.totalRevenue, 0),
-  }));
-};
 
 export const SalesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useTranslation();
+
+  const formatDateLabel = (dateStr: string) => {
+    const [year, month, day] = dateStr.split('-');
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isToday = date.toDateString() === today.toDateString();
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    if (isToday) return t('common.today');
+    if (isYesterday) return t('common.yesterday');
+
+    return date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
+  };
+
+  const groupByDate = (sales: Sale[]): Section[] => {
+    const map = new Map<string, Sale[]>();
+    for (const sale of sales) {
+      const key = sale.saleDate;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(sale);
+    }
+    return Array.from(map.entries()).map(([date, data]) => ({
+      date,
+      label: formatDateLabel(date),
+      data,
+      total: data.reduce((sum, s) => sum + s.totalRevenue, 0),
+    }));
+  };
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -76,7 +78,7 @@ export const SalesScreen: React.FC = () => {
       const data = await api.getAll(period === 'all' ? undefined : period);
       setSales(data);
     } catch {
-      showToast('Não foi possível carregar as vendas', 'error');
+      showToast(t('sales.loadError'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -107,15 +109,15 @@ export const SalesScreen: React.FC = () => {
       });
     };
 
-    showToast(`Venda de ${sale.recipeName} excluída`, {
+    showToast(t('sales.deleteMessage', { name: sale.recipeName }), {
       type: 'success',
-      action: { label: 'Desfazer', onPress: restore },
+      action: { label: t('sales.undo'), onPress: restore },
       onDismiss: async () => {
         try {
           await api.delete(sale.id);
         } catch {
           restore();
-          showToast('Não foi possível excluir a venda', 'error');
+          showToast(t('sales.deleteError'), 'error');
         }
       },
     });
@@ -128,7 +130,7 @@ export const SalesScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <Header title="Vendas" />
+        <Header title={t('sales.title')} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -139,8 +141,8 @@ export const SalesScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Header
-        title="Vendas"
-        subtitle={`${sales.length} registro${sales.length !== 1 ? 's' : ''} · Toque no + para adicionar`}
+        title={t('sales.title')}
+        subtitle={t('sales.subtitle', { count: sales.length, plural: sales.length !== 1 ? 's' : '' })}
         rightAction={
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateSale')}
@@ -155,14 +157,14 @@ export const SalesScreen: React.FC = () => {
         <View style={styles.summaryBar}>
           <View style={styles.summaryItem}>
             <Text style={styles.summaryValue}>{totalUnits}</Text>
-            <Text style={styles.summaryLabel}>unidades</Text>
+            <Text style={styles.summaryLabel}>{t('sales.units')}</Text>
           </View>
           <View style={styles.summaryDivider} />
           <View style={styles.summaryItem}>
             <Text style={[styles.summaryValue, { color: colors.success }]}>
               {formatCurrency(totalRevenue)}
             </Text>
-            <Text style={styles.summaryLabel}>receita total</Text>
+            <Text style={styles.summaryLabel}>{t('sales.totalRevenue')}</Text>
           </View>
         </View>
       )}
@@ -175,7 +177,7 @@ export const SalesScreen: React.FC = () => {
             onPress={() => setPeriod(p)}
           >
             <Text style={[styles.filterBtnText, period === p && styles.filterBtnTextActive]}>
-              {p === 'all' ? 'Tudo' : p === 'month' ? 'Este mês' : 'Esta semana'}
+              {p === 'all' ? t('sales.all') : p === 'month' ? t('sales.thisMonth') : t('sales.thisWeek')}
             </Text>
           </TouchableOpacity>
         ))}
@@ -199,7 +201,7 @@ export const SalesScreen: React.FC = () => {
             <View style={styles.infoCard}>
               <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
               <Text style={styles.infoText}>
-                Registre aqui suas vendas diarias. Acompanhe o faturamento por periodo e veja quanto cada receita esta rendendo.
+                {t('sales.infoText')}
               </Text>
             </View>
           ) : null
@@ -237,9 +239,9 @@ export const SalesScreen: React.FC = () => {
         ListEmptyComponent={
           <EmptyState
             icon="cash-outline"
-            title="Nenhuma venda ainda"
-            description="Registre suas vendas para acompanhar seu faturamento!"
-            actionLabel="Registrar Venda"
+            title={t('sales.emptyTitle')}
+            description={t('sales.emptyDescription')}
+            actionLabel={t('sales.registerSale')}
             onAction={() => navigation.navigate('CreateSale')}
           />
         }

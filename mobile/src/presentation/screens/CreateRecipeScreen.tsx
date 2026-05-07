@@ -33,6 +33,7 @@ import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { usePremium } from '../context/PremiumContext';
 import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggestedRecipes';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -70,9 +71,40 @@ const MARGIN_PRESETS = [
 
 export const CreateRecipeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useTranslation();
   const route = useRoute<RouteProps>();
   const recipeId = (route.params as any)?.recipeId as string | undefined;
   const isEditing = !!recipeId;
+
+  const localizedAdditionalCosts = DEFAULT_ADDITIONAL_COSTS.map(cost => ({
+    ...cost,
+    name: cost.name === 'Embalagem' ? t('createRecipe.packaging')
+      : cost.name === 'Gas' ? t('createRecipe.gas')
+      : cost.name === 'Energia' ? t('createRecipe.energy')
+      : cost.name === 'Mao de obra' ? t('createRecipe.labor')
+      : cost.name,
+    hint: cost.name === 'Embalagem' ? t('createRecipe.packagingHint')
+      : cost.name === 'Gas' ? t('createRecipe.gasHint')
+      : cost.name === 'Energia' ? t('createRecipe.energyHint')
+      : cost.name === 'Mao de obra' ? t('createRecipe.laborHint')
+      : cost.hint,
+  }));
+
+  const localizedMarginPresets = MARGIN_PRESETS.map(preset => ({
+    ...preset,
+    label: preset.value === 30 ? t('createRecipe.marginBasic')
+      : preset.value === 50 ? t('createRecipe.marginBalanced')
+      : preset.value === 70 ? t('createRecipe.marginRecommended')
+      : preset.value === 100 ? t('createRecipe.marginProfitable')
+      : preset.value === 150 ? t('createRecipe.marginPremium')
+      : preset.label,
+    desc: preset.value === 30 ? t('createRecipe.marginBasicDesc')
+      : preset.value === 50 ? t('createRecipe.marginBalancedDesc')
+      : preset.value === 70 ? t('createRecipe.marginRecommendedDesc')
+      : preset.value === 100 ? t('createRecipe.marginProfitableDesc')
+      : preset.value === 150 ? t('createRecipe.marginPremiumDesc')
+      : preset.desc,
+  }));
 
   const [name, setName] = useState('');
   const [yieldAmount, setYieldAmount] = useState('');
@@ -122,16 +154,16 @@ export const CreateRecipeScreen: React.FC = () => {
           setLaborExpanded(true);
         }
       })
-      .catch(() => showToast('Não foi possível carregar a receita', 'error'))
+      .catch(() => showToast(t('createRecipe.loadError'), 'error'))
       .finally(() => setLoadingData(false));
   }, [recipeId]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = 'Nome e obrigatorio';
+    if (!name.trim()) newErrors.name = t('createRecipe.nameRequired');
     if (!yieldAmount || parseInt(yieldAmount) <= 0)
-      newErrors.yield = 'Quantidade deve ser maior que 0';
-    if (ingredients.length === 0) newErrors.ingredients = 'Adicione pelo menos um ingrediente';
+      newErrors.yield = t('createRecipe.yieldRequired');
+    if (ingredients.length === 0) newErrors.ingredients = t('createRecipe.ingredientsRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -181,7 +213,7 @@ export const CreateRecipeScreen: React.FC = () => {
     if (!selectedIngredient || !ingredientQuantity || parseFloat(ingredientQuantity) <= 0) return;
     const existing = ingredients.find(i => i.ingredientId === selectedIngredient.id);
     if (existing) {
-      showToast('Este ingrediente já foi adicionado', 'warning');
+      showToast(t('createRecipe.alreadyAdded'), 'warning');
       return;
     }
 
@@ -193,11 +225,11 @@ export const CreateRecipeScreen: React.FC = () => {
     if (ratio > 3) {
       const pkgCount = ratio.toFixed(1);
       Alert.alert(
-        'Quantidade alta',
-        `Você está usando ${qty} ${unit} de ${selectedIngredient.name}.\n\nIsso equivale a ${pkgCount}x a embalagem (${selectedIngredient.purchaseQuantity} ${selectedIngredient.unit}).\n\nEstá correto?`,
+        t('createRecipe.highQuantityTitle'),
+        t('createRecipe.highQuantityMessage', { qty, unit, name: selectedIngredient.name, pkgCount, pkgQty: selectedIngredient.purchaseQuantity, pkgUnit: selectedIngredient.unit }),
         [
-          { text: 'Corrigir', style: 'cancel' },
-          { text: 'Sim, está certo', onPress: confirmAndAddIngredient },
+          { text: t('createRecipe.fix'), style: 'cancel' },
+          { text: t('createRecipe.yesCorrect'), onPress: confirmAndAddIngredient },
         ]
       );
       return;
@@ -205,11 +237,11 @@ export const CreateRecipeScreen: React.FC = () => {
 
     if (ratio < 0.01) {
       Alert.alert(
-        'Quantidade muito baixa',
-        `Você está usando ${qty} ${unit} de ${selectedIngredient.name}.\n\nIsso é menos de 1% da embalagem (${selectedIngredient.purchaseQuantity} ${selectedIngredient.unit}).\n\nEstá correto?`,
+        t('createRecipe.lowQuantityTitle'),
+        t('createRecipe.lowQuantityMessage', { qty, unit, name: selectedIngredient.name, pkgQty: selectedIngredient.purchaseQuantity, pkgUnit: selectedIngredient.unit }),
         [
-          { text: 'Corrigir', style: 'cancel' },
-          { text: 'Sim, está certo', onPress: confirmAndAddIngredient },
+          { text: t('createRecipe.fix'), style: 'cancel' },
+          { text: t('createRecipe.yesCorrect'), onPress: confirmAndAddIngredient },
         ]
       );
       return;
@@ -219,11 +251,11 @@ export const CreateRecipeScreen: React.FC = () => {
     const ingredientCost = qty * costPerUnit;
 
     Alert.alert(
-      'Confirmar ingrediente',
-      `${selectedIngredient.name}\nQuantidade: ${qty} ${unit}\nCusto estimado: R$ ${ingredientCost.toFixed(2)}\n\nAdicionar à receita?`,
+      t('createRecipe.confirmIngredient'),
+      t('createRecipe.confirmIngredientMessage', { name: selectedIngredient.name, qty, unit, cost: ingredientCost.toFixed(2) }),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Adicionar', onPress: confirmAndAddIngredient },
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('common.add'), onPress: confirmAndAddIngredient },
       ]
     );
   };
@@ -294,9 +326,9 @@ export const CreateRecipeScreen: React.FC = () => {
 
       setIngredients(recipeIngredients);
       setAvailableIngredients(existing);
-      showToast('Receita preenchida! Revise os dados e salve.', 'success');
+      showToast(t('createRecipe.suggestionApplied'), 'success');
     } catch {
-      showToast('Erro ao aplicar sugestão', 'error');
+      showToast(t('createRecipe.suggestionError'), 'error');
     } finally {
       setApplyingSuggestion(false);
     }
@@ -336,11 +368,11 @@ export const CreateRecipeScreen: React.FC = () => {
       };
       if (isEditing) {
         await rApi.update(recipeId!, payload);
-        showToast('Receita atualizada!', 'success');
+        showToast(t('createRecipe.updated'), 'success');
         navigation.goBack();
       } else {
         const recipe = await rApi.create(payload);
-        showToast('Receita salva! Abrindo precificação...', 'success');
+        showToast(t('createRecipe.created'), 'success');
         navigation.replace('RecipeDetail', { recipeId: recipe.id });
       }
     } catch (error) {
@@ -353,7 +385,7 @@ export const CreateRecipeScreen: React.FC = () => {
         });
         return;
       }
-      const msg = err.message || 'Não foi possível salvar a receita';
+      const msg = err.message || t('createRecipe.saveError');
       showToast(msg, 'error');
     } finally {
       setLoading(false);
@@ -363,7 +395,7 @@ export const CreateRecipeScreen: React.FC = () => {
   if (loadingData) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Editar Receita" showBack onBack={() => navigation.goBack()} />
+        <Header title={t('createRecipe.titleEdit')} showBack onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -373,22 +405,22 @@ export const CreateRecipeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title={isEditing ? 'Editar Receita' : 'Nova Receita'} showBack onBack={() => navigation.goBack()} />
+      <Header title={isEditing ? t('createRecipe.titleEdit') : t('createRecipe.titleNew')} showBack onBack={() => navigation.goBack()} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
           <View style={styles.infoCard}>
             <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
             <Text style={styles.infoText}>
-              Preencha os dados da receita, adicione os ingredientes e escolha a margem de lucro. O preco de venda sera calculado automaticamente.
+              {t('createRecipe.infoText')}
             </Text>
           </View>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Informacoes Basicas</Text>
+            <Text style={styles.sectionTitle}>{t('createRecipe.basicInfo')}</Text>
             <Input
-              label="Nome da receita *"
-              placeholder="Ex: Brigadeiro, Bolo de Pote..."
+              label={t('createRecipe.nameLabel')}
+              placeholder={t('createRecipe.namePlaceholder')}
               value={name}
               onChangeText={(text) => { setName(text); setShowSuggestions(false); }}
               error={errors.name}
@@ -401,7 +433,7 @@ export const CreateRecipeScreen: React.FC = () => {
               >
                 <Ionicons name="sparkles" size={16} color={isPremium ? colors.primary : colors.textMuted} />
                 <Text style={[styles.suggestionsToggleText, !isPremium && { color: colors.textMuted }]}>
-                  Sugestoes de receitas
+                  {t('createRecipe.suggestions')}
                 </Text>
                 {!isPremium && (
                   <View style={styles.premiumBadge}>
@@ -421,7 +453,7 @@ export const CreateRecipeScreen: React.FC = () => {
                 {applyingSuggestion ? (
                   <View style={styles.suggestionsLoading}>
                     <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.suggestionsLoadingText}>Preparando receita...</Text>
+                    <Text style={styles.suggestionsLoadingText}>{t('createRecipe.preparingRecipe')}</Text>
                   </View>
                 ) : (
                   <ScrollView
@@ -447,7 +479,7 @@ export const CreateRecipeScreen: React.FC = () => {
               </View>
             )}
             <Input
-              label="Quantidade produzida *"
+              label={t('createRecipe.yieldLabel')}
               placeholder="20"
               value={yieldAmount}
               onChangeText={setYieldAmount}
@@ -456,9 +488,9 @@ export const CreateRecipeScreen: React.FC = () => {
               error={errors.yield}
             />
 
-            <Text style={styles.marginLabel}>Margem de lucro</Text>
+            <Text style={styles.marginLabel}>{t('createRecipe.profitMargin')}</Text>
             <View style={styles.marginGrid}>
-              {MARGIN_PRESETS.map(preset => {
+              {localizedMarginPresets.map(preset => {
                 const selected = String(preset.value) === profitMargin || Number(profitMargin) === preset.value;
                 return (
                   <TouchableOpacity
@@ -479,7 +511,7 @@ export const CreateRecipeScreen: React.FC = () => {
               })}
             </View>
             {(() => {
-              const preset = MARGIN_PRESETS.find(p => p.value === Number(profitMargin));
+              const preset = localizedMarginPresets.find(p => p.value === Number(profitMargin));
               return preset ? (
                 <Text style={styles.marginDesc}>{preset.emoji} {preset.desc}</Text>
               ) : null;
@@ -488,20 +520,20 @@ export const CreateRecipeScreen: React.FC = () => {
 
           <Card style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Ingredientes</Text>
+              <Text style={styles.sectionTitle}>{t('createRecipe.ingredientsSection')}</Text>
               <TouchableOpacity
                 onPress={() => setShowIngredientModal(true)}
                 style={styles.addIngBtn}
               >
                 <Ionicons name="add" size={20} color="#fff" />
-                <Text style={styles.addIngBtnText}>Adicionar</Text>
+                <Text style={styles.addIngBtnText}>{t('createRecipe.addIngredient')}</Text>
               </TouchableOpacity>
             </View>
             {errors.ingredients && <Text style={styles.errorText}>{errors.ingredients}</Text>}
             {ingredients.length === 0 ? (
               <View style={styles.emptyIngredients}>
                 <Ionicons name="basket-outline" size={32} color={colors.textMuted} />
-                <Text style={styles.emptyText}>Nenhum ingrediente adicionado</Text>
+                <Text style={styles.emptyText}>{t('createRecipe.noIngredients')}</Text>
               </View>
             ) : (
               ingredients.map(ing => (
@@ -519,9 +551,9 @@ export const CreateRecipeScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Custos Adicionais</Text>
-            <Text style={styles.sectionSubtitle}>Opcional — adicione valores se aplicavel</Text>
-            {DEFAULT_ADDITIONAL_COSTS.map(cost => (
+            <Text style={styles.sectionTitle}>{t('createRecipe.additionalCosts')}</Text>
+            <Text style={styles.sectionSubtitle}>{t('createRecipe.additionalCostsHint')}</Text>
+            {localizedAdditionalCosts.map(cost => (
               <View key={cost.name}>
                 <View style={styles.costInputRow}>
                   <Ionicons name={cost.icon} size={18} color={colors.primary} style={styles.costIcon} />
@@ -545,7 +577,7 @@ export const CreateRecipeScreen: React.FC = () => {
             <TouchableOpacity onPress={handleToggleLabor} style={styles.laborHeader} activeOpacity={0.7}>
               <View style={styles.laborHeaderLeft}>
                 <Ionicons name="construct-outline" size={20} color={laborExpanded ? colors.primary : colors.textSecondary} />
-                <Text style={styles.sectionTitle}>Custos Profissionais</Text>
+                <Text style={styles.sectionTitle}>{t('createRecipe.professionalCosts')}</Text>
               </View>
               <View style={styles.laborHeaderRight}>
                 {!isPremium && (
@@ -564,12 +596,12 @@ export const CreateRecipeScreen: React.FC = () => {
             {laborExpanded && (
               <View style={styles.laborContent}>
                 <Text style={styles.laborDesc}>
-                  Calcule o custo da sua mão de obra e inclua no preço da receita automaticamente.
+                  {t('createRecipe.laborDescription')}
                 </Text>
                 <View style={styles.row}>
                   <View style={{ flex: 1, marginRight: 8 }}>
                     <Input
-                      label="Custo por hora"
+                      label={t('createRecipe.hourlyRate')}
                       placeholder="25,00"
                       value={hourlyRate}
                       onChangeText={setHourlyRate}
@@ -579,7 +611,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Input
-                      label="Tempo de preparo"
+                      label={t('createRecipe.prepTime')}
                       placeholder="120"
                       value={prepTimeMinutes}
                       onChangeText={setPrepTimeMinutes}
@@ -592,7 +624,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   <View style={styles.laborResult}>
                     <Ionicons name="calculator-outline" size={16} color={colors.primary} />
                     <Text style={styles.laborResultText}>
-                      Mão de obra: R$ {laborCostValue.toFixed(2)}
+                      {t('createRecipe.laborCost', { value: laborCostValue.toFixed(2) })}
                     </Text>
                   </View>
                 )}
@@ -601,7 +633,7 @@ export const CreateRecipeScreen: React.FC = () => {
           </Card>)}
 
           <Button
-            title={isEditing ? 'Atualizar Receita' : 'Salvar Receita'}
+            title={isEditing ? t('createRecipe.updateButton') : t('createRecipe.saveButton')}
             onPress={handleShowConfirmation}
             loading={loading}
             size="lg"
@@ -613,7 +645,7 @@ export const CreateRecipeScreen: React.FC = () => {
       <Modal visible={showIngredientModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Selecionar Ingrediente</Text>
+            <Text style={styles.modalTitle}>{t('createRecipe.selectIngredient')}</Text>
             <TouchableOpacity onPress={() => setShowIngredientModal(false)}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
@@ -624,11 +656,11 @@ export const CreateRecipeScreen: React.FC = () => {
               <Card style={styles.selectedIngCard}>
                 <Text style={styles.selectedIngName}>{selectedIngredient.name}</Text>
                 <Text style={styles.selectedIngInfo}>
-                  Comprado: {selectedIngredient.purchaseQuantity} {selectedIngredient.unit} por R$ {selectedIngredient.purchasePrice.toFixed(2)}
+                  {t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.unit, price: selectedIngredient.purchasePrice.toFixed(2) })}
                 </Text>
               </Card>
               <Input
-                label={`Quantidade usada na receita (${ingredientUnit || selectedIngredient.unit})`}
+                label={t('createRecipe.quantityUsed', { unit: ingredientUnit || selectedIngredient.unit })}
                 placeholder="0"
                 value={ingredientQuantity}
                 onChangeText={setIngredientQuantity}
@@ -656,13 +688,13 @@ export const CreateRecipeScreen: React.FC = () => {
               )}
               <View style={styles.modalActions}>
                 <Button
-                  title="Voltar"
+                  title={t('common.back')}
                   variant="outline"
                   onPress={() => { setSelectedIngredient(null); setIngredientUnit(''); }}
                   style={{ flex: 1, marginRight: 8 }}
                 />
                 <Button
-                  title="Adicionar"
+                  title={t('common.add')}
                   onPress={addIngredient}
                   style={{ flex: 1 }}
                 />
@@ -690,7 +722,7 @@ export const CreateRecipeScreen: React.FC = () => {
                 </TouchableOpacity>
               )}
               ListEmptyComponent={
-                <Text style={styles.emptyText}>Nenhum ingrediente cadastrado</Text>
+                <Text style={styles.emptyText}>{t('createRecipe.noIngredientRegistered')}</Text>
               }
             />
           )}
@@ -701,24 +733,24 @@ export const CreateRecipeScreen: React.FC = () => {
       <Modal visible={showConfirmModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Confirme os dados</Text>
+            <Text style={styles.modalTitle}>{t('common.confirmData')}</Text>
             <TouchableOpacity onPress={() => setShowConfirmModal(false)}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
           <ScrollView style={styles.confirmContent} showsVerticalScrollIndicator={false}>
             <Card style={styles.confirmCard}>
-              <Text style={styles.confirmSectionTitle}>Receita</Text>
+              <Text style={styles.confirmSectionTitle}>{t('createRecipe.recipe')}</Text>
               <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>Nome</Text>
+                <Text style={styles.confirmLabel}>{t('common.name')}</Text>
                 <Text style={styles.confirmValue}>{name.trim()}</Text>
               </View>
               <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>Rendimento</Text>
+                <Text style={styles.confirmLabel}>{t('createRecipe.yield')}</Text>
                 <Text style={styles.confirmValue}>{yieldAmount} un</Text>
               </View>
               <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>Margem de lucro</Text>
+                <Text style={styles.confirmLabel}>{t('createRecipe.profitMargin')}</Text>
                 <Text style={styles.confirmValue}>{profitMargin}%</Text>
               </View>
             </Card>
@@ -739,7 +771,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
             {getFinalCosts().length > 0 && (
               <Card style={styles.confirmCard}>
-                <Text style={styles.confirmSectionTitle}>Custos Adicionais</Text>
+                <Text style={styles.confirmSectionTitle}>{t('createRecipe.additionalCosts')}</Text>
                 {getFinalCosts().map((c, idx) => (
                   <View key={idx} style={styles.confirmRow}>
                     <Text style={styles.confirmLabel}>{c.name}</Text>
@@ -753,13 +785,13 @@ export const CreateRecipeScreen: React.FC = () => {
 
             <View style={styles.confirmActions}>
               <Button
-                title="Voltar e corrigir"
+                title={t('common.backAndFix')}
                 variant="outline"
                 onPress={() => setShowConfirmModal(false)}
                 style={{ flex: 1, marginRight: 8 }}
               />
               <Button
-                title="Confirmar"
+                title={t('common.confirm')}
                 onPress={handleConfirmSave}
                 loading={loading}
                 style={{ flex: 1 }}

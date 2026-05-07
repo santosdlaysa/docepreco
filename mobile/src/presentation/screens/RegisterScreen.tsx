@@ -13,9 +13,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../data/api/authApi';
-import { identifyRevenueCatUser } from '../../data/premium/revenueCat';
+import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { colors } from '../theme/colors';
 import { Input } from '../components/Input';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   onRegister: () => void;
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => {
+  const { t } = useTranslation();
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -45,17 +47,17 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!companyName.trim()) e.companyName = 'Nome da empresa obrigatório';
+    if (!companyName.trim()) e.companyName = t('register.companyRequired');
     if (!email.trim()) {
-      e.email = 'Email obrigatório';
+      e.email = t('register.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      e.email = 'Email inválido';
+      e.email = t('register.emailInvalid');
     }
     if (phone.trim()) {
       const digits = phone.replace(/\D/g, '');
-      if (digits.length < 10 || digits.length > 13) e.phone = 'Número de celular inválido';
+      if (digits.length < 10 || digits.length > 13) e.phone = t('register.phoneInvalid');
     }
-    if (!password || password.length < 6) e.password = 'Senha deve ter pelo menos 6 caracteres';
+    if (!password || password.length < 6) e.password = t('register.passwordMin');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -66,9 +68,10 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     try {
       const user = await authApi.register(companyName.trim(), email.trim(), password, phone.trim() || undefined);
       await identifyRevenueCatUser(user.id);
+      void setRevenueCatLocationAttributes();
       onRegister();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Erro ao cadastrar';
+      const msg = error instanceof Error ? error.message : t('register.registerError');
       setErrors({ general: msg });
     } finally {
       setLoading(false);
@@ -101,8 +104,8 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
 
           {/* Card sobreposto */}
           <Animated.View style={[styles.card, { opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
-            <Text style={styles.cardTitle}>Criar conta</Text>
-            <Text style={styles.cardSubtitle}>Comece a precificar seus doces do jeito certo</Text>
+            <Text style={styles.cardTitle}>{t('register.title')}</Text>
+            <Text style={styles.cardSubtitle}>{t('register.subtitle')}</Text>
 
             {errors.general && (
               <View style={styles.errorBanner}>
@@ -112,34 +115,34 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
             )}
 
             <Input
-              label="Nome da empresa / confeitaria *"
-              placeholder="Ex: Doces da Maria"
+              label={t('register.companyName')}
+              placeholder={t('register.companyPlaceholder')}
               value={companyName}
-              onChangeText={(t) => { setCompanyName(t); if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' })); }}
+              onChangeText={(v) => { setCompanyName(v); if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' })); }}
               error={errors.companyName}
             />
             <Input
-              label="Email *"
+              label={t('register.emailLabel')}
               placeholder="seu@email.com"
               value={email}
-              onChangeText={(t) => { setEmail(t); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
+              onChangeText={(v) => { setEmail(v); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
               keyboardType="email-address"
               autoCapitalize="none"
               error={errors.email}
             />
             <Input
-              label="Celular"
-              placeholder="(99) 99999-9999"
+              label={t('register.phoneLabel')}
+              placeholder={t('register.phonePlaceholder')}
               value={phone}
-              onChangeText={(t) => { setPhone(t); if (errors.phone) setErrors(prev => ({ ...prev, phone: '' })); }}
+              onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors(prev => ({ ...prev, phone: '' })); }}
               keyboardType="phone-pad"
               error={errors.phone}
             />
             <Input
-              label="Senha *"
-              placeholder="Mínimo 6 caracteres"
+              label={t('register.passwordLabel')}
+              placeholder={t('register.passwordPlaceholder')}
               value={password}
-              onChangeText={(t) => { setPassword(t); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
+              onChangeText={(v) => { setPassword(v); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
               secureTextEntry={!showPassword}
               error={errors.password}
               rightElement={
@@ -155,14 +158,14 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               disabled={loading}
               activeOpacity={0.85}
             >
-              <Text style={styles.registerBtnText}>{loading ? 'Cadastrando...' : 'Criar conta'}</Text>
+              <Text style={styles.registerBtnText}>{loading ? t('register.registering') : t('register.registerButton')}</Text>
               {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </TouchableOpacity>
 
             <View style={styles.loginRow}>
-              <Text style={styles.loginLabel}>Já tem conta?</Text>
+              <Text style={styles.loginLabel}>{t('register.hasAccount')}</Text>
               <TouchableOpacity onPress={onGoToLogin} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.loginLink}>Entrar</Text>
+                <Text style={styles.loginLink}>{t('register.login')}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>

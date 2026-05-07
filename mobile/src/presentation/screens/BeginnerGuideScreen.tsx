@@ -21,6 +21,7 @@ import { Card } from '../components/Card';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { statsApi } from '../../data/api/statsApi';
 import { demoStatsApi } from '../../data/demo/demoApi';
+import { useTranslation } from 'react-i18next';
 
 const GUIDE_DISMISSED_KEY = '@docepreco_beginner_guide_dismissed';
 
@@ -43,61 +44,62 @@ interface GuideStep {
   checkDone: (stats: { ingredientsCount: number; recipesCount: number }) => boolean;
 }
 
-const STEPS: GuideStep[] = [
-  {
-    id: 'ingredients',
-    number: 1,
-    icon: 'basket-outline',
-    iconDone: 'basket',
-    title: 'Cadastre seus ingredientes',
-    description:
-      'Comece adicionando os ingredientes que voce usa nas suas receitas. Informe o nome, a quantidade da embalagem e o preco que pagou.',
-    tip: 'Dica: Cadastre pelo menos 3 ingredientes para poder montar uma receita completa.',
-    action: 'Cadastrar ingrediente',
-    route: 'CreateIngredient',
-    color: colors.secondary,
-    colorLight: '#F5E6D0',
-    checkDone: (stats) => stats.ingredientsCount >= 1,
-  },
-  {
-    id: 'recipe',
-    number: 2,
-    icon: 'book-outline',
-    iconDone: 'book',
-    title: 'Crie sua primeira receita',
-    description:
-      'Agora monte uma receita usando os ingredientes cadastrados. Adicione cada ingrediente e a quantidade utilizada — o app calcula o custo automaticamente.',
-    tip: 'Dica: Comece com a receita que voce mais vende. Assim, ja descobre se o preco esta certo!',
-    action: 'Criar receita',
-    route: 'CreateRecipe',
-    color: colors.primary,
-    colorLight: colors.primaryLight,
-    checkDone: (stats) => stats.recipesCount >= 1,
-  },
-  {
-    id: 'margin',
-    number: 3,
-    icon: 'trending-up-outline',
-    iconDone: 'trending-up',
-    title: 'Defina sua margem de lucro',
-    description:
-      'Na tela da receita, defina a margem de lucro desejada (ex: 50%, 100%). O app calcula o preco de venda ideal para voce nunca ter prejuizo.',
-    tip: 'Dica: A maioria das confeiteiras usa margem entre 50% e 150%. Comece com 100% e ajuste conforme seu mercado.',
-    action: 'Ver minhas receitas',
-    route: 'Recipes',
-    color: '#4CAF50',
-    colorLight: '#E8F5E9',
-    checkDone: (stats) => stats.recipesCount >= 1,
-  },
-];
+// STEPS moved inside component for i18n
 
 const { width } = Dimensions.get('window');
 
 export const BeginnerGuideScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const [ingredientsCount, setIngredientsCount] = useState(0);
   const [recipesCount, setRecipesCount] = useState(0);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);
+
+  const STEPS: GuideStep[] = [
+    {
+      id: 'ingredients',
+      number: 1,
+      icon: 'basket-outline',
+      iconDone: 'basket',
+      title: t('beginnerGuide.step1Title'),
+      description: t('beginnerGuide.step1Desc'),
+      tip: t('beginnerGuide.step1Tip'),
+      action: t('beginnerGuide.step1Action'),
+      route: 'CreateIngredient',
+      color: colors.secondary,
+      colorLight: '#F5E6D0',
+      checkDone: (stats) => stats.ingredientsCount >= 1,
+    },
+    {
+      id: 'recipe',
+      number: 2,
+      icon: 'book-outline',
+      iconDone: 'book',
+      title: t('beginnerGuide.step2Title'),
+      description: t('beginnerGuide.step2Desc'),
+      tip: t('beginnerGuide.step2Tip'),
+      action: t('beginnerGuide.step2Action'),
+      route: 'CreateRecipe',
+      color: colors.primary,
+      colorLight: colors.primaryLight,
+      checkDone: (stats) => stats.recipesCount >= 1,
+    },
+    {
+      id: 'margin',
+      number: 3,
+      icon: 'trending-up-outline',
+      iconDone: 'trending-up',
+      title: t('beginnerGuide.step3Title'),
+      description: t('beginnerGuide.step3Desc'),
+      tip: t('beginnerGuide.step3Tip'),
+      action: t('beginnerGuide.step3Action'),
+      route: 'Recipes',
+      color: '#4CAF50',
+      colorLight: '#E8F5E9',
+      checkDone: (stats) => stats.recipesCount >= 1,
+    },
+  ];
+
   const [animations] = useState(() =>
     STEPS.map(() => new Animated.Value(0))
   );
@@ -171,7 +173,7 @@ export const BeginnerGuideScreen: React.FC = () => {
           </TouchableOpacity>
           <View style={{ flex: 1 }} />
           <TouchableOpacity onPress={dismissGuide} style={styles.dismissBtn}>
-            <Text style={styles.dismissText}>Pular guia</Text>
+            <Text style={styles.dismissText}>{t('beginnerGuide.skipGuide')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -181,21 +183,21 @@ export const BeginnerGuideScreen: React.FC = () => {
             <Ionicons name="school-outline" size={40} color={colors.primary} />
           </View>
           <Text style={styles.heroTitle}>
-            {allDone ? 'Parabens! Voce completou o guia!' : 'Modo Iniciante'}
+            {allDone ? t('beginnerGuide.completedTitle') : t('beginnerGuide.title')}
           </Text>
           <Text style={styles.heroSubtitle}>
             {allDone
-              ? 'Voce ja sabe o basico para precificar seus doces com seguranca.'
-              : 'Siga os 3 passos abaixo para comecar a precificar seus doces com seguranca.'}
+              ? t('beginnerGuide.completedSubtitle')
+              : t('beginnerGuide.subtitle')}
           </Text>
         </View>
 
         {/* Progress */}
         <Card style={styles.progressCard}>
           <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>Seu progresso</Text>
+            <Text style={styles.progressTitle}>{t('beginnerGuide.progress')}</Text>
             <Text style={styles.progressCount}>
-              {completedCount}/{STEPS.length} passos
+              {completedCount}/{STEPS.length} {t('beginnerGuide.steps')}
             </Text>
           </View>
           <View style={styles.progressTrack}>
@@ -205,7 +207,7 @@ export const BeginnerGuideScreen: React.FC = () => {
             <View style={styles.completeBanner}>
               <Ionicons name="trophy" size={20} color="#FF9800" />
               <Text style={styles.completeText}>
-                Incrivel! Agora explore todas as funcionalidades do app.
+                {t('beginnerGuide.completeBanner')}
               </Text>
             </View>
           )}
@@ -277,10 +279,10 @@ export const BeginnerGuideScreen: React.FC = () => {
                     </View>
                     <Text style={styles.stepStatusText}>
                       {status === 'done'
-                        ? 'Concluido!'
+                        ? t('beginnerGuide.completed')
                         : status === 'current'
-                        ? 'Toque para ver detalhes'
-                        : 'Complete o passo anterior'}
+                        ? t('beginnerGuide.tapDetails')
+                        : t('beginnerGuide.completePrevious')}
                     </Text>
                   </View>
 
@@ -338,7 +340,7 @@ export const BeginnerGuideScreen: React.FC = () => {
             activeOpacity={0.85}
           >
             <Ionicons name="rocket-outline" size={20} color="#fff" />
-            <Text style={styles.finishBtnText}>Explorar o app</Text>
+            <Text style={styles.finishBtnText}>{t('beginnerGuide.exploreApp')}</Text>
           </TouchableOpacity>
         )}
 

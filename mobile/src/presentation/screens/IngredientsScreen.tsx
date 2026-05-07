@@ -25,6 +25,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -43,6 +44,7 @@ export const IngredientsScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const { showToast } = useToast();
   const { requirePremium } = usePaywall();
+  const { t } = useTranslation();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const loadIngredients = async () => {
@@ -50,7 +52,7 @@ export const IngredientsScreen: React.FC = () => {
       const data = await api.getAll();
       setIngredients(data);
     } catch (error) {
-      showToast('Não foi possível carregar os ingredientes', 'error');
+      showToast(t('ingredients.loadError'), 'error');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,10 +81,10 @@ export const IngredientsScreen: React.FC = () => {
       });
     };
 
-    showToast(`${ingredient.name} excluído`, {
+    showToast(t('ingredients.deleteUndo', { name: ingredient.name }), {
       type: 'success',
       action: {
-        label: 'Desfazer',
+        label: t('ingredients.undo'),
         onPress: restore,
       },
       onDismiss: async () => {
@@ -98,9 +100,9 @@ export const IngredientsScreen: React.FC = () => {
             serverMsg.includes('restrict') ||
             error?.response?.status === 409
           ) {
-            showToast('Ingrediente em uso em uma ou mais receitas. Remova da receita primeiro.', 'warning');
+            showToast(t('ingredients.inUseError'), 'warning');
           } else {
-            showToast('Não foi possível excluir este ingrediente', 'error');
+            showToast(t('ingredients.deleteError'), 'error');
           }
         }
       },
@@ -165,7 +167,7 @@ export const IngredientsScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <Header title="Ingredientes" />
+        <Header title={t('ingredients.title')} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -176,8 +178,8 @@ export const IngredientsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <Header
-        title="Ingredientes"
-        subtitle={`${ingredients.length} cadastrado${ingredients.length !== 1 ? 's' : ''} · Toque no + para adicionar`}
+        title={t('ingredients.title')}
+        subtitle={t('ingredients.subtitle', { count: ingredients.length, plural: ingredients.length !== 1 ? 's' : '' })}
         rightAction={
           <TouchableOpacity
             onPress={() => navigation.navigate('CreateIngredient')}
@@ -205,7 +207,7 @@ export const IngredientsScreen: React.FC = () => {
             <View style={styles.infoCard}>
               <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
               <Text style={styles.infoText}>
-                Cadastre aqui os ingredientes que voce usa. O preco por unidade e calculado automaticamente e usado nas suas receitas.
+                {t('ingredients.infoText')}
               </Text>
             </View>
           ) : null
@@ -213,9 +215,9 @@ export const IngredientsScreen: React.FC = () => {
         ListEmptyComponent={
           <EmptyState
             icon="basket-outline"
-            title="Nenhum ingrediente ainda"
-            description="Cadastre os ingredientes que voce usa nas suas receitas!"
-            actionLabel="Adicionar Ingrediente"
+            title={t('ingredients.emptyTitle')}
+            description={t('ingredients.emptyDescription')}
+            actionLabel={t('ingredients.addButton')}
             onAction={() => navigation.navigate('CreateIngredient')}
           />
         }

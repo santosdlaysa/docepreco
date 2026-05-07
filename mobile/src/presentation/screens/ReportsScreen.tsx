@@ -24,16 +24,14 @@ import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-const getMonthLabel = (date: Date) => {
-  const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-  return months[date.getMonth()];
-};
+// getMonthLabel moved inside component for i18n
 
 interface MonthlyData {
   label: string;
@@ -48,8 +46,14 @@ interface RecipeRanking {
 }
 
 export const ReportsScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { guardScreen } = usePaywall();
+
+  const getMonthLabel = (date: Date) => {
+    const months = t('months.short', { returnObjects: true }) as string[];
+    return months[date.getMonth()];
+  };
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [sales, setSales] = useState<Sale[]>([]);
@@ -229,7 +233,7 @@ export const ReportsScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Relatórios" subtitle="Dados calculados com base nas vendas registradas no app." showBack onBack={() => navigation.goBack()} />
+        <Header title={t('reports.title')} subtitle={t('reports.subtitle')} showBack onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -245,8 +249,8 @@ export const ReportsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Relatórios"
-        subtitle="Dados calculados com base nas vendas registradas no app."
+        title={t('reports.title')}
+        subtitle={t('reports.subtitle')}
         showBack
         onBack={() => navigation.goBack()}
         rightAction={
@@ -265,7 +269,7 @@ export const ReportsScreen: React.FC = () => {
             <View style={[styles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
               <Ionicons name="trending-up" size={22} color={colors.success} />
             </View>
-            <Text style={styles.cardTitle}>Faturamento do mês</Text>
+            <Text style={styles.cardTitle}>{t('reports.monthRevenue')}</Text>
           </View>
           <Text style={styles.revenueValue}>{formatCurrency(currentMonthRevenue)}</Text>
           {prevMonthRevenue > 0 && (
@@ -276,7 +280,7 @@ export const ReportsScreen: React.FC = () => {
                 color={revenueChange >= 0 ? colors.success : colors.error}
               />
               <Text style={[styles.compareText, { color: revenueChange >= 0 ? colors.success : colors.error }]}>
-                {Math.abs(revenueChange).toFixed(1)}% vs mês anterior ({formatCurrency(prevMonthRevenue)})
+                {Math.abs(revenueChange).toFixed(1)}% {t('reports.vsPrevMonth')} ({formatCurrency(prevMonthRevenue)})
               </Text>
             </View>
           )}
@@ -288,16 +292,16 @@ export const ReportsScreen: React.FC = () => {
             <View style={[styles.iconWrap, { backgroundColor: '#FFF3E0' }]}>
               <Ionicons name="receipt-outline" size={22} color={colors.warning} />
             </View>
-            <Text style={styles.cardTitle}>Ticket médio</Text>
+            <Text style={styles.cardTitle}>{t('reports.avgTicket')}</Text>
           </View>
           <Text style={styles.ticketValue}>{formatCurrency(avgTicket)}</Text>
-          <Text style={styles.ticketSub}>por venda ({sales.length} vendas total)</Text>
+          <Text style={styles.ticketSub}>{t('reports.perSale', { count: sales.length })}</Text>
         </Card>
 
         {/* Monthly Chart */}
         <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Vendas por período</Text>
-          <Text style={styles.cardSubtitle}>Últimos 6 meses</Text>
+          <Text style={styles.cardTitle}>{t('reports.salesByPeriod')}</Text>
+          <Text style={styles.cardSubtitle}>{t('reports.last6Months')}</Text>
           <View style={styles.chartContainer}>
             {monthlyData.map((month, idx) => (
               <View key={idx} style={styles.barColumn}>
@@ -327,10 +331,10 @@ export const ReportsScreen: React.FC = () => {
             <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
               <Ionicons name="trophy-outline" size={22} color={colors.primary} />
             </View>
-            <Text style={styles.cardTitle}>Receitas mais vendidas</Text>
+            <Text style={styles.cardTitle}>{t('reports.topRecipes')}</Text>
           </View>
           {topRecipes.length === 0 ? (
-            <Text style={styles.emptyText}>Nenhuma venda registrada</Text>
+            <Text style={styles.emptyText}>{t('reports.noSales')}</Text>
           ) : (
             topRecipes.map((recipe, idx) => (
               <View key={recipe.recipeName} style={styles.rankRow}>
@@ -341,7 +345,7 @@ export const ReportsScreen: React.FC = () => {
                 </View>
                 <View style={styles.rankInfo}>
                   <Text style={styles.rankName}>{recipe.recipeName}</Text>
-                  <Text style={styles.rankSub}>{recipe.quantity} un vendidas</Text>
+                  <Text style={styles.rankSub}>{t('reports.unitsSold', { count: recipe.quantity })}</Text>
                 </View>
                 <Text style={styles.rankRevenue}>{formatCurrency(recipe.revenue)}</Text>
               </View>

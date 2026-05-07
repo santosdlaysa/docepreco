@@ -22,13 +22,9 @@ import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-const MONTH_NAMES = [
-  'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-  'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez',
-];
 
 const isBirthdaySoon = (birthday?: string): boolean => {
   if (!birthday) return false;
@@ -41,14 +37,16 @@ const isBirthdaySoon = (birthday?: string): boolean => {
   return diffDays >= 0 && diffDays <= 7;
 };
 
-const formatBirthday = (birthday: string): string => {
-  const [mm, dd] = birthday.split('-').map(Number);
-  return `${String(dd).padStart(2, '0')} de ${MONTH_NAMES[mm - 1]}`;
-};
-
 export const ClientsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { guardScreen } = usePaywall();
+  const { t } = useTranslation();
+  const monthNames = t('months.short', { returnObjects: true }) as string[];
+
+  const formatBirthday = (birthday: string): string => {
+    const [mm, dd] = birthday.split('-').map(Number);
+    return t('clients.birthdayFormat', { day: String(dd).padStart(2, '0'), month: monthNames[mm - 1] });
+  };
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -77,7 +75,7 @@ export const ClientsScreen: React.FC = () => {
 
   const handleWhatsApp = async (client: Client) => {
     if (!client.phone) {
-      Alert.alert('Sem telefone', 'Este cliente não tem telefone cadastrado.');
+      Alert.alert(t('clients.noPhone'), t('clients.noPhoneMessage'));
       return;
     }
     const phone = client.phone.replace(/\D/g, '');
@@ -85,15 +83,15 @@ export const ClientsScreen: React.FC = () => {
     try {
       await Linking.openURL(url);
     } catch {
-      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
+      Alert.alert(t('common.error'), t('clients.whatsappError'));
     }
   };
 
   const handleDelete = (client: Client) => {
-    Alert.alert('Excluir cliente', `Excluir "${client.name}"?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('clients.deleteTitle'), t('clients.deleteMessage', { name: client.name }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Excluir',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           await clientStorage.delete(client.id);
@@ -125,7 +123,7 @@ export const ClientsScreen: React.FC = () => {
                 <Text style={styles.clientName}>{item.name}</Text>
                 {birthdaySoon && (
                   <View style={styles.birthdayBadge}>
-                    <Text style={styles.birthdayBadgeText}>Aniversário!</Text>
+                    <Text style={styles.birthdayBadgeText}>{t('clients.birthday')}</Text>
                   </View>
                 )}
               </View>
@@ -158,7 +156,7 @@ export const ClientsScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Clientes" subtitle="Toque em + para cadastrar. Use WhatsApp para contato. Segure para excluir." showBack onBack={() => navigation.goBack()} />
+        <Header title={t('clients.title')} subtitle={t('clients.subtitle')} showBack onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -169,8 +167,8 @@ export const ClientsScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Clientes"
-        subtitle="Toque em + para cadastrar. Use WhatsApp para contato. Segure para excluir."
+        title={t('clients.title')}
+        subtitle={t('clients.subtitle')}
         showBack
         onBack={() => navigation.goBack()}
         rightAction={
@@ -187,7 +185,7 @@ export const ClientsScreen: React.FC = () => {
           <Ionicons name="search-outline" size={18} color={colors.textMuted} />
           <TextInput
             style={styles.searchInput}
-            placeholder="Buscar cliente..."
+            placeholder={t('clients.search')}
             placeholderTextColor={colors.textMuted}
             value={search}
             onChangeText={setSearch}
@@ -208,14 +206,14 @@ export const ClientsScreen: React.FC = () => {
           <View style={styles.empty}>
             <Ionicons name="people-outline" size={48} color={colors.textMuted} />
             <Text style={styles.emptyText}>
-              {search ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
+              {search ? t('clients.noneFound') : t('clients.noneRegistered')}
             </Text>
             {!search && (
               <TouchableOpacity
                 onPress={() => navigation.navigate('CreateClient')}
                 style={styles.emptyCta}
               >
-                <Text style={styles.emptyCtaText}>Cadastrar cliente</Text>
+                <Text style={styles.emptyCtaText}>{t('clients.register')}</Text>
               </TouchableOpacity>
             )}
           </View>

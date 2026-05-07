@@ -16,10 +16,12 @@ import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { Button } from '../components/Button';
 import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notifications';
+import { useTranslation } from 'react-i18next';
 
 const SUPPORT_WHATSAPP = '5595991371313';
 
 export const ProfileScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
@@ -56,7 +58,7 @@ export const ProfileScreen: React.FC = () => {
   const handleSaveInstagram = async () => {
     const handle = instagramInput.replace(/^@/, '').trim();
     if (handle && !/^[a-zA-Z0-9._]+$/.test(handle)) {
-      Alert.alert('Instagram inválido', 'Use apenas letras, números, . e _');
+      Alert.alert(t('profile.instagramInvalid'), t('profile.instagramHint'));
       return;
     }
     setSavingInstagram(true);
@@ -64,9 +66,9 @@ export const ProfileScreen: React.FC = () => {
       const updated = await authApi.updateProfile({ instagramHandle: handle || null });
       setUser(updated);
       setInstagramInput(updated.instagramHandle || '');
-      Alert.alert('Salvo', 'Instagram atualizado com sucesso!');
+      Alert.alert(t('profile.saved'), t('profile.instagramUpdated'));
     } catch {
-      Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
+      Alert.alert(t('common.error'), t('common.saveError'));
     } finally {
       setSavingInstagram(false);
     }
@@ -75,7 +77,7 @@ export const ProfileScreen: React.FC = () => {
   const handleSavePhone = async () => {
     const digits = phoneInput.replace(/\D/g, '');
     if (digits && (digits.length < 10 || digits.length > 13)) {
-      Alert.alert('Celular inválido', 'Informe um número válido com DDD');
+      Alert.alert(t('profile.phoneInvalid'), t('profile.phoneHint'));
       return;
     }
     setSavingPhone(true);
@@ -83,9 +85,9 @@ export const ProfileScreen: React.FC = () => {
       const updated = await authApi.updateProfile({ phone: digits || null });
       setUser(updated);
       setPhoneInput(updated.phone || '');
-      Alert.alert('Salvo', 'Celular atualizado com sucesso!');
+      Alert.alert(t('profile.saved'), t('profile.phoneUpdated'));
     } catch {
-      Alert.alert('Erro', 'Não foi possível salvar. Tente novamente.');
+      Alert.alert(t('common.error'), t('common.saveError'));
     } finally {
       setSavingPhone(false);
     }
@@ -93,28 +95,28 @@ export const ProfileScreen: React.FC = () => {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert('Erro', 'Preencha todos os campos');
+      Alert.alert(t('common.error'), t('profile.fillAllFields'));
       return;
     }
     if (newPassword.length < 6) {
-      Alert.alert('Erro', 'A nova senha deve ter pelo menos 6 caracteres');
+      Alert.alert(t('common.error'), t('profile.passwordMin'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      Alert.alert('Erro', 'As senhas não coincidem');
+      Alert.alert(t('common.error'), t('profile.passwordMismatch'));
       return;
     }
     setSavingPassword(true);
     try {
       await authApi.changePassword(currentPassword, newPassword);
-      Alert.alert('Sucesso', 'Senha alterada com sucesso!');
+      Alert.alert('', t('profile.passwordChanged'));
       setShowPasswordSection(false);
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
     } catch (e: any) {
-      const msg = e?.response?.data?.error || 'Não foi possível alterar a senha';
-      Alert.alert('Erro', msg);
+      const msg = e?.response?.data?.error || t('profile.passwordError');
+      Alert.alert(t('common.error'), msg);
     } finally {
       setSavingPassword(false);
     }
@@ -139,16 +141,16 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const removeCompanyLogo = () => {
-    Alert.alert('Remover logo', 'Deseja remover a logo da empresa?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Remover', style: 'destructive', onPress: () => setCompanyLogo(null) },
+    Alert.alert(t('profile.removeLogo'), t('profile.removeLogoMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.remove'), style: 'destructive', onPress: () => setCompanyLogo(null) },
     ]);
   };
 
   const handleLogout = () => {
-    Alert.alert('Sair', 'Deseja sair da sua conta?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Sair', style: 'destructive', onPress: logout },
+    Alert.alert(t('profile.logoutTitle'), t('profile.logoutMessage'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.logoutTitle'), style: 'destructive', onPress: logout },
     ]);
   };
 
@@ -160,15 +162,15 @@ export const ProfileScreen: React.FC = () => {
       await Linking.openURL(url);
     } catch {
       Alert.alert(
-        'Ops',
-        'Não foi possível abrir o WhatsApp. Verifique se o app está instalado.'
+        t('common.error'),
+        t('profile.whatsappError')
       );
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header title="Minha Conta" showBack onBack={() => navigation.goBack()} />
+      <Header title={t('profile.title')} showBack onBack={() => navigation.goBack()} />
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         <Card style={styles.card}>
           <View style={styles.avatarRow}>
@@ -215,7 +217,7 @@ export const ProfileScreen: React.FC = () => {
               <Ionicons name="call-outline" size={20} color="#1976D2" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.menuText}>Celular</Text>
+              <Text style={styles.menuText}>{t('profile.phone')}</Text>
               <View style={styles.instagramRow}>
                 <TextInput
                   style={[styles.instagramInput, { marginLeft: 0 }]}
@@ -250,7 +252,7 @@ export const ProfileScreen: React.FC = () => {
               <Ionicons name="logo-instagram" size={20} color="#E1306C" />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.menuText}>Instagram</Text>
+              <Text style={styles.menuText}>{t('profile.instagram')}</Text>
               <View style={styles.instagramRow}>
                 <Text style={styles.instagramAt}>@</Text>
                 <TextInput
@@ -288,13 +290,13 @@ export const ProfileScreen: React.FC = () => {
                 <Ionicons name="sparkles" size={22} color="#fff" />
               </View>
               <View style={styles.premiumActiveText}>
-                <Text style={styles.premiumActiveTitle}>Você é Premium ✨</Text>
+                <Text style={styles.premiumActiveTitle}>{t('profile.youArePremium')} ✨</Text>
                 <Text style={styles.premiumActiveSubtitle}>
                   {premiumUntilLabel
                     ? daysLeft !== null && daysLeft <= 7
-                      ? `Renova em ${daysLeft} dia${daysLeft === 1 ? '' : 's'} (${premiumUntilLabel})`
-                      : `Válido até ${premiumUntilLabel}`
-                    : 'Todos os recursos liberados'}
+                      ? t('profile.renewsIn', { days: daysLeft, plural: daysLeft === 1 ? '' : 's', date: premiumUntilLabel })
+                      : t('profile.validUntil', { date: premiumUntilLabel })
+                    : t('profile.allFeaturesUnlocked')}
                 </Text>
               </View>
             </View>
@@ -310,9 +312,9 @@ export const ProfileScreen: React.FC = () => {
                   <Ionicons name="sparkles" size={22} color="#fff" />
                 </View>
                 <View style={styles.premiumCtaText}>
-                  <Text style={styles.premiumCtaTitle}>Virar Premium</Text>
+                  <Text style={styles.premiumCtaTitle}>{t('profile.goPremium')}</Text>
                   <Text style={styles.premiumCtaSubtitle}>
-                    Ingredientes e receitas ilimitados, encomendas, PDF sem marca e mais.
+                    {t('profile.premiumDescription')}
                   </Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color={colors.primary} />
@@ -323,7 +325,7 @@ export const ProfileScreen: React.FC = () => {
 
         {isPremium && (
           <>
-            <Text style={styles.sectionTitle}>Premium</Text>
+            <Text style={styles.sectionTitle}>{t('profile.premiumSection')}</Text>
             <Card style={styles.menuCard}>
               <TouchableOpacity
                 style={styles.menuItem}
@@ -333,8 +335,8 @@ export const ProfileScreen: React.FC = () => {
                   <Ionicons name="document-text-outline" size={20} color={colors.primary} />
                 </View>
                 <View style={styles.menuTextWrap}>
-                  <Text style={styles.menuText}>Personalizar PDF</Text>
-                  <Text style={styles.menuSubtext}>Logo, cores e slogan nos orçamentos</Text>
+                  <Text style={styles.menuText}>{t('profile.customizePdf')}</Text>
+                  <Text style={styles.menuSubtext}>{t('profile.customizePdfSub')}</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
               </TouchableOpacity>
@@ -342,7 +344,7 @@ export const ProfileScreen: React.FC = () => {
           </>
         )}
 
-        <Text style={styles.sectionTitle}>Seguranca</Text>
+        <Text style={styles.sectionTitle}>{t('profile.security')}</Text>
         <Card style={styles.menuCard}>
           <TouchableOpacity
             style={styles.menuItem}
@@ -352,8 +354,8 @@ export const ProfileScreen: React.FC = () => {
               <Ionicons name="lock-closed-outline" size={20} color="#7B1FA2" />
             </View>
             <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>Alterar Senha</Text>
-              <Text style={styles.menuSubtext}>Troque sua senha de acesso</Text>
+              <Text style={styles.menuText}>{t('profile.changePassword')}</Text>
+              <Text style={styles.menuSubtext}>{t('profile.changePasswordSub')}</Text>
             </View>
             <Ionicons name={showPasswordSection ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
           </TouchableOpacity>
@@ -361,7 +363,7 @@ export const ProfileScreen: React.FC = () => {
             <View style={styles.passwordSection}>
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Senha atual"
+                placeholder={t('profile.currentPassword')}
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry
                 value={currentPassword}
@@ -369,7 +371,7 @@ export const ProfileScreen: React.FC = () => {
               />
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Nova senha"
+                placeholder={t('profile.newPassword')}
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry
                 value={newPassword}
@@ -377,14 +379,14 @@ export const ProfileScreen: React.FC = () => {
               />
               <TextInput
                 style={styles.passwordInput}
-                placeholder="Confirmar nova senha"
+                placeholder={t('profile.confirmPassword')}
                 placeholderTextColor={colors.textMuted}
                 secureTextEntry
                 value={confirmPassword}
                 onChangeText={setConfirmPassword}
               />
               <Button
-                title={savingPassword ? 'Salvando...' : 'Alterar Senha'}
+                title={savingPassword ? t('profile.savingPassword') : t('profile.changePasswordButton')}
                 onPress={handleChangePassword}
                 disabled={savingPassword}
                 style={{ marginTop: 8 }}
@@ -393,15 +395,15 @@ export const ProfileScreen: React.FC = () => {
           )}
         </Card>
 
-        <Text style={styles.sectionTitle}>Preferencias</Text>
+        <Text style={styles.sectionTitle}>{t('profile.preferences')}</Text>
         <Card style={styles.menuCard}>
           <View style={styles.menuItem}>
             <View style={[styles.iconBadge, { backgroundColor: '#FFF3E0' }]}>
               <Ionicons name="notifications-outline" size={20} color="#FF9800" />
             </View>
             <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>Notificacoes</Text>
-              <Text style={styles.menuSubtext}>Lembretes e dicas de precificacao</Text>
+              <Text style={styles.menuText}>{t('profile.notifications')}</Text>
+              <Text style={styles.menuSubtext}>{t('profile.notificationsSub')}</Text>
             </View>
             <Switch
               value={notificationsOn}
@@ -415,21 +417,21 @@ export const ProfileScreen: React.FC = () => {
           </View>
         </Card>
 
-        <Text style={styles.sectionTitle}>Ajuda</Text>
+        <Text style={styles.sectionTitle}>{t('profile.help')}</Text>
         <Card style={styles.menuCard}>
           <TouchableOpacity style={styles.menuItem} onPress={handleSupport}>
             <View style={[styles.iconBadge, { backgroundColor: '#E7F9EF' }]}>
               <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
             </View>
             <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>Suporte via WhatsApp</Text>
-              <Text style={styles.menuSubtext}>Fale com a gente, tire dúvidas</Text>
+              <Text style={styles.menuText}>{t('profile.whatsappSupport')}</Text>
+              <Text style={styles.menuSubtext}>{t('profile.whatsappSupportSub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
         </Card>
 
-        <Text style={styles.sectionTitle}>Sobre</Text>
+        <Text style={styles.sectionTitle}>{t('profile.about')}</Text>
         <Card style={styles.menuCard}>
           <TouchableOpacity
             style={styles.menuItem}
@@ -439,8 +441,8 @@ export const ProfileScreen: React.FC = () => {
               <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
             </View>
             <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>Política de Privacidade</Text>
-              <Text style={styles.menuSubtext}>Como usamos os seus dados</Text>
+              <Text style={styles.menuText}>{t('profile.privacyPolicy')}</Text>
+              <Text style={styles.menuSubtext}>{t('profile.privacyPolicySub')}</Text>
             </View>
             <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
           </TouchableOpacity>
@@ -448,7 +450,7 @@ export const ProfileScreen: React.FC = () => {
 
         <Card style={styles.dangerCard}>
           <Button
-            title="Sair da conta"
+            title={t('profile.logout')}
             onPress={handleLogout}
             variant="outline"
             style={styles.logoutBtn}

@@ -9,6 +9,7 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Header } from '../components/Header';
+import { useTranslation } from 'react-i18next';
 
 type RouteType = RouteProp<RootStackParamList, 'IngredientPriceHistory'>;
 
@@ -19,6 +20,7 @@ const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
 
 export const IngredientPriceHistoryScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteType>();
   const { ingredientId, ingredientName } = route.params;
@@ -51,7 +53,7 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
             <Text style={styles.dateText}>{formatDate(item.recordedAt)}</Text>
             {index === 0 && (
               <View style={styles.latestBadge}>
-                <Text style={styles.latestBadgeText}>Atual</Text>
+                <Text style={styles.latestBadgeText}>{t('priceHistory.current')}</Text>
               </View>
             )}
           </View>
@@ -84,7 +86,7 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Histórico de Preços"
+        title={t('priceHistory.title')}
         subtitle={ingredientName}
         showBack
         onBack={() => navigation.goBack()}
@@ -96,9 +98,9 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
       ) : entries.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="time-outline" size={48} color={colors.border} />
-          <Text style={styles.emptyTitle}>Sem histórico ainda</Text>
+          <Text style={styles.emptyTitle}>{t('priceHistory.emptyTitle')}</Text>
           <Text style={styles.emptyText}>
-            O histórico é salvo automaticamente cada vez que você editar o preço deste ingrediente.
+            {t('priceHistory.emptyText')}
           </Text>
         </View>
       ) : (

@@ -15,17 +15,14 @@ import { Header } from '../components/Header';
 import { Input } from '../components/Input';
 import { Button } from '../components/Button';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 type RouteType = RouteProp<RootStackParamList, 'EditSeason'>;
 
-const PRESETS = [
-  { label: 'Natal', startMonth: '12-01', endMonth: '12-31', pct: 20 },
-  { label: 'Páscoa', startMonth: '03-20', endMonth: '04-20', pct: 15 },
-  { label: 'Dia das Mães', startMonth: '05-01', endMonth: '05-15', pct: 15 },
-  { label: 'Dia dos Namorados', startMonth: '06-06', endMonth: '06-12', pct: 10 },
-];
+// PRESETS moved inside component for i18n
 
 export const CreateSeasonScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteType>();
   const seasonId = (route.params as any)?.seasonId as string | undefined;
@@ -33,6 +30,13 @@ export const CreateSeasonScreen: React.FC = () => {
   const { showToast } = useToast();
 
   const currentYear = new Date().getFullYear();
+
+  const PRESETS = [
+    { label: t('createSeason.christmas'), startMonth: '12-01', endMonth: '12-31', pct: 20 },
+    { label: t('createSeason.easter'), startMonth: '03-20', endMonth: '04-20', pct: 15 },
+    { label: t('createSeason.mothersDay'), startMonth: '05-01', endMonth: '05-15', pct: 15 },
+    { label: t('createSeason.valentinesDay'), startMonth: '06-06', endMonth: '06-12', pct: 10 },
+  ];
 
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -63,12 +67,12 @@ export const CreateSeasonScreen: React.FC = () => {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!name.trim()) e.name = 'Nome obrigatório';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) e.startDate = 'Formato: AAAA-MM-DD';
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) e.endDate = 'Formato: AAAA-MM-DD';
-    if (startDate && endDate && startDate > endDate) e.endDate = 'Deve ser depois da data inicial';
+    if (!name.trim()) e.name = t('createSeason.nameRequired');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) e.startDate = t('createSeason.dateFormat');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) e.endDate = t('createSeason.dateFormat');
+    if (startDate && endDate && startDate > endDate) e.endDate = t('createSeason.endAfterStart');
     const pct = parseFloat(percentText);
-    if (isNaN(pct) || pct <= -100) e.percent = 'Valor inválido';
+    if (isNaN(pct) || pct <= -100) e.percent = t('createSeason.invalidValue');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -81,10 +85,10 @@ export const CreateSeasonScreen: React.FC = () => {
       const data = { name: name.trim(), startDate, endDate, multiplier };
       if (isEditing) {
         await seasonApi.update(seasonId!, data);
-        showToast('Temporada atualizada!', 'success');
+        showToast(t('createSeason.updated'), 'success');
       } else {
         await seasonApi.create(data);
-        showToast('Temporada criada!', 'success');
+        showToast(t('createSeason.created'), 'success');
       }
       navigation.goBack();
     } finally {
@@ -98,7 +102,7 @@ export const CreateSeasonScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title={isEditing ? 'Editar Temporada' : 'Nova Temporada'}
+        title={isEditing ? t('createSeason.titleEdit') : t('createSeason.titleNew')}
         showBack
         onBack={() => navigation.goBack()}
       />
@@ -107,7 +111,7 @@ export const CreateSeasonScreen: React.FC = () => {
 
           {!isEditing && (
             <Card style={styles.card}>
-              <Text style={styles.sectionLabel}>Atalhos rápidos</Text>
+              <Text style={styles.sectionLabel}>{t('createSeason.quickShortcuts')}</Text>
               <View style={styles.presets}>
                 {PRESETS.map(p => (
                   <TouchableOpacity
@@ -125,14 +129,14 @@ export const CreateSeasonScreen: React.FC = () => {
 
           <Card style={styles.card}>
             <Input
-              label="Nome da temporada *"
-              placeholder="Ex: Natal, Páscoa, Dia das Mães..."
+              label={t('createSeason.nameLabel')}
+              placeholder={t('createSeason.namePlaceholder')}
               value={name}
               onChangeText={setName}
               error={errors.name}
             />
             <Input
-              label="Data inicial * (AAAA-MM-DD)"
+              label={t('createSeason.startDate')}
               placeholder={`${currentYear}-12-01`}
               value={startDate}
               onChangeText={setStartDate}
@@ -140,7 +144,7 @@ export const CreateSeasonScreen: React.FC = () => {
               keyboardType="numbers-and-punctuation"
             />
             <Input
-              label="Data final * (AAAA-MM-DD)"
+              label={t('createSeason.endDate')}
               placeholder={`${currentYear}-12-31`}
               value={endDate}
               onChangeText={setEndDate}
@@ -148,8 +152,8 @@ export const CreateSeasonScreen: React.FC = () => {
               keyboardType="numbers-and-punctuation"
             />
             <Input
-              label="Ajuste de preço (%)"
-              placeholder="Ex: 20 para +20%, -10 para desconto"
+              label={t('createSeason.priceAdjust')}
+              placeholder={t('createSeason.priceAdjustPlaceholder')}
               value={percentText}
               onChangeText={setPercentText}
               error={errors.percent}
@@ -163,15 +167,15 @@ export const CreateSeasonScreen: React.FC = () => {
                 <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
                 <Text style={styles.previewText}>
                   {pct >= 0
-                    ? `Uma receita de R$ 10,00 ficará R$ ${(10 * previewMultiplier).toFixed(2).replace('.', ',')} durante esta temporada.`
-                    : `Uma receita de R$ 10,00 ficará R$ ${(10 * previewMultiplier).toFixed(2).replace('.', ',')} (desconto de ${Math.abs(pct)}%).`}
+                    ? t('createSeason.previewIncrease', { price: (10 * previewMultiplier).toFixed(2).replace('.', ',') })
+                    : t('createSeason.previewDiscount', { price: (10 * previewMultiplier).toFixed(2).replace('.', ','), pct: Math.abs(pct) })}
                 </Text>
               </View>
             </Card>
           )}
 
           <Button
-            title={isEditing ? 'Salvar alterações' : 'Criar temporada'}
+            title={isEditing ? t('createSeason.updateButton') : t('createSeason.saveButton')}
             onPress={handleSave}
             loading={loading}
             style={styles.saveBtn}

@@ -24,36 +24,9 @@ import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
 import { useToast } from '../context/ToastContext';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  pending: { label: 'Pendente', color: '#FF9800', icon: 'time-outline' },
-  in_progress: { label: 'Em produção', color: '#2196F3', icon: 'construct-outline' },
-  done: { label: 'Pronto', color: '#4CAF50', icon: 'checkmark-circle-outline' },
-  delivered: { label: 'Entregue', color: '#9E9E9E', icon: 'gift-outline' },
-};
-
-const FILTER_OPTIONS: { key: OrderStatus | 'all'; label: string }[] = [
-  { key: 'all', label: 'Todos' },
-  { key: 'pending', label: 'Pendente' },
-  { key: 'in_progress', label: 'Produção' },
-  { key: 'done', label: 'Pronto' },
-  { key: 'delivered', label: 'Entregue' },
-];
-
-const formatDate = (dateStr: string) => {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const date = new Date(y, m - 1, d);
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  if (date.getTime() === today.getTime()) return 'Hoje';
-  if (date.getTime() === tomorrow.getTime()) return 'Amanhã';
-  return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
-};
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -64,7 +37,36 @@ export const OrdersScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { guardScreen } = usePaywall();
   const { showToast } = useToast();
+  const { t } = useTranslation();
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
+
+  const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
+    pending: { label: t('orders.pending'), color: '#FF9800', icon: 'time-outline' },
+    in_progress: { label: t('orders.inProgress'), color: '#2196F3', icon: 'construct-outline' },
+    done: { label: t('orders.done'), color: '#4CAF50', icon: 'checkmark-circle-outline' },
+    delivered: { label: t('orders.delivered'), color: '#9E9E9E', icon: 'gift-outline' },
+  };
+
+  const FILTER_OPTIONS: { key: OrderStatus | 'all'; label: string }[] = [
+    { key: 'all', label: t('orders.all') },
+    { key: 'pending', label: t('orders.pending') },
+    { key: 'in_progress', label: t('orders.production') },
+    { key: 'done', label: t('orders.done') },
+    { key: 'delivered', label: t('orders.delivered') },
+  ];
+
+  const formatDate = (dateStr: string) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.getTime() === today.getTime()) return t('common.today');
+    if (date.getTime() === tomorrow.getTime()) return t('common.tomorrow');
+    return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
+  };
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
@@ -104,10 +106,10 @@ export const OrdersScreen: React.FC = () => {
   })();
 
   const handleDelete = (order: Order) => {
-    Alert.alert('Excluir encomenda', `Excluir "${order.recipeName}" de ${order.clientName}?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('orders.deleteTitle'), t('orders.deleteMessage', { recipe: order.recipeName, client: order.clientName }), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Excluir',
+        text: t('common.delete'),
         style: 'destructive',
         onPress: async () => {
           await orderStorage.delete(order.id);
@@ -124,22 +126,22 @@ export const OrdersScreen: React.FC = () => {
         quantitySold: order.quantity,
         salePrice: order.unitPrice,
         saleDate: new Date().toISOString().split('T')[0],
-        notes: `Encomenda de ${order.clientName}`,
+        notes: t('orders.orderFrom', { name: order.clientName }),
       });
-      showToast('Venda registrada!', 'success');
+      showToast(t('orders.saleRegistered'), 'success');
     } catch {
-      showToast('Encomenda entregue, mas erro ao registrar venda', 'warning');
+      showToast(t('orders.saleError'), 'warning');
     }
   };
 
   const changeStatus = async (order: Order, newStatus: OrderStatus) => {
     if (newStatus === 'delivered') {
       Alert.alert(
-        'Pagamento',
-        `A encomenda de ${order.clientName} foi paga?`,
+        t('orders.paymentTitle'),
+        t('orders.paymentMessage', { client: order.clientName }),
         [
           {
-            text: 'Ainda não',
+            text: t('orders.notYet'),
             style: 'cancel',
             onPress: async () => {
               await orderStorage.update(order.id, { status: 'delivered', paid: false });
@@ -147,7 +149,7 @@ export const OrdersScreen: React.FC = () => {
             },
           },
           {
-            text: 'Sim, foi pago',
+            text: t('orders.yesPaid'),
             onPress: async () => {
               await orderStorage.update(order.id, { status: 'delivered', paid: true });
               await registerSale(order);
@@ -203,7 +205,7 @@ export const OrdersScreen: React.FC = () => {
                     color={item.paid ? '#fff' : '#fff'}
                   />
                   <Text style={styles.paidBadgeText}>
-                    {item.paid ? 'Pago' : 'Não pago'}
+                    {item.paid ? t('orders.paid') : t('orders.notPaid')}
                   </Text>
                 </TouchableOpacity>
               )}
@@ -214,10 +216,10 @@ export const OrdersScreen: React.FC = () => {
             <View style={styles.paidInfoRow}>
               <Ionicons name="wallet-outline" size={13} color={item.paidAmount >= item.totalPrice ? colors.success : colors.warning} />
               <Text style={[styles.paidInfoText, { color: item.paidAmount >= item.totalPrice ? colors.success : colors.warning }]}>
-                Pago: {formatCurrency(item.paidAmount)}
+                {t('orders.paidAmount', { amount: formatCurrency(item.paidAmount) })}
                 {item.paidAmount < item.totalPrice
-                  ? ` • Falta: ${formatCurrency(item.totalPrice - item.paidAmount)}`
-                  : ' • Quitado'}
+                  ? ` • ${t('orders.remaining', { amount: formatCurrency(item.totalPrice - item.paidAmount) })}`
+                  : ` • ${t('orders.settled')}`}
               </Text>
             </View>
           )}
@@ -257,7 +259,7 @@ export const OrdersScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Encomendas" subtitle="Toque em + para adicionar. Segure para excluir." showBack onBack={() => navigation.goBack()} />
+        <Header title={t('orders.title')} subtitle={t('orders.subtitle')} showBack onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -268,8 +270,8 @@ export const OrdersScreen: React.FC = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Encomendas"
-        subtitle="Toque em + para adicionar. Segure para excluir."
+        title={t('orders.title')}
+        subtitle={t('orders.subtitle')}
         showBack
         onBack={() => navigation.goBack()}
         rightAction={
@@ -305,12 +307,12 @@ export const OrdersScreen: React.FC = () => {
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="calendar-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.emptyText}>Nenhuma encomenda encontrada</Text>
+            <Text style={styles.emptyText}>{t('orders.emptyText')}</Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('CreateOrder')}
               style={styles.emptyCta}
             >
-              <Text style={styles.emptyCtaText}>Criar encomenda</Text>
+              <Text style={styles.emptyCtaText}>{t('orders.createOrder')}</Text>
             </TouchableOpacity>
           </View>
         }

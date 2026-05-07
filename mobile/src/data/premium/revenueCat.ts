@@ -203,6 +203,30 @@ export async function getActiveEntitlements(): Promise<string[]> {
 /**
  * Returns the expiration date of the first active entitlement, or null.
  */
+/**
+ * Sends location attributes (state, city, country) to RevenueCat
+ * using IP-based geolocation (no permissions required).
+ */
+export async function setRevenueCatLocationAttributes(): Promise<void> {
+  const Purchases = getPurchases();
+  if (!Purchases || !configured) return;
+  try {
+    const response = await fetch('https://ipapi.co/json/');
+    if (!response.ok) return;
+    const data = await response.json();
+    const attributes: Record<string, string> = {};
+    if (data.region) attributes['$state'] = data.region;
+    if (data.city) attributes['$city'] = data.city;
+    if (data.country_name) attributes['$countryCode'] = data.country_code;
+    if (data.region_code) attributes.state_code = data.region_code;
+    if (Object.keys(attributes).length > 0) {
+      await Purchases.setAttributes(attributes);
+    }
+  } catch (error) {
+    console.warn('[RevenueCat] setLocationAttributes failed:', error);
+  }
+}
+
 export async function getActiveEntitlementExpiration(): Promise<string | null> {
   const Purchases = getPurchases();
   if (!Purchases || !configured) return null;

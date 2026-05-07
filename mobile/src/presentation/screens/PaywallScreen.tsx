@@ -27,68 +27,32 @@ import {
   isRevenueCatConfigured,
 } from '../../data/premium/revenueCat';
 import { authApi } from '../../data/api/authApi';
+import { useTranslation } from 'react-i18next';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
 type RouteType = RouteProp<RootStackParamList, 'Paywall'>;
 
-const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; description: string }> = [
-  {
-    icon: 'infinite-outline',
-    title: 'Receitas ilimitadas',
-    description: 'Chega de limite. Cadastre quantas receitas quiser.',
-  },
-  {
-    icon: 'resize-outline',
-    title: 'Calculadora de escala',
-    description: 'Ajuste receitas para qualquer quantidade automaticamente.',
-  },
-  {
-    icon: 'copy-outline',
-    title: 'Duplicar receitas',
-    description: 'Copie receitas para criar variações em segundos.',
-  },
-  {
-    icon: 'calendar-outline',
-    title: 'Agenda de encomendas',
-    description: 'Organize os pedidos, status e lembretes de entrega.',
-  },
-  {
-    icon: 'people-outline',
-    title: 'Gestão de clientes',
-    description: 'Histórico, aniversários e WhatsApp direto.',
-  },
-  {
-    icon: 'calculator-outline',
-    title: 'Cálculo profissional',
-    description: 'Inclua mão de obra e custos fixos no preço real.',
-  },
-  {
-    icon: 'stats-chart-outline',
-    title: 'Relatórios completos',
-    description: 'Gráficos de faturamento e receitas mais lucrativas.',
-  },
-  {
-    icon: 'pricetag-outline',
-    title: 'Preços por temporada',
-    description: 'Ajuste automático no Natal, Páscoa e datas especiais.',
-  },
-  {
-    icon: 'time-outline',
-    title: 'Histórico de preços',
-    description: 'Acompanhe a evolução do custo dos ingredientes.',
-  },
-  {
-    icon: 'document-text-outline',
-    title: 'PDF personalizado',
-    description: 'Sua logo, suas cores, sem marca do DocePreço.',
-  },
-];
+// BENEFITS moved inside component for i18n
 
 export const PaywallScreen: React.FC = () => {
+  const { t } = useTranslation();
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteType>();
   const { showToast } = useToast();
   const { refresh } = usePremium();
+
+  const BENEFITS: Array<{ icon: keyof typeof Ionicons.glyphMap; title: string; description: string }> = [
+    { icon: 'infinite-outline', title: t('paywall.unlimitedRecipes'), description: t('paywall.unlimitedRecipesDesc') },
+    { icon: 'resize-outline', title: t('paywall.scaleCalc'), description: t('paywall.scaleCalcDesc') },
+    { icon: 'copy-outline', title: t('paywall.duplicateRecipes'), description: t('paywall.duplicateRecipesDesc') },
+    { icon: 'calendar-outline', title: t('paywall.orderAgenda'), description: t('paywall.orderAgendaDesc') },
+    { icon: 'people-outline', title: t('paywall.clientManagement'), description: t('paywall.clientManagementDesc') },
+    { icon: 'calculator-outline', title: t('paywall.proCalc'), description: t('paywall.proCalcDesc') },
+    { icon: 'stats-chart-outline', title: t('paywall.fullReports'), description: t('paywall.fullReportsDesc') },
+    { icon: 'pricetag-outline', title: t('paywall.seasonalPricing'), description: t('paywall.seasonalPricingDesc') },
+    { icon: 'time-outline', title: t('paywall.priceHistoryBenefit'), description: t('paywall.priceHistoryBenefitDesc') },
+    { icon: 'document-text-outline', title: t('paywall.customPdf'), description: t('paywall.customPdfDesc') },
+  ];
 
   const [packages, setPackages] = useState<PremiumPackage[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,17 +81,17 @@ export const PaywallScreen: React.FC = () => {
 
   const headline = (() => {
     if (trigger?.kind === 'limit') {
-      if (trigger.feature === 'ingredients') return 'Você atingiu o limite de ingredientes';
-      if (trigger.feature === 'recipes') return 'Você atingiu o limite de receitas';
+      if (trigger.feature === 'ingredients') return t('paywall.limitIngredients');
+      if (trigger.feature === 'recipes') return t('paywall.limitRecipes');
     }
-    return 'Desbloqueie todo o DocePreço';
+    return t('paywall.unlockAll');
   })();
 
   const subheadline = (() => {
     if (trigger?.kind === 'limit') {
-      return 'Vire Premium e adicione quantos quiser, sem limite nenhum.';
+      return t('paywall.limitSubheadline');
     }
-    return 'Ferramentas pra levar sua confeitaria pro próximo nível.';
+    return t('paywall.defaultSubheadline');
   })();
 
   const syncPremiumWithBackend = async () => {
@@ -149,16 +113,16 @@ export const PaywallScreen: React.FC = () => {
     try {
       const result = await purchasePackage(pkg);
       if (result === 'success') {
-        showToast('Bem-vindo ao Premium! 🎉', 'success');
+        showToast(t('paywall.welcomePremium') + ' 🎉', 'success');
         await syncPremiumWithBackend();
         navigation.goBack();
       } else if (result === 'cancelled') {
         // silent
       } else {
-        showToast('Não foi possível concluir a compra', 'error');
+        showToast(t('paywall.purchaseError'), 'error');
       }
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Erro na compra';
+      const msg = error instanceof Error ? error.message : t('paywall.purchaseErrorGeneric');
       showToast(msg, 'error');
     } finally {
       setPurchasing(null);
@@ -170,14 +134,14 @@ export const PaywallScreen: React.FC = () => {
     try {
       const active = await restorePurchases();
       if (active) {
-        showToast('Compras restauradas! 🎉', 'success');
+        showToast(t('paywall.restored') + ' 🎉', 'success');
         await syncPremiumWithBackend();
         navigation.goBack();
       } else {
-        showToast('Nenhuma compra ativa encontrada', 'info');
+        showToast(t('paywall.noActiveFound'), 'info');
       }
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Erro ao restaurar';
+      const msg = error instanceof Error ? error.message : t('paywall.restoreError');
       showToast(msg, 'error');
     } finally {
       setRestoring(false);
@@ -194,7 +158,7 @@ export const PaywallScreen: React.FC = () => {
           {restoring ? (
             <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Text style={styles.restoreText}>Restaurar</Text>
+            <Text style={styles.restoreText}>{t('paywall.restore')}</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -231,8 +195,8 @@ export const PaywallScreen: React.FC = () => {
             <Ionicons name="information-circle-outline" size={24} color={colors.warning} />
             <Text style={styles.unavailableText}>
               {!configured
-                ? 'Assinatura ainda não configurada. Entre em contato com o suporte.'
-                : 'Não conseguimos carregar os planos. Verifique sua conexão e tente novamente.'}
+                ? t('paywall.notConfigured')
+                : t('paywall.loadError')}
             </Text>
           </View>
         ) : (
@@ -276,19 +240,18 @@ export const PaywallScreen: React.FC = () => {
           ) : (
             <>
               <Ionicons name="lock-open" size={18} color="#fff" />
-              <Text style={styles.ctaText}>Assinar Premium</Text>
+              <Text style={styles.ctaText}>{t('paywall.subscribe')}</Text>
             </>
           )}
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          A assinatura é renovada automaticamente até você cancelar. Você pode cancelar a qualquer momento nas configurações da{' '}
-          {Platform.OS === 'android' ? 'Google Play' : 'App Store'}.
+          {t('paywall.disclaimer', { store: Platform.OS === 'android' ? 'Google Play' : 'App Store' })}
         </Text>
 
         <View style={styles.linksRow}>
           <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}>
-            <Text style={styles.link}>Privacidade</Text>
+            <Text style={styles.link}>{t('paywall.privacy')}</Text>
           </TouchableOpacity>
           <Text style={styles.linkSeparator}> · </Text>
           <TouchableOpacity
@@ -300,7 +263,7 @@ export const PaywallScreen: React.FC = () => {
               )
             }
           >
-            <Text style={styles.link}>Termos</Text>
+            <Text style={styles.link}>{t('paywall.terms')}</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>

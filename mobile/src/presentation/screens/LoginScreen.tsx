@@ -14,9 +14,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { authApi } from '../../data/api/authApi';
-import { identifyRevenueCatUser } from '../../data/premium/revenueCat';
+import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { colors } from '../theme/colors';
 import { Input } from '../components/Input';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   onLogin: () => void;
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToForgotPassword, onDemoLogin }) => {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -47,11 +49,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   const validate = () => {
     const e: Record<string, string> = {};
     if (!email.trim()) {
-      e.email = 'Email obrigatório';
+      e.email = t('login.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      e.email = 'Email inválido';
+      e.email = t('login.emailInvalid');
     }
-    if (!password) e.password = 'Senha obrigatória';
+    if (!password) e.password = t('login.passwordRequired');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -62,9 +64,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
     try {
       const user = await authApi.login(email.trim(), password);
       await identifyRevenueCatUser(user.id);
+      void setRevenueCatLocationAttributes();
       onLogin();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Erro ao entrar';
+      const msg = error instanceof Error ? error.message : t('login.loginError');
       setErrors({ general: msg });
     } finally {
       setLoading(false);
@@ -92,13 +95,13 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
                 />
               </View>
               <Text style={styles.brand}>Doce Preço</Text>
-              <Text style={styles.tagline}>Precifique seus doces com inteligência</Text>
+              <Text style={styles.tagline}>{t('login.tagline')}</Text>
             </Animated.View>
           </View>
 
           {/* Card sobreposto */}
           <Animated.View style={[styles.card, { opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
-            <Text style={styles.cardTitle}>Entrar na sua conta</Text>
+            <Text style={styles.cardTitle}>{t('login.title')}</Text>
 
             {errors.general && (
               <View style={styles.errorBanner}>
@@ -108,20 +111,20 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
             )}
 
             <Input
-              label="Email"
-              placeholder="seu@email.com"
+              label={t('login.email')}
+              placeholder={t('login.emailPlaceholder')}
               value={email}
-              onChangeText={(t) => { setEmail(t); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
+              onChangeText={(v) => { setEmail(v); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
               keyboardType="email-address"
               autoCapitalize="none"
               error={errors.email}
             />
 
             <Input
-              label="Senha"
-              placeholder="Digite sua senha"
+              label={t('login.password')}
+              placeholder={t('login.passwordPlaceholder')}
               value={password}
-              onChangeText={(t) => { setPassword(t); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
+              onChangeText={(v) => { setPassword(v); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
               secureTextEntry={!showPassword}
               error={errors.password}
               rightElement={
@@ -133,7 +136,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 
             {onGoToForgotPassword && (
               <TouchableOpacity onPress={onGoToForgotPassword} style={styles.forgotRow}>
-                <Text style={styles.forgotText}>Esqueceu a senha?</Text>
+                <Text style={styles.forgotText}>{t('login.forgotPassword')}</Text>
               </TouchableOpacity>
             )}
 
@@ -143,14 +146,14 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               disabled={loading}
               activeOpacity={0.85}
             >
-              <Text style={styles.loginBtnText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
+              <Text style={styles.loginBtnText}>{loading ? t('login.loggingIn') : t('login.loginButton')}</Text>
               {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </TouchableOpacity>
 
             <View style={styles.registerRow}>
-              <Text style={styles.registerLabel}>Não tem conta?</Text>
+              <Text style={styles.registerLabel}>{t('login.noAccount')}</Text>
               <TouchableOpacity onPress={onGoToRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.registerLink}>Criar conta</Text>
+                <Text style={styles.registerLink}>{t('login.createAccount')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -164,7 +167,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 
                 <TouchableOpacity onPress={onDemoLogin} style={styles.demoBtn} activeOpacity={0.7}>
                   <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
-                  <Text style={styles.demoBtnText}>Experimentar sem conta</Text>
+                  <Text style={styles.demoBtnText}>{t('login.tryWithoutAccount')}</Text>
                 </TouchableOpacity>
               </>
             )}

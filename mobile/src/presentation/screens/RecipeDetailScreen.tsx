@@ -31,6 +31,7 @@ import { pdfSettingsStorage, PdfSettings } from '../../data/storage/pdfSettingsS
 import { seasonApi, Season } from '../../data/api/seasonApi';
 import { usePremium } from '../context/PremiumContext';
 import { usePaywall } from '../premium/usePaywall';
+import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -47,6 +48,7 @@ const formatQuantity = (value: number) => {
 
 export const RecipeDetailScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const { t } = useTranslation();
   const route = useRoute<RouteType>();
   const { recipeId } = route.params;
 
@@ -77,7 +79,7 @@ export const RecipeDetailScreen: React.FC = () => {
       setRecipe(data);
       await handleCalculate(recipeId);
     } catch (error) {
-      Alert.alert('Erro', 'Nao foi possivel carregar a receita');
+      Alert.alert(t('common.error'), t('recipeDetail.loadError'));
     } finally {
       setLoading(false);
     }
@@ -101,7 +103,7 @@ export const RecipeDetailScreen: React.FC = () => {
     try {
       await shareRecipeQuote({ recipe, calculation, companyName }, pdfSettings);
     } catch (error) {
-      const msg = error instanceof Error ? error.message : 'Erro ao gerar orçamento';
+      const msg = error instanceof Error ? error.message : t('recipeDetail.shareError');
       showToast(msg, 'error');
     } finally {
       setSharing(false);
@@ -116,7 +118,7 @@ export const RecipeDetailScreen: React.FC = () => {
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Detalhes da Receita" showBack onBack={() => navigation.goBack()} />
+        <Header title={t('recipeDetail.title')} showBack onBack={() => navigation.goBack()} />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
@@ -159,7 +161,7 @@ export const RecipeDetailScreen: React.FC = () => {
         <View style={styles.infoCard}>
           <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
           <Text style={styles.infoText}>
-            O preco de venda e calculado com base nos ingredientes, custos adicionais e margem de lucro que voce definiu.
+            {t('recipeDetail.infoText')}
           </Text>
         </View>
 
@@ -167,26 +169,26 @@ export const RecipeDetailScreen: React.FC = () => {
           <View style={styles.metaItem}>
             <Ionicons name="layers-outline" size={20} color={colors.primary} />
             <Text style={styles.metaValue}>{recipe.yield}</Text>
-            <Text style={styles.metaLabel}>unidades</Text>
+            <Text style={styles.metaLabel}>{t('common.units')}</Text>
           </View>
           <View style={styles.metaDivider} />
           <View style={styles.metaItem}>
             <Ionicons name="trending-up-outline" size={20} color={colors.success} />
             <Text style={styles.metaValue}>{recipe.profitMargin}%</Text>
-            <Text style={styles.metaLabel}>lucro</Text>
+            <Text style={styles.metaLabel}>{t('recipeDetail.profit')}</Text>
           </View>
           <View style={styles.metaDivider} />
           <View style={styles.metaItem}>
             <Ionicons name="basket-outline" size={20} color={colors.secondary} />
             <Text style={styles.metaValue}>{recipe.ingredients.length}</Text>
-            <Text style={styles.metaLabel}>ingredientes</Text>
+            <Text style={styles.metaLabel}>{t('createRecipe.ingredientsSection')}</Text>
           </View>
         </View>
 
         {calculation && (
           <Card style={styles.resultCard}>
             <View style={styles.resultHeader}>
-              <Text style={styles.resultTitle}>Resultado do Calculo</Text>
+              <Text style={styles.resultTitle}>{t('recipeDetail.calculationResult')}</Text>
               <TouchableOpacity onPress={() => handleCalculate()} disabled={calculating}>
                 <Ionicons
                   name="refresh-outline"
@@ -198,17 +200,17 @@ export const RecipeDetailScreen: React.FC = () => {
 
             <View style={styles.mainResult}>
               <View style={styles.mainResultItem}>
-                <Text style={styles.mainResultLabel}>Preco Sugerido</Text>
+                <Text style={styles.mainResultLabel}>{t('recipeDetail.suggestedPrice')}</Text>
                 <Text style={styles.mainResultValue}>{formatCurrency(calculation.suggestedPrice)}</Text>
-                <Text style={styles.mainResultSub}>por unidade</Text>
+                <Text style={styles.mainResultSub}>{t('common.perUnit')}</Text>
               </View>
               <View style={styles.resultDivider} />
               <View style={styles.mainResultItem}>
-                <Text style={styles.mainResultLabel}>Lucro Estimado</Text>
+                <Text style={styles.mainResultLabel}>{t('recipeDetail.estimatedProfit')}</Text>
                 <Text style={[styles.mainResultValue, { color: colors.success }]}>
                   {formatCurrency(calculation.estimatedProfit)}
                 </Text>
-                <Text style={styles.mainResultSub}>total</Text>
+                <Text style={styles.mainResultSub}>{t('common.total')}</Text>
               </View>
             </View>
 
@@ -217,10 +219,10 @@ export const RecipeDetailScreen: React.FC = () => {
                 <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
                 <View style={{ flex: 1 }}>
                   <Text style={styles.seasonLabel}>
-                    🎉 {activeSeason.name} ativa
+                    🎉 {t('recipeDetail.seasonActive', { name: activeSeason.name })}
                   </Text>
                   <Text style={styles.seasonPrice}>
-                    Preço na temporada:{' '}
+                    {t('recipeDetail.seasonPrice')}{' '}
                     <Text style={styles.seasonPriceValue}>
                       {formatCurrency(calculation.suggestedPrice * activeSeason.multiplier)}
                     </Text>
@@ -232,20 +234,20 @@ export const RecipeDetailScreen: React.FC = () => {
 
             <View style={styles.breakdown}>
               <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Custo total</Text>
+                <Text style={styles.breakdownLabel}>{t('recipeDetail.totalCost')}</Text>
                 <Text style={styles.breakdownValue}>{formatCurrency(calculation.totalCost)}</Text>
               </View>
               <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Custo por unidade</Text>
+                <Text style={styles.breakdownLabel}>{t('recipeDetail.costPerUnit')}</Text>
                 <Text style={styles.breakdownValue}>{formatCurrency(calculation.costPerUnit)}</Text>
               </View>
               <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>Custo ingredientes</Text>
+                <Text style={styles.breakdownLabel}>{t('recipeDetail.ingredientsCost')}</Text>
                 <Text style={styles.breakdownValue}>{formatCurrency(calculation.ingredientsCost)}</Text>
               </View>
               {calculation.additionalCostTotal > 0 && (
                 <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>Custos adicionais</Text>
+                  <Text style={styles.breakdownLabel}>{t('recipeDetail.additionalCosts')}</Text>
                   <Text style={styles.breakdownValue}>{formatCurrency(calculation.additionalCostTotal)}</Text>
                 </View>
               )}
@@ -262,7 +264,7 @@ export const RecipeDetailScreen: React.FC = () => {
               ) : (
                 <>
                   <Ionicons name="share-outline" size={18} color="#fff" />
-                  <Text style={styles.shareButtonText}>Compartilhar Orçamento</Text>
+                  <Text style={styles.shareButtonText}>{t('recipeDetail.shareQuote')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -271,7 +273,7 @@ export const RecipeDetailScreen: React.FC = () => {
 
         {recipe.ingredients.length > 0 && (
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Ingredientes</Text>
+            <Text style={styles.sectionTitle}>{t('createRecipe.ingredientsSection')}</Text>
             {recipe.ingredients.map((ing, idx) => (
               <View key={idx} style={styles.listRow}>
                 <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 8 }} />
@@ -298,8 +300,8 @@ export const RecipeDetailScreen: React.FC = () => {
                 <Ionicons name="resize-outline" size={20} color={colors.primary} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.scaleTitle}>Calculadora de Escala</Text>
-                <Text style={styles.scaleSubtitle}>Ajuste a receita para qualquer quantidade</Text>
+                <Text style={styles.scaleTitle}>{t('recipeDetail.scaleCalculator')}</Text>
+                <Text style={styles.scaleSubtitle}>{t('recipeDetail.scaleSubtitle')}</Text>
               </View>
               <Ionicons
                 name={scaleOpen ? 'chevron-up' : 'chevron-down'}
@@ -311,10 +313,10 @@ export const RecipeDetailScreen: React.FC = () => {
             {scaleOpen && (
               <View style={styles.scaleBody}>
                 <Text style={styles.scaleLabel}>
-                  Receita original: <Text style={styles.scaleBold}>{recipe.yield} unidades</Text>
+                  {t('recipeDetail.originalRecipe', { yield: recipe.yield })}
                 </Text>
                 <View style={styles.scaleInputRow}>
-                  <Text style={styles.scaleInputLabel}>Quero fazer</Text>
+                  <Text style={styles.scaleInputLabel}>{t('recipeDetail.wantToMake')}</Text>
                   <TextInput
                     style={styles.scaleInput}
                     value={scaleInput}
@@ -323,7 +325,7 @@ export const RecipeDetailScreen: React.FC = () => {
                     placeholder={String(recipe.yield)}
                     placeholderTextColor={colors.textMuted}
                   />
-                  <Text style={styles.scaleInputLabel}>unidades</Text>
+                  <Text style={styles.scaleInputLabel}>{t('common.units')}</Text>
                 </View>
 
                 {scaleFactor !== null && (
@@ -337,7 +339,7 @@ export const RecipeDetailScreen: React.FC = () => {
 
                     {/* Ingredientes escalados */}
                     <View style={styles.scaleIngredients}>
-                      <Text style={styles.scaleIngredientsTitle}>Ingredientes necessários</Text>
+                      <Text style={styles.scaleIngredientsTitle}>{t('recipeDetail.neededIngredients')}</Text>
                       {recipe.ingredients.map((ing, idx) => {
                         const scaled = ing.quantityUsed * scaleFactor;
                         return (
@@ -356,27 +358,27 @@ export const RecipeDetailScreen: React.FC = () => {
                     {/* Resumo financeiro escalado */}
                     <View style={styles.scaleSummary}>
                       <View style={styles.scaleSummaryRow}>
-                        <Text style={styles.scaleSummaryLabel}>Custo total</Text>
+                        <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.totalCost')}</Text>
                         <Text style={styles.scaleSummaryValue}>
                           {formatCurrency(calculation.totalCost * scaleFactor)}
                         </Text>
                       </View>
                       {calculation.additionalCostTotal > 0 && (
                         <View style={styles.scaleSummaryRow}>
-                          <Text style={styles.scaleSummaryLabel}>Custos adicionais</Text>
+                          <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.additionalCosts')}</Text>
                           <Text style={styles.scaleSummaryValue}>
                             {formatCurrency(calculation.additionalCostTotal * scaleFactor)}
                           </Text>
                         </View>
                       )}
                       <View style={styles.scaleSummaryRow}>
-                        <Text style={styles.scaleSummaryLabel}>Preço de venda total</Text>
+                        <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.totalSalePrice')}</Text>
                         <Text style={[styles.scaleSummaryValue, { color: colors.primary, fontWeight: '800' }]}>
                           {formatCurrency(calculation.suggestedPrice * scaleQty)}
                         </Text>
                       </View>
                       <View style={styles.scaleSummaryRow}>
-                        <Text style={styles.scaleSummaryLabel}>Lucro estimado</Text>
+                        <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.estimatedProfit')}</Text>
                         <Text style={[styles.scaleSummaryValue, { color: colors.success }]}>
                           {formatCurrency((calculation.suggestedPrice * scaleQty) - (calculation.totalCost * scaleFactor))}
                         </Text>
@@ -386,7 +388,7 @@ export const RecipeDetailScreen: React.FC = () => {
                 )}
 
                 {scaleInput !== '' && !scaleValid && (
-                  <Text style={styles.scaleError}>Digite um número válido maior que zero</Text>
+                  <Text style={styles.scaleError}>{t('recipeDetail.invalidNumber')}</Text>
                 )}
               </View>
             )}
@@ -395,7 +397,7 @@ export const RecipeDetailScreen: React.FC = () => {
 
         {calculation && (
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Comparativo de Margens</Text>
+            <Text style={styles.sectionTitle}>{t('recipeDetail.marginComparison')}</Text>
             <View style={styles.tableHeader}>
               <Text style={[styles.tableCell, styles.tableHeaderText, { flex: 1.2 }]}>Margem</Text>
               <Text style={[styles.tableCell, styles.tableHeaderText]}>Preço</Text>
@@ -437,7 +439,7 @@ export const RecipeDetailScreen: React.FC = () => {
 
         {recipe.additionalCosts.length > 0 && (
           <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>Custos Adicionais</Text>
+            <Text style={styles.sectionTitle}>{t('createRecipe.additionalCosts')}</Text>
             {recipe.additionalCosts.map((cost, idx) => {
               const isLabor = cost.name.includes('Mão de obra');
               return (

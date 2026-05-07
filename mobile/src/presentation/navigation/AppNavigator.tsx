@@ -38,7 +38,7 @@ import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
 import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
-import { identifyRevenueCatUser, logoutRevenueCatUser } from '../../data/premium/revenueCat';
+import { identifyRevenueCatUser, logoutRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { registerPushToken } from '../utils/notifications';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -101,6 +101,7 @@ export function AppNavigator() {
           setDemoModeState(isDemo);
           if (!isDemo && user?.id) {
             void identifyRevenueCatUser(user.id);
+            void setRevenueCatLocationAttributes();
           }
           setAuthState('app');
         } else {
@@ -133,10 +134,12 @@ export function AppNavigator() {
   const handleSetCompanyLogo = async (logo: string | null) => {
     if (logo) {
       await companyLogoStorage.save(logo);
+      const savedPath = await companyLogoStorage.get();
+      setCompanyLogoState(savedPath ? `${savedPath}?t=${Date.now()}` : null);
     } else {
       await companyLogoStorage.remove();
+      setCompanyLogoState(null);
     }
-    setCompanyLogoState(logo);
   };
 
   const logout = async () => {

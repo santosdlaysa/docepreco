@@ -16,6 +16,7 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
+import { useTranslation } from 'react-i18next';
 
 type Step = 'email' | 'code' | 'password';
 
@@ -24,6 +25,7 @@ interface Props {
 }
 
 export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
   const [code, setCode] = useState(['', '', '', '', '', '']);
@@ -39,20 +41,20 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
   const handleSendCode = async () => {
     setError('');
     if (!email.trim()) {
-      setError('Email obrigatório');
+      setError(t('forgotPassword.emailRequired'));
       return;
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setError('Email inválido');
+      setError(t('forgotPassword.emailInvalid'));
       return;
     }
     setLoading(true);
     try {
       await authApi.forgotPassword(email.trim());
       setStep('code');
-      setSuccess('Código enviado! Verifique seu email.');
+      setSuccess(t('forgotPassword.codeSent'));
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Erro ao enviar código';
+      const msg = err instanceof Error ? err.message : t('forgotPassword.sendError');
       setError(msg);
     } finally {
       setLoading(false);
@@ -91,7 +93,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
     setSuccess('');
     const fullCode = code.join('');
     if (fullCode.length !== 6) {
-      setError('Digite o código de 6 dígitos');
+      setError(t('forgotPassword.codeRequired'));
       return;
     }
     setStep('password');
@@ -101,24 +103,24 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
     setError('');
     setSuccess('');
     if (!password) {
-      setError('Nova senha obrigatória');
+      setError(t('forgotPassword.passwordRequired'));
       return;
     }
     if (password.length < 6) {
-      setError('Senha deve ter pelo menos 6 caracteres');
+      setError(t('forgotPassword.passwordMin'));
       return;
     }
     if (password !== confirmPassword) {
-      setError('As senhas não coincidem');
+      setError(t('forgotPassword.passwordMismatch'));
       return;
     }
     setLoading(true);
     try {
       await authApi.resetPassword(email.trim(), code.join(''), password);
-      setSuccess('Senha redefinida com sucesso!');
+      setSuccess(t('forgotPassword.resetSuccess'));
       setTimeout(() => onBack(), 2000);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Erro ao redefinir senha';
+      const msg = err instanceof Error ? err.message : t('forgotPassword.resetError');
       setError(msg);
     } finally {
       setLoading(false);
@@ -128,10 +130,10 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
   const renderEmailStep = () => (
     <>
       <Text style={styles.description}>
-        Digite seu email cadastrado. Enviaremos um código de recuperação.
+        {t('forgotPassword.emailDescription')}
       </Text>
       <Input
-        label="Email"
+        label={t('common.email')}
         placeholder="seu@email.com"
         value={email}
         onChangeText={setEmail}
@@ -139,7 +141,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
         autoCapitalize="none"
       />
       <Button
-        title="Enviar código"
+        title={t('forgotPassword.sendCode')}
         onPress={handleSendCode}
         loading={loading}
         size="lg"
@@ -151,7 +153,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
   const renderCodeStep = () => (
     <>
       <Text style={styles.description}>
-        Digite o código de 6 dígitos enviado para{' '}
+        {t('forgotPassword.codeDescription')}{' '}
         <Text style={styles.emailHighlight}>{email}</Text>
       </Text>
       <View style={styles.codeContainer}>
@@ -170,14 +172,14 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
         ))}
       </View>
       <Button
-        title="Verificar código"
+        title={t('forgotPassword.verifyButton')}
         onPress={handleVerifyCode}
         loading={loading}
         size="lg"
         style={styles.btn}
       />
       <TouchableOpacity onPress={() => { setCode(['', '', '', '', '', '']); handleSendCode(); }} style={styles.resendLink}>
-        <Text style={styles.resendText}>Reenviar código</Text>
+        <Text style={styles.resendText}>{t('forgotPassword.resendCode')}</Text>
       </TouchableOpacity>
     </>
   );
@@ -185,11 +187,11 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
   const renderPasswordStep = () => (
     <>
       <Text style={styles.description}>
-        Defina sua nova senha.
+        {t('forgotPassword.passwordDescription')}
       </Text>
       <Input
-        label="Nova senha"
-        placeholder="Mínimo 6 caracteres"
+        label={t('forgotPassword.newPasswordLabel')}
+        placeholder={t('forgotPassword.newPasswordPlaceholder')}
         value={password}
         onChangeText={setPassword}
         secureTextEntry={!showPassword}
@@ -200,14 +202,14 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
         }
       />
       <Input
-        label="Confirmar nova senha"
-        placeholder="Repita a senha"
+        label={t('forgotPassword.confirmPassword')}
+        placeholder={t('forgotPassword.confirmPlaceholder')}
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         secureTextEntry={!showPassword}
       />
       <Button
-        title="Redefinir senha"
+        title={t('forgotPassword.resetButton')}
         onPress={handleResetPassword}
         loading={loading}
         size="lg"
@@ -217,9 +219,9 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
   );
 
   const stepTitles: Record<Step, string> = {
-    email: 'Recuperar senha',
-    code: 'Verificar código',
-    password: 'Nova senha',
+    email: t('forgotPassword.title'),
+    code: t('forgotPassword.verifyCode'),
+    password: t('forgotPassword.newPassword'),
   };
 
   return (
@@ -256,7 +258,7 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
 
             <TouchableOpacity onPress={onBack} style={styles.backLink}>
               <Ionicons name="arrow-back" size={16} color={colors.primary} />
-              <Text style={styles.backText}>Voltar ao login</Text>
+              <Text style={styles.backText}>{t('forgotPassword.backToLogin')}</Text>
             </TouchableOpacity>
           </View>
 
