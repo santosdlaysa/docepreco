@@ -22,8 +22,7 @@ npm-debug.log*
 # Claude Code
 .claude/
 
-# Firebase credentials
-google-services.json
+# Firebase credentials (google-services.json is client config embedded in the app, safe to track)
 
 # Sentry
 sentry.properties
