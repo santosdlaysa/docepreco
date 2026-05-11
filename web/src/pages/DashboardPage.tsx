@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber } from '../lib/api';
+import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber, RecentUser } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
-  Trophy, Flame, Mail, Loader2, X, Eye,
+  Trophy, Flame, Mail, Loader2, X, Eye, UserRoundPlus,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
@@ -134,6 +134,54 @@ function TopActivityTable({ users }: { users: TopActivityUser[] }) {
               <td className="px-5 py-3 text-right text-gray-700">{u.salesMonth}</td>
               <td className="px-5 py-3 text-right text-gray-700">{u.recipeCount}</td>
               <td className="px-5 py-3 text-right text-gray-700">{u.ingredientCount}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <div className="px-5 py-2 border-t border-gray-100">
+        <p className="text-xs text-gray-400">
+          <span className="inline-block w-2 h-2 rounded-full bg-primary-500 mr-1" />Premium
+          <span className="inline-block w-2 h-2 rounded-full bg-gray-300 ml-3 mr-1" />Gratuito
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function NewRegistrationsTable({ users }: { users: RecentUser[] }) {
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+        <UserRoundPlus size={18} className="text-green-500" />
+        <div>
+          <p className="font-semibold text-gray-900">Novos cadastros</p>
+          <p className="text-xs text-gray-400 mt-0.5">Últimos usuários cadastrados</p>
+        </div>
+      </div>
+      <table className="w-full text-sm min-w-[500px]">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">#</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Email</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Data</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {users.map((u, i) => (
+            <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+              <td className="px-5 py-3"><MedalBadge rank={i + 1} /></td>
+              <td className="px-5 py-3">
+                <span className="flex items-center">
+                  <PremiumDot isPremium={u.isPremium} />
+                  <span className="font-medium text-gray-900">{u.companyName}</span>
+                </span>
+              </td>
+              <td className="px-5 py-3 text-gray-600 truncate max-w-[180px]">{u.email}</td>
+              <td className="px-5 py-3 text-right text-gray-700">{fmtDate(u.createdAt)}</td>
             </tr>
           ))}
         </tbody>
@@ -391,6 +439,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           <TopRevenueTable users={stats.topByRevenue} />
           <TopActivityTable users={stats.topByActivity} />
+          <NewRegistrationsTable users={stats.recentUsers ?? []} />
         </div>
       </div>
 

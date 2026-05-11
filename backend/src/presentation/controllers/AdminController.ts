@@ -7,13 +7,14 @@ import { sendPushNotifications } from '../../infrastructure/services/pushService
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
     try {
-      const [statsRes, topRevenueRes, topActivityRes, premiumSubsRes] = await Promise.all([
+      const [statsRes, topRevenueRes, topActivityRes, premiumSubsRes, recentUsersRes] = await Promise.all([
         pool.query(`
           SELECT
             (SELECT COUNT(*)::int FROM users)                                                        AS "totalUsers",
             (SELECT COUNT(*)::int FROM users WHERE is_premium = TRUE)                               AS "premiumUsers",
             (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '7 days')         AS "newUsersWeek",
             (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '1 day')          AS "newUsersToday",
+            (SELECT COUNT(*)::int FROM users WHERE created_at >= date_trunc('month', NOW()))     AS "newUsersMonth",
             (SELECT COUNT(*)::int FROM recipes)                                                      AS "totalRecipes",
             (SELECT COUNT(*)::int FROM ingredients)                                                  AS "totalIngredients",
             (SELECT COUNT(*)::int FROM sales)                                                        AS "totalSales",
@@ -56,6 +57,17 @@ export class AdminController {
           WHERE u.is_premium = TRUE
           ORDER BY u.premium_until ASC NULLS LAST
         `),
+        pool.query(`
+          SELECT
+            u.id,
+            u.company_name AS "companyName",
+            u.email,
+            u.is_premium   AS "isPremium",
+            u.created_at   AS "createdAt"
+          FROM users u
+          ORDER BY u.created_at DESC
+          LIMIT 10
+        `),
       ]);
 
       res.json({
@@ -65,6 +77,7 @@ export class AdminController {
           topByRevenue: topRevenueRes.rows,
           topByActivity: topActivityRes.rows,
           premiumSubscribers: premiumSubsRes.rows,
+          recentUsers: recentUsersRes.rows,
         },
       });
     } catch (error) {
