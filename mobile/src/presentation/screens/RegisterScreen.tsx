@@ -52,6 +52,12 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
       e.email = t('register.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       e.email = t('register.emailInvalid');
+    } else {
+      const domain = email.trim().split('@')[1].toLowerCase();
+      const blocked = ['exemple.com', 'example.com', 'test.com', 'teste.com', 'email.com', 'mail.com', 'temp.com', 'fake.com', 'abc.com', 'xyz.com', 'aaa.com', 'bbb.com', 'asdf.com', 'qwerty.com', 'noreply.com', 'noemail.com'];
+      if (blocked.includes(domain)) {
+        e.email = t('register.emailInvalid');
+      }
     }
     if (phone.trim()) {
       const digits = phone.replace(/\D/g, '');
