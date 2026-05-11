@@ -148,7 +148,7 @@ function TopActivityTable({ users }: { users: TopActivityUser[] }) {
   );
 }
 
-function NewRegistrationsTable({ users }: { users: RecentUser[] }) {
+function NewRegistrationsTable({ users, newToday }: { users: RecentUser[]; newToday: number }) {
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -158,7 +158,7 @@ function NewRegistrationsTable({ users }: { users: RecentUser[] }) {
         <UserRoundPlus size={18} className="text-green-500" />
         <div>
           <p className="font-semibold text-gray-900">Novos cadastros</p>
-          <p className="text-xs text-gray-400 mt-0.5">Últimos usuários cadastrados</p>
+          <p className="text-xs text-gray-400 mt-0.5">{newToday} novo{newToday !== 1 ? 's' : ''} hoje</p>
         </div>
       </div>
       <table className="w-full text-sm min-w-[500px]">
@@ -166,7 +166,6 @@ function NewRegistrationsTable({ users }: { users: RecentUser[] }) {
           <tr>
             <th className="text-left px-5 py-2.5 font-semibold text-gray-500">#</th>
             <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>
-            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Email</th>
             <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Data</th>
           </tr>
         </thead>
@@ -180,7 +179,6 @@ function NewRegistrationsTable({ users }: { users: RecentUser[] }) {
                   <span className="font-medium text-gray-900">{u.companyName}</span>
                 </span>
               </td>
-              <td className="px-5 py-3 text-gray-600 truncate max-w-[180px]">{u.email}</td>
               <td className="px-5 py-3 text-right text-gray-700">{fmtDate(u.createdAt)}</td>
             </tr>
           ))}
@@ -439,7 +437,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <TopRevenueTable users={stats.topByRevenue} />
           <TopActivityTable users={stats.topByActivity} />
-          <NewRegistrationsTable users={stats.recentUsers ?? []} />
+          <NewRegistrationsTable users={stats.recentUsers ?? []} newToday={stats.newUsersToday} />
         </div>
       </div>
 
