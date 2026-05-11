@@ -40,6 +40,8 @@ import { colors } from '../theme/colors';
 import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { identifyRevenueCatUser, logoutRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { registerPushToken } from '../utils/notifications';
+import mobileAds from 'react-native-google-mobile-ads';
+import { requestAdConsent } from '../ads';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -87,6 +89,11 @@ export function AppNavigator() {
   const [demoMode, setDemoModeState] = useState(false);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
+
+  useEffect(() => {
+    mobileAds().initialize().catch(() => {});
+    requestAdConsent();
+  }, []);
 
   useEffect(() => {
     (async () => {

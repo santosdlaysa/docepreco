@@ -32,6 +32,7 @@ import { usePremium } from '../context/PremiumContext';
 import { usePaywall } from '../premium/usePaywall';
 import { FREE_LIMITS } from '../premium/limits';
 import { useTranslation } from 'react-i18next';
+import { AdBanner } from '../ads';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -276,6 +277,7 @@ export const RecipesScreen: React.FC = () => {
                   {t('recipes.infoText')}
                 </Text>
               </View>
+              <AdBanner />
             </View>
           ) : null
         }

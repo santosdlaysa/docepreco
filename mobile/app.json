@@ -48,10 +48,17 @@
       "url": "https://u.expo.dev/2e86f353-1d41-47cc-b552-3e242b8430f4"
     },
     "plugins": [
-[
+      [
         "expo-notifications",
         {
           "color": "#E91E8C"
+        }
+      ],
+      [
+        "react-native-google-mobile-ads",
+        {
+          "androidAppId": "ca-app-pub-6632812168210069~9481268762",
+          "iosAppId": "ca-app-pub-6632812168210069~2824966319"
         }
       ]
     ]

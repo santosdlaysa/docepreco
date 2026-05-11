@@ -35,6 +35,7 @@ import { bannerStorage } from '../../data/storage/bannerStorage';
 import { generateInsights, Insight } from '../utils/generateInsights';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { useTranslation } from 'react-i18next';
+import { AdBanner, AdBannerAlways } from '../ads';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -536,6 +537,8 @@ export const HomeScreen: React.FC = () => {
           );
         })()}
 
+        <AdBanner />
+
         <Text style={styles.sectionTitle}>{t('home.quickAccess')}</Text>
 
         {quickActions.map((action) => (
@@ -598,6 +601,8 @@ export const HomeScreen: React.FC = () => {
             {t('home.tip')}
           </Text>
         </View>
+
+        <AdBannerAlways />
       </ScrollView>
 
       {/* Android goal input modal */}

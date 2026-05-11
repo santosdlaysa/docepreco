@@ -19,6 +19,8 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://docepreco.onrender.com/api",
         "EXPO_PUBLIC_REVENUECAT_IOS_KEY": "appl_nIaFhhgHuGKrJEBaufBzyIWyKPE",
+        "EXPO_PUBLIC_ADMOB_BANNER_ANDROID": "ca-app-pub-6632812168210069/2967446862",
+        "EXPO_PUBLIC_ADMOB_BANNER_IOS": "ca-app-pub-6632812168210069/2285305028"
       },
       "ios": {
         "image": "latest"

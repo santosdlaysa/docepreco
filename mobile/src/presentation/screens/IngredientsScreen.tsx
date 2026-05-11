@@ -26,6 +26,7 @@ import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
+import { AdBanner } from '../ads';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -204,11 +205,14 @@ export const IngredientsScreen: React.FC = () => {
         }
         ListHeaderComponent={
           ingredients.length > 0 ? (
-            <View style={styles.infoCard}>
-              <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-              <Text style={styles.infoText}>
-                {t('ingredients.infoText')}
-              </Text>
+            <View>
+              <View style={styles.infoCard}>
+                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+                <Text style={styles.infoText}>
+                  {t('ingredients.infoText')}
+                </Text>
+              </View>
+              <AdBanner />
             </View>
           ) : null
         }
