@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { loadSecret, clearSecret } from '../lib/api';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { loadSecret, clearSecret, api, LogEntry } from '../lib/api';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { UsersPage } from '../pages/UsersPage';
@@ -46,6 +46,10 @@ import {
   Rocket,
   Smartphone,
   Bot,
+  BellRing,
+  UserRoundPlus,
+  ShoppingCart,
+  Crown,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -84,6 +88,120 @@ const NAV: NavItem[] = [
   { id: 'logs', label: 'Logs do sistema', icon: ScrollText, section: 'Sistema' },
   { id: 'requests', label: 'Rotas HTTP', icon: Globe },
 ];
+
+function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'agora';
+  if (mins < 60) return `${mins}min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  return `${days}d`;
+}
+
+const EVENT_CONFIG: Record<string, { icon: LucideIcon; color: string; bg: string; label: string }> = {
+  new_user:    { icon: UserRoundPlus, color: 'text-green-600', bg: 'bg-green-50', label: 'Novo cadastro' },
+  sale:        { icon: ShoppingCart,  color: 'text-blue-600',  bg: 'bg-blue-50',  label: 'Nova venda' },
+  premium_on:  { icon: Crown,        color: 'text-primary-600', bg: 'bg-primary-50', label: 'Novo premium' },
+  premium_off: { icon: Crown,        color: 'text-gray-500',  bg: 'bg-gray-50',  label: 'Cancelou premium' },
+};
+
+function NotificationBell() {
+  const [open, setOpen] = useState(false);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [unread, setUnread] = useState(0);
+  const lastSeenRef = useRef<string | null>(localStorage.getItem('notif_last_seen'));
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      const data = await api.getLogs(20);
+      setLogs(data);
+      if (lastSeenRef.current) {
+        const count = data.filter(l => l.ts > lastSeenRef.current!).length;
+        setUnread(count);
+      } else {
+        setUnread(0);
+        if (data.length > 0) {
+          lastSeenRef.current = data[0].ts;
+          localStorage.setItem('notif_last_seen', data[0].ts);
+        }
+      }
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 30000);
+    return () => clearInterval(interval);
+  }, [fetchLogs]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleOpen = () => {
+    setOpen(o => !o);
+    if (!open && logs.length > 0) {
+      lastSeenRef.current = logs[0].ts;
+      localStorage.setItem('notif_last_seen', logs[0].ts);
+      setUnread(0);
+    }
+  };
+
+  return (
+    <div className="relative" ref={panelRef}>
+      <button onClick={handleOpen} className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors">
+        <BellRing size={20} className={unread > 0 ? 'text-primary-600' : 'text-gray-500'} />
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 flex items-center justify-center bg-red-500 text-white text-[10px] font-bold rounded-full">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl border border-gray-200 shadow-xl z-50 overflow-hidden animate-fade-in">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+            <p className="font-semibold text-gray-900 text-sm">Notificações</p>
+            {unread > 0 && <span className="text-xs text-primary-600 font-medium">{unread} nova{unread !== 1 ? 's' : ''}</span>}
+          </div>
+          <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+            {logs.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-8">Nenhuma notificação</p>
+            ) : (
+              logs.map((l, i) => {
+                const cfg = EVENT_CONFIG[l.type] ?? EVENT_CONFIG.new_user;
+                const Icon = cfg.icon;
+                const isNew = lastSeenRef.current ? l.ts > lastSeenRef.current : false;
+                return (
+                  <div key={`${l.ts}-${i}`} className={`px-4 py-3 flex items-start gap-3 ${isNew ? 'bg-primary-50/30' : ''}`}>
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${cfg.bg}`}>
+                      <Icon size={14} className={cfg.color} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-500">{cfg.label}</p>
+                      <p className="text-sm text-gray-900 font-medium truncate">{l.label}</p>
+                      {l.detail && <p className="text-xs text-gray-400 truncate">{l.detail}</p>}
+                    </div>
+                    <span className="text-[11px] text-gray-400 shrink-0 mt-0.5">{formatTimeAgo(l.ts)}</span>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminApp() {
   const [authed, setAuthed] = useState(!!loadSecret());
@@ -201,15 +319,20 @@ export default function AdminApp() {
           <button onClick={() => setSidebarOpen(true)} className="text-gray-600">
             <Menu size={22} />
           </button>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-1">
             <div className="w-7 h-7 rounded-md bg-primary-500 flex items-center justify-center">
               <Cake size={14} className="text-white" />
             </div>
             <p className="font-bold text-gray-900 text-sm">DocePreço</p>
           </div>
+          <NotificationBell />
         </div>
 
-        <div className="p-4 md:p-6">
+        <div className="hidden md:flex items-center justify-end px-6 pt-4">
+          <NotificationBell />
+        </div>
+
+        <div className="p-4 md:px-6 md:pb-6 md:pt-2">
           <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
