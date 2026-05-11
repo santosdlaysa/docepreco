@@ -9,3 +9,10 @@ export const BANNER_AD_UNIT_ID = __DEV__
       ios: process.env.EXPO_PUBLIC_ADMOB_BANNER_IOS ?? TEST_BANNER_IOS,
       default: process.env.EXPO_PUBLIC_ADMOB_BANNER_ANDROID ?? TEST_BANNER_ANDROID,
     });
+
+export const BANNER2_AD_UNIT_ID = __DEV__
+  ? Platform.select({ ios: TEST_BANNER_IOS, default: TEST_BANNER_ANDROID })
+  : Platform.select({
+      ios: process.env.EXPO_PUBLIC_ADMOB_BANNER2_IOS ?? TEST_BANNER_IOS,
+      default: process.env.EXPO_PUBLIC_ADMOB_BANNER2_ANDROID ?? TEST_BANNER_ANDROID,
+    });
