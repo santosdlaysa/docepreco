@@ -125,15 +125,15 @@ function TopActivityTable({ users }: { users: TopActivityUser[] }) {
           {users.map((u, i) => (
             <tr key={u.id} className="hover:bg-gray-50 transition-colors">
               <td className="px-5 py-3"><MedalBadge rank={i + 1} /></td>
-              <td className="px-5 py-3">
+              <td className="px-5 py-3 max-w-[120px]">
                 <span className="flex items-center">
                   <PremiumDot isPremium={u.isPremium} />
-                  <span className="font-medium text-gray-900">{u.companyName}</span>
+                  <span className="font-medium text-gray-900 truncate">{u.companyName}</span>
                 </span>
               </td>
-              <td className="px-5 py-3 text-right text-gray-700">{u.salesMonth}</td>
-              <td className="px-5 py-3 text-right text-gray-700">{u.recipeCount}</td>
-              <td className="px-5 py-3 text-right text-gray-700">{u.ingredientCount}</td>
+              <td className="px-5 py-3 text-right text-gray-700 whitespace-nowrap">{u.salesMonth}</td>
+              <td className="px-5 py-3 text-right text-gray-700 whitespace-nowrap">{u.recipeCount}</td>
+              <td className="px-5 py-3 text-right text-gray-700 whitespace-nowrap">{u.ingredientCount}</td>
             </tr>
           ))}
         </tbody>
@@ -436,7 +436,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Rankings</p>
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <TopRevenueTable users={stats.topByRevenue} />
           <TopActivityTable users={stats.topByActivity} />
           <NewRegistrationsTable users={stats.recentUsers ?? []} />
