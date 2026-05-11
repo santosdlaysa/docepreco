@@ -169,7 +169,7 @@ const ShopeeBannerCard: React.FC<{ product: ShopeeBanner; onPress: () => void }>
 export const HomeScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
-  const { companyName, isDemoMode: isDemo, companyLogo } = useAuth();
+  const { companyName, isDemoMode: isDemo, companyLogo, logout, goToRegister } = useAuth();
   const { isPremium } = usePremium();
   const [stats, setStats] = useState<AppStats | null>(null);
   const [goal, setGoal] = useState<RevenueGoal | null>(null);
@@ -343,8 +343,25 @@ export const HomeScreen: React.FC = () => {
 
         {isDemo && (
           <View style={styles.demoBanner}>
-            <Ionicons name="information-circle-outline" size={18} color="#6D5000" />
-            <Text style={styles.demoBannerText}>{t('home.demoMode')}</Text>
+            <View style={styles.demoBannerTop}>
+              <View style={styles.demoBannerIcon}>
+                <Ionicons name="eye-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.demoBannerTextWrap}>
+                <Text style={styles.demoBannerTitle}>{t('home.demoMode')}</Text>
+                <Text style={styles.demoBannerSub}>{t('home.demoModeSub')}</Text>
+              </View>
+            </View>
+            <View style={styles.demoBannerActions}>
+              <TouchableOpacity onPress={goToRegister} style={styles.demoBannerCta}>
+                <Ionicons name="person-add-outline" size={16} color="#fff" />
+                <Text style={styles.demoBannerCtaText}>{t('home.demoCreateAccount')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={logout} style={styles.demoBannerExit}>
+                <Ionicons name="log-out-outline" size={16} color={colors.textSecondary} />
+                <Text style={styles.demoBannerExitText}>{t('home.demoExit')}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         )}
 
@@ -670,17 +687,78 @@ const styles = StyleSheet.create({
     borderRadius: 28,
   },
   demoBanner: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  demoBannerTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFF8E1',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#FFE082',
+    gap: 12,
+    marginBottom: 14,
   },
-  demoBannerText: { ...typography.bodySmall, color: '#6D5000', fontWeight: '600', flex: 1 },
+  demoBannerIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  demoBannerTextWrap: { flex: 1 },
+  demoBannerTitle: {
+    ...typography.h4,
+    color: colors.text,
+  },
+  demoBannerSub: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
+  demoBannerActions: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  demoBannerCta: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    borderRadius: 12,
+    paddingVertical: 12,
+  },
+  demoBannerCtaText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  demoBannerExit: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.cream,
+  },
+  demoBannerExitText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
   appBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
