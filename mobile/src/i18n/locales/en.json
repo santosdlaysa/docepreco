@@ -119,6 +119,15 @@
     "slide4Title": "Track your sales",
     "slide4Desc": "Record what you sold, the quantity and the price. See your revenue by day, week or month and understand when your business grows."
   },
+  "demoGuard": {
+    "title": "Create your free account",
+    "message": "To save your recipes, ingredients and sales for real, create your free account.",
+    "benefit1": "Save your data securely",
+    "benefit2": "Access from any device",
+    "benefit3": "Quick sign-up and 100% free",
+    "createAccount": "Create my account",
+    "keepExploring": "Keep exploring"
+  },
   "home": {
     "greeting": "Hello, {{name}}!",
     "greetingDefault": "Baker",

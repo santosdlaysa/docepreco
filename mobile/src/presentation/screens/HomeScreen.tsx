@@ -36,6 +36,7 @@ import { generateInsights, Insight } from '../utils/generateInsights';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { useTranslation } from 'react-i18next';
 import { AdBanner, AdBannerAlways } from '../ads';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -175,6 +176,7 @@ export const HomeScreen: React.FC = () => {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [showGuide, setShowGuide] = useState(false);
   const [insightsCollapsed, setInsightsCollapsed] = useState(false);
+  const { guardAction, DemoGuardModal } = useDemoGuard();
   const api = isDemoMode() ? demoStatsApi : statsApi;
 
   const quickActions: QuickActionItem[] = [
@@ -544,7 +546,13 @@ export const HomeScreen: React.FC = () => {
         {quickActions.map((action) => (
           <TouchableOpacity
             key={action.route}
-            onPress={() => navigation.navigate(action.route as never)}
+            onPress={() => {
+              if (action.route.startsWith('Create')) {
+                guardAction(() => navigation.navigate(action.route as never));
+              } else {
+                navigation.navigate(action.route as never);
+              }
+            }}
             activeOpacity={0.8}
           >
             <Card style={styles.actionCard}>
@@ -630,6 +638,7 @@ export const HomeScreen: React.FC = () => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+      <DemoGuardModal />
     </SafeAreaView>
   );
 };

@@ -24,6 +24,7 @@ import { EmptyState } from '../components/EmptyState';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -71,6 +72,7 @@ export const SalesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [period, setPeriod] = useState<'all' | 'week' | 'month'>('all');
   const { showToast } = useToast();
+  const { guardAction, DemoGuardModal } = useDemoGuard();
   const api = isDemoMode() ? demoSaleApi : saleApi;
 
   const loadSales = async () => {
@@ -96,6 +98,7 @@ export const SalesScreen: React.FC = () => {
   }, [period]);
 
   const handleDelete = (sale: Sale) => {
+    if (!guardAction()) return;
     const originalIndex = sales.findIndex(s => s.id === sale.id);
     setSales(prev => prev.filter(s => s.id !== sale.id));
 
@@ -145,7 +148,7 @@ export const SalesScreen: React.FC = () => {
         subtitle={t('sales.subtitle', { count: sales.length, plural: sales.length !== 1 ? 's' : '' })}
         rightAction={
           <TouchableOpacity
-            onPress={() => navigation.navigate('CreateSale')}
+            onPress={() => guardAction(() => navigation.navigate('CreateSale'))}
             style={styles.addButton}
           >
             <Ionicons name="add" size={24} color="#fff" />
@@ -242,10 +245,11 @@ export const SalesScreen: React.FC = () => {
             title={t('sales.emptyTitle')}
             description={t('sales.emptyDescription')}
             actionLabel={t('sales.registerSale')}
-            onAction={() => navigation.navigate('CreateSale')}
+            onAction={() => guardAction(() => navigation.navigate('CreateSale'))}
           />
         }
       />
+      <DemoGuardModal />
     </SafeAreaView>
   );
 };

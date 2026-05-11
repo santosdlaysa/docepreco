@@ -119,6 +119,15 @@
     "slide4Title": "Acompanhe suas vendas",
     "slide4Desc": "Registre o que vendeu, em qual quantidade e por qual preço. Veja seu faturamento por dia, semana ou mês e entenda quando seu negócio cresce."
   },
+  "demoGuard": {
+    "title": "Crie sua conta grátis",
+    "message": "Para salvar suas receitas, ingredientes e vendas de verdade, crie sua conta gratuita.",
+    "benefit1": "Salve seus dados com segurança",
+    "benefit2": "Acesse de qualquer dispositivo",
+    "benefit3": "Cadastro rápido e 100% grátis",
+    "createAccount": "Criar minha conta",
+    "keepExploring": "Continuar explorando"
+  },
   "home": {
     "greeting": "Olá, {{name}}!",
     "greetingDefault": "Confeiteira",

@@ -32,6 +32,7 @@ import { seasonApi, Season } from '../../data/api/seasonApi';
 import { usePremium } from '../context/PremiumContext';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -66,6 +67,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const { showToast } = useToast();
   const { isPremium } = usePremium();
   const { requirePremium } = usePaywall();
+  const { guardAction, DemoGuardModal } = useDemoGuard();
 
   useEffect(() => {
     loadRecipe();
@@ -137,7 +139,7 @@ export const RecipeDetailScreen: React.FC = () => {
         rightAction={
           <View style={styles.headerActions}>
             <TouchableOpacity
-              onPress={handleShareQuote}
+              onPress={() => guardAction(handleShareQuote)}
               disabled={!calculation || sharing}
               style={[styles.editBtn, (!calculation || sharing) && styles.editBtnDisabled]}
             >
@@ -148,7 +150,7 @@ export const RecipeDetailScreen: React.FC = () => {
               )}
             </TouchableOpacity>
             <TouchableOpacity
-              onPress={() => navigation.navigate('EditRecipe', { recipeId: recipe.id })}
+              onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: recipe.id }))}
               style={styles.editBtn}
             >
               <Ionicons name="pencil-outline" size={20} color={colors.primary} />
@@ -459,6 +461,7 @@ export const RecipeDetailScreen: React.FC = () => {
 
         <View style={{ height: 32 }} />
       </ScrollView>
+      <DemoGuardModal />
     </SafeAreaView>
   );
 };

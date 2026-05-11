@@ -2,6 +2,7 @@ import React, { createContext, useContext } from 'react';
 
 interface AuthContextType {
   logout: () => void;
+  goToRegister: () => void;
   companyName: string;
   isDemoMode: boolean;
   companyLogo: string | null;
@@ -10,6 +11,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType>({
   logout: () => {},
+  goToRegister: () => {},
   companyName: '',
   isDemoMode: false,
   companyLogo: null,

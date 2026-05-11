@@ -33,6 +33,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { FREE_LIMITS } from '../premium/limits';
 import { useTranslation } from 'react-i18next';
 import { AdBanner } from '../ads';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -45,6 +46,7 @@ export const RecipesScreen: React.FC = () => {
   const { showToast } = useToast();
   const { isPremium } = usePremium();
   const { requirePremium } = usePaywall();
+  const { guardAction, DemoGuardModal } = useDemoGuard();
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const [duplicateTarget, setDuplicateTarget] = useState<Recipe | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
@@ -68,6 +70,7 @@ export const RecipesScreen: React.FC = () => {
   );
 
   const handleDelete = (recipe: Recipe) => {
+    if (!guardAction()) return;
     const originalIndex = recipes.findIndex(r => r.id === recipe.id);
     setRecipes(prev => prev.filter(r => r.id !== recipe.id));
 
@@ -96,6 +99,7 @@ export const RecipesScreen: React.FC = () => {
   };
 
   const handleDuplicate = (recipe: Recipe) => {
+    if (!guardAction()) return;
     if (!requirePremium('duplicateRecipe')) return;
 
     const defaultName = t('recipes.copyName', { name: recipe.name });
@@ -181,7 +185,7 @@ export const RecipesScreen: React.FC = () => {
           <Ionicons name="copy-outline" size={18} color={colors.secondary} />
         </TouchableOpacity>
         <TouchableOpacity
-          onPress={() => navigation.navigate('EditRecipe', { recipeId: item.id })}
+          onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: item.id }))}
           style={[styles.actionBtn, styles.actionBtnBorder]}
         >
           <Ionicons name="pencil-outline" size={18} color={colors.primary} />
@@ -214,7 +218,7 @@ export const RecipesScreen: React.FC = () => {
         subtitle={t('recipes.subtitle', { count: recipes.length, plural: recipes.length !== 1 ? 's' : '' })}
         rightAction={
           <TouchableOpacity
-            onPress={() => navigation.navigate('CreateRecipe')}
+            onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))}
             style={styles.addButton}
           >
             <Ionicons name="add" size={24} color="#fff" />
@@ -287,10 +291,12 @@ export const RecipesScreen: React.FC = () => {
             title={t('recipes.emptyTitle')}
             description={t('recipes.emptyDescription')}
             actionLabel={t('recipes.createButton')}
-            onAction={() => navigation.navigate('CreateRecipe')}
+            onAction={() => guardAction(() => navigation.navigate('CreateRecipe'))}
           />
         }
       />
+
+      <DemoGuardModal />
 
       {/* Modal de nome para duplicar (Android) */}
       <Modal visible={!!duplicateTarget} transparent animationType="fade">

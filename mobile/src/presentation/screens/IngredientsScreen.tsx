@@ -27,6 +27,7 @@ import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 import { AdBanner } from '../ads';
+import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -46,6 +47,7 @@ export const IngredientsScreen: React.FC = () => {
   const { showToast } = useToast();
   const { requirePremium } = usePaywall();
   const { t } = useTranslation();
+  const { guardAction, DemoGuardModal } = useDemoGuard();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const loadIngredients = async () => {
@@ -68,6 +70,7 @@ export const IngredientsScreen: React.FC = () => {
   );
 
   const handleDelete = (ingredient: Ingredient) => {
+    if (!guardAction()) return;
     const originalIndex = ingredients.findIndex(i => i.id === ingredient.id);
     // remove imediatamente da UI
     setIngredients(prev => prev.filter(i => i.id !== ingredient.id));
@@ -140,7 +143,7 @@ export const IngredientsScreen: React.FC = () => {
         </View>
         <View style={styles.ingredientActions}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('EditIngredient', { ingredientId: item.id })}
+            onPress={() => guardAction(() => navigation.navigate('EditIngredient', { ingredientId: item.id }))}
             style={styles.actionBtn}
           >
             <Ionicons name="pencil-outline" size={18} color={colors.primary} />
@@ -183,7 +186,7 @@ export const IngredientsScreen: React.FC = () => {
         subtitle={t('ingredients.subtitle', { count: ingredients.length, plural: ingredients.length !== 1 ? 's' : '' })}
         rightAction={
           <TouchableOpacity
-            onPress={() => navigation.navigate('CreateIngredient')}
+            onPress={() => guardAction(() => navigation.navigate('CreateIngredient'))}
             style={styles.addButton}
           >
             <Ionicons name="add" size={24} color="#fff" />
@@ -222,10 +225,11 @@ export const IngredientsScreen: React.FC = () => {
             title={t('ingredients.emptyTitle')}
             description={t('ingredients.emptyDescription')}
             actionLabel={t('ingredients.addButton')}
-            onAction={() => navigation.navigate('CreateIngredient')}
+            onAction={() => guardAction(() => navigation.navigate('CreateIngredient'))}
           />
         }
       />
+      <DemoGuardModal />
     </SafeAreaView>
   );
 };
