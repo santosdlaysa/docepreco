@@ -86,6 +86,7 @@ export interface AdminUser {
   companyName: string;
   email: string;
   phone: string | null;
+  instagramHandle: string | null;
   createdAt: string;
   isPremium: boolean;
   premiumUntil: string | null;

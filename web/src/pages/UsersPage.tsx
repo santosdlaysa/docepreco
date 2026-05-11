@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -138,6 +138,17 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
                 >
                   <Phone size={13} />
                   {user.phone}
+                </a>
+              )}
+              {user.instagramHandle && (
+                <a
+                  href={`https://instagram.com/${user.instagramHandle}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-pink-600 hover:text-pink-700 flex items-center gap-1 mt-0.5"
+                >
+                  <AtSign size={13} />
+                  @{user.instagramHandle}
                 </a>
               )}
               <p className="text-xs text-gray-400 mt-1">Cadastrado em {fmtDate(user.createdAt)}</p>
@@ -383,12 +394,13 @@ export function UsersPage({ toast, onImpersonate }: Props) {
       {/* Tabela */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[900px]">
+          <table className="w-full text-sm min-w-[1050px]">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Confeitaria</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Telefone</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600">Instagram</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600">Plano</th>
                 <ColHeader label="Receitas"      sortKey="recipeCount" />
                 <ColHeader label="Ingredientes"  sortKey="ingredientCount" />
@@ -411,14 +423,14 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             <tbody className="divide-y divide-gray-100">
               {loading && (
                 <tr>
-                  <td colSpan={10}>
+                  <td colSpan={11}>
                     <TableSkeleton rows={8} cols={8} />
                   </td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
+                  <td colSpan={11} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
                 </tr>
               )}
               {!loading && users.map((u, i) => (
@@ -440,6 +452,20 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                         onClick={e => e.stopPropagation()}
                       >
                         {u.phone}
+                      </a>
+                    ) : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    {u.instagramHandle ? (
+                      <a
+                        href={`https://instagram.com/${u.instagramHandle}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-pink-600 hover:text-pink-700 flex items-center gap-1"
+                        onClick={e => e.stopPropagation()}
+                      >
+                        <AtSign size={14} />
+                        @{u.instagramHandle}
                       </a>
                     ) : '—'}
                   </td>
