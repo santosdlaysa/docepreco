@@ -92,6 +92,14 @@ export class AdminController {
     const page = Math.max(1, parseInt((req.query.page as string) || '1'));
     const limit = Math.min(50, parseInt((req.query.limit as string) || '20'));
     const isPremiumFilter = req.query.isPremium;
+    const hasPhone = req.query.hasPhone as string | undefined;
+    const hasInstagram = req.query.hasInstagram as string | undefined;
+    const minRecipes = req.query.minRecipes ? parseInt(req.query.minRecipes as string) : undefined;
+    const minIngredients = req.query.minIngredients ? parseInt(req.query.minIngredients as string) : undefined;
+    const minSales = req.query.minSales ? parseInt(req.query.minSales as string) : undefined;
+    const minRevenue = req.query.minRevenue ? parseFloat(req.query.minRevenue as string) : undefined;
+    const lastSeenDays = req.query.lastSeenDays ? parseInt(req.query.lastSeenDays as string) : undefined;
+    const createdDays = req.query.createdDays ? parseInt(req.query.createdDays as string) : undefined;
     const sortBy = (req.query.sortBy as string) || 'createdAt';
     const offset = (page - 1) * limit;
 
@@ -116,6 +124,30 @@ export class AdminController {
     }
     if (isPremiumFilter === 'true') conditions.push(`u.is_premium = TRUE`);
     else if (isPremiumFilter === 'false') conditions.push(`u.is_premium = FALSE`);
+    if (hasPhone === 'true') conditions.push(`u.phone IS NOT NULL AND u.phone != ''`);
+    else if (hasPhone === 'false') conditions.push(`(u.phone IS NULL OR u.phone = '')`);
+    if (hasInstagram === 'true') conditions.push(`u.instagram_handle IS NOT NULL AND u.instagram_handle != ''`);
+    else if (hasInstagram === 'false') conditions.push(`(u.instagram_handle IS NULL OR u.instagram_handle = '')`);
+    if (lastSeenDays !== undefined && lastSeenDays > 0) {
+      conditions.push(`u.last_seen_at >= NOW() - INTERVAL '${lastSeenDays} days'`);
+    } else if (lastSeenDays === 0) {
+      conditions.push(`u.last_seen_at IS NULL`);
+    }
+    if (createdDays !== undefined && createdDays > 0) {
+      conditions.push(`u.created_at >= NOW() - INTERVAL '${createdDays} days'`);
+    }
+    if (minRecipes !== undefined && minRecipes > 0) {
+      conditions.push(`(SELECT COUNT(*)::int FROM recipes r WHERE r.user_id = u.id) >= ${minRecipes}`);
+    }
+    if (minIngredients !== undefined && minIngredients > 0) {
+      conditions.push(`(SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) >= ${minIngredients}`);
+    }
+    if (minSales !== undefined && minSales > 0) {
+      conditions.push(`(SELECT COUNT(*)::int FROM sales s WHERE s.user_id = u.id) >= ${minSales}`);
+    }
+    if (minRevenue !== undefined && minRevenue > 0) {
+      conditions.push(`(SELECT COALESCE(SUM(s.total_revenue),0)::float FROM sales s WHERE s.user_id = u.id) >= ${minRevenue}`);
+    }
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 

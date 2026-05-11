@@ -186,12 +186,25 @@ export const api = {
 
   getStats: () => req<Stats>('/admin/stats'),
 
-  listUsers: (params: { search?: string; page?: number; isPremium?: boolean | null; sortBy?: string } = {}) => {
+  listUsers: (params: {
+    search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;
+    hasPhone?: boolean | null; hasInstagram?: boolean | null;
+    minRecipes?: number; minIngredients?: number; minSales?: number; minRevenue?: number;
+    lastSeenDays?: number; createdDays?: number;
+  } = {}) => {
     const q = new URLSearchParams();
     if (params.search) q.set('search', params.search);
     if (params.page) q.set('page', String(params.page));
     if (params.isPremium != null) q.set('isPremium', String(params.isPremium));
     if (params.sortBy) q.set('sortBy', params.sortBy);
+    if (params.hasPhone != null) q.set('hasPhone', String(params.hasPhone));
+    if (params.hasInstagram != null) q.set('hasInstagram', String(params.hasInstagram));
+    if (params.minRecipes) q.set('minRecipes', String(params.minRecipes));
+    if (params.minIngredients) q.set('minIngredients', String(params.minIngredients));
+    if (params.minSales) q.set('minSales', String(params.minSales));
+    if (params.minRevenue) q.set('minRevenue', String(params.minRevenue));
+    if (params.lastSeenDays != null) q.set('lastSeenDays', String(params.lastSeenDays));
+    if (params.createdDays != null) q.set('createdDays', String(params.createdDays));
     return req<UsersResponse>(`/admin/users?${q}`);
   },
 

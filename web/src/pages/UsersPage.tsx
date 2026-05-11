@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -298,9 +298,43 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [premiumFilter, setPremiumFilter] = useState<boolean | null>(null);
+  const [hasPhone, setHasPhone] = useState<boolean | null>(null);
+  const [hasInstagram, setHasInstagram] = useState<boolean | null>(null);
+  const [minRecipes, setMinRecipes] = useState<number | undefined>();
+  const [minIngredients, setMinIngredients] = useState<number | undefined>();
+  const [minSales, setMinSales] = useState<number | undefined>();
+  const [minRevenue, setMinRevenue] = useState<number | undefined>();
+  const [lastSeenDays, setLastSeenDays] = useState<number | undefined>();
+  const [createdDays, setCreatedDays] = useState<number | undefined>();
+  const [showFilters, setShowFilters] = useState(false);
   const [sortBy, setSortBy] = useState<SortKey>('createdAt');
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
+  const activeFilterCount = [
+    premiumFilter !== null,
+    hasPhone !== null,
+    hasInstagram !== null,
+    minRecipes !== undefined,
+    minIngredients !== undefined,
+    minSales !== undefined,
+    minRevenue !== undefined,
+    lastSeenDays !== undefined,
+    createdDays !== undefined,
+  ].filter(Boolean).length;
+
+  const clearAllFilters = () => {
+    setPremiumFilter(null);
+    setHasPhone(null);
+    setHasInstagram(null);
+    setMinRecipes(undefined);
+    setMinIngredients(undefined);
+    setMinSales(undefined);
+    setMinRevenue(undefined);
+    setLastSeenDays(undefined);
+    setCreatedDays(undefined);
+    setPage(1);
+  };
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -315,7 +349,14 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await api.listUsers({ search, page, isPremium: premiumFilter ?? undefined, sortBy });
+      const res = await api.listUsers({
+        search, page, sortBy,
+        isPremium: premiumFilter ?? undefined,
+        hasPhone: hasPhone ?? undefined,
+        hasInstagram: hasInstagram ?? undefined,
+        minRecipes, minIngredients, minSales, minRevenue,
+        lastSeenDays, createdDays,
+      });
       setUsers(res.users);
       setTotal(res.total);
     } catch (e) {
@@ -323,7 +364,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [search, page, premiumFilter, sortBy]);
+  }, [search, page, premiumFilter, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -365,31 +406,161 @@ export function UsersPage({ toast, onImpersonate }: Props) {
         <span className="text-sm text-gray-400">{total} no total</span>
       </div>
 
-      {/* Filtros */}
+      {/* Busca + botão filtros */}
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-0">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            placeholder="Buscar por nome ou email..."
+            placeholder="Buscar por nome, email, telefone ou instagram..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
             className="border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
           />
         </div>
-        <select
-          value={premiumFilter === null ? '' : String(premiumFilter)}
-          onChange={e => {
-            setPremiumFilter(e.target.value === '' ? null : e.target.value === 'true');
-            setPage(1);
-          }}
-          className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+        <button
+          onClick={() => setShowFilters(f => !f)}
+          className={`flex items-center gap-1.5 border rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            showFilters || activeFilterCount > 0
+              ? 'border-primary-400 bg-primary-50 text-primary-700'
+              : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+          }`}
         >
-          <option value="">Todos os planos</option>
-          <option value="true">Somente premium</option>
-          <option value="false">Somente gratuito</option>
-        </select>
+          <Filter size={15} />
+          Filtros
+          {activeFilterCount > 0 && (
+            <span className="bg-primary-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+        {activeFilterCount > 0 && (
+          <button
+            onClick={clearAllFilters}
+            className="flex items-center gap-1 text-sm text-gray-500 hover:text-red-500 transition-colors"
+          >
+            <X size={14} />
+            Limpar filtros
+          </button>
+        )}
       </div>
+
+      {/* Painel de filtros */}
+      {showFilters && (
+        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Plano</label>
+            <select
+              value={premiumFilter === null ? '' : String(premiumFilter)}
+              onChange={e => { setPremiumFilter(e.target.value === '' ? null : e.target.value === 'true'); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              <option value="true">Premium</option>
+              <option value="false">Gratuito</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Telefone</label>
+            <select
+              value={hasPhone === null ? '' : String(hasPhone)}
+              onChange={e => { setHasPhone(e.target.value === '' ? null : e.target.value === 'true'); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              <option value="true">Com telefone</option>
+              <option value="false">Sem telefone</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Instagram</label>
+            <select
+              value={hasInstagram === null ? '' : String(hasInstagram)}
+              onChange={e => { setHasInstagram(e.target.value === '' ? null : e.target.value === 'true'); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              <option value="true">Com instagram</option>
+              <option value="false">Sem instagram</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Receitas (min)</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="Ex: 1"
+              value={minRecipes ?? ''}
+              onChange={e => { setMinRecipes(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Ingredientes (min)</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="Ex: 1"
+              value={minIngredients ?? ''}
+              onChange={e => { setMinIngredients(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Vendas (min)</label>
+            <input
+              type="number"
+              min={0}
+              placeholder="Ex: 1"
+              value={minSales ?? ''}
+              onChange={e => { setMinSales(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Faturamento (min R$)</label>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              placeholder="Ex: 100"
+              value={minRevenue ?? ''}
+              onChange={e => { setMinRevenue(e.target.value ? parseFloat(e.target.value) : undefined); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Último acesso</label>
+            <select
+              value={lastSeenDays === undefined ? '' : String(lastSeenDays)}
+              onChange={e => { setLastSeenDays(e.target.value === '' ? undefined : parseInt(e.target.value)); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              <option value="1">Hoje</option>
+              <option value="7">Últimos 7 dias</option>
+              <option value="30">Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+              <option value="0">Nunca acessou</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 block mb-1">Cadastro</label>
+            <select
+              value={createdDays === undefined ? '' : String(createdDays)}
+              onChange={e => { setCreatedDays(e.target.value === '' ? undefined : parseInt(e.target.value)); setPage(1); }}
+              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              <option value="1">Hoje</option>
+              <option value="7">Últimos 7 dias</option>
+              <option value="30">Últimos 30 dias</option>
+              <option value="90">Últimos 90 dias</option>
+              <option value="365">Último ano</option>
+            </select>
+          </div>
+        </div>
+      )}
 
       {/* Tabela */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
