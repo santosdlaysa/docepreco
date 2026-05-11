@@ -110,7 +110,7 @@ export class AdminController {
     let idx = 1;
 
     if (search) {
-      conditions.push(`(u.company_name ILIKE $${idx} OR u.email ILIKE $${idx} OR u.phone ILIKE $${idx})`);
+      conditions.push(`(u.company_name ILIKE $${idx} OR u.email ILIKE $${idx} OR u.phone ILIKE $${idx} OR u.instagram_handle ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }
@@ -133,6 +133,7 @@ export class AdminController {
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
             u.last_seen_at             AS "lastSeenAt",
+            u.instagram_handle         AS "instagramHandle",
             (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id) AS "recipeCount",
             (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",
@@ -244,6 +245,7 @@ export class AdminController {
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
             u.last_seen_at             AS "lastSeenAt",
+            u.instagram_handle         AS "instagramHandle",
             (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id) AS "recipeCount",
             (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",
