@@ -286,6 +286,15 @@ CREATE TABLE IF NOT EXISTS changelog_entries (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS renewal_notifications_sent (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  notified_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  premium_until TIMESTAMP NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_renewal_notif_user ON renewal_notifications_sent (user_id, notified_at);
+
 CREATE TABLE IF NOT EXISTS onboarding_steps (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,

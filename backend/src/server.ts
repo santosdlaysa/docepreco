@@ -40,6 +40,7 @@ import { PostgresTelegramAlertRepository } from './infrastructure/repositories/P
 import { PostgresNotificationRepository } from './infrastructure/repositories/PostgresNotificationRepository';
 import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from './infrastructure/services/pushService';
+import { checkManualRenewals } from './infrastructure/services/renewalNotificationService';
 import { setupSwagger } from './swagger';
 
 dotenv.config();
@@ -175,6 +176,15 @@ async function bootstrap() {
         console.error('[Cron] Erro ao processar notificações:', err);
       }
     });
+    // Cron: notifica usuários manuais com mensalidade prestes a expirar (todo dia às 10h)
+    cron.schedule('0 10 * * *', async () => {
+      try {
+        await checkManualRenewals();
+      } catch (err) {
+        console.error('[Cron] Erro ao verificar renovações manuais:', err);
+      }
+    }, { timezone: 'America/Sao_Paulo' });
+
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);
