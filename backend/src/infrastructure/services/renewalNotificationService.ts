@@ -1,5 +1,6 @@
 import { pool } from '../database/connection';
 import { PostgresPushTokenRepository } from '../repositories/PostgresPushTokenRepository';
+import { PostgresNotificationRepository } from '../repositories/PostgresNotificationRepository';
 import { sendPushNotifications } from './pushService';
 
 const DAYS_BEFORE_EXPIRY = 3;
@@ -31,6 +32,7 @@ export async function checkManualRenewals(): Promise<void> {
   }
 
   const tokenRepo = new PostgresPushTokenRepository();
+  const notifRepo = new PostgresNotificationRepository();
 
   for (const user of result.rows) {
     const premiumUntil = new Date(user.premium_until);
@@ -46,9 +48,18 @@ export async function checkManualRenewals(): Promise<void> {
     if (tokens.length === 0) continue;
 
     const tokenStrings = tokens.map(t => t.token);
-    const count = await sendPushNotifications(tokenStrings, title, body, {
-      type: 'renewal_reminder',
-      premiumUntil: premiumUntil.toISOString(),
+    const dataPayload = { type: 'renewal_reminder', premiumUntil: premiumUntil.toISOString() };
+    const count = await sendPushNotifications(tokenStrings, title, body, dataPayload);
+
+    // Registra na tabela notifications para aparecer no painel admin
+    await notifRepo.create({
+      title,
+      body,
+      dataJson: JSON.stringify(dataPayload),
+      target: 'premium',
+      status: 'sent',
+    }).then(async (notif) => {
+      await notifRepo.markSent(notif.id, count);
     });
 
     // Registra que a notificação foi enviada para evitar duplicatas
