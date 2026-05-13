@@ -18,7 +18,7 @@ import { Button } from '../components/Button';
 import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notifications';
 import { useTranslation } from 'react-i18next';
 
-const SUPPORT_WHATSAPP = '5595991371313';
+const SUPPORT_WHATSAPP = '5595981273912'; // Número do WhatsApp para suporte (com código do país, sem + ou zeros à frente)
 
 export const ProfileScreen: React.FC = () => {
   const { t } = useTranslation();
