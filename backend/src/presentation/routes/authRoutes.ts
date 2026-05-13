@@ -12,5 +12,6 @@ router.post('/reset-password', (req, res) => controller.resetPassword(req, res))
 router.get('/me', authMiddleware, (req, res) => controller.me(req as any, res));
 router.patch('/profile', authMiddleware, (req, res) => controller.updateProfile(req as any, res));
 router.post('/change-password', authMiddleware, (req, res) => controller.changePassword(req as any, res));
+router.post('/suggestion', authMiddleware, (req, res) => controller.sendSuggestion(req as any, res));
 
 export default router;

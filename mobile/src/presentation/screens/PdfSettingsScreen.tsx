@@ -25,6 +25,8 @@ import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { shareRecipeQuote } from '../utils/pdfQuote';
 import { useTranslation } from 'react-i18next';
+import * as FileSystem from 'expo-file-system';
+import { useAuth } from '../../context/AuthContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -35,6 +37,7 @@ export const PdfSettingsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { guardScreen } = usePaywall();
   const { showToast } = useToast();
+  const { companyLogo } = useAuth();
 
   const COLOR_PRESETS = [
     { color: '#E91E63', label: t('pdfSettings.colorRosa') },
@@ -58,7 +61,19 @@ export const PdfSettingsScreen: React.FC = () => {
     if (!guardScreen('pdfCustomBranding')) {
       return;
     }
-    pdfSettingsStorage.get().then(setSettings);
+    pdfSettingsStorage.get().then(async (saved) => {
+      if (!saved.logoBase64 && companyLogo) {
+        try {
+          const path = companyLogo.replace(/\?.*$/, '');
+          const base64 = await FileSystem.readAsStringAsync(path, { encoding: FileSystem.EncodingType.Base64 });
+          setSettings({ ...saved, logoBase64: `data:image/jpeg;base64,${base64}` });
+        } catch {
+          setSettings(saved);
+        }
+      } else {
+        setSettings(saved);
+      }
+    });
   }, []);
 
   const pickLogo = async () => {

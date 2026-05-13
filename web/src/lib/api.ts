@@ -351,6 +351,15 @@ export const api = {
   deleteCategory: (id: string) =>
     req<void>(`/admin/categories/${id}`, { method: 'DELETE' }),
 
+  // ── Suggestions ──
+  listSuggestions: () => req<Suggestion[]>('/admin/suggestions'),
+  updateSuggestionStatus: (id: string, status: Suggestion['status']) =>
+    req<Suggestion>(`/admin/suggestions/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
+  addSuggestionNote: (id: string, adminNote: string) =>
+    req<Suggestion>(`/admin/suggestions/${id}/note`, { method: 'POST', body: JSON.stringify({ adminNote }) }),
+  deleteSuggestion: (id: string) =>
+    req<void>(`/admin/suggestions/${id}`, { method: 'DELETE' }),
+
   // ── Feedbacks ──
   listFeedbacks: () => req<Feedback[]>('/admin/feedbacks'),
   replyFeedback: (id: string, reply: string) =>
@@ -554,6 +563,19 @@ export interface RecipeCategory {
   icon: string;
   sortOrder: number;
   isActive: boolean;
+  createdAt: string;
+}
+
+// ── Suggestions ──
+
+export interface Suggestion {
+  id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  message: string;
+  status: 'pending' | 'read' | 'done';
+  adminNote: string | null;
   createdAt: string;
 }
 

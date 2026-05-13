@@ -265,6 +265,17 @@ CREATE TABLE IF NOT EXISTS feedbacks (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS suggestions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_name VARCHAR(255) NOT NULL DEFAULT '',
+  user_email VARCHAR(255) NOT NULL DEFAULT '',
+  message TEXT NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'read', 'done')),
+  admin_note TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS changelog_entries (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   version VARCHAR(20) NOT NULL,

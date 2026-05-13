@@ -589,7 +589,14 @@
     "whatsappError": "Could not open WhatsApp. Check if the app is installed.",
     "removeLogo": "Remove logo",
     "removeLogoMessage": "Do you want to remove the company logo?",
-    "remove": "Remove"
+    "remove": "Remove",
+    "suggestions": "Improvement Suggestions",
+    "suggestionsSub": "Help us improve the app",
+    "suggestionPlaceholder": "Tell us your idea or suggestion...",
+    "suggestionSend": "Send",
+    "suggestionSent": "Suggestion sent successfully! Thanks for the feedback ❤️",
+    "suggestionEmpty": "Write your suggestion before sending",
+    "suggestionError": "Could not send the suggestion. Try again."
   },
   "priceHistory": {
     "title": "Price History",

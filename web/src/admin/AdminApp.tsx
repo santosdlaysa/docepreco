@@ -18,6 +18,7 @@ import { FaqPage } from '../pages/FaqPage';
 import { CouponsPage } from '../pages/CouponsPage';
 import { CategoriesPage } from '../pages/CategoriesPage';
 import { FeedbacksPage } from '../pages/FeedbacksPage';
+import { SuggestionsPage } from '../pages/SuggestionsPage';
 import { ChangelogPage } from '../pages/ChangelogPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { TelegramAlertsPage } from '../pages/TelegramAlertsPage';
@@ -43,6 +44,7 @@ import {
   Ticket,
   Tag,
   MessageCircle,
+  MessagesSquare,
   Rocket,
   Smartphone,
   Bot,
@@ -54,7 +56,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'changelog' | 'onboarding' | 'telegram';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram';
 
 interface NavItem {
   id: Page;
@@ -78,6 +80,7 @@ const NAV: NavItem[] = [
   { id: 'notifications', label: 'Notificações', icon: Bell },
   { id: 'tips', label: 'Dicas', icon: Lightbulb },
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageCircle },
+  { id: 'suggestions', label: 'Sugestões', icon: MessagesSquare },
 
   { id: 'plans', label: 'Planos', icon: CreditCard, section: 'Configuração' },
   { id: 'coupons', label: 'Cupons', icon: Ticket },
@@ -351,6 +354,7 @@ export default function AdminApp() {
             {page === 'coupons' && <CouponsPage toast={toast} />}
             {page === 'categories' && <CategoriesPage toast={toast} />}
             {page === 'feedbacks' && <FeedbacksPage toast={toast} />}
+            {page === 'suggestions' && <SuggestionsPage toast={toast} />}
             {page === 'changelog' && <ChangelogPage toast={toast} />}
             {page === 'onboarding' && <OnboardingPage toast={toast} />}
             {page === 'telegram' && <TelegramAlertsPage toast={toast} />}

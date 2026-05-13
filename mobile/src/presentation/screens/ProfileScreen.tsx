@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image, RefreshControl, KeyboardAvoidingView } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +37,8 @@ export const ProfileScreen: React.FC = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [suggestionText, setSuggestionText] = useState('');
+  const [sendingSuggestion, setSendingSuggestion] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -159,6 +161,24 @@ export const ProfileScreen: React.FC = () => {
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('profile.remove'), style: 'destructive', onPress: () => setCompanyLogo(null) },
     ]);
+  };
+
+  const handleSendSuggestion = async () => {
+    const text = suggestionText.trim();
+    if (!text) {
+      Alert.alert(t('common.error'), t('profile.suggestionEmpty'));
+      return;
+    }
+    setSendingSuggestion(true);
+    try {
+      await authApi.sendSuggestion(text);
+      Alert.alert('', t('profile.suggestionSent'));
+      setSuggestionText('');
+    } catch {
+      Alert.alert(t('common.error'), t('profile.suggestionError'));
+    } finally {
+      setSendingSuggestion(false);
+    }
   };
 
   const handleLogout = () => {
@@ -456,6 +476,42 @@ export const ProfileScreen: React.FC = () => {
           </TouchableOpacity>
         </Card>
 
+        <Card style={styles.menuCard}>
+          <View style={styles.menuItem}>
+            <View style={[styles.iconBadge, { backgroundColor: '#E8EAF6' }]}>
+              <Ionicons name="bulb-outline" size={20} color="#5C6BC0" />
+            </View>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuText}>{t('profile.suggestions')}</Text>
+              <Text style={styles.menuSubtext}>{t('profile.suggestionsSub')}</Text>
+            </View>
+          </View>
+          <TextInput
+            style={styles.suggestionInput}
+            placeholder={t('profile.suggestionPlaceholder')}
+            placeholderTextColor={colors.textMuted}
+            value={suggestionText}
+            onChangeText={setSuggestionText}
+            multiline
+            maxLength={500}
+            textAlignVertical="top"
+          />
+          <TouchableOpacity
+            style={[styles.suggestionSendBtn, !suggestionText.trim() && { opacity: 0.5 }]}
+            onPress={handleSendSuggestion}
+            disabled={sendingSuggestion || !suggestionText.trim()}
+          >
+            {sendingSuggestion ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="send" size={16} color="#fff" />
+                <Text style={styles.suggestionSendText}>{t('profile.suggestionSend')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </Card>
+
         <Text style={styles.sectionTitle}>{t('profile.about')}</Text>
         <Card style={styles.menuCard}>
           <TouchableOpacity
@@ -656,6 +712,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: 10,
+  },
+  suggestionInput: {
+    ...typography.body,
+    color: colors.text,
+    fontSize: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    minHeight: 80,
+    marginTop: 8,
+  },
+  suggestionSendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#5C6BC0',
+    borderRadius: 10,
+    paddingVertical: 10,
+    marginTop: 10,
+  },
+  suggestionSendText: {
+    ...typography.button,
+    color: '#fff',
+    fontSize: 13,
   },
   dangerCard: { borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
   logoutBtn: { borderColor: colors.error },

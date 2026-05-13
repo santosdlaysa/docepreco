@@ -80,6 +80,10 @@ export const authApi = {
     return normalized;
   },
 
+  sendSuggestion: async (message: string): Promise<void> => {
+    await apiClient.post('/auth/suggestion', { message });
+  },
+
   logout: async (): Promise<void> => {
     await tokenStorage.clear();
   },

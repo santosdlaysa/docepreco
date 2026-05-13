@@ -2,10 +2,12 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { User } from '../../domain/entities/User';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
+import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
 
 const userRepo = new PostgresUserRepository();
+const suggestionRepo = new PostgresSuggestionRepository();
 const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 
 export class AuthController {
@@ -214,6 +216,28 @@ export class AuthController {
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  async sendSuggestion(req: Request & { userId?: string }, res: Response): Promise<void> {
+    try {
+      const { message } = req.body;
+      if (!message || !message.trim()) {
+        res.status(400).json({ success: false, error: 'Mensagem é obrigatória' });
+        return;
+      }
+      const user = await userRepo.findById(req.userId!);
+      if (!user) { res.status(404).json({ success: false, error: 'Usuário não encontrado' }); return; }
+      await suggestionRepo.create({
+        userId: req.userId!,
+        userName: user.companyName,
+        userEmail: user.email,
+        message: message.trim(),
+      });
+      res.status(201).json({ success: true, message: 'Sugestão enviada com sucesso' });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro ao enviar sugestão' });
     }
   }
 }
