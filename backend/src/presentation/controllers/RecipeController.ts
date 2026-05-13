@@ -9,7 +9,7 @@ import { PostgresRecipeRepository } from '../../infrastructure/repositories/Post
 import { PostgresIngredientRepository } from '../../infrastructure/repositories/PostgresIngredientRepository';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
-import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES } from '../../domain/services/premium';
+import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES, getFreeRecipeLimit } from '../../domain/services/premium';
 
 const recipeRepo = new PostgresRecipeRepository();
 const ingredientRepo = new PostgresIngredientRepository();
@@ -49,12 +49,13 @@ export class RecipeController {
         return;
       }
       const count = await userRepo.countRecipes(req.userId!);
-      if (!canCreateMore(user, 'recipes', count)) {
+      const freeRecipeLimit = await getFreeRecipeLimit();
+      if (!canCreateMore(user, 'recipes', count, freeRecipeLimit)) {
         res.status(403).json({
           success: false,
-          error: `Você atingiu o limite de ${FREE_LIMITS.recipes} receitas do plano gratuito. Assine o Premium para criar mais.`,
+          error: `Você atingiu o limite de ${freeRecipeLimit} receitas do plano gratuito. Assine o Premium para criar mais.`,
           code: PREMIUM_ERROR_CODES.recipes,
-          limit: FREE_LIMITS.recipes,
+          limit: freeRecipeLimit,
           current: count,
         });
         return;

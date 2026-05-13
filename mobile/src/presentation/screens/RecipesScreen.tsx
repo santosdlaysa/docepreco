@@ -31,6 +31,7 @@ import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
 import { usePaywall } from '../premium/usePaywall';
 import { FREE_LIMITS } from '../premium/limits';
+import { planConfigApi } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
 import { AdBanner } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
@@ -50,10 +51,15 @@ export const RecipesScreen: React.FC = () => {
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const [duplicateTarget, setDuplicateTarget] = useState<Recipe | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
+  const [freeRecipeLimit, setFreeRecipeLimit] = useState<number>(FREE_LIMITS.recipes);
   const loadRecipes = async () => {
     try {
-      const data = await api.getAll();
+      const [data, limit] = await Promise.all([
+        api.getAll(),
+        isDemoMode() ? FREE_LIMITS.recipes : planConfigApi.getFreeRecipeLimit(),
+      ]);
       setRecipes(data);
+      setFreeRecipeLimit(limit);
     } catch (error) {
       showToast(t('recipes.loadError'), 'error');
     } finally {
@@ -249,8 +255,8 @@ export const RecipesScreen: React.FC = () => {
                       <Text style={styles.progressLabel}>{t('recipes.registered')}</Text>
                     </View>
                     <Text style={styles.progressCount}>
-                      <Text style={styles.progressCurrent}>{Math.min(recipes.length, FREE_LIMITS.recipes)}</Text>
-                      /{FREE_LIMITS.recipes}
+                      <Text style={styles.progressCurrent}>{Math.min(recipes.length, freeRecipeLimit)}</Text>
+                      /{freeRecipeLimit}
                     </Text>
                   </View>
                   <View style={styles.progressBarBg}>
@@ -258,19 +264,19 @@ export const RecipesScreen: React.FC = () => {
                       style={[
                         styles.progressBarFill,
                         {
-                          width: `${Math.min((recipes.length / FREE_LIMITS.recipes) * 100, 100)}%`,
-                          backgroundColor: recipes.length >= FREE_LIMITS.recipes ? colors.warning : colors.primary,
+                          width: `${Math.min((recipes.length / freeRecipeLimit) * 100, 100)}%`,
+                          backgroundColor: recipes.length >= freeRecipeLimit ? colors.warning : colors.primary,
                         },
                       ]}
                     />
                   </View>
-                  {recipes.length >= FREE_LIMITS.recipes ? (
+                  {recipes.length >= freeRecipeLimit ? (
                     <Text style={styles.progressHint}>
                       {t('recipes.limitReached')}
                     </Text>
                   ) : (
                     <Text style={styles.progressHint}>
-                      {t('recipes.remaining', { count: FREE_LIMITS.recipes - recipes.length, plural: FREE_LIMITS.recipes - recipes.length !== 1 ? 's' : '' })}
+                      {t('recipes.remaining', { count: freeRecipeLimit - recipes.length, plural: freeRecipeLimit - recipes.length !== 1 ? 's' : '' })}
                     </Text>
                   )}
                 </View>
