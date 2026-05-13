@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -35,6 +35,8 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
   const [trialDays, setTrialDays] = useState('3');
   const [notifTitle, setNotifTitle] = useState('Presente especial para você!');
   const [notifBody, setNotifBody] = useState('Você ganhou 3 dias grátis de acesso Premium! Aproveite todos os recursos exclusivos do DocePreço.');
+  const [newPassword, setNewPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   useEffect(() => {
     api.getUser(userId).then(setUser).catch(console.error);
@@ -91,6 +93,24 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
       toast.error(e instanceof Error ? e.message : 'Erro ao dar dias grátis');
     } finally {
       setGrantingTrial(false);
+    }
+  };
+
+  const resetPassword = async () => {
+    if (!user) return;
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('A senha deve ter no mínimo 6 caracteres');
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      await api.resetUserPassword(user.id, newPassword);
+      toast.success(`Senha redefinida com sucesso para ${user.email}`);
+      setNewPassword('');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao redefinir senha');
+    } finally {
+      setResettingPassword(false);
     }
   };
 
@@ -267,6 +287,31 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
                   <p className="font-bold text-gray-900 mt-0.5">{s.value}</p>
                 </div>
               ))}
+            </div>
+
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <KeyRound size={16} className="text-orange-600" />
+                <p className="text-sm font-medium text-orange-800">Redefinir senha</p>
+              </div>
+              <p className="text-xs text-orange-600">Defina uma senha temporária para o usuário. Ele poderá usá-la para entrar no app.</p>
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={newPassword}
+                  onChange={e => setNewPassword(e.target.value)}
+                  placeholder="Nova senha (mín. 6 caracteres)"
+                  className="flex-1 text-sm border border-orange-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                />
+                <button
+                  onClick={resetPassword}
+                  disabled={resettingPassword || newPassword.length < 6}
+                  className="flex items-center gap-1.5 text-sm font-semibold px-4 py-1.5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white transition-colors disabled:opacity-50"
+                >
+                  <KeyRound size={14} />
+                  {resettingPassword ? 'Salvando...' : 'Redefinir'}
+                </button>
+              </div>
             </div>
 
             {user.recentSales.length > 0 && (

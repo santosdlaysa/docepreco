@@ -223,6 +223,12 @@ export const api = {
       body: JSON.stringify({ days, notificationTitle, notificationBody }),
     }),
 
+  resetUserPassword: (id: string, newPassword: string) =>
+    req<{ success: boolean }>(`/admin/users/${id}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
+    }),
+
   sendUpdateEmail: (content?: { subject?: string; intro?: string; features?: string[]; ctaText?: string; ctaUrl?: string }) =>
     req<{ sent: number; failed: number }>('/admin/send-update-email', {
       method: 'POST',

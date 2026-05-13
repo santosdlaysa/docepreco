@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import bcrypt from 'bcryptjs';
 import { pool } from '../../infrastructure/database/connection';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
@@ -522,6 +523,33 @@ export class AdminController {
       });
     } catch (error) {
       console.error('[Admin] getUserData error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async resetUserPassword(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { newPassword } = req.body ?? {};
+
+    if (!newPassword || typeof newPassword !== 'string' || newPassword.length < 6) {
+      res.status(400).json({ success: false, error: 'A senha deve ter no mínimo 6 caracteres' });
+      return;
+    }
+
+    try {
+      const userRes = await pool.query('SELECT id, email, company_name FROM users WHERE id = $1', [id]);
+      if (userRes.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+
+      const passwordHash = await bcrypt.hash(newPassword, 10);
+      await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, id]);
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Admin] resetUserPassword error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
