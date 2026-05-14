@@ -13,6 +13,8 @@ interface PremiumContextData {
   refresh: () => Promise<void>;
   /** Optimistically updates local state (e.g. right after a purchase). */
   setPremiumLocal: (user: AuthUser) => void;
+  /** Resets premium state to defaults (call on logout). */
+  reset: () => void;
 }
 
 const defaultValue: PremiumContextData = {
@@ -23,6 +25,7 @@ const defaultValue: PremiumContextData = {
   loading: true,
   refresh: async () => {},
   setPremiumLocal: () => {},
+  reset: () => {},
 };
 
 const PremiumContext = createContext<PremiumContextData>(defaultValue);
@@ -77,6 +80,11 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     void tokenStorage.saveUser(updated);
   }, []);
 
+  const reset = useCallback(() => {
+    setUser(null);
+    setLoading(false);
+  }, []);
+
   useEffect(() => {
     // Load cached data immediately, then sync with backend
     loadFromStorage().then(() => {
@@ -97,6 +105,7 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     loading,
     refresh,
     setPremiumLocal,
+    reset,
   };
 
   return <PremiumContext.Provider value={value}>{children}</PremiumContext.Provider>;

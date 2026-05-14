@@ -42,6 +42,7 @@ import { identifyRevenueCatUser, logoutRevenueCatUser, setRevenueCatLocationAttr
 import { registerPushToken } from '../utils/notifications';
 import { requestAdConsent } from '../ads';
 import { initializeMobileAds } from '../ads/initMobileAds';
+import { usePremium } from '../context/PremiumContext';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -89,6 +90,7 @@ export function AppNavigator() {
   const [demoMode, setDemoModeState] = useState(false);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
+  const { reset: resetPremium, refresh: refreshPremium } = usePremium();
 
   useEffect(() => {
     initializeMobileAds();
@@ -154,6 +156,7 @@ export function AppNavigator() {
     setDemoModeState(false);
     await authApi.logout();
     await logoutRevenueCatUser();
+    resetPremium();
     setCompanyName('');
     setCompanyLogoState(null);
     setAuthState('auth');
@@ -164,6 +167,7 @@ export function AppNavigator() {
     setDemoModeState(false);
     await authApi.logout();
     await logoutRevenueCatUser();
+    resetPremium();
     setCompanyName('');
     setCompanyLogoState(null);
     setShowRegister(true);
@@ -199,6 +203,7 @@ export function AppNavigator() {
   }
 
   const handleAuthSuccess = async () => {
+    await refreshPremium();
     const user = await tokenStorage.getUser();
     if (user?.isPremium) {
       setAuthState('app');
