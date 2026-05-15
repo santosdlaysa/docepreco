@@ -443,7 +443,11 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Assinaturas</p>
-        <PremiumSubscribersTable subscribers={stats.premiumSubscribers} />
+        <PremiumSubscribersTable subscribers={stats.premiumSubscribers.filter(s => {
+          if (s.email === 'santosdlaysa@gmail.com') return false;
+          if (!s.premiumUntil) return true;
+          return new Date(s.premiumUntil).getTime() > Date.now();
+        })} />
       </div>
 
       {/* Email de atualização */}
