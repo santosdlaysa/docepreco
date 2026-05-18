@@ -675,7 +675,12 @@
     "priceHistoryBenefit": "Histórico de preços",
     "priceHistoryBenefitDesc": "Acompanhe a evolução do custo dos ingredientes.",
     "customPdf": "PDF personalizado",
-    "customPdfDesc": "Sua logo, suas cores, sem marca do DocePreço."
+    "customPdfDesc": "Sua logo, suas cores, sem marca do DocePreço.",
+    "startTrial": "Começar teste grátis",
+    "trialBadge": "{{days}} DIAS GRÁTIS",
+    "trialSubtitle": "{{days}} dias grátis, depois {{price}}",
+    "disclaimerTrial": "Teste gratuito de {{days}} dias. Após o período, a assinatura de {{price}} é cobrada automaticamente e renovada até você cancelar. Cancele a qualquer momento nas configurações da {{store}}.",
+    "welcomeTrial": "Seu teste grátis de {{days}} dias começou!"
   },
   "premiumAd": {
     "title": "Conheça o DocePreço Premium",

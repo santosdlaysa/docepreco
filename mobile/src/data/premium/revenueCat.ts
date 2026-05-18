@@ -29,6 +29,12 @@ export type PremiumPackage = {
   badge?: string;
   /** Underlying RevenueCat package reference (opaque). */
   nativePackage: any;
+  /** Whether this product has a free trial configured in the store. */
+  hasFreeTrial: boolean;
+  /** Trial duration in days (e.g. 3), or null if no trial. */
+  trialDays: number | null;
+  /** Whether the current user is eligible for the free trial. */
+  isTrialEligible: boolean;
 };
 
 export type PurchaseResult = 'success' | 'cancelled' | 'error';
@@ -105,6 +111,17 @@ export async function logoutRevenueCatUser(): Promise<void> {
   }
 }
 
+function computeTrialDays(introPrice: any): number | null {
+  if (!introPrice || introPrice.price !== 0) return null;
+  const units = introPrice.periodNumberOfUnits ?? 0;
+  const unit: string = (introPrice.periodUnit ?? '').toUpperCase();
+  if (unit === 'DAY') return units;
+  if (unit === 'WEEK') return units * 7;
+  if (unit === 'MONTH') return units * 30;
+  if (unit === 'YEAR') return units * 365;
+  return units > 0 ? units : null;
+}
+
 function mapPackage(pkg: any): PremiumPackage {
   const product = pkg?.product ?? {};
   const identifier: string = pkg?.identifier ?? product?.identifier ?? 'unknown';
@@ -129,7 +146,33 @@ function mapPackage(pkg: any): PremiumPackage {
 
   const badge = isAnnual ? 'ECONOMIZE' : undefined;
 
-  return { identifier, title, subtitle, priceLabel, badge, nativePackage: pkg };
+  const introPrice = product?.introPrice ?? null;
+  const trialDays = computeTrialDays(introPrice);
+  const hasFreeTrial = trialDays !== null && trialDays > 0;
+
+  return {
+    identifier, title, subtitle, priceLabel, badge, nativePackage: pkg,
+    hasFreeTrial, trialDays, isTrialEligible: false,
+  };
+}
+
+async function checkTrialEligibility(
+  productIdentifiers: string[],
+): Promise<Record<string, boolean>> {
+  const Purchases = getPurchases();
+  if (!Purchases || !configured || productIdentifiers.length === 0) return {};
+  try {
+    const result = await Purchases.checkTrialOrIntroductoryPriceEligibility(productIdentifiers);
+    const eligibility: Record<string, boolean> = {};
+    for (const [id, intro] of Object.entries(result)) {
+      // INTRO_ELIGIBILITY_STATUS_ELIGIBLE = 2, UNKNOWN = 0 (Android always returns UNKNOWN)
+      const status = (intro as any).status;
+      eligibility[id] = status === 2 || status === 0;
+    }
+    return eligibility;
+  } catch {
+    return {};
+  }
 }
 
 export async function fetchOfferings(): Promise<PremiumPackage[]> {
@@ -141,6 +184,19 @@ export async function fetchOfferings(): Promise<PremiumPackage[]> {
     if (!current) return [];
     const packages = current.availablePackages ?? [];
     const mapped: PremiumPackage[] = packages.map(mapPackage);
+
+    // Check trial eligibility for packages that have a free trial
+    const trialProductIds = mapped
+      .filter(p => p.hasFreeTrial)
+      .map(p => p.nativePackage?.product?.identifier ?? p.identifier);
+    const eligibility = await checkTrialEligibility(trialProductIds);
+    for (const pkg of mapped) {
+      if (pkg.hasFreeTrial) {
+        const productId = pkg.nativePackage?.product?.identifier ?? pkg.identifier;
+        pkg.isTrialEligible = eligibility[productId] ?? false;
+      }
+    }
+
     // Sort: annual first, then monthly, then everything else
     return mapped.sort((a, b) => {
       const rank = (p: PremiumPackage) =>

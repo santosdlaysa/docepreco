@@ -105,15 +105,18 @@ export const PaywallScreen: React.FC = () => {
     await refresh();
   };
 
+  const selectedPkg = packages?.find(p => p.identifier === selected) ?? null;
+
   const handlePurchase = async () => {
-    if (!selected) return;
-    const pkg = packages?.find(p => p.identifier === selected);
-    if (!pkg) return;
-    setPurchasing(pkg.identifier);
+    if (!selected || !selectedPkg) return;
+    setPurchasing(selectedPkg.identifier);
     try {
-      const result = await purchasePackage(pkg);
+      const result = await purchasePackage(selectedPkg);
       if (result === 'success') {
-        showToast(t('paywall.welcomePremium') + ' 🎉', 'success');
+        const successMsg = selectedPkg.isTrialEligible
+          ? t('paywall.welcomeTrial', { days: selectedPkg.trialDays }) + ' 🎉'
+          : t('paywall.welcomePremium') + ' 🎉';
+        showToast(successMsg, 'success');
         await syncPremiumWithBackend();
         navigation.goBack();
       } else if (result === 'cancelled') {
@@ -203,6 +206,9 @@ export const PaywallScreen: React.FC = () => {
           <View style={styles.plans}>
             {packages.map(pkg => {
               const isSelected = selected === pkg.identifier;
+              const subtitleText = pkg.isTrialEligible
+                ? t('paywall.trialSubtitle', { days: pkg.trialDays, price: pkg.priceLabel })
+                : pkg.subtitle;
               return (
                 <TouchableOpacity
                   key={pkg.identifier}
@@ -210,17 +216,23 @@ export const PaywallScreen: React.FC = () => {
                   activeOpacity={0.8}
                   style={[styles.planCard, isSelected && styles.planCardSelected]}
                 >
-                  {pkg.badge && (
+                  {pkg.isTrialEligible ? (
+                    <View style={[styles.planBadge, styles.trialBadge]}>
+                      <Text style={styles.planBadgeText}>
+                        {t('paywall.trialBadge', { days: pkg.trialDays })}
+                      </Text>
+                    </View>
+                  ) : pkg.badge ? (
                     <View style={styles.planBadge}>
                       <Text style={styles.planBadgeText}>{pkg.badge}</Text>
                     </View>
-                  )}
+                  ) : null}
                   <View style={styles.radio}>
                     {isSelected && <View style={styles.radioInner} />}
                   </View>
                   <View style={styles.planInfo}>
                     <Text style={styles.planTitle}>{pkg.title}</Text>
-                    {pkg.subtitle && <Text style={styles.planSubtitle}>{pkg.subtitle}</Text>}
+                    {subtitleText && <Text style={styles.planSubtitle}>{subtitleText}</Text>}
                   </View>
                   <Text style={styles.planPrice}>{pkg.priceLabel}</Text>
                 </TouchableOpacity>
@@ -239,14 +251,24 @@ export const PaywallScreen: React.FC = () => {
             <ActivityIndicator color="#fff" />
           ) : (
             <>
-              <Ionicons name="lock-open" size={18} color="#fff" />
-              <Text style={styles.ctaText}>{t('paywall.subscribe')}</Text>
+              <Ionicons name={selectedPkg?.isTrialEligible ? 'gift-outline' : 'lock-open'} size={18} color="#fff" />
+              <Text style={styles.ctaText}>
+                {selectedPkg?.isTrialEligible
+                  ? t('paywall.startTrial')
+                  : t('paywall.subscribe')}
+              </Text>
             </>
           )}
         </TouchableOpacity>
 
         <Text style={styles.disclaimer}>
-          {t('paywall.disclaimer', { store: Platform.OS === 'android' ? 'Google Play' : 'App Store' })}
+          {selectedPkg?.isTrialEligible
+            ? t('paywall.disclaimerTrial', {
+                days: selectedPkg.trialDays,
+                price: selectedPkg.priceLabel,
+                store: Platform.OS === 'android' ? 'Google Play' : 'App Store',
+              })
+            : t('paywall.disclaimer', { store: Platform.OS === 'android' ? 'Google Play' : 'App Store' })}
         </Text>
 
         <View style={styles.linksRow}>
@@ -383,6 +405,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   planBadgeText: { ...typography.caption, color: '#fff', fontWeight: '800' },
+  trialBadge: { backgroundColor: '#2ecc71' },
   radio: {
     width: 22,
     height: 22,
