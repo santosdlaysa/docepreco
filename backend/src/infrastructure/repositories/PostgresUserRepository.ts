@@ -132,8 +132,24 @@ export class PostgresUserRepository {
   }
 
   async delete(userId: string): Promise<boolean> {
-    const result = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
-    return (result.rowCount ?? 0) > 0;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      // Delete recipe_ingredients first (has ON DELETE RESTRICT on ingredient_id)
+      await client.query(
+        `DELETE FROM recipe_ingredients WHERE recipe_id IN (SELECT id FROM recipes WHERE user_id = $1)`,
+        [userId]
+      );
+      // Now delete the user — remaining FKs all use ON DELETE CASCADE
+      const result = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+      await client.query('COMMIT');
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async updatePassword(userId: string, newPassword: string): Promise<void> {
