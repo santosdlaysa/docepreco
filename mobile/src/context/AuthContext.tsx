@@ -2,6 +2,7 @@ import React, { createContext, useContext } from 'react';
 
 interface AuthContextType {
   logout: () => void;
+  deleteAccount: () => Promise<void>;
   goToRegister: () => void;
   companyName: string;
   isDemoMode: boolean;
@@ -11,6 +12,7 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType>({
   logout: () => {},
+  deleteAccount: async () => {},
   goToRegister: () => {},
   companyName: '',
   isDemoMode: false,

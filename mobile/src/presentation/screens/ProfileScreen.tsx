@@ -23,7 +23,7 @@ const SUPPORT_WHATSAPP = '5595981273912'; // Número do WhatsApp para suporte (c
 export const ProfileScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
+  const { logout, deleteAccount, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
@@ -39,6 +39,7 @@ export const ProfileScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [suggestionText, setSuggestionText] = useState('');
   const [sendingSuggestion, setSendingSuggestion] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -186,6 +187,42 @@ export const ProfileScreen: React.FC = () => {
       { text: t('common.cancel'), style: 'cancel' },
       { text: t('profile.logoutTitle'), style: 'destructive', onPress: logout },
     ]);
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t('profile.deleteAccountTitle'),
+      t('profile.deleteAccountMessage'),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('profile.deleteAccountConfirm'),
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              t('profile.deleteAccountFinalTitle'),
+              t('profile.deleteAccountFinalMessage'),
+              [
+                { text: t('common.cancel'), style: 'cancel' },
+                {
+                  text: t('profile.deleteAccountFinalConfirm'),
+                  style: 'destructive',
+                  onPress: async () => {
+                    setDeletingAccount(true);
+                    try {
+                      await deleteAccount();
+                    } catch {
+                      Alert.alert(t('common.error'), t('profile.deleteAccountError'));
+                      setDeletingAccount(false);
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
   };
 
   const handleSupport = async () => {
@@ -537,6 +574,23 @@ export const ProfileScreen: React.FC = () => {
             style={styles.logoutBtn}
           />
         </Card>
+
+        {!isDemoMode && (
+          <TouchableOpacity
+            style={styles.deleteAccountBtn}
+            onPress={handleDeleteAccount}
+            disabled={deletingAccount}
+          >
+            {deletingAccount ? (
+              <ActivityIndicator size="small" color={colors.error} />
+            ) : (
+              <>
+                <Ionicons name="trash-outline" size={16} color={colors.error} />
+                <Text style={styles.deleteAccountText}>{t('profile.deleteAccount')}</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -742,4 +796,17 @@ const styles = StyleSheet.create({
   },
   dangerCard: { borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
   logoutBtn: { borderColor: colors.error },
+  deleteAccountBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 14,
+    marginBottom: 32,
+  },
+  deleteAccountText: {
+    ...typography.bodySmall,
+    color: colors.error,
+    fontWeight: '600',
+  },
 });

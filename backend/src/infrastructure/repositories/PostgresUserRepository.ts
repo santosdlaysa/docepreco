@@ -131,6 +131,11 @@ export class PostgresUserRepository {
     );
   }
 
+  async delete(userId: string): Promise<boolean> {
+    const result = await pool.query('DELETE FROM users WHERE id = $1', [userId]);
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async updatePassword(userId: string, newPassword: string): Promise<void> {
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [passwordHash, userId]);

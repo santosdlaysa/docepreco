@@ -219,6 +219,20 @@ export class AuthController {
     }
   }
 
+  async deleteAccount(req: Request & { userId?: string }, res: Response): Promise<void> {
+    try {
+      const deleted = await userRepo.delete(req.userId!);
+      if (!deleted) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      res.json({ success: true, message: 'Conta excluída com sucesso' });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro ao excluir conta' });
+    }
+  }
+
   async sendSuggestion(req: Request & { userId?: string }, res: Response): Promise<void> {
     try {
       const { message } = req.body;

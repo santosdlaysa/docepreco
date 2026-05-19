@@ -84,6 +84,11 @@ export const authApi = {
     await apiClient.post('/auth/suggestion', { message });
   },
 
+  deleteAccount: async (): Promise<void> => {
+    await apiClient.delete('/auth/account');
+    await tokenStorage.clear();
+  },
+
   logout: async (): Promise<void> => {
     await tokenStorage.clear();
   },

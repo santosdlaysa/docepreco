@@ -596,7 +596,15 @@
     "suggestionSend": "Send",
     "suggestionSent": "Suggestion sent successfully! Thanks for the feedback ❤️",
     "suggestionEmpty": "Write your suggestion before sending",
-    "suggestionError": "Could not send the suggestion. Try again."
+    "suggestionError": "Could not send the suggestion. Try again.",
+    "deleteAccount": "Delete my account",
+    "deleteAccountTitle": "Delete account",
+    "deleteAccountMessage": "Are you sure you want to delete your account? All your data will be permanently removed and this action cannot be undone.",
+    "deleteAccountConfirm": "Yes, delete my account",
+    "deleteAccountFinalTitle": "Final confirmation",
+    "deleteAccountFinalMessage": "This is your last chance. Once confirmed, your account and all associated data will be permanently deleted.",
+    "deleteAccountFinalConfirm": "Delete permanently",
+    "deleteAccountError": "Could not delete the account. Try again or contact support."
   },
   "priceHistory": {
     "title": "Price History",

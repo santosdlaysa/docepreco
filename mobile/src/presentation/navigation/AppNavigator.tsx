@@ -162,6 +162,18 @@ export function AppNavigator() {
     setAuthState('auth');
   };
 
+  const deleteAccount = async () => {
+    await authApi.deleteAccount();
+    await setDemoMode(false);
+    setDemoModeState(false);
+    await logoutRevenueCatUser();
+    resetPremium();
+    setCompanyName('');
+    setCompanyLogoState(null);
+    await companyLogoStorage.remove();
+    setAuthState('auth');
+  };
+
   const goToRegister = async () => {
     await setDemoMode(false);
     setDemoModeState(false);
@@ -251,7 +263,7 @@ export function AppNavigator() {
   }
 
   return (
-    <AuthContext.Provider value={{ logout, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
+    <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
       <NavigationContainer
         ref={navigationRef}
         onReady={() => {
