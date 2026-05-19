@@ -10,6 +10,7 @@ const mockVerifyPasswordResetCode = jest.fn();
 const mockUpdatePassword = jest.fn();
 const mockMarkResetCodeUsed = jest.fn();
 const mockSendEmail = jest.fn();
+const mockDeleteUser = jest.fn();
 
 jest.mock('../../infrastructure/repositories/PostgresUserRepository', () => ({
   PostgresUserRepository: jest.fn(() => ({
@@ -20,6 +21,7 @@ jest.mock('../../infrastructure/repositories/PostgresUserRepository', () => ({
     verifyPasswordResetCode: mockVerifyPasswordResetCode,
     updatePassword: mockUpdatePassword,
     markResetCodeUsed: mockMarkResetCodeUsed,
+    delete: mockDeleteUser,
   })),
 }));
 
@@ -48,7 +50,7 @@ function mockReqRes(body: Record<string, unknown> = {}, userId?: string) {
 
 // ── Tests ──────────────────────────────────────────────────────────────────
 
-describe('AuthController – Redefinir Senha', () => {
+describe('AuthController', () => {
   const controller = new AuthController();
 
   beforeEach(() => jest.clearAllMocks());
@@ -294,6 +296,43 @@ describe('AuthController – Redefinir Senha', () => {
       );
       await controller.changePassword(req, res);
       expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
+
+  // ── deleteAccount ─────────────────────────────────────────────────────────
+
+  describe('deleteAccount', () => {
+    it('exclui a conta com sucesso', async () => {
+      mockDeleteUser.mockResolvedValue(true);
+      const { req, res } = mockReqRes({}, 'user-1');
+      await controller.deleteAccount(req, res);
+
+      expect(mockDeleteUser).toHaveBeenCalledWith('user-1');
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, message: expect.stringContaining('excluída') })
+      );
+    });
+
+    it('retorna 404 quando usuário não é encontrado', async () => {
+      mockDeleteUser.mockResolvedValue(false);
+      const { req, res } = mockReqRes({}, 'user-inexistente');
+      await controller.deleteAccount(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('não encontrado') })
+      );
+    });
+
+    it('retorna erro 500 se ocorrer exceção interna', async () => {
+      mockDeleteUser.mockRejectedValue(new Error('DB down'));
+      const { req, res } = mockReqRes({}, 'user-1');
+      await controller.deleteAccount(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ error: expect.stringContaining('excluir') })
+      );
     });
   });
 });
