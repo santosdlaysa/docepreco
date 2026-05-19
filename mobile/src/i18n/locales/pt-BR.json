@@ -604,7 +604,9 @@
     "deleteAccountFinalTitle": "Confirmação final",
     "deleteAccountFinalMessage": "Esta é sua última chance. Ao confirmar, sua conta e todos os dados associados serão excluídos permanentemente.",
     "deleteAccountFinalConfirm": "Excluir permanentemente",
-    "deleteAccountError": "Não foi possível excluir a conta. Tente novamente ou entre em contato com o suporte."
+    "deleteAccountError": "Não foi possível excluir a conta. Tente novamente ou entre em contato com o suporte.",
+    "deleteAccountSuccessTitle": "Conta excluída",
+    "deleteAccountSuccessMessage": "Sua conta e todos os dados foram excluídos com sucesso. Sentiremos sua falta!"
   },
   "priceHistory": {
     "title": "Histórico de Preços",

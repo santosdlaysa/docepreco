@@ -604,7 +604,9 @@
     "deleteAccountFinalTitle": "Final confirmation",
     "deleteAccountFinalMessage": "This is your last chance. Once confirmed, your account and all associated data will be permanently deleted.",
     "deleteAccountFinalConfirm": "Delete permanently",
-    "deleteAccountError": "Could not delete the account. Try again or contact support."
+    "deleteAccountError": "Could not delete the account. Try again or contact support.",
+    "deleteAccountSuccessTitle": "Account deleted",
+    "deleteAccountSuccessMessage": "Your account and all data have been successfully deleted. We'll miss you!"
   },
   "priceHistory": {
     "title": "Price History",

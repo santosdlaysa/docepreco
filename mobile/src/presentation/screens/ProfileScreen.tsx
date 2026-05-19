@@ -23,7 +23,7 @@ const SUPPORT_WHATSAPP = '5595981273912'; // Número do WhatsApp para suporte (c
 export const ProfileScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout, deleteAccount, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
+  const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
@@ -210,9 +210,15 @@ export const ProfileScreen: React.FC = () => {
                   onPress: async () => {
                     setDeletingAccount(true);
                     try {
-                      await deleteAccount();
+                      await authApi.deleteAccount();
+                      Alert.alert(
+                        t('profile.deleteAccountSuccessTitle'),
+                        t('profile.deleteAccountSuccessMessage'),
+                        [{ text: 'OK', onPress: logout }]
+                      );
                     } catch {
                       Alert.alert(t('common.error'), t('profile.deleteAccountError'));
+                    } finally {
                       setDeletingAccount(false);
                     }
                   },
