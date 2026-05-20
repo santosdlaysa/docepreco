@@ -19,7 +19,6 @@ async function evoFetch(path: string, body?: unknown): Promise<any> {
 export async function createInstance(): Promise<unknown> {
   return evoFetch('/instance/create', {
     instanceName: EVOLUTION_INSTANCE,
-    integration: 'WHATSAPP-BAILEYS',
     qrcode: true,
   });
 }
@@ -29,14 +28,14 @@ export async function getQrCode(): Promise<{ base64: string; code: string }> {
 }
 
 export async function getInstanceStatus(): Promise<{ state: string }> {
-  const res: any = await evoFetch(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
-  return { state: res.state ?? res.instance?.state ?? 'unknown' };
+  const res = await evoFetch(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
+  return { state: (res.instance as Record<string, unknown>)?.state as string ?? res.state as string ?? 'unknown' };
 }
 
 export async function sendWhatsAppMessage(phone: string, message: string): Promise<unknown> {
   const cleanPhone = phone.replace(/\D/g, '');
   return evoFetch(`/message/sendText/${EVOLUTION_INSTANCE}`, {
     number: cleanPhone,
-    text: message,
+    textMessage: { text: message },
   });
 }
