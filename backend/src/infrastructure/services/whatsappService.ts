@@ -16,15 +16,19 @@ async function evoFetch(path: string, body?: unknown): Promise<any> {
   return json;
 }
 
+let instanceVerified = false;
+
 async function ensureInstance(): Promise<void> {
+  if (instanceVerified) return;
   try {
     await evoFetch(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
+    instanceVerified = true;
   } catch {
-    // Instância não existe — cria automaticamente
     await evoFetch('/instance/create', {
       instanceName: EVOLUTION_INSTANCE,
       qrcode: true,
     });
+    instanceVerified = true;
   }
 }
 
