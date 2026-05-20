@@ -8,7 +8,14 @@ services:
     environment:
       - AUTHENTICATION_API_KEY=docepreco-evo-secret-key
       - AUTHENTICATION_TYPE=apikey
-      - DATABASE_ENABLED=false
+      - DATABASE_ENABLED=true
+      - DATABASE_CONNECTION_URI=${EVOLUTION_MONGODB_URI:-mongodb://localhost:27017}
+      - DATABASE_CONNECTION_DB_PREFIX_NAME=evdocepreco
+      - DATABASE_SAVE_DATA_INSTANCE=true
+      - DATABASE_SAVE_DATA_NEW_MESSAGE=false
+      - DATABASE_SAVE_MESSAGE_UPDATE=false
+      - DATABASE_SAVE_DATA_CONTACTS=false
+      - DATABASE_SAVE_DATA_CHATS=false
     volumes:
       - evolution_instances:/evolution/instances
 

@@ -23,6 +23,7 @@ import { ChangelogPage } from '../pages/ChangelogPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { TelegramAlertsPage } from '../pages/TelegramAlertsPage';
 import { SupportChatPage } from '../pages/SupportChatPage';
+import { WhatsAppPage } from '../pages/WhatsAppPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -50,6 +51,7 @@ import {
   Smartphone,
   Bot,
   Headset,
+  Phone,
   BellRing,
   UserRoundPlus,
   ShoppingCart,
@@ -58,7 +60,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp';
 
 interface NavItem {
   id: Page;
@@ -88,6 +90,7 @@ const NAV: NavItem[] = [
   { id: 'plans', label: 'Planos', icon: CreditCard, section: 'Configuração' },
   { id: 'coupons', label: 'Cupons', icon: Ticket },
   { id: 'flags', label: 'Feature flags', icon: ToggleLeft },
+  { id: 'whatsapp', label: 'WhatsApp', icon: Phone },
   { id: 'telegram', label: 'Telegram', icon: Bot },
   { id: 'settings', label: 'Configurações', icon: Settings },
 
@@ -400,6 +403,7 @@ export default function AdminApp() {
             {page === 'support' && <SupportChatPage toast={toast} />}
             {page === 'changelog' && <ChangelogPage toast={toast} />}
             {page === 'onboarding' && <OnboardingPage toast={toast} />}
+            {page === 'whatsapp' && <WhatsAppPage toast={toast} />}
             {page === 'telegram' && <TelegramAlertsPage toast={toast} />}
           </PageTransition>
         </div>
