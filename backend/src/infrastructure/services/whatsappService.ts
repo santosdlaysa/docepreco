@@ -64,7 +64,8 @@ export async function getInstanceStatus(): Promise<{ state: string }> {
 
 export async function sendWhatsAppMessage(phone: string, message: string): Promise<unknown> {
   await ensureInstance();
-  const cleanPhone = phone.replace(/\D/g, '');
+  let cleanPhone = phone.replace(/\D/g, '');
+  if (!cleanPhone.startsWith('55')) cleanPhone = `55${cleanPhone}`;
   return evoFetch(`/message/sendText/${EVOLUTION_INSTANCE}`, {
     number: cleanPhone,
     textMessage: { text: message },
