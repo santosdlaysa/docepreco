@@ -1,0 +1,16 @@
+services:
+  evolution-api:
+    image: atendai/evolution-api:v1.8.2
+    container_name: evolution-api
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - AUTHENTICATION_API_KEY=docepreco-evo-secret-key
+      - AUTHENTICATION_TYPE=apikey
+      - DATABASE_ENABLED=false
+    volumes:
+      - evolution_instances:/evolution/instances
+
+volumes:
+  evolution_instances:

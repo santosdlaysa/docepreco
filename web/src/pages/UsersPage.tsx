@@ -335,14 +335,33 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   );
 }
 
-function WhatsAppModal({ phone, contactName, onClose }: { phone: string; contactName: string; onClose: () => void }) {
+function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; contactName: string; onClose: () => void; toast: ToastFn }) {
   const [message, setMessage] = useState('');
-  const cleanPhone = phone.replace(/\D/g, '');
+  const [sending, setSending] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
+    if (!message.trim()) return;
+    setSending(true);
+    try {
+      await api.whatsappSend(phone, message.trim());
+      toast.success(`Mensagem enviada para ${contactName}!`);
+      onClose();
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro ao enviar';
+      if (msg.includes('401') || msg.includes('not connected') || msg.includes('instance')) {
+        toast.error('WhatsApp nao conectado. Conecte pelo painel de configuracoes.');
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleOpenWhatsApp = () => {
+    const cleanPhone = phone.replace(/\D/g, '');
     const encoded = encodeURIComponent(message);
-    window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank');
-    onClose();
+    window.open(`https://wa.me/${cleanPhone}${message ? `?text=${encoded}` : ''}`, '_blank');
   };
 
   return (
@@ -373,15 +392,22 @@ function WhatsAppModal({ phone, contactName, onClose }: { phone: string; contact
             }}
           />
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-400">Ctrl+Enter para enviar</p>
+            <button
+              onClick={handleOpenWhatsApp}
+              className="text-xs text-gray-400 hover:text-green-600 transition-colors"
+            >
+              Abrir no WhatsApp Web
+            </button>
             <button
               onClick={handleSend}
-              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
+              disabled={sending || !message.trim()}
+              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
             >
               <Send size={14} />
-              Enviar no WhatsApp
+              {sending ? 'Enviando...' : 'Enviar'}
             </button>
           </div>
+          <p className="text-xs text-gray-400 text-center">Ctrl+Enter para enviar</p>
         </div>
       </div>
     </ModalOverlay>
@@ -806,6 +832,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
           phone={whatsApp.phone}
           contactName={whatsApp.name}
           onClose={() => setWhatsApp(null)}
+          toast={toast}
         />
       )}
     </div>

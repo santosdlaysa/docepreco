@@ -285,6 +285,14 @@ docepreco/
 | PUT | `/:id` | Atualizar etapa (admin) |
 | DELETE | `/:id` | Excluir etapa (admin) |
 
+### WhatsApp (`/api/admin/whatsapp`) - admin
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| POST | `/instance` | Criar instancia na Evolution API (so 1 vez) |
+| GET | `/qrcode` | Obter QR code para conectar o WhatsApp |
+| GET | `/status` | Status da conexao (open, close, connecting) |
+| POST | `/send` | Enviar mensagem (body: `{ phone, message }`) |
+
 ### Outros
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
@@ -318,7 +326,7 @@ docepreco/
 
 ## Como Rodar
 
-### Backend
+### 1. Backend
 
 ```bash
 cd backend
@@ -329,7 +337,7 @@ npm run migrate
 npm run dev
 ```
 
-### Mobile
+### 2. Mobile
 
 ```bash
 cd mobile
@@ -337,7 +345,7 @@ npm install
 npm start
 ```
 
-### Painel Admin (Web)
+### 3. Painel Admin (Web)
 
 ```bash
 cd web
@@ -345,7 +353,39 @@ npm install
 npm run dev
 ```
 
-### Build (EAS)
+### 4. WhatsApp (Evolution API) - Opcional
+
+Necessario para enviar mensagens pelo WhatsApp direto do painel admin. Requer Docker.
+
+```bash
+# 1. Abrir Docker Desktop (precisa estar rodando)
+
+# 2. Subir a Evolution API (na raiz do projeto)
+docker compose up -d
+
+# 3. Criar instancia (so precisa rodar 1 vez)
+curl -X POST http://localhost:8080/instance/create \
+  -H "Content-Type: application/json" \
+  -H "apikey: docepreco-evo-secret-key" \
+  -d "{\"instanceName\":\"docepreco\",\"integration\":\"WHATSAPP-BAILEYS\",\"qrcode\":true}"
+
+# 4. Conectar seu WhatsApp - abra no navegador para ver o QR code:
+#    http://localhost:8080/manager (painel da Evolution API)
+#    Ou via API:
+curl -s http://localhost:8080/instance/connect/docepreco \
+  -H "apikey: docepreco-evo-secret-key" | jq .
+
+# 5. Escaneie o QR code com o WhatsApp Business
+#    (WhatsApp > Aparelhos conectados > Conectar aparelho)
+```
+
+**Importante:**
+- O Docker Desktop precisa estar aberto para a Evolution API funcionar
+- Configure o Docker para iniciar com o Windows: Docker Desktop > Settings > Start Docker Desktop when you sign in
+- O container reinicia automaticamente com o Docker (`restart: unless-stopped`)
+- Sem a Evolution API, o botao de WhatsApp no admin abre o WhatsApp Web como fallback
+
+### 5. Build (EAS)
 
 ```bash
 npx expo prebuild --clean
@@ -370,6 +410,9 @@ ASC_ISSUER_ID=<Apple App Store Connect issuer ID>
 ASC_KEY_ID=<App Store Connect key ID>
 ASC_PRIVATE_KEY=<App Store Connect private key>
 ASC_VENDOR_NUMBER=<App Store Connect vendor number>
+EVOLUTION_API_URL=http://localhost:8080
+EVOLUTION_API_KEY=docepreco-evo-secret-key
+EVOLUTION_INSTANCE=docepreco
 ```
 
 ### Mobile (`.env` / EAS Secrets)
@@ -522,6 +565,16 @@ Na primeira execucao da migration, os seguintes dados sao criados automaticament
 | Receitas sugeridas | 12 | SUGGESTED_RECIPES do mobile (com ingredientes) |
 | Telas de onboarding | 4 | SLIDES do OnboardingScreen (com icones e cores) |
 | Agendamento de notificacoes | 4 | Horarios originais hardcoded no mobile |
+
+### Evolution API (WhatsApp)
+
+Permite enviar mensagens pelo WhatsApp direto do painel admin, sem precisar abrir o WhatsApp Web.
+
+- **Container Docker:** `evolution-api` na porta 8080
+- **Arquivo:** `docker-compose.yml` (raiz do projeto)
+- **Service:** `backend/src/infrastructure/services/whatsappService.ts`
+- **Rotas:** `backend/src/presentation/routes/whatsappRoutes.ts`
+- **Variaveis:** `EVOLUTION_API_URL`, `EVOLUTION_API_KEY`, `EVOLUTION_INSTANCE`
 
 ## Suporte
 

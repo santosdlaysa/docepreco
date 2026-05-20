@@ -392,6 +392,16 @@ export const api = {
   deleteTelegramAlert: (id: string) =>
     req<void>(`/admin/telegram-alerts/${id}`, { method: 'DELETE' }),
 
+  // ── WhatsApp ──
+  whatsappCreateInstance: () =>
+    req<unknown>('/admin/whatsapp/instance', { method: 'POST' }),
+  whatsappGetQrCode: () =>
+    req<{ base64: string; code: string }>('/admin/whatsapp/qrcode'),
+  whatsappGetStatus: () =>
+    req<{ state: string }>('/admin/whatsapp/status'),
+  whatsappSend: (phone: string, message: string) =>
+    req<unknown>('/admin/whatsapp/send', { method: 'POST', body: JSON.stringify({ phone, message }) }),
+
   // ── Onboarding ──
   listOnboarding: () => req<OnboardingStep[]>('/admin/onboarding'),
   createOnboarding: (data: Omit<OnboardingStep, 'id' | 'createdAt'>) =>
