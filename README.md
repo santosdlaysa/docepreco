@@ -68,6 +68,7 @@ Painel de administracao em React para gerenciar o app remotamente. Acessivel em 
 - **Notificacoes Push** - Criar e enviar push segmentado (todos, premium, free) com agendamento
 - **Dicas Motivacionais** - Dicas diarias + templates de notificacoes locais com agendamento editavel
 - **Feedbacks** - Avaliacoes dos usuarios (1-5 estrelas) com resposta individual
+- **Suporte Chat** - Chat em tempo real com usuarios do app (indicador de digitando, badge de nao lidas)
 
 ### Configuracao
 
@@ -99,7 +100,7 @@ docepreco/
 ├── web/
 │   └── src/
 │       ├── admin/           # Shell do painel admin (sidebar, navegacao)
-│       ├── pages/           # Paginas do painel (28 paginas)
+│       ├── pages/           # Paginas do painel (29 paginas)
 │       ├── lib/             # API client + tipos TypeScript
 │       └── components.tsx   # Componentes compartilhados (toast, modal, skeleton)
 ```
@@ -293,6 +294,19 @@ docepreco/
 | GET | `/status` | Status da conexao (open, close, connecting) |
 | POST | `/send` | Enviar mensagem (body: `{ phone, message }`) |
 
+### Suporte Chat (`/api/support`)
+| Metodo | Rota | Descricao |
+|--------|------|-----------|
+| GET | `/messages` | Listar mensagens do usuario (requer auth) |
+| POST | `/messages` | Enviar mensagem como usuario (requer auth) |
+| GET | `/unread` | Contagem de nao lidas do usuario (requer auth) |
+| GET | `/typing` | Verificar se admin esta digitando (requer auth) |
+| GET | `/admin/conversations` | Listar todas as conversas (admin) |
+| GET | `/admin/conversations/:userId` | Mensagens de um usuario (admin) |
+| POST | `/admin/conversations/:userId` | Responder usuario (admin) |
+| POST | `/admin/conversations/:userId/typing` | Sinalizar que admin esta digitando (admin) |
+| GET | `/admin/unread` | Total de mensagens nao lidas (admin) |
+
 ### Outros
 | Metodo | Rota | Descricao |
 |--------|------|-----------|
@@ -319,7 +333,8 @@ docepreco/
 | Relatorios | Graficos e analise de desempenho |
 | Temporadas | Multiplicadores de preco sazonais |
 | Config. PDF | Personalizacao do PDF de orcamento |
-| Perfil | Info do usuario, status premium, suporte WhatsApp |
+| Suporte Chat | Chat em tempo real com o suporte (bolhas, indicador de digitando) |
+| Perfil | Info do usuario, status premium, suporte WhatsApp e chat |
 | Paywall | Tela de assinatura premium |
 | Premium Ad | Promocao do plano premium (pos-login) |
 | Politica de Privacidade | Texto da politica |
@@ -461,6 +476,7 @@ VITE_API_URL=https://docepreco.onrender.com/api
 | `feedbacks` | Feedbacks dos usuarios com nota e resposta |
 | `changelog_entries` | Changelog com novidades por versao |
 | `onboarding_steps` | Telas de onboarding configuráveis |
+| `support_messages` | Mensagens de suporte (chat usuario-admin) |
 
 ## Integracao Premium (RevenueCat)
 
@@ -578,7 +594,13 @@ Permite enviar mensagens pelo WhatsApp direto do painel admin, sem precisar abri
 
 ## Suporte
 
-- WhatsApp integrado na tela de perfil
+- **Chat in-app** - Chat de suporte integrado ao app com indicador de digitando em tempo real
+  - Botao flutuante na Home com badge de nao lidas e animacao de pulso
+  - Botao na tela de Perfil (secao Ajuda)
+  - Painel admin com layout 2 paineis (conversas + chat) e botao flutuante com badge
+  - Typing indicator: admin digita no web -> usuario ve "Suporte digitando..." no mobile
+  - Polling: 3s (typing), 10s (mensagens), 30s (lista de conversas e badges)
+- **WhatsApp** integrado na tela de perfil como canal alternativo
 - Sentry para monitoramento de erros em producao
 - Modo demo para testes e avaliacao na loja
 - Painel admin para gerenciamento remoto do app
