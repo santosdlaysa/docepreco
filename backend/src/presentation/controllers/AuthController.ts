@@ -10,6 +10,20 @@ const userRepo = new PostgresUserRepository();
 const suggestionRepo = new PostgresSuggestionRepository();
 const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 
+const TYPO_MAP: Record<string, string> = {
+  'gamil.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmial.com': 'gmail.com',
+  'gmai.com': 'gmail.com', 'gmail.co': 'gmail.com', 'gnail.com': 'gmail.com',
+  'gmail.com.br': 'gmail.com', 'gmaill.com': 'gmail.com', 'gmeil.com': 'gmail.com',
+  'hotmal.com': 'hotmail.com', 'hotmial.com': 'hotmail.com', 'hotmai.com': 'hotmail.com',
+  'hotmaill.com': 'hotmail.com', 'hotmail.co': 'hotmail.com', 'hotamil.com': 'hotmail.com',
+  'hormail.com': 'hotmail.com', 'hitmail.com': 'hotmail.com',
+  'outloo.com': 'outlook.com', 'outlok.com': 'outlook.com', 'outllook.com': 'outlook.com',
+  'outlook.co': 'outlook.com', 'outlool.com': 'outlook.com',
+  'yaho.com': 'yahoo.com', 'yahooo.com': 'yahoo.com', 'yahoo.co': 'yahoo.com',
+  'iclou.com': 'icloud.com', 'icloud.co': 'icloud.com', 'icoud.com': 'icloud.com',
+  'iclould.com': 'icloud.com', 'iclooud.com': 'icloud.com',
+};
+
 export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     try {
@@ -20,6 +34,13 @@ export class AuthController {
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         res.status(400).json({ success: false, error: 'Email inválido' });
+        return;
+      }
+      const domain = email.split('@')[1]?.toLowerCase();
+      const suggestion = TYPO_MAP[domain];
+      if (suggestion) {
+        const corrected = email.split('@')[0] + '@' + suggestion;
+        res.status(400).json({ success: false, error: `Você quis dizer ${corrected}?`, code: 'EMAIL_TYPO', suggestion: corrected });
         return;
       }
       if (password.length < 6) {

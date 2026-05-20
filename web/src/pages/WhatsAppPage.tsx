@@ -127,7 +127,7 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
                 className="w-64 h-64 rounded-lg border border-gray-100 dark:border-gray-700"
               />
             ) : (
-              <div className="w-64 h-64 flex items-center justify-center bg-gray-50 rounded-lg text-gray-400 text-sm">
+              <div className="w-64 h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg text-gray-400 text-sm">
                 QR code indisponivel
               </div>
             )}

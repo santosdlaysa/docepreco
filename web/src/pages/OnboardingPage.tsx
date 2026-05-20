@@ -204,7 +204,7 @@ export function OnboardingPage({ toast }: Props) {
                       </div>
                       <div className="flex gap-2">
                         <button disabled={previewIndex === 0} onClick={() => setPreviewIndex(previewIndex - 1)}
-                          className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center disabled:opacity-30">
+                          className="w-10 h-10 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center disabled:opacity-30">
                           <ChevronLeft size={16} className="text-gray-600 dark:text-gray-300" />
                         </button>
                         <button onClick={() => setPreviewIndex(Math.min(previewIndex + 1, activeSteps.length - 1))}

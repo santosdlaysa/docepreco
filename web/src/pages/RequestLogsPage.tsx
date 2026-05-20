@@ -226,7 +226,7 @@ export function RequestLogsPage() {
                     className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`}
                   >
                     <ChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`} />
-                    <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
+                    <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
                       {log.method}
                     </span>
                     <span className="flex-1 font-mono text-gray-700 dark:text-gray-200 truncate" title={log.path}>
