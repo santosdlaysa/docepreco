@@ -17,6 +17,7 @@ import { typography } from '../theme/typography';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
+import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
 
 type Step = 'email' | 'code' | 'password';
 
@@ -46,6 +47,11 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
     }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setError(t('forgotPassword.emailInvalid'));
+      return;
+    }
+    const typoSuggestion = getEmailTypoSuggestion(email.trim());
+    if (typoSuggestion) {
+      setError(t('forgotPassword.emailTypo', { suggestion: typoSuggestion }));
       return;
     }
     setLoading(true);

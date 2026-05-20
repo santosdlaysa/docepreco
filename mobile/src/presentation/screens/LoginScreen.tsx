@@ -18,6 +18,7 @@ import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../d
 import { colors } from '../theme/colors';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
+import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
 
 interface Props {
   onLogin: () => void;
@@ -52,6 +53,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
       e.email = t('login.emailRequired');
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       e.email = t('login.emailInvalid');
+    } else {
+      const typoSuggestion = getEmailTypoSuggestion(email.trim());
+      if (typoSuggestion) {
+        e.email = t('login.emailTypo', { suggestion: typoSuggestion });
+      }
     }
     if (!password) e.password = t('login.passwordRequired');
     setErrors(e);

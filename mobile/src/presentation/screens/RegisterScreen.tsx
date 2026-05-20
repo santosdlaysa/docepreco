@@ -17,6 +17,7 @@ import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../d
 import { colors } from '../theme/colors';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
+import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
 
 interface Props {
   onRegister: () => void;
@@ -53,10 +54,15 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       e.email = t('register.emailInvalid');
     } else {
-      const domain = email.trim().split('@')[1].toLowerCase();
-      const blocked = ['exemple.com', 'example.com', 'test.com', 'teste.com', 'email.com', 'mail.com', 'temp.com', 'fake.com', 'abc.com', 'xyz.com', 'aaa.com', 'bbb.com', 'asdf.com', 'qwerty.com', 'noreply.com', 'noemail.com'];
-      if (blocked.includes(domain)) {
-        e.email = t('register.emailInvalid');
+      const typoSuggestion = getEmailTypoSuggestion(email.trim());
+      if (typoSuggestion) {
+        e.email = t('register.emailTypo', { suggestion: typoSuggestion });
+      } else {
+        const domain = email.trim().split('@')[1].toLowerCase();
+        const blocked = ['exemple.com', 'example.com', 'test.com', 'teste.com', 'email.com', 'mail.com', 'temp.com', 'fake.com', 'abc.com', 'xyz.com', 'aaa.com', 'bbb.com', 'asdf.com', 'qwerty.com', 'noreply.com', 'noemail.com'];
+        if (blocked.includes(domain)) {
+          e.email = t('register.emailInvalid');
+        }
       }
     }
     if (phone.trim()) {
