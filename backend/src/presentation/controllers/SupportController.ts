@@ -1,10 +1,13 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { PostgresSupportRepository } from '../../infrastructure/repositories/PostgresSupportRepository';
+import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { pool } from '../../infrastructure/database/connection';
 import { notifySupportMessage } from '../../infrastructure/services/telegramService';
+import { sendPushNotifications } from '../../infrastructure/services/pushService';
 
 const repo = new PostgresSupportRepository();
+const pushTokenRepo = new PostgresPushTokenRepository();
 
 // In-memory typing status: userId -> timestamp when admin started typing
 const adminTyping = new Map<string, number>();
@@ -91,6 +94,17 @@ export class SupportController {
         return;
       }
       const item = await repo.create({ userId, senderType: 'admin', message: message.trim() });
+
+      // Push notification para o usuário (fire-and-forget)
+      pushTokenRepo.findByUserId(userId)
+        .then(tokens => {
+          if (tokens.length > 0) {
+            const tokenStrings = tokens.map(t => t.token);
+            sendPushNotifications(tokenStrings, 'Suporte DocePreço', message.trim(), { screen: 'SupportChat' });
+          }
+        })
+        .catch(() => {});
+
       res.status(201).json({ success: true, data: item });
     } catch (error) {
       console.error('[Support] adminSendMessage error:', error);

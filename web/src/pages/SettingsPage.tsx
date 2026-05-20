@@ -53,54 +53,54 @@ export function SettingsPage({ toast }: Props) {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Configurações</h2>
-        <p className="text-sm text-gray-500 mt-1">Ajustes gerais do painel e do bot do Telegram.</p>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Configurações</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Ajustes gerais do painel e do bot do Telegram.</p>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
         <div className="flex items-center gap-2">
           <Target size={20} className="text-primary-500" />
-          <h3 className="text-base font-bold text-gray-900">Meta diária de cadastros</h3>
+          <h3 className="text-base font-bold text-gray-900 dark:text-white">Meta diária de cadastros</h3>
         </div>
 
-        <p className="text-sm text-gray-600">
+        <p className="text-sm text-gray-600 dark:text-gray-300">
           Receba no Telegram, às 12h, 15h, 18h e 21h, o quanto falta para bater a meta de novos cadastros do app.
-          Use <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded">/meta</code> no bot para checar a qualquer momento.
+          Use <code className="text-xs bg-gray-100 dark:bg-gray-700 px-1.5 py-0.5 rounded">/meta</code> no bot para checar a qualquer momento.
         </p>
 
         {loading ? (
-          <div className="h-20 bg-gray-50 rounded-lg animate-pulse" />
+          <div className="h-20 bg-gray-50 dark:bg-gray-900 rounded-lg animate-pulse" />
         ) : (
           <>
             {savedGoal > 0 && (
-              <div className="bg-gray-50 rounded-lg p-4 space-y-2">
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4 space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Hoje</span>
-                  <span className="font-semibold text-gray-900">
+                  <span className="text-gray-600 dark:text-gray-300">Hoje</span>
+                  <span className="font-semibold text-gray-900 dark:text-white">
                     {registeredToday}/{savedGoal} ({percent}%)
                   </span>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-primary-500 transition-all"
                     style={{ width: `${percent}%` }}
                   />
                 </div>
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
                   {remaining === 0 ? '🎯 Meta batida hoje!' : `Faltam ${remaining} cadastro(s).`}
                 </p>
               </div>
             )}
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                 Meta de cadastros por dia
               </label>
               <div className="flex items-center gap-3">
                 <input
                   type="number"
                   min={0}
-                  className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   value={goal}
                   onChange={e => setGoal(e.target.value)}
                   placeholder="0"
@@ -114,7 +114,7 @@ export function SettingsPage({ toast }: Props) {
                   {saving ? 'Salvando...' : 'Salvar'}
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                 Defina <strong>0</strong> para desativar os avisos automáticos.
               </p>
             </div>

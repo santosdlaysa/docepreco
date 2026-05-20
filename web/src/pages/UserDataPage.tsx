@@ -52,12 +52,12 @@ export function UserDataPage({ userId, onBack }: Props) {
       <div className="space-y-4">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           <ArrowLeft size={18} />
           Voltar
         </button>
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 rounded-xl p-6 text-center">
           <p className="text-red-600 font-medium">Erro ao carregar dados do usuario</p>
           <p className="text-red-400 text-sm mt-1">{error}</p>
           <button
@@ -101,18 +101,18 @@ export function UserDataPage({ userId, onBack }: Props) {
       <div className="flex items-center gap-3">
         <button
           onClick={onBack}
-          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors"
         >
           <ArrowLeft size={18} />
           Voltar
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
         <div className="flex items-start justify-between flex-wrap gap-3">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">{user.companyName}</h2>
-            <p className="text-sm text-gray-500">{user.email}</p>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">{user.companyName}</h2>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
             <div className="flex items-center gap-3 mt-2">
               <PremiumBadge isPremium={user.isPremium} platform={user.premiumPlatform} />
               <span className="text-xs text-gray-400">Cadastro: {fmtDate(user.createdAt)}</span>
@@ -131,16 +131,16 @@ export function UserDataPage({ userId, onBack }: Props) {
             { label: 'Vendas', value: sales.length },
             { label: 'Faturamento', value: fmtCurrency(totalRevenue) },
           ].map(s => (
-            <div key={s.label} className="bg-gray-50 rounded-xl p-3">
+            <div key={s.label} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
               <p className="text-xs text-gray-400">{s.label}</p>
-              <p className="font-bold text-gray-900 mt-0.5">{s.value}</p>
+              <p className="font-bold text-gray-900 dark:text-white mt-0.5">{s.value}</p>
             </div>
           ))}
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+      <div className="flex gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
         {tabs.map(t => {
           const Icon = t.icon;
           const active = tab === t.id;
@@ -150,14 +150,14 @@ export function UserDataPage({ userId, onBack }: Props) {
               onClick={() => setTab(t.id)}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-md text-sm font-medium transition-all ${
                 active
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               <Icon size={16} />
               {t.label}
               <span className={`text-xs px-1.5 py-0.5 rounded-full ${
-                active ? 'bg-primary-100 text-primary-700' : 'bg-gray-200 text-gray-500'
+                active ? 'bg-primary-100 text-primary-700' : 'bg-gray-200 dark:bg-gray-600 text-gray-500 dark:text-gray-400'
               }`}>
                 {t.count}
               </span>
@@ -167,12 +167,12 @@ export function UserDataPage({ userId, onBack }: Props) {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         {tab === 'recipes' && (
           recipes.length === 0 ? (
             <p className="text-center py-12 text-gray-400">Nenhuma receita cadastrada</p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {recipes.map(r => {
                 const sellingPrice = r.totalCost > 0
                   ? r.totalCost * (1 + r.profitMargin / 100) / r.yield
@@ -182,10 +182,10 @@ export function UserDataPage({ userId, onBack }: Props) {
                   <div key={r.id}>
                     <button
                       onClick={() => setExpandedRecipe(expanded ? null : r.id)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
                     >
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{r.name}</p>
+                        <p className="font-medium text-gray-900 dark:text-white truncate">{r.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {r.ingredientCount} ingredientes · Rend. {r.yield} un · Atualizada em {fmtDate(r.updatedAt)}
                         </p>
@@ -200,19 +200,19 @@ export function UserDataPage({ userId, onBack }: Props) {
                       </div>
                     </button>
                     {expanded && (
-                      <div className="px-4 pb-4 bg-gray-50 border-t border-gray-100">
+                      <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3">
                           <div>
                             <p className="text-xs text-gray-400">Custo total</p>
-                            <p className="font-semibold text-gray-900">{fmtCurrency(r.totalCost)}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{fmtCurrency(r.totalCost)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-400">Custo/unidade</p>
-                            <p className="font-semibold text-gray-900">{fmtCurrency(r.yield > 0 ? r.totalCost / r.yield : 0)}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{fmtCurrency(r.yield > 0 ? r.totalCost / r.yield : 0)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-400">Margem</p>
-                            <p className="font-semibold text-gray-900">{r.profitMargin}%</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{r.profitMargin}%</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-400">Preco sugerido</p>
@@ -220,13 +220,13 @@ export function UserDataPage({ userId, onBack }: Props) {
                           </div>
                         </div>
                         {r.ingredients && r.ingredients.length > 0 && (
-                          <div className="mt-3 border-t border-gray-200 pt-3">
-                            <p className="text-xs font-semibold text-gray-500 mb-2">Ingredientes</p>
+                          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Ingredientes</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                               {r.ingredients.map((ing, idx) => (
-                                <div key={idx} className="flex items-center justify-between bg-white rounded px-3 py-1.5 text-sm">
-                                  <span className="text-gray-700">{ing.name}</span>
-                                  <span className="text-gray-500 font-medium ml-2 shrink-0">
+                                <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded px-3 py-1.5 text-sm">
+                                  <span className="text-gray-700 dark:text-gray-200">{ing.name}</span>
+                                  <span className="text-gray-500 dark:text-gray-400 font-medium ml-2 shrink-0">
                                     {ing.quantityUsed} {ing.unit}
                                   </span>
                                 </div>
@@ -235,13 +235,13 @@ export function UserDataPage({ userId, onBack }: Props) {
                           </div>
                         )}
                         {r.additionalCosts && r.additionalCosts.length > 0 && (
-                          <div className="mt-3 border-t border-gray-200 pt-3">
-                            <p className="text-xs font-semibold text-gray-500 mb-2">Custos adicionais</p>
+                          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Custos adicionais</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
                               {r.additionalCosts.map((ac, idx) => (
-                                <div key={idx} className="flex items-center justify-between bg-white rounded px-3 py-1.5 text-sm">
-                                  <span className="text-gray-700">{ac.name}</span>
-                                  <span className="text-gray-500 font-medium ml-2 shrink-0">
+                                <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded px-3 py-1.5 text-sm">
+                                  <span className="text-gray-700 dark:text-gray-200">{ac.name}</span>
+                                  <span className="text-gray-500 dark:text-gray-400 font-medium ml-2 shrink-0">
                                     {fmtCurrency(ac.value)}
                                   </span>
                                 </div>
@@ -265,27 +265,27 @@ export function UserDataPage({ userId, onBack }: Props) {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                   <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Nome</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Preco</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Embalagem</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Preco/un</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Usado em</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Nome</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Preco</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Embalagem</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Preco/un</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Usado em</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {ingredients.map(i => (
-                    <tr key={i.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">{i.name}</td>
-                      <td className="px-4 py-3 text-right text-gray-700">{fmtCurrency(i.price)}</td>
-                      <td className="px-4 py-3 text-right text-gray-500">
+                    <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{i.name}</td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">{fmtCurrency(i.price)}</td>
+                      <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">
                         {i.packageAmount} {i.unit}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-700">
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">
                         {fmtCurrency(i.packageAmount > 0 ? i.price / i.packageAmount : 0)}/{i.unit}
                       </td>
-                      <td className="px-4 py-3 text-right text-gray-500">
+                      <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">
                         {i.usedInRecipes} {i.usedInRecipes === 1 ? 'receita' : 'receitas'}
                       </td>
                     </tr>
@@ -302,24 +302,24 @@ export function UserDataPage({ userId, onBack }: Props) {
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
+                <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                   <tr>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Receita</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Qtd</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Preco un.</th>
-                    <th className="text-right px-4 py-3 font-semibold text-gray-600">Total</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Data</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-600">Obs.</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Receita</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Qtd</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Preco un.</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Total</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Data</th>
+                    <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Obs.</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
+                <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                   {sales.map(s => (
-                    <tr key={s.id} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 font-medium text-gray-900">{s.recipeName ?? '—'}</td>
-                      <td className="px-4 py-3 text-right text-gray-700">{s.quantitySold}</td>
-                      <td className="px-4 py-3 text-right text-gray-700">{fmtCurrency(s.salePrice)}</td>
-                      <td className="px-4 py-3 text-right font-semibold text-gray-900">{fmtCurrency(s.totalRevenue)}</td>
-                      <td className="px-4 py-3 text-gray-500">{fmtDate(s.saleDate)}</td>
+                    <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{s.recipeName ?? '—'}</td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">{s.quantitySold}</td>
+                      <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">{fmtCurrency(s.salePrice)}</td>
+                      <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">{fmtCurrency(s.totalRevenue)}</td>
+                      <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{fmtDate(s.saleDate)}</td>
                       <td className="px-4 py-3 text-gray-400 max-w-[200px] truncate">{s.notes ?? '—'}</td>
                     </tr>
                   ))}

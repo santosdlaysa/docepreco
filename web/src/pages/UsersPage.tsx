@@ -121,20 +121,20 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-5 border-b border-gray-100">
-          <h3 className="font-bold text-gray-900">Detalhes do usuário</h3>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-5 border-b border-gray-100 dark:border-gray-700">
+          <h3 className="font-bold text-gray-900 dark:text-white">Detalhes do usuário</h3>
           <div className="flex items-center gap-2">
             {onImpersonate && (
               <button
                 onClick={() => { onClose(); onImpersonate(userId); }}
-                className="flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"
+                className="flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors"
               >
                 <Eye size={15} />
                 Ver cadastros
               </button>
             )}
-            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
           </div>
         </div>
 
@@ -147,8 +147,8 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
         ) : (
           <div className="p-5 space-y-5">
             <div>
-              <p className="font-semibold text-gray-900">{user.companyName}</p>
-              <p className="text-sm text-gray-500">{user.email}</p>
+              <p className="font-semibold text-gray-900 dark:text-white">{user.companyName}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
               {user.phone && (
                 <button
                   onClick={() => onWhatsApp(user.phone!, user.companyName)}
@@ -175,10 +175,10 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
               )}
             </div>
 
-            <div className="bg-gray-50 rounded-xl p-4 space-y-3">
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-700">Status premium</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Status premium</p>
                   <div className="mt-1">
                     <PremiumBadge isPremium={user.isPremium} platform={user.premiumPlatform} />
                   </div>
@@ -193,7 +193,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                   disabled={saving}
                   className={`text-sm font-semibold px-4 py-2 rounded-lg transition-colors ${
                     user.isPremium
-                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      ? 'bg-gray-200 hover:bg-gray-300 text-gray-700 dark:bg-gray-700 dark:hover:bg-gray-600 dark:text-gray-200'
                       : 'bg-primary-500 hover:bg-primary-600 text-white'
                   }`}
                 >
@@ -202,11 +202,11 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
               </div>
               {!user.isPremium && (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-gray-500">Período:</label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">Período:</label>
                   <select
                     value={premiumDays}
                     onChange={e => setPremiumDays(e.target.value)}
-                    className="text-sm border border-gray-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+                    className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
                   >
                     <option value="3">3 dias</option>
                     <option value="7">7 dias</option>
@@ -221,7 +221,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
             </div>
 
             {!user.isPremium && (
-              <div className="bg-green-50 border border-green-200 rounded-xl p-4 space-y-3">
+              <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 rounded-xl p-4 space-y-3">
                 <div className="flex items-center gap-2">
                   <Gift size={16} className="text-green-600" />
                   <p className="text-sm font-medium text-green-800">Dar dias grátis + notificar</p>
@@ -232,7 +232,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                   <select
                     value={trialDays}
                     onChange={e => setTrialDays(e.target.value)}
-                    className="text-sm border border-green-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-300"
+                    className="text-sm border border-green-200 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-300"
                   >
                     <option value="1">1 dia</option>
                     <option value="3">3 dias</option>
@@ -248,7 +248,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                     type="text"
                     value={notifTitle}
                     onChange={e => setNotifTitle(e.target.value)}
-                    className="w-full text-sm border border-green-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-300"
+                    className="w-full text-sm border border-green-200 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-300"
                     placeholder="Ex: Presente especial para você!"
                   />
                 </div>
@@ -258,7 +258,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                     value={notifBody}
                     onChange={e => setNotifBody(e.target.value)}
                     rows={3}
-                    className="w-full text-sm border border-green-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-green-300 resize-none"
+                    className="w-full text-sm border border-green-200 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-green-300 resize-none"
                     placeholder="Ex: Você ganhou 3 dias grátis de acesso Premium!"
                   />
                 </div>
@@ -280,9 +280,9 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                 { label: 'Vendas', value: user.saleCount },
                 { label: 'Faturamento total', value: fmtCurrency(user.totalRevenue) },
               ].map(s => (
-                <div key={s.label} className="bg-gray-50 rounded-xl p-3">
+                <div key={s.label} className="bg-gray-50 dark:bg-gray-900 rounded-xl p-3">
                   <p className="text-xs text-gray-400">{s.label}</p>
-                  <p className="font-bold text-gray-900 mt-0.5">{s.value}</p>
+                  <p className="font-bold text-gray-900 dark:text-white mt-0.5">{s.value}</p>
                 </div>
               ))}
             </div>
@@ -299,7 +299,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                   value={newPassword}
                   onChange={e => setNewPassword(e.target.value)}
                   placeholder="Nova senha (mín. 6 caracteres)"
-                  className="flex-1 text-sm border border-orange-200 rounded-lg px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-orange-300"
+                  className="flex-1 text-sm border border-orange-200 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-300"
                 />
                 <button
                   onClick={resetPassword}
@@ -314,15 +314,15 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
 
             {user.recentSales.length > 0 && (
               <div>
-                <p className="text-sm font-semibold text-gray-700 mb-2">Últimas vendas</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Últimas vendas</p>
                 <div className="space-y-2">
                   {user.recentSales.map(s => (
-                    <div key={s.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
+                    <div key={s.id} className="flex items-center justify-between text-sm border-b border-gray-100 dark:border-gray-700 pb-2">
                       <div>
-                        <p className="text-gray-800">{s.recipeName ?? '—'}</p>
+                        <p className="text-gray-800 dark:text-gray-100">{s.recipeName ?? '—'}</p>
                         <p className="text-xs text-gray-400">{fmtDate(s.saleDate)} · {s.quantitySold}x</p>
                       </div>
-                      <p className="font-semibold text-gray-900">{fmtCurrency(s.totalRevenue)}</p>
+                      <p className="font-semibold text-gray-900 dark:text-white">{fmtCurrency(s.totalRevenue)}</p>
                     </div>
                   ))}
                 </div>
@@ -366,18 +366,18 @@ function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; 
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-700">
           <div className="flex items-center gap-2">
             <div className="bg-green-100 p-2 rounded-full">
               <MessageCircle size={18} className="text-green-600" />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-sm">WhatsApp</h3>
-              <p className="text-xs text-gray-500">{contactName} · {phone}</p>
+              <h3 className="font-bold text-gray-900 dark:text-white text-sm">WhatsApp</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{contactName} · {phone}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
         </div>
         <div className="p-4 space-y-3">
           <textarea
@@ -386,7 +386,7 @@ function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; 
             rows={4}
             autoFocus
             placeholder="Digite sua mensagem..."
-            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-300 focus:bg-white resize-none"
+            className="w-full text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-300 focus:bg-white dark:focus:bg-gray-600 resize-none"
             onKeyDown={e => {
               if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend();
             }}
@@ -500,7 +500,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
 
   const ColHeader = ({ label, sortKey }: { label: string; sortKey: SortKey }) => (
     <th
-      className="text-right px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none whitespace-nowrap"
+      className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer hover:text-primary-600 select-none whitespace-nowrap"
       onClick={() => handleSort(sortKey)}
     >
       {label}<SortIcon active={sortBy === sortKey} />
@@ -525,7 +525,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-xl font-bold text-gray-900">Usuários</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Usuários</h2>
         <span className="text-sm text-gray-400">{total} no total</span>
       </div>
 
@@ -538,15 +538,15 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             placeholder="Buscar por nome, email, telefone ou instagram..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(1); }}
-            className="border border-gray-300 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full"
+            className="border border-gray-300 dark:border-gray-600 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 w-full dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
           />
         </div>
         <button
           onClick={() => setShowFilters(f => !f)}
           className={`flex items-center gap-1.5 border rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
             showFilters || activeFilterCount > 0
-              ? 'border-primary-400 bg-primary-50 text-primary-700'
-              : 'border-gray-300 text-gray-600 hover:bg-gray-50'
+              ? 'border-primary-400 bg-primary-50 dark:bg-primary-900/20 text-primary-700'
+              : 'border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
           }`}
         >
           <Filter size={15} />
@@ -560,7 +560,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
         {activeFilterCount > 0 && (
           <button
             onClick={clearAllFilters}
-            className="flex items-center gap-1 text-sm text-gray-500 hover:text-red-500 transition-colors"
+            className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors"
           >
             <X size={14} />
             Limpar filtros
@@ -570,13 +570,13 @@ export function UsersPage({ toast, onImpersonate }: Props) {
 
       {/* Painel de filtros */}
       {showFilters && (
-        <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Plano</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Plano</label>
             <select
               value={premiumFilter === null ? '' : String(premiumFilter)}
               onChange={e => { setPremiumFilter(e.target.value === '' ? null : e.target.value === 'true'); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
               <option value="true">Premium</option>
@@ -584,11 +584,11 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Telefone</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Telefone</label>
             <select
               value={hasPhone === null ? '' : String(hasPhone)}
               onChange={e => { setHasPhone(e.target.value === '' ? null : e.target.value === 'true'); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
               <option value="true">Com telefone</option>
@@ -596,11 +596,11 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Instagram</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Instagram</label>
             <select
               value={hasInstagram === null ? '' : String(hasInstagram)}
               onChange={e => { setHasInstagram(e.target.value === '' ? null : e.target.value === 'true'); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
               <option value="true">Com instagram</option>
@@ -608,40 +608,40 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Receitas (min)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Receitas (min)</label>
             <input
               type="number"
               min={0}
               placeholder="Ex: 1"
               value={minRecipes ?? ''}
               onChange={e => { setMinRecipes(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Ingredientes (min)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Ingredientes (min)</label>
             <input
               type="number"
               min={0}
               placeholder="Ex: 1"
               value={minIngredients ?? ''}
               onChange={e => { setMinIngredients(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Vendas (min)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Vendas (min)</label>
             <input
               type="number"
               min={0}
               placeholder="Ex: 1"
               value={minSales ?? ''}
               onChange={e => { setMinSales(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Faturamento (min R$)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Faturamento (min R$)</label>
             <input
               type="number"
               min={0}
@@ -649,15 +649,15 @@ export function UsersPage({ toast, onImpersonate }: Props) {
               placeholder="Ex: 100"
               value={minRevenue ?? ''}
               onChange={e => { setMinRevenue(e.target.value ? parseFloat(e.target.value) : undefined); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary-300"
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Último acesso</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Último acesso</label>
             <select
               value={lastSeenDays === undefined ? '' : String(lastSeenDays)}
               onChange={e => { setLastSeenDays(e.target.value === '' ? undefined : parseInt(e.target.value)); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
               <option value="1">Hoje</option>
@@ -668,11 +668,11 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 block mb-1">Cadastro</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Cadastro</label>
             <select
               value={createdDays === undefined ? '' : String(createdDays)}
               onChange={e => { setCreatedDays(e.target.value === '' ? undefined : parseInt(e.target.value)); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-2.5 py-1.5 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
               <option value="1">Hoje</option>
@@ -686,35 +686,35 @@ export function UsersPage({ toast, onImpersonate }: Props) {
       )}
 
       {/* Tabela */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[1050px]">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Confeitaria</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Email</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Telefone</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Instagram</th>
-                <th className="text-left px-4 py-3 font-semibold text-gray-600">Plano</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Confeitaria</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Telefone</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Instagram</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Plano</th>
                 <ColHeader label="Receitas"      sortKey="recipeCount" />
                 <ColHeader label="Ingredientes"  sortKey="ingredientCount" />
                 <ColHeader label="Vendas"        sortKey="saleCount" />
                 <ColHeader label="Faturamento"   sortKey="totalRevenue" />
                 <th
-                  className="text-left px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none whitespace-nowrap"
+                  className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer hover:text-primary-600 select-none whitespace-nowrap"
                   onClick={() => handleSort('lastSeenAt')}
                 >
                   Último acesso<SortIcon active={sortBy === 'lastSeenAt'} />
                 </th>
                 <th
-                  className="text-left px-4 py-3 font-semibold text-gray-600 cursor-pointer hover:text-primary-600 select-none"
+                  className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 cursor-pointer hover:text-primary-600 select-none"
                   onClick={() => handleSort('createdAt')}
                 >
                   Cadastro<SortIcon active={sortBy === 'createdAt'} />
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading && (
                 <tr>
                   <td colSpan={11}>
@@ -730,12 +730,12 @@ export function UsersPage({ toast, onImpersonate }: Props) {
               {!loading && users.map((u, i) => (
                 <tr
                   key={u.id}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors animate-fade-in"
+                  className="hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors animate-fade-in"
                   style={{ animationDelay: `${i * 20}ms` }}
                   onClick={() => setSelectedId(u.id)}
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900">{u.companyName}</td>
-                  <td className="px-4 py-3 text-gray-500">{u.email}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{u.companyName}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{u.email}</td>
                   <td className="px-4 py-3">
                     {u.phone ? (
                       <button
@@ -764,10 +764,10 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                   <td className="px-4 py-3">
                     <PremiumBadge isPremium={u.isPremium} platform={u.premiumPlatform} />
                   </td>
-                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'recipeCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.recipeCount}</td>
-                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'ingredientCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.ingredientCount}</td>
-                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'saleCount' ? 'text-primary-600' : 'text-gray-700'}`}>{u.saleCount}</td>
-                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'totalRevenue' ? 'text-primary-600' : 'text-gray-700'}`}>{fmtCurrency(u.totalRevenue)}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'recipeCount' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{u.recipeCount}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'ingredientCount' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{u.ingredientCount}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'saleCount' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{u.saleCount}</td>
+                  <td className={`px-4 py-3 text-right font-medium ${sortBy === 'totalRevenue' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{fmtCurrency(u.totalRevenue)}</td>
                   <td className={`px-4 py-3 whitespace-nowrap ${sortBy === 'lastSeenAt' ? 'text-primary-600' : 'text-gray-400'}`}>{u.lastSeenAt ? fmtDateTime(u.lastSeenAt) : '—'}</td>
                   <td className="px-4 py-3 text-gray-400">{fmtDate(u.createdAt)}</td>
                 </tr>
@@ -777,11 +777,11 @@ export function UsersPage({ toast, onImpersonate }: Props) {
         </div>
 
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-gray-700">
             <button
               onClick={() => setPage(p => Math.max(1, p - 1))}
               disabled={page === 1}
-              className="flex items-center gap-1 text-sm text-gray-500 disabled:opacity-40 hover:text-gray-900 transition-colors"
+              className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 disabled:opacity-40 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               <ChevronLeft size={16} />
               Anterior
@@ -797,7 +797,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                     className={`min-w-[32px] h-8 rounded-lg text-sm font-medium transition-colors ${
                       page === p
                         ? 'bg-primary-500 text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                   >
                     {p}
@@ -808,7 +808,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={page === totalPages}
-              className="flex items-center gap-1 text-sm text-gray-500 disabled:opacity-40 hover:text-gray-900 transition-colors"
+              className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 disabled:opacity-40 hover:text-gray-900 dark:hover:text-white transition-colors"
             >
               Próxima
               <ChevronRight size={16} />

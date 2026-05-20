@@ -113,12 +113,12 @@ export function OnboardingPage({ toast }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Onboarding</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Onboarding</h2>
           <p className="text-sm text-gray-500 mt-0.5">Configure as telas de boas-vindas para novos usuários</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setPreview(!preview); setPreviewIndex(0); }}
-            className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors font-medium border ${preview ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'}`}>
+            className={`flex items-center gap-1.5 text-sm px-4 py-2 rounded-lg transition-colors font-medium border ${preview ? 'bg-primary-50 border-primary-200 text-primary-700' : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             <Smartphone size={16} /> {preview ? 'Fechar preview' : 'Preview'}
           </button>
           <button onClick={openNew} className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
@@ -129,37 +129,37 @@ export function OnboardingPage({ toast }: Props) {
 
       <div className="flex gap-6">
         {/* List */}
-        <div className={`bg-white rounded-xl border border-gray-200 overflow-hidden ${preview ? 'flex-1' : 'w-full'}`}>
+        <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden ${preview ? 'flex-1' : 'w-full'}`}>
           {loading ? (
             <TableSkeleton rows={4} cols={3} />
           ) : sorted.length === 0 ? (
             <p className="text-center text-gray-400 py-10">Nenhuma etapa cadastrada</p>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {sorted.map((step, idx) => (
-                <div key={step.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition-colors ${!step.isActive ? 'opacity-50' : ''}`}>
+                <div key={step.id} className={`flex items-center gap-4 px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${!step.isActive ? 'opacity-50' : ''}`}>
                   <GripVertical size={14} className="text-gray-300 shrink-0" />
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shrink-0"
                     style={{ backgroundColor: step.iconBg ?? '#F3E8FF', color: step.iconColor ?? '#7C3AED' }}>
                     {idx + 1}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{step.title}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{step.title}</p>
                     <p className="text-xs text-gray-500 line-clamp-1">{step.description}</p>
                     {step.icon && <p className="text-xs text-gray-400 mt-0.5">Ícone: {step.icon}</p>}
                   </div>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${step.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${step.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
                     {step.isActive ? 'Ativo' : 'Inativo'}
                   </span>
                   <div className="flex items-center gap-2 shrink-0">
                     <button onClick={() => toggleActive(step)}
-                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${step.isActive ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100' : 'bg-green-50 text-green-600 hover:bg-green-100'}`}>
+                      className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${step.isActive ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 hover:bg-yellow-100' : 'bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100'}`}>
                       <Power size={12} />
                     </button>
-                    <button onClick={() => openEdit(step)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                    <button onClick={() => openEdit(step)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition-colors">
                       <Pencil size={12} />
                     </button>
-                    <button onClick={() => setConfirmDelete(step)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                    <button onClick={() => setConfirmDelete(step)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 transition-colors">
                       <Trash2 size={12} />
                     </button>
                   </div>
@@ -205,7 +205,7 @@ export function OnboardingPage({ toast }: Props) {
                       <div className="flex gap-2">
                         <button disabled={previewIndex === 0} onClick={() => setPreviewIndex(previewIndex - 1)}
                           className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center disabled:opacity-30">
-                          <ChevronLeft size={16} className="text-gray-600" />
+                          <ChevronLeft size={16} className="text-gray-600 dark:text-gray-300" />
                         </button>
                         <button onClick={() => setPreviewIndex(Math.min(previewIndex + 1, activeSteps.length - 1))}
                           className="flex-1 h-10 rounded-xl bg-primary-500 text-white text-sm font-medium flex items-center justify-center gap-1">
@@ -234,26 +234,26 @@ export function OnboardingPage({ toast }: Props) {
 
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editing ? 'Editar etapa' : 'Nova etapa'}
             </h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Bem-vindo ao DocePreço!" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none" rows={3}
+                <textarea className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none" rows={3}
                   value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
               </div>
 
               {/* Icon picker */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Ícone e cores</label>
-                <div className="grid grid-cols-8 gap-1.5 bg-gray-50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                <div className="grid grid-cols-8 gap-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-40 overflow-y-auto">
                   {ICON_SUGGESTIONS.map(({ icon, label, color, bg }) => (
                     <button key={icon} onClick={() => setForm({ ...form, icon, iconColor: color, iconBg: bg })}
                       className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:scale-110 ${form.icon === icon ? 'ring-2 ring-primary-400 shadow-sm' : 'hover:shadow-sm'}`}
@@ -264,12 +264,12 @@ export function OnboardingPage({ toast }: Props) {
                   ))}
                 </div>
                 {form.icon && (
-                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500">
+                  <div className="flex items-center gap-3 mt-2 text-xs text-gray-500 dark:text-gray-400">
                     <div className="w-8 h-8 rounded-full flex items-center justify-center"
                       style={{ backgroundColor: form.iconBg ?? '#eee' }}>
                       <span className="text-sm font-bold" style={{ color: form.iconColor ?? '#333' }}>●</span>
                     </div>
-                    <span>Ícone: <code className="bg-gray-100 px-1 rounded">{form.icon}</code></span>
+                    <span>Ícone: <code className="bg-gray-100 dark:bg-gray-700 px-1 rounded">{form.icon}</code></span>
                     <button onClick={() => setForm({ ...form, icon: null, iconColor: null, iconBg: null })} className="text-red-400 hover:text-red-600">Remover</button>
                   </div>
                 )}
@@ -279,24 +279,24 @@ export function OnboardingPage({ toast }: Props) {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Nome ícone (Ionicons)</label>
-                  <input className="w-full border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-primary-400 outline-none"
+                  <input className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-xs font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.icon ?? ''} onChange={e => setForm({ ...form, icon: e.target.value || null })} placeholder="calculator-outline" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Cor do ícone</label>
                   <div className="flex gap-1">
-                    <input type="color" className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+                    <input type="color" className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
                       value={form.iconColor ?? '#7C3AED'} onChange={e => setForm({ ...form, iconColor: e.target.value })} />
-                    <input className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-primary-400 outline-none"
+                    <input className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-xs font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                       value={form.iconColor ?? ''} onChange={e => setForm({ ...form, iconColor: e.target.value || null })} placeholder="#E91E8C" />
                   </div>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Cor de fundo</label>
                   <div className="flex gap-1">
-                    <input type="color" className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+                    <input type="color" className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
                       value={form.iconBg ?? '#F3E8FF'} onChange={e => setForm({ ...form, iconBg: e.target.value })} />
-                    <input className="flex-1 border border-gray-300 rounded px-2 py-1.5 text-xs font-mono focus:border-primary-400 outline-none"
+                    <input className="flex-1 border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-xs font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                       value={form.iconBg ?? ''} onChange={e => setForm({ ...form, iconBg: e.target.value || null })} placeholder="#F8BBD9" />
                   </div>
                 </div>
@@ -305,18 +305,18 @@ export function OnboardingPage({ toast }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">URL da imagem (opcional)</label>
-                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.imageUrl ?? ''} onChange={e => setForm({ ...form, imageUrl: e.target.value || null })} placeholder="https://..." />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
-                  <input type="number" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <input type="number" min="0" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })} />
                 </div>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+              <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
               <button onClick={save} disabled={!form.title || !form.description}
                 className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium">
                 {editing ? 'Salvar' : 'Criar'}

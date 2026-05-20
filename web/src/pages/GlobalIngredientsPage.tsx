@@ -89,8 +89,8 @@ export function GlobalIngredientsPage({ toast }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Ingredientes Globais</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Preços de referência sugeridos aos usuários do app</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Ingredientes Globais</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Preços de referência sugeridos aos usuários do app</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
           <Plus size={16} /> Novo ingrediente
@@ -98,13 +98,13 @@ export function GlobalIngredientsPage({ toast }: Props) {
       </div>
 
       <input
-        className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+        className="w-full max-w-xs border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
         placeholder="Buscar por nome ou categoria..."
         value={search}
         onChange={e => setSearch(e.target.value)}
       />
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
         {loading ? (
           <TableSkeleton rows={5} cols={6} />
         ) : filtered.length === 0 ? (
@@ -112,7 +112,7 @@ export function GlobalIngredientsPage({ toast }: Props) {
         ) : (
           <table className="w-full text-sm min-w-[600px]">
             <thead>
-              <tr className="border-b border-gray-100 text-left text-gray-500 text-xs uppercase">
+              <tr className="border-b border-gray-100 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400 text-xs uppercase">
                 <th className="px-5 py-3">Nome</th>
                 <th className="px-3 py-3">Categoria</th>
                 <th className="px-3 py-3">Preço</th>
@@ -123,26 +123,26 @@ export function GlobalIngredientsPage({ toast }: Props) {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {filtered.map(item => (
-                <tr key={item.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-5 py-3 font-medium text-gray-900 flex items-center gap-2">
+                <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <td className="px-5 py-3 font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     <Package size={14} className="text-gray-400" />
                     {item.name}
                   </td>
                   <td className="px-3 py-3">
                     {item.category ? (
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 text-gray-600">{item.category}</span>
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">{item.category}</span>
                     ) : '—'}
                   </td>
-                  <td className="px-3 py-3 text-gray-700">{fmtPrice(item.price)}</td>
-                  <td className="px-3 py-3 text-gray-500">{item.packageAmount} {item.unit}</td>
-                  <td className="px-3 py-3 text-gray-700 font-medium">
+                  <td className="px-3 py-3 text-gray-700 dark:text-gray-200">{fmtPrice(item.price)}</td>
+                  <td className="px-3 py-3 text-gray-500 dark:text-gray-400">{item.packageAmount} {item.unit}</td>
+                  <td className="px-3 py-3 text-gray-700 dark:text-gray-200 font-medium">
                     {fmtPrice(item.price / (item.packageAmount || 1))}/{item.unit}
                   </td>
                   <td className="px-3 py-3 text-right space-x-2">
-                    <button onClick={() => openEdit(item)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                    <button onClick={() => openEdit(item)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition-colors">
                       <Pencil size={12} /> Editar
                     </button>
-                    <button onClick={() => setConfirmDelete(item)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                    <button onClick={() => setConfirmDelete(item)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 transition-colors">
                       <Trash2 size={12} /> Excluir
                     </button>
                   </td>
@@ -165,25 +165,25 @@ export function GlobalIngredientsPage({ toast }: Props) {
 
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {editing ? 'Editar ingrediente' : 'Novo ingrediente'}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Nome</label>
+                <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Preço (R$)</label>
-                  <input type="number" step="0.01" min="0" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço (R$)</label>
+                  <input type="number" step="0.01" min="0" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.price} onChange={e => setForm({ ...form, price: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                  <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Categoria</label>
+                  <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
                     list="ingredient-categories" placeholder="Ex: Laticínios" />
                   <datalist id="ingredient-categories">
@@ -193,13 +193,13 @@ export function GlobalIngredientsPage({ toast }: Props) {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Qtd embalagem</label>
-                  <input type="number" min="1" className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Qtd embalagem</label>
+                  <input type="number" min="1" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.packageAmount} onChange={e => setForm({ ...form, packageAmount: parseInt(e.target.value) || 1 })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Unidade</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Unidade</label>
+                  <select className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value })}>
                     <option value="g">g</option>
                     <option value="kg">kg</option>
@@ -211,7 +211,7 @@ export function GlobalIngredientsPage({ toast }: Props) {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+              <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
               <button onClick={save} disabled={!form.name || form.price <= 0}
                 className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium">
                 {editing ? 'Salvar' : 'Criar'}

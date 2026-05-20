@@ -64,47 +64,47 @@ export function PlanConfigPage({ toast }: Props) {
   return (
     <div className="space-y-6 max-w-2xl">
       <div>
-        <h2 className="text-xl font-bold text-gray-900">Configuração de Planos</h2>
-        <p className="text-sm text-gray-500 mt-1">Defina limites, preços e funcionalidades dos planos Free e Premium.</p>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Configuração de Planos</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Defina limites, preços e funcionalidades dos planos Free e Premium.</p>
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="space-y-4">
-            <div className="h-10 bg-gray-50 rounded-lg animate-pulse" />
-            <div className="h-10 bg-gray-50 rounded-lg animate-pulse" />
-            <div className="h-32 bg-gray-50 rounded-lg animate-pulse" />
+            <div className="h-10 bg-gray-50 dark:bg-gray-900 rounded-lg animate-pulse" />
+            <div className="h-10 bg-gray-50 dark:bg-gray-900 rounded-lg animate-pulse" />
+            <div className="h-32 bg-gray-50 dark:bg-gray-900 rounded-lg animate-pulse" />
           </div>
         </div>
       ) : config ? (
         <>
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <Gift size={18} className="text-gray-500" /> Plano Free
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Gift size={18} className="text-gray-500 dark:text-gray-400" /> Plano Free
             </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Limite de receitas</label>
-              <input type="number" min="1" className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Limite de receitas</label>
+              <input type="number" min="1" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                 value={config.freeRecipeLimit} onChange={e => setConfig({ ...config, freeRecipeLimit: parseInt(e.target.value) || 1 })} />
-              <p className="text-xs text-gray-500 mt-1">Máximo de receitas no plano gratuito</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Máximo de receitas no plano gratuito</p>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Funcionalidades do plano Free</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Funcionalidades do plano Free</label>
               <div className="space-y-2">
                 {config.freeFeatures.map((f, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
-                    <span className="text-sm text-gray-700 flex-1">{f}</span>
+                  <div key={i} className="flex items-center gap-2 bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2">
+                    <span className="text-sm text-gray-700 dark:text-gray-200 flex-1">{f}</span>
                     <button onClick={() => removeFreeFeature(i)} className="text-gray-400 hover:text-red-500 transition-colors">
                       <X size={14} />
                     </button>
                   </div>
                 ))}
                 <div className="flex gap-2">
-                  <input className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <input className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={newFreeFeature} onChange={e => setNewFreeFeature(e.target.value)} placeholder="Nova funcionalidade..."
                     onKeyDown={e => e.key === 'Enter' && addFreeFeature()} />
                   <button onClick={addFreeFeature} disabled={!newFreeFeature.trim()}
-                    className="text-sm px-3 py-2 rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 transition-colors">
+                    className="text-sm px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 disabled:opacity-50 transition-colors">
                     <Plus size={14} />
                   </button>
                 </div>
@@ -112,28 +112,28 @@ export function PlanConfigPage({ toast }: Props) {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-5">
-            <h3 className="text-base font-bold text-gray-900 flex items-center gap-2">
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Crown size={18} className="text-amber-500" /> Plano Premium
             </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Preço mensal (R$)</label>
-              <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço mensal (R$)</label>
+              <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                 value={config.premiumPrice} onChange={e => setConfig({ ...config, premiumPrice: parseFloat(e.target.value) || 0 })} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Funcionalidades do plano Premium</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Funcionalidades do plano Premium</label>
               <div className="space-y-2">
                 {config.premiumFeatures.map((f, i) => (
                   <div key={i} className="flex items-center gap-2 bg-amber-50 rounded-lg px-3 py-2">
-                    <span className="text-sm text-gray-700 flex-1">{f}</span>
+                    <span className="text-sm text-gray-700 dark:text-gray-200 flex-1">{f}</span>
                     <button onClick={() => removePremiumFeature(i)} className="text-gray-400 hover:text-red-500 transition-colors">
                       <X size={14} />
                     </button>
                   </div>
                 ))}
                 <div className="flex gap-2">
-                  <input className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <input className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={newPremiumFeature} onChange={e => setNewPremiumFeature(e.target.value)} placeholder="Nova funcionalidade..."
                     onKeyDown={e => e.key === 'Enter' && addPremiumFeature()} />
                   <button onClick={addPremiumFeature} disabled={!newPremiumFeature.trim()}
@@ -152,7 +152,7 @@ export function PlanConfigPage({ toast }: Props) {
           </button>
         </>
       ) : (
-        <p className="text-gray-500 text-sm">Erro ao carregar configurações.</p>
+        <p className="text-gray-500 dark:text-gray-400 text-sm">Erro ao carregar configurações.</p>
       )}
     </div>
   );

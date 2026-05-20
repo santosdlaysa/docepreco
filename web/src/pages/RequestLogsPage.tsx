@@ -40,13 +40,13 @@ function RequestLogsSkeleton() {
     <div className="space-y-4 animate-fade-in">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-gray-200 px-4 py-3 space-y-2">
+          <div key={i} className="rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-3 space-y-2">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-8 w-16" />
           </div>
         ))}
       </div>
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-2">
         {Array.from({ length: 8 }).map((_, i) => (
           <div key={i} className="flex items-center gap-3">
             <Skeleton className="h-5 w-12 rounded" />
@@ -116,7 +116,7 @@ export function RequestLogsPage() {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Rotas acessadas</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Rotas acessadas</h2>
           {lastUpdate && (
             <p className="text-xs text-gray-400 mt-0.5">
               Atualizado às {lastUpdate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
@@ -127,7 +127,7 @@ export function RequestLogsPage() {
           <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
             <div
               onClick={() => setAutoRefresh(v => !v)}
-              className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${autoRefresh ? 'bg-primary-500' : 'bg-gray-200'}`}
+              className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${autoRefresh ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}
             >
               <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoRefresh ? 'translate-x-5' : 'translate-x-0.5'}`} />
             </div>
@@ -135,7 +135,7 @@ export function RequestLogsPage() {
           </label>
           <button
             onClick={load}
-            className="flex items-center gap-1.5 text-sm bg-white border border-gray-300 hover:border-primary-400 text-gray-600 hover:text-primary-600 px-3 py-1.5 rounded-lg transition-colors"
+            className="flex items-center gap-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-primary-400 text-gray-600 dark:text-gray-300 hover:text-primary-600 px-3 py-1.5 rounded-lg transition-colors"
           >
             <RefreshCw size={14} />
             Atualizar
@@ -145,7 +145,7 @@ export function RequestLogsPage() {
 
       {/* Resumo */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-xl border px-4 py-3 bg-gray-50 border-gray-200">
+        <div className="rounded-xl border px-4 py-3 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
           <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
             <Activity size={14} className="text-gray-400" />
             Total
@@ -153,7 +153,7 @@ export function RequestLogsPage() {
           <p className="text-2xl font-bold text-gray-800 mt-1">{logs.length}</p>
           <p className="text-xs text-gray-400">últimas requisições</p>
         </div>
-        <div className="rounded-xl border px-4 py-3 bg-red-50 border-red-200">
+        <div className="rounded-xl border px-4 py-3 bg-red-50 dark:bg-red-900/20 border-red-200">
           <p className="text-xs font-medium text-red-600 flex items-center gap-1.5">
             <AlertOctagon size={14} />
             Erros (4xx/5xx)
@@ -161,7 +161,7 @@ export function RequestLogsPage() {
           <p className="text-2xl font-bold text-red-700 mt-1">{errorCount}</p>
           <p className="text-xs text-red-400">{logs.length ? Math.round(errorCount / logs.length * 100) : 0}% do total</p>
         </div>
-        <div className="rounded-xl border px-4 py-3 bg-blue-50 border-blue-200">
+        <div className="rounded-xl border px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-blue-200">
           <p className="text-xs font-medium text-blue-600 flex items-center gap-1.5">
             <Clock size={14} />
             Tempo médio
@@ -169,7 +169,7 @@ export function RequestLogsPage() {
           <p className="text-2xl font-bold text-blue-700 mt-1">{avgDuration}ms</p>
           <p className="text-xs text-blue-400">por requisição</p>
         </div>
-        <div className="rounded-xl border px-4 py-3 bg-green-50 border-green-200">
+        <div className="rounded-xl border px-4 py-3 bg-green-50 dark:bg-green-900/20 border-green-200">
           <p className="text-xs font-medium text-green-600 flex items-center gap-1.5">
             <BarChart3 size={14} />
             Métodos
@@ -190,13 +190,13 @@ export function RequestLogsPage() {
             placeholder="Filtrar por rota ou email..."
             value={search}
             onChange={e => setSearch(e.target.value)}
-            className="w-full text-sm border border-gray-200 rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
+            className="w-full text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg pl-9 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-300"
           />
         </div>
         <select
           value={methodFilter}
           onChange={e => setMethodFilter(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+          className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
         >
           <option value="">Todos os métodos</option>
           {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
@@ -206,8 +206,8 @@ export function RequestLogsPage() {
       </div>
 
       {/* Tabela */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 flex items-center justify-between">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <p className="font-semibold text-gray-900 text-sm">Feed de requisições</p>
           <span className="text-xs text-gray-400">{filtered.length} registros</span>
         </div>
@@ -223,7 +223,7 @@ export function RequestLogsPage() {
                 <div key={log.id}>
                   <div
                     onClick={() => setExpandedId(isExpanded ? null : log.id)}
-                    className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 transition-colors text-sm cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`}
+                    className={`flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm cursor-pointer ${isExpanded ? 'bg-gray-50' : ''}`}
                   >
                     <ChevronDown size={14} className={`shrink-0 text-gray-400 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`} />
                     <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
@@ -241,8 +241,8 @@ export function RequestLogsPage() {
                     </div>
                   </div>
                   {isExpanded && (
-                    <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 text-sm space-y-1.5">
-                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1.5 text-gray-600">
+                    <div className="px-5 py-3 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700 text-sm space-y-1.5">
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-1.5 text-gray-600 dark:text-gray-300">
                         <div><span className="text-gray-400 text-xs">Rota:</span> <span className="font-mono">{log.path}</span></div>
                         <div><span className="text-gray-400 text-xs">Status:</span> <span className={`font-bold ${statusColor(log.statusCode)}`}>{log.statusCode}</span></div>
                         <div><span className="text-gray-400 text-xs">Duração:</span> {log.durationMs}ms</div>

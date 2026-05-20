@@ -73,12 +73,12 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-xl font-bold text-gray-900">WhatsApp</h1>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">WhatsApp</h1>
         <p className="text-sm text-gray-500 mt-1">Conexao com a Evolution API para envio de mensagens</p>
       </div>
 
       {/* Status card */}
-      <div className={`rounded-xl border p-5 flex items-center gap-4 ${connected ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+      <div className={`rounded-xl border p-5 flex items-center gap-4 ${connected ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-red-50 dark:bg-red-900/20 border-red-200'}`}>
         {connected ? <Wifi size={24} className="text-green-600" /> : <WifiOff size={24} className="text-red-500" />}
         <div className="flex-1">
           <p className={`font-semibold text-sm ${connected ? 'text-green-800' : 'text-red-800'}`}>
@@ -99,16 +99,16 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
 
       {/* QR Code */}
       {!connected && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
-              <QrCode size={18} className="text-gray-500" />
+              <QrCode size={18} className="text-gray-500 dark:text-gray-400" />
               <h2 className="font-semibold text-gray-900 text-sm">QR Code</h2>
             </div>
             <button
               onClick={handleRefreshQr}
               disabled={qrLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
             >
               <RefreshCw size={12} className={qrLoading ? 'animate-spin' : ''} />
               Atualizar
@@ -117,14 +117,14 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
 
           <div className="flex flex-col items-center gap-4">
             {qrLoading ? (
-              <div className="w-64 h-64 flex items-center justify-center bg-gray-50 rounded-lg">
+              <div className="w-64 h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg">
                 <Loader2 size={32} className="animate-spin text-gray-400" />
               </div>
             ) : qr?.base64 ? (
               <img
                 src={qr.base64.startsWith('data:') ? qr.base64 : `data:image/png;base64,${qr.base64}`}
                 alt="WhatsApp QR Code"
-                className="w-64 h-64 rounded-lg border border-gray-100"
+                className="w-64 h-64 rounded-lg border border-gray-100 dark:border-gray-700"
               />
             ) : (
               <div className="w-64 h-64 flex items-center justify-center bg-gray-50 rounded-lg text-gray-400 text-sm">
@@ -146,7 +146,7 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
       )}
 
       {connected && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6 text-center">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-center">
           <Wifi size={40} className="text-green-500 mx-auto mb-3" />
           <p className="text-sm text-gray-700 font-medium">Tudo certo!</p>
           <p className="text-xs text-gray-500 mt-1">Voce ja pode enviar mensagens pelo painel de usuarios.</p>

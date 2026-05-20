@@ -192,7 +192,7 @@ export function TipsPage({ toast }: Props) {
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Lightbulb size={20} className="text-yellow-500" />
-            <h2 className="text-xl font-bold text-gray-900">Dicas Motivacionais</h2>
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Dicas Motivacionais</h2>
           </div>
           <button
             onClick={openNew}
@@ -203,7 +203,7 @@ export function TipsPage({ toast }: Props) {
           </button>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
           {loading ? (
             <TableSkeleton rows={4} cols={4} />
           ) : tips.length === 0 ? (
@@ -211,35 +211,35 @@ export function TipsPage({ toast }: Props) {
           ) : (
             <table className="w-full text-sm min-w-[600px]">
               <thead>
-                <tr className="border-b border-gray-100 text-left text-gray-500 text-xs uppercase">
+                <tr className="border-b border-gray-100 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400 text-xs uppercase">
                   <th className="px-5 py-3">Mensagem</th>
                   <th className="px-3 py-3 w-24">Status</th>
                   <th className="px-3 py-3 w-40">Criada em</th>
                   <th className="px-3 py-3 text-right w-56">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
                 {tips.map(t => (
-                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 text-gray-900">{t.message}</td>
+                  <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-5 py-3 text-gray-900 dark:text-white">{t.message}</td>
                     <td className="px-3 py-3">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                         t.isActive
                           ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                       }`}>
                         {t.isActive ? 'Ativa' : 'Inativa'}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-gray-500 text-xs">{fmtDate(t.createdAt)}</td>
+                    <td className="px-3 py-3 text-gray-500 dark:text-gray-400 text-xs">{fmtDate(t.createdAt)}</td>
                     <td className="px-3 py-3">
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => toggleActive(t)}
                           className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                             t.isActive
-                              ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
-                              : 'bg-green-50 text-green-600 hover:bg-green-100'
+                              ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+                              : 'bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30'
                           }`}
                         >
                           <Power size={12} />
@@ -247,14 +247,14 @@ export function TipsPage({ toast }: Props) {
                         </button>
                         <button
                           onClick={() => openEdit(t)}
-                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                         >
                           <Pencil size={12} />
                           Editar
                         </button>
                         <button
                           onClick={() => setConfirmDelete(t)}
-                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                         >
                           <Trash2 size={12} />
                           Excluir
@@ -275,13 +275,13 @@ export function TipsPage({ toast }: Props) {
           <div className="flex items-center gap-2">
             <BellRing size={20} className="text-purple-500" />
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Notificações Locais</h2>
-              <p className="text-sm text-gray-500 mt-1">Templates das notificações agendadas no celular do usuário</p>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notificações Locais</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Templates das notificações agendadas no celular do usuário</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
           {templatesLoading ? (
             <TableSkeleton rows={4} cols={5} />
           ) : templates.length === 0 ? (
@@ -289,7 +289,7 @@ export function TipsPage({ toast }: Props) {
           ) : (
             <table className="w-full text-sm min-w-[600px]">
               <thead>
-                <tr className="border-b border-gray-100 text-left text-gray-500 text-xs uppercase">
+                <tr className="border-b border-gray-100 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400 text-xs uppercase">
                   <th className="px-5 py-3 w-44">Tipo</th>
                   <th className="px-3 py-3">Título</th>
                   <th className="px-3 py-3">Corpo</th>
@@ -298,22 +298,22 @@ export function TipsPage({ toast }: Props) {
                   <th className="px-3 py-3 text-right">Ações</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-50">
+              <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
                 {templates.map(t => (
-                  <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 text-gray-700 font-medium text-xs">
+                  <tr key={t.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-5 py-3 text-gray-700 dark:text-gray-200 font-medium text-xs">
                       {SLUG_LABELS[t.slug] ?? t.slug}
                     </td>
-                    <td className="px-3 py-3 text-gray-900">{t.title}</td>
-                    <td className="px-3 py-3 text-gray-600 text-xs max-w-xs truncate">{t.body}</td>
-                    <td className="px-3 py-3 text-xs text-gray-500 whitespace-nowrap">
+                    <td className="px-3 py-3 text-gray-900 dark:text-white">{t.title}</td>
+                    <td className="px-3 py-3 text-gray-600 dark:text-gray-300 text-xs max-w-xs truncate">{t.body}</td>
+                    <td className="px-3 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
                       {describeSchedule(t)}
                     </td>
                     <td className="px-3 py-3">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded ${
                         t.isActive
                           ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-500'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
                       }`}>
                         {t.isActive ? 'Ativa' : 'Inativa'}
                       </span>
@@ -324,8 +324,8 @@ export function TipsPage({ toast }: Props) {
                           onClick={() => toggleTemplateActive(t)}
                           className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                             t.isActive
-                              ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
-                              : 'bg-green-50 text-green-600 hover:bg-green-100'
+                              ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+                              : 'bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30'
                           }`}
                         >
                           <Power size={12} />
@@ -333,14 +333,14 @@ export function TipsPage({ toast }: Props) {
                         </button>
                         <button
                           onClick={() => openEditTemplate(t)}
-                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                         >
                           <Pencil size={12} />
                           Editar
                         </button>
                         <button
                           onClick={() => setConfirmSendTemplate(t)}
-                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-purple-50 text-purple-600 hover:bg-purple-100 transition-colors"
+                          className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-purple-50 dark:bg-purple-900/20 text-purple-600 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
                         >
                           <Send size={12} />
                           Enviar agora
@@ -380,14 +380,14 @@ export function TipsPage({ toast }: Props) {
       {/* Modal Dicas */}
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {editing ? 'Editar dica' : 'Nova dica'}
             </h3>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Mensagem</label>
               <textarea
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                 rows={4}
                 value={message}
                 onChange={e => setMessage(e.target.value)}
@@ -397,7 +397,7 @@ export function TipsPage({ toast }: Props) {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancelar
               </button>
@@ -416,24 +416,24 @@ export function TipsPage({ toast }: Props) {
       {/* Modal Templates */}
       {showTemplateModal && editingTemplate && (
         <ModalOverlay onClose={() => setShowTemplateModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               Editar notificação — {SLUG_LABELS[editingTemplate.slug] ?? editingTemplate.slug}
             </h3>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Título</label>
                 <input
                   type="text"
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   value={templateTitle}
                   onChange={e => setTemplateTitle(e.target.value)}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Corpo</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Corpo</label>
                 <textarea
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   rows={3}
                   value={templateBody}
                   onChange={e => setTemplateBody(e.target.value)}
@@ -441,12 +441,12 @@ export function TipsPage({ toast }: Props) {
               </div>
 
               {/* Agendamento */}
-              <div className="border-t border-gray-100 pt-4">
-                <label className="block text-sm font-bold text-gray-700 mb-3">Agendamento</label>
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-3">Agendamento</label>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
-                    <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tipo</label>
+                    <select className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                       value={templateScheduleType} onChange={e => setTemplateScheduleType(e.target.value as any)}>
                       <option value="daily">Diariamente</option>
                       <option value="weekly">Semanalmente</option>
@@ -457,21 +457,21 @@ export function TipsPage({ toast }: Props) {
                   {templateScheduleType !== 'interval' ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Hora</label>
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Hora</label>
                         <input type="number" min="0" max="23"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                           value={templateScheduleHour} onChange={e => setTemplateScheduleHour(parseInt(e.target.value) || 0)} />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">Minuto</label>
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Minuto</label>
                         <input type="number" min="0" max="59"
-                          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                          className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                           value={templateScheduleMinute} onChange={e => setTemplateScheduleMinute(parseInt(e.target.value) || 0)} />
                       </div>
                       {templateScheduleType === 'weekly' && (
                         <div>
-                          <label className="block text-xs font-medium text-gray-500 mb-1">Dia da semana</label>
-                          <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                          <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Dia da semana</label>
+                          <select className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                             value={templateScheduleWeekday} onChange={e => setTemplateScheduleWeekday(parseInt(e.target.value))}>
                             <option value={1}>Domingo</option>
                             <option value={2}>Segunda</option>
@@ -486,17 +486,17 @@ export function TipsPage({ toast }: Props) {
                     </div>
                   ) : (
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Horas de inatividade</label>
+                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Horas de inatividade</label>
                       <div className="flex items-center gap-2">
                         <input type="number" min="1"
-                          className="w-32 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                          className="w-32 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                           value={templateScheduleIntervalHours} onChange={e => setTemplateScheduleIntervalHours(parseInt(e.target.value) || 1)} />
-                        <span className="text-sm text-gray-500">horas sem abrir o app</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">horas sem abrir o app</span>
                       </div>
                     </div>
                   )}
 
-                  <p className="text-xs text-gray-400 bg-gray-50 rounded-lg px-3 py-2">
+                  <p className="text-xs text-gray-400 bg-gray-50 dark:bg-gray-900 rounded-lg px-3 py-2">
                     {templateScheduleType === 'interval'
                       ? `Será disparada ${templateScheduleIntervalHours}h após o usuário parar de usar o app`
                       : templateScheduleType === 'weekly'
@@ -510,7 +510,7 @@ export function TipsPage({ toast }: Props) {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowTemplateModal(false)}
-                className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancelar
               </button>

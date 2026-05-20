@@ -9,10 +9,10 @@ interface Props {
 }
 
 const TYPE_CONFIG: Record<Banner['type'], { label: string; color: string; icon: LucideIcon }> = {
-  info:    { label: 'Info',        color: 'bg-blue-50 border-blue-200 text-blue-700', icon: Info },
-  warning: { label: 'Aviso',       color: 'bg-yellow-50 border-yellow-200 text-yellow-700', icon: AlertTriangle },
-  promo:   { label: 'Promoção',    color: 'bg-green-50 border-green-200 text-green-700', icon: Gift },
-  update:  { label: 'Atualização', color: 'bg-purple-50 border-purple-200 text-purple-700', icon: RefreshCw },
+  info:    { label: 'Info',        color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 text-blue-700', icon: Info },
+  warning: { label: 'Aviso',       color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 text-yellow-700', icon: AlertTriangle },
+  promo:   { label: 'Promoção',    color: 'bg-green-50 dark:bg-green-900/20 border-green-200 text-green-700', icon: Gift },
+  update:  { label: 'Atualização', color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 text-purple-700', icon: RefreshCw },
 };
 
 function fmtDate(iso: string) {
@@ -23,7 +23,7 @@ function fmtDate(iso: string) {
 }
 
 function getStatus(b: Banner): { label: string; color: string } {
-  if (!b.isActive) return { label: 'Inativo', color: 'bg-gray-100 text-gray-500' };
+  if (!b.isActive) return { label: 'Inativo', color: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400' };
   const now = Date.now();
   const start = new Date(b.startsAt).getTime();
   const end = b.endsAt ? new Date(b.endsAt).getTime() : null;
@@ -122,7 +122,7 @@ export function BannersPage({ toast }: Props) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
-        <h2 className="text-xl font-bold text-gray-900">Banners</h2>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Banners</h2>
         <button
           onClick={openNew}
           className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
@@ -132,7 +132,7 @@ export function BannersPage({ toast }: Props) {
         </button>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
         {loading ? (
           <TableSkeleton rows={4} cols={6} />
         ) : banners.length === 0 ? (
@@ -140,7 +140,7 @@ export function BannersPage({ toast }: Props) {
         ) : (
           <table className="w-full text-sm min-w-[600px]">
             <thead>
-              <tr className="border-b border-gray-100 text-left text-gray-500 text-xs uppercase">
+              <tr className="border-b border-gray-100 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400 text-xs uppercase">
                 <th className="px-5 py-3">Título</th>
                 <th className="px-3 py-3">Tipo</th>
                 <th className="px-3 py-3">Status</th>
@@ -149,14 +149,14 @@ export function BannersPage({ toast }: Props) {
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
               {banners.map(b => {
                 const typeCfg = TYPE_CONFIG[b.type];
                 const TypeIcon = typeCfg.icon;
                 const status = getStatus(b);
                 return (
-                  <tr key={b.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-3 font-medium text-gray-900">{b.title}</td>
+                  <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-5 py-3 font-medium text-gray-900 dark:text-white">{b.title}</td>
                     <td className="px-3 py-3">
                       <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded border ${typeCfg.color}`}>
                         <TypeIcon size={12} />
@@ -168,15 +168,15 @@ export function BannersPage({ toast }: Props) {
                         {status.label}
                       </span>
                     </td>
-                    <td className="px-3 py-3 text-gray-500 text-xs">{fmtDate(b.startsAt)}</td>
-                    <td className="px-3 py-3 text-gray-500 text-xs">{b.endsAt ? fmtDate(b.endsAt) : '—'}</td>
+                    <td className="px-3 py-3 text-gray-500 dark:text-gray-400 text-xs">{fmtDate(b.startsAt)}</td>
+                    <td className="px-3 py-3 text-gray-500 dark:text-gray-400 text-xs">{b.endsAt ? fmtDate(b.endsAt) : '—'}</td>
                     <td className="px-3 py-3 text-right space-x-2">
                       <button
                         onClick={() => toggleActive(b)}
                         className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
                           b.isActive
-                            ? 'bg-yellow-50 text-yellow-600 hover:bg-yellow-100'
-                            : 'bg-green-50 text-green-600 hover:bg-green-100'
+                            ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+                            : 'bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30'
                         }`}
                       >
                         <Power size={12} />
@@ -184,14 +184,14 @@ export function BannersPage({ toast }: Props) {
                       </button>
                       <button
                         onClick={() => openEdit(b)}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                       >
                         <Pencil size={12} />
                         Editar
                       </button>
                       <button
                         onClick={() => setConfirmDelete(b)}
-                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors"
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                       >
                         <Trash2 size={12} />
                         Excluir
@@ -219,23 +219,23 @@ export function BannersPage({ toast }: Props) {
       {/* Modal */}
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {editing ? 'Editar banner' : 'Novo banner'}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Título</label>
                 <input
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   value={form.title}
                   onChange={e => setForm({ ...form, title: e.target.value })}
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Mensagem</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Mensagem</label>
                 <textarea
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   rows={3}
                   value={form.message}
                   onChange={e => setForm({ ...form, message: e.target.value })}
@@ -243,9 +243,9 @@ export function BannersPage({ toast }: Props) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Tipo</label>
                   <select
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                     value={form.type}
                     onChange={e => setForm({ ...form, type: e.target.value as Banner['type'] })}
                   >
@@ -256,9 +256,9 @@ export function BannersPage({ toast }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL de ação (opcional)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">URL de ação (opcional)</label>
                   <input
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                     value={form.actionUrl ?? ''}
                     onChange={e => setForm({ ...form, actionUrl: e.target.value || null })}
                     placeholder="https://..."
@@ -267,19 +267,19 @@ export function BannersPage({ toast }: Props) {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Início</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Início</label>
                   <input
                     type="datetime-local"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                     value={form.startsAt}
                     onChange={e => setForm({ ...form, startsAt: e.target.value })}
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Fim (opcional)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Fim (opcional)</label>
                   <input
                     type="datetime-local"
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
                     value={form.endsAt ?? ''}
                     onChange={e => setForm({ ...form, endsAt: e.target.value || null })}
                   />
@@ -289,7 +289,7 @@ export function BannersPage({ toast }: Props) {
             <div className="flex justify-end gap-3 mt-6">
               <button
                 onClick={() => setShowModal(false)}
-                className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+                className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 Cancelar
               </button>

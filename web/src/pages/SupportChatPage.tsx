@@ -146,8 +146,8 @@ export function SupportChatPage({ toast }: Props) {
       <div className="flex items-center gap-3 mb-4">
         <Headset className="text-primary-500" size={24} />
         <div>
-          <h1 className="text-xl font-bold text-gray-800">Suporte Chat</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Suporte Chat</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {conversations.length} conversa{conversations.length !== 1 ? 's' : ''}
             {totalUnread > 0 && <span className="ml-2 text-red-500 font-medium">{totalUnread} não lida{totalUnread !== 1 ? 's' : ''}</span>}
           </p>
@@ -164,11 +164,11 @@ export function SupportChatPage({ toast }: Props) {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex bg-white rounded-xl border border-gray-200 overflow-hidden" style={{ minHeight: 500 }}>
+        <div className="flex-1 flex bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden" style={{ height: 'calc(100vh - 180px)', maxHeight: 700 }}>
           {/* Left panel: conversations list */}
-          <div className="w-80 border-r border-gray-200 flex flex-col">
+          <div className="w-80 border-r border-gray-200 dark:border-gray-700 flex flex-col">
             {/* Search */}
-            <div className="p-3 border-b border-gray-100">
+            <div className="p-3 border-b border-gray-100 dark:border-gray-700">
               <div className="relative">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
@@ -176,7 +176,7 @@ export function SupportChatPage({ toast }: Props) {
                   placeholder="Buscar conversa..."
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
-                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-primary-400"
+                  className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:border-primary-400"
                 />
               </div>
             </div>
@@ -187,7 +187,7 @@ export function SupportChatPage({ toast }: Props) {
                 <button
                   key={conv.userId}
                   onClick={() => handleSelectConversation(conv.userId)}
-                  className={`w-full text-left p-3 border-b border-gray-50 hover:bg-gray-50 transition-colors ${
+                  className={`w-full text-left p-3 border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${
                     selectedUserId === conv.userId ? 'bg-primary-50 border-l-2 border-l-primary-500' : ''
                   }`}
                 >
@@ -230,13 +230,13 @@ export function SupportChatPage({ toast }: Props) {
             ) : (
               <>
                 {/* Chat header */}
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+                <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm">
                       {selectedConversation?.userName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-gray-800">{selectedConversation?.userName}</p>
+                      <p className="font-medium text-sm text-gray-800 dark:text-gray-100">{selectedConversation?.userName}</p>
                       <p className="text-xs text-gray-400">{selectedConversation?.userEmail}</p>
                     </div>
                   </div>
@@ -257,7 +257,7 @@ export function SupportChatPage({ toast }: Props) {
                           className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                             msg.senderType === 'admin'
                               ? 'bg-primary-500 text-white rounded-br-sm'
-                              : 'bg-gray-100 text-gray-800 rounded-bl-sm'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-sm'
                           }`}
                         >
                           <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
@@ -274,7 +274,7 @@ export function SupportChatPage({ toast }: Props) {
                 </div>
 
                 {/* Input */}
-                <div className="p-3 border-t border-gray-200 bg-white">
+                <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                   <div className="flex items-end gap-2">
                     <textarea
                       ref={textareaRef}
@@ -283,7 +283,7 @@ export function SupportChatPage({ toast }: Props) {
                       onKeyDown={handleKeyDown}
                       placeholder="Digite sua resposta... (Enter para enviar, Shift+Enter nova linha)"
                       rows={1}
-                      className="flex-1 resize-none border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-400 max-h-32"
+                      className="flex-1 resize-none border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-400 max-h-32"
                       style={{ minHeight: 42 }}
                     />
                     <button

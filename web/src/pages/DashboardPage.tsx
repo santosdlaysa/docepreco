@@ -10,21 +10,21 @@ import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
 import type { LucideIcon } from 'lucide-react';
 
 const STAT_ICONS: Array<{ icon: LucideIcon; color: string; border: string }> = [
-  { icon: Users, color: 'text-blue-600 bg-blue-50', border: 'border-l-blue-500' },
-  { icon: Crown, color: 'text-primary-600 bg-primary-50', border: 'border-l-primary-500' },
-  { icon: CalendarPlus, color: 'text-green-600 bg-green-50', border: 'border-l-green-500' },
-  { icon: CalendarDays, color: 'text-purple-600 bg-purple-50', border: 'border-l-purple-500' },
+  { icon: Users, color: 'text-blue-600 bg-blue-50 dark:bg-blue-900/20', border: 'border-l-blue-500' },
+  { icon: Crown, color: 'text-primary-600 bg-primary-50 dark:bg-primary-900/20', border: 'border-l-primary-500' },
+  { icon: CalendarPlus, color: 'text-green-600 bg-green-50 dark:bg-green-900/20', border: 'border-l-green-500' },
+  { icon: CalendarDays, color: 'text-purple-600 bg-purple-50 dark:bg-purple-900/20', border: 'border-l-purple-500' },
 ];
 
 const CONTENT_ICONS: Array<{ icon: LucideIcon; color: string; border: string }> = [
-  { icon: BookOpen, color: 'text-indigo-600 bg-indigo-50', border: 'border-l-indigo-500' },
-  { icon: Egg, color: 'text-orange-600 bg-orange-50', border: 'border-l-orange-500' },
-  { icon: ShoppingCart, color: 'text-teal-600 bg-teal-50', border: 'border-l-teal-500' },
+  { icon: BookOpen, color: 'text-indigo-600 bg-indigo-50 dark:bg-indigo-900/20', border: 'border-l-indigo-500' },
+  { icon: Egg, color: 'text-orange-600 bg-orange-50 dark:bg-orange-900/20', border: 'border-l-orange-500' },
+  { icon: ShoppingCart, color: 'text-teal-600 bg-teal-50 dark:bg-teal-900/20', border: 'border-l-teal-500' },
 ];
 
 const REVENUE_ICONS: Array<{ icon: LucideIcon; color: string; border: string }> = [
-  { icon: DollarSign, color: 'text-green-600 bg-green-50', border: 'border-l-green-500' },
-  { icon: TrendingUp, color: 'text-primary-600 bg-primary-50', border: 'border-l-primary-500' },
+  { icon: DollarSign, color: 'text-green-600 bg-green-50 dark:bg-green-900/20', border: 'border-l-green-500' },
+  { icon: TrendingUp, color: 'text-primary-600 bg-primary-50 dark:bg-primary-900/20', border: 'border-l-primary-500' },
 ];
 
 function StatCard({ label, value, sub, icon: Icon, iconStyle, borderStyle }: {
@@ -32,13 +32,13 @@ function StatCard({ label, value, sub, icon: Icon, iconStyle, borderStyle }: {
   icon: LucideIcon; iconStyle: string; borderStyle: string;
 }) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 p-5 flex items-start gap-4 border-l-4 ${borderStyle}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 flex items-start gap-4 border-l-4 ${borderStyle}`}>
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${iconStyle}`}>
         <Icon size={20} />
       </div>
       <div>
-        <p className="text-sm text-gray-500">{label}</p>
-        <p className="text-2xl font-bold text-gray-900 mt-0.5">{value}</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{label}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">{value}</p>
         {sub && <p className="text-xs text-gray-400 mt-0.5">{sub}</p>}
       </div>
     </div>
@@ -59,40 +59,40 @@ function fmt(n: number) {
 
 function MedalBadge({ rank }: { rank: number }) {
   if (rank === 1) return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-100 text-yellow-600 font-bold text-xs">1</span>;
-  if (rank === 2) return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-500 font-bold text-xs">2</span>;
+  if (rank === 2) return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-bold text-xs">2</span>;
   if (rank === 3) return <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-orange-100 text-orange-500 font-bold text-xs">3</span>;
   return <span className="text-gray-400 font-bold text-sm w-6 text-center">{rank}</span>;
 }
 
 function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
         <Trophy size={18} className="text-yellow-500" />
         <div>
-          <p className="font-semibold text-gray-900">Maior faturamento</p>
+          <p className="font-semibold text-gray-900 dark:text-white">Maior faturamento</p>
           <p className="text-xs text-gray-400 mt-0.5">Faturamento das confeiteiras no app (todas as vendas registradas)</p>
         </div>
       </div>
       <table className="w-full text-sm min-w-[500px]">
-        <thead className="bg-gray-50">
+        <thead className="bg-gray-50 dark:bg-gray-900">
           <tr>
-            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">#</th>
-            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>
-            <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Faturamento total</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">#</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Faturamento total</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
           {users.map((u, i) => (
-            <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+            <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <td className="px-5 py-3"><MedalBadge rank={i + 1} /></td>
               <td className="px-5 py-3">
                 <span className="flex items-center">
                   <PremiumDot isPremium={u.isPremium} />
-                  <span className="font-medium text-gray-900">{u.companyName}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{u.companyName}</span>
                 </span>
               </td>
-              <td className="px-5 py-3 text-right font-semibold text-gray-900">{fmt(u.totalRevenue)}</td>
+              <td className="px-5 py-3 text-right font-semibold text-gray-900 dark:text-white">{fmt(u.totalRevenue)}</td>
             </tr>
           ))}
         </tbody>
@@ -103,42 +103,42 @@ function TopRevenueTable({ users }: { users: TopRevenueUser[] }) {
 
 function TopActivityTable({ users }: { users: TopActivityUser[] }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
         <Flame size={18} className="text-orange-500" />
         <div>
-          <p className="font-semibold text-gray-900">Mais ativas no app</p>
+          <p className="font-semibold text-gray-900 dark:text-white">Mais ativas no app</p>
           <p className="text-xs text-gray-400 mt-0.5">Ordenado por vendas nos últimos 30 dias</p>
         </div>
       </div>
       <table className="w-full text-sm min-w-[500px]">
-        <thead className="bg-gray-50">
+        <thead className="bg-gray-50 dark:bg-gray-900">
           <tr>
-            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">#</th>
-            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>
-            <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Vendas/30d</th>
-            <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Receitas</th>
-            <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Ingredientes</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">#</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Vendas/30d</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Receitas</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Ingredientes</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
           {users.map((u, i) => (
-            <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+            <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <td className="px-5 py-3"><MedalBadge rank={i + 1} /></td>
               <td className="px-5 py-3 max-w-[120px]">
                 <span className="flex items-center">
                   <PremiumDot isPremium={u.isPremium} />
-                  <span className="font-medium text-gray-900 truncate">{u.companyName}</span>
+                  <span className="font-medium text-gray-900 dark:text-white truncate">{u.companyName}</span>
                 </span>
               </td>
-              <td className="px-5 py-3 text-right text-gray-700 whitespace-nowrap">{u.salesMonth}</td>
-              <td className="px-5 py-3 text-right text-gray-700 whitespace-nowrap">{u.recipeCount}</td>
-              <td className="px-5 py-3 text-right text-gray-700 whitespace-nowrap">{u.ingredientCount}</td>
+              <td className="px-5 py-3 text-right text-gray-700 dark:text-gray-200 whitespace-nowrap">{u.salesMonth}</td>
+              <td className="px-5 py-3 text-right text-gray-700 dark:text-gray-200 whitespace-nowrap">{u.recipeCount}</td>
+              <td className="px-5 py-3 text-right text-gray-700 dark:text-gray-200 whitespace-nowrap">{u.ingredientCount}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="px-5 py-2 border-t border-gray-100">
+      <div className="px-5 py-2 border-t border-gray-100 dark:border-gray-700">
         <p className="text-xs text-gray-400">
           <span className="inline-block w-2 h-2 rounded-full bg-primary-500 mr-1" />Premium
           <span className="inline-block w-2 h-2 rounded-full bg-gray-300 ml-3 mr-1" />Gratuito
@@ -153,38 +153,38 @@ function NewRegistrationsTable({ users, newToday }: { users: RecentUser[]; newTo
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
         <UserRoundPlus size={18} className="text-green-500" />
         <div>
-          <p className="font-semibold text-gray-900">Novos cadastros</p>
+          <p className="font-semibold text-gray-900 dark:text-white">Novos cadastros</p>
           <p className="text-xs text-gray-400 mt-0.5">{newToday} novo{newToday !== 1 ? 's' : ''} hoje</p>
         </div>
       </div>
       <table className="w-full text-sm min-w-[500px]">
-        <thead className="bg-gray-50">
+        <thead className="bg-gray-50 dark:bg-gray-900">
           <tr>
-            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">#</th>
-            <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>
-            <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Data</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">#</th>
+            <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
+            <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Data</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-100">
+        <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
           {users.map((u, i) => (
-            <tr key={u.id} className="hover:bg-gray-50 transition-colors">
+            <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
               <td className="px-5 py-3"><MedalBadge rank={i + 1} /></td>
               <td className="px-5 py-3">
                 <span className="flex items-center">
                   <PremiumDot isPremium={u.isPremium} />
-                  <span className="font-medium text-gray-900">{u.companyName}</span>
+                  <span className="font-medium text-gray-900 dark:text-white">{u.companyName}</span>
                 </span>
               </td>
-              <td className="px-5 py-3 text-right text-gray-700">{fmtDate(u.createdAt)}</td>
+              <td className="px-5 py-3 text-right text-gray-700 dark:text-gray-200">{fmtDate(u.createdAt)}</td>
             </tr>
           ))}
         </tbody>
       </table>
-      <div className="px-5 py-2 border-t border-gray-100">
+      <div className="px-5 py-2 border-t border-gray-100 dark:border-gray-700">
         <p className="text-xs text-gray-400">
           <span className="inline-block w-2 h-2 rounded-full bg-primary-500 mr-1" />Premium
           <span className="inline-block w-2 h-2 rounded-full bg-gray-300 ml-3 mr-1" />Gratuito
@@ -220,11 +220,11 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden overflow-x-auto">
-      <div className="px-5 py-4 border-b border-gray-100 flex items-center gap-2">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
         <Crown size={18} className="text-primary-500" />
         <div>
-          <p className="font-semibold text-gray-900">Assinantes premium</p>
+          <p className="font-semibold text-gray-900 dark:text-white">Assinantes premium</p>
           <p className="text-xs text-gray-400 mt-0.5">{subscribers.length} assinante{subscribers.length !== 1 ? 's' : ''} ativo{subscribers.length !== 1 ? 's' : ''}</p>
         </div>
       </div>
@@ -232,25 +232,25 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
         <p className="text-center text-gray-400 py-8">Nenhum assinante premium</p>
       ) : (
         <table className="w-full text-sm min-w-[500px]">
-          <thead className="bg-gray-50">
+          <thead className="bg-gray-50 dark:bg-gray-900">
             <tr>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Confeitaria</th>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Plataforma</th>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500">Válido até</th>
-              <th className="text-right px-5 py-2.5 font-semibold text-gray-500">Tempo restante</th>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Plataforma</th>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Válido até</th>
+              <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tempo restante</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
             {subscribers.map(s => {
               const remaining = timeRemaining(s.premiumUntil);
               return (
-                <tr key={s.id} className="hover:bg-gray-50 transition-colors">
+                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   <td className="px-5 py-3">
-                    <p className="font-medium text-gray-900">{s.companyName}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
                     <p className="text-xs text-gray-400">{s.email}</p>
                   </td>
-                  <td className="px-5 py-3 text-gray-600">{platformLabel(s.premiumPlatform)}</td>
-                  <td className="px-5 py-3 text-gray-600">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
+                  <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{platformLabel(s.premiumPlatform)}</td>
+                  <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
                   <td className={`px-5 py-3 text-right font-semibold ${remaining.color}`}>{remaining.label}</td>
                 </tr>
               );
@@ -268,7 +268,7 @@ function DashboardSkeleton() {
       <Skeleton className="h-7 w-40" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-3">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-8 w-16" />
           </div>
@@ -276,18 +276,18 @@ function DashboardSkeleton() {
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div key={i} className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
+          <div key={i} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-3">
             <Skeleton className="h-4 w-24" />
             <Skeleton className="h-8 w-16" />
           </div>
         ))}
       </div>
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="p-5"><Skeleton className="h-5 w-40" /></div>
           <TableSkeleton rows={5} cols={3} />
         </div>
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
           <div className="p-5"><Skeleton className="h-5 w-40" /></div>
           <TableSkeleton rows={5} cols={5} />
         </div>
@@ -354,7 +354,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h2 className="text-xl font-bold text-gray-900">Visão geral</h2>
+      <h2 className="text-xl font-bold text-gray-900 dark:text-white">Visão geral</h2>
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Usuários</p>
@@ -379,8 +379,8 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Distribuição e Faturamento</p>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Pie Chart - Planos */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="font-semibold text-gray-900 text-sm mb-4">Distribuição de planos</p>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-4">Distribuição de planos</p>
             <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
               <ResponsiveContainer width={140} height={140}>
                 <PieChart>
@@ -394,11 +394,11 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-primary-500" />
-                  <span className="text-sm text-gray-700">Premium: <strong>{stats.premiumUsers}</strong></span>
+                  <span className="text-sm text-gray-700 dark:text-gray-200">Premium: <strong>{stats.premiumUsers}</strong></span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="w-3 h-3 rounded-full bg-gray-300" />
-                  <span className="text-sm text-gray-700">Gratuito: <strong>{freeUsers}</strong></span>
+                  <span className="text-sm text-gray-700 dark:text-gray-200">Gratuito: <strong>{freeUsers}</strong></span>
                 </div>
                 <p className="text-xs text-gray-400 mt-1">{premiumPct}% premium</p>
               </div>
@@ -406,8 +406,8 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
           </div>
 
           {/* Bar Chart - Faturamento */}
-          <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="font-semibold text-gray-900 text-sm mb-4">Faturamento das confeiteiras</p>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
+            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-4">Faturamento das confeiteiras</p>
             <ResponsiveContainer width="100%" height={140}>
               <BarChart data={barData} layout="vertical" margin={{ left: 0, right: 10 }}>
                 <XAxis type="number" tickFormatter={v => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
@@ -453,14 +453,14 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
       {/* Email de atualização */}
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Comunicação</p>
-        <div className="bg-white rounded-xl border border-gray-200 p-5">
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center shrink-0">
                 <Mail size={20} className="text-blue-600" />
               </div>
               <div className="min-w-0">
-                <p className="font-semibold text-gray-900">Email de atualização</p>
+                <p className="font-semibold text-gray-900 dark:text-white">Email de atualização</p>
                 <p className="text-xs text-gray-400 truncate">Edite e envie email para todos os {stats.totalUsers} usuários</p>
               </div>
             </div>
@@ -476,63 +476,63 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
 
       {emailModalOpen && (
         <ModalOverlay onClose={() => { if (!sendingEmail) setEmailModalOpen(false); }}>
-          <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-xl">
             {/* Modal header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-bold text-gray-900">Compor email de atualização</h3>
-              <button onClick={() => { if (!sendingEmail) setEmailModalOpen(false); }} className="text-gray-400 hover:text-gray-600">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Compor email de atualização</h3>
+              <button onClick={() => { if (!sendingEmail) setEmailModalOpen(false); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                 <X size={20} />
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-gray-200">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 divide-y lg:divide-y-0 lg:divide-x divide-gray-200 dark:divide-gray-700">
               {/* Form */}
               <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assunto</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Assunto</label>
                   <input
                     type="text"
                     value={emailSubject}
                     onChange={e => setEmailSubject(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Texto de introdução</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Texto de introdução</label>
                   <textarea
                     rows={2}
                     value={emailIntro}
                     onChange={e => setEmailIntro(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   />
                   <p className="text-xs text-gray-400 mt-0.5">Suporta HTML (ex: &lt;strong&gt;negrito&lt;/strong&gt;)</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Novidades (1 por linha)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Novidades (1 por linha)</label>
                   <textarea
                     rows={5}
                     value={emailFeatures}
                     onChange={e => setEmailFeatures(e.target.value)}
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none resize-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Texto do botão</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Texto do botão</label>
                     <input
                       type="text"
                       value={emailCtaText}
                       onChange={e => setEmailCtaText(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">URL do botão</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">URL do botão</label>
                     <input
                       type="url"
                       value={emailCtaUrl}
                       onChange={e => setEmailCtaUrl(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none"
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
                     />
                   </div>
                 </div>
@@ -542,7 +542,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
               <div className="p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <Eye size={16} className="text-gray-400" />
-                  <p className="text-sm font-medium text-gray-500">Preview</p>
+                  <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Preview</p>
                 </div>
                 <div className="bg-pink-50 rounded-xl p-4 text-sm space-y-3">
                   <div className="bg-primary-500 rounded-t-xl p-4 text-center text-white">
@@ -573,12 +573,12 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
             </div>
 
             {/* Modal footer */}
-            <div className="px-6 py-4 border-t border-gray-200">
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
               {!confirmEmail ? (
                 <div className="flex flex-col-reverse sm:flex-row items-stretch sm:items-center gap-3 sm:justify-end">
                   <button
                     onClick={() => { if (!sendingEmail) setEmailModalOpen(false); }}
-                    className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors"
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                   >
                     Cancelar
                   </button>
@@ -595,7 +595,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
                   <button
                     onClick={() => setConfirmEmail(false)}
                     disabled={sendingEmail}
-                    className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
+                    className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-50"
                   >
                     Voltar
                   </button>

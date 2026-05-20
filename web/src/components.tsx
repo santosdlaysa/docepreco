@@ -68,9 +68,9 @@ const TOAST_ICON = {
 } as const;
 
 const TOAST_STYLES = {
-  success: 'bg-green-50 border-green-200 text-green-800',
-  error: 'bg-red-50 border-red-200 text-red-800',
-  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800',
+  success: 'bg-green-50 border-green-200 text-green-800 dark:bg-green-900/30 dark:border-green-800 dark:text-green-300',
+  error: 'bg-red-50 border-red-200 text-red-800 dark:bg-red-900/30 dark:border-red-800 dark:text-red-300',
+  warning: 'bg-yellow-50 border-yellow-200 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-800 dark:text-yellow-300',
 } as const;
 
 export function ToastContainer({ toasts, onRemove }: { toasts: ToastMessage[]; onRemove: (id: number) => void }) {
@@ -117,13 +117,13 @@ export function ConfirmModal({ open, title, message, confirmLabel = 'Confirmar',
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4 animate-fade-in" onClick={onCancel}>
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
-        <h3 className="font-bold text-gray-900 text-lg">{title}</h3>
-        <p className="text-sm text-gray-600 mt-2">{message}</p>
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+        <h3 className="font-bold text-gray-900 dark:text-white text-lg">{title}</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">{message}</p>
         <div className="flex justify-end gap-3 mt-6">
           <button
             onClick={onCancel}
-            className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors"
+            className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
           >
             Cancelar
           </button>
@@ -144,7 +144,7 @@ export function ConfirmModal({ open, title, message, confirmLabel = 'Confirmar',
 export function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
-      <div className="animate-scale-in w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+      <div className="animate-scale-in w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto dark:text-white" onClick={e => e.stopPropagation()}>
         {children}
       </div>
     </div>

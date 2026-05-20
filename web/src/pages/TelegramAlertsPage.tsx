@@ -121,7 +121,7 @@ export function TelegramAlertsPage({ toast }: Props) {
     <div className="space-y-6 max-w-2xl">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h2 className="text-xl font-bold text-gray-900">Telegram</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Telegram</h2>
           <p className="text-sm text-gray-500 mt-1">Controle alertas, mensagens e horários de envio do bot.</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
@@ -134,7 +134,7 @@ export function TelegramAlertsPage({ toast }: Props) {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl border border-gray-200 p-4"><TableSkeleton rows={6} cols={2} /></div>
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4"><TableSkeleton rows={6} cols={2} /></div>
       ) : (
         categories.map(cat => {
           const cfg = CATEGORY_CONFIG[cat] ?? { label: cat, icon: Bell, color: 'text-gray-500' };
@@ -143,28 +143,28 @@ export function TelegramAlertsPage({ toast }: Props) {
           const enabledCount = items.filter(a => a.isEnabled).length;
 
           return (
-            <div key={cat} className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-              <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+            <div key={cat} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Icon size={18} className={cfg.color} />
-                  <h3 className="text-base font-bold text-gray-900">{cfg.label}</h3>
+                  <h3 className="text-base font-bold text-gray-900 dark:text-white">{cfg.label}</h3>
                 </div>
                 <span className="text-xs text-gray-400">{enabledCount}/{items.length} ativos</span>
               </div>
               {items.length === 0 ? (
                 <p className="text-center text-gray-400 py-6 text-sm">Nenhum alerta nesta categoria</p>
               ) : (
-                <div className="divide-y divide-gray-50">
+                <div className="divide-y divide-gray-50 dark:divide-gray-700">
                   {items.map(a => (
-                    <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 transition-colors">
+                    <div key={a.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                       <button onClick={() => toggle(a)} className="shrink-0">
                         {a.isEnabled ? <ToggleRight size={28} className="text-green-500" /> : <ToggleLeft size={28} className="text-gray-300" />}
                       </button>
                       <span className="text-xl shrink-0">{KEY_EMOJIS[a.key] ?? '📌'}</span>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-gray-900">{a.label}</p>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${a.isEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{a.label}</p>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded ${a.isEnabled ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
                             {a.isEnabled ? 'ON' : 'OFF'}
                           </span>
                         </div>
@@ -176,10 +176,10 @@ export function TelegramAlertsPage({ toast }: Props) {
                         )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <button onClick={() => openEdit(a)} className="inline-flex items-center text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors">
+                        <button onClick={() => openEdit(a)} className="inline-flex items-center text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition-colors">
                           <Pencil size={12} />
                         </button>
-                        <button onClick={() => setConfirmDelete(a)} className="inline-flex items-center text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100 transition-colors">
+                        <button onClick={() => setConfirmDelete(a)} className="inline-flex items-center text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 transition-colors">
                           <Trash2 size={12} />
                         </button>
                       </div>
@@ -199,31 +199,31 @@ export function TelegramAlertsPage({ toast }: Props) {
 
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-bold text-gray-900 mb-4">
               {editing ? 'Editar alerta' : 'Novo alerta'}
             </h3>
             <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Chave</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.key} onChange={e => setForm({ ...form, key: e.target.value.replace(/\s/g, '_').toLowerCase() })}
                   placeholder="ex: custom_alert" disabled={!!editing} />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Ex: Relatório diário" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
-                <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Quando isso deve ser disparado?" />
               </div>
               {!editing && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
-                  <select className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                  <select className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                     <option value="alerts">Alertas em tempo real</option>
                     <option value="reports">Relatórios periódicos</option>
@@ -233,14 +233,14 @@ export function TelegramAlertsPage({ toast }: Props) {
 
               {/* Agendamento - só para relatórios */}
               {isReport && (
-                <div className="border-t border-gray-100 pt-4">
+                <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
                   <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5">
                     <Clock size={14} /> Horário de disparo
                   </label>
                   <div className="flex flex-wrap gap-1.5 mb-3">
                     {CRON_PRESETS.map(p => (
                       <button key={p.cron} onClick={() => selectPreset(p)}
-                        className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${form.scheduleCron === p.cron ? 'bg-purple-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors ${form.scheduleCron === p.cron ? 'bg-purple-500 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'}`}>
                         {p.label}
                       </button>
                     ))}
@@ -248,12 +248,12 @@ export function TelegramAlertsPage({ toast }: Props) {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Cron expression</label>
-                      <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 outline-none"
+                      <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                         value={form.scheduleCron} onChange={e => setForm({ ...form, scheduleCron: e.target.value })} placeholder="0 8 * * *" />
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Descrição do horário</label>
-                      <input className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none"
+                      <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                         value={form.scheduleDescription} onChange={e => setForm({ ...form, scheduleDescription: e.target.value })} placeholder="Todo dia às 8h" />
                     </div>
                   </div>
@@ -262,10 +262,10 @@ export function TelegramAlertsPage({ toast }: Props) {
               )}
 
               {/* Template da mensagem */}
-              <div className="border-t border-gray-100 pt-4">
+              <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
                 <label className="block text-sm font-bold text-gray-700 mb-1">Mensagem do Telegram</label>
                 <p className="text-xs text-gray-400 mb-2">Use {'{{variavel}}'} para dados dinâmicos. Use \n para quebra de linha.</p>
-                <textarea className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm font-mono focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                <textarea className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   rows={6} value={form.messageTemplate} onChange={e => setForm({ ...form, messageTemplate: e.target.value })}
                   placeholder="Ex: 🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}" />
                 {vars.length > 0 && (
@@ -274,7 +274,7 @@ export function TelegramAlertsPage({ toast }: Props) {
                     <div className="flex flex-wrap gap-1.5">
                       {vars.map(v => (
                         <button key={v} onClick={() => setForm({ ...form, messageTemplate: form.messageTemplate + `{{${v}}}` })}
-                          className="text-xs px-2 py-1 rounded bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors font-mono">
+                          className="text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition-colors font-mono">
                           {`{{${v}}}`}
                         </button>
                       ))}
@@ -284,7 +284,7 @@ export function TelegramAlertsPage({ toast }: Props) {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">
-              <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 transition-colors">Cancelar</button>
+              <button onClick={() => setShowModal(false)} className="text-sm px-4 py-2 rounded-lg text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">Cancelar</button>
               <button onClick={save} disabled={!form.key || !form.label}
                 className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium">
                 {editing ? 'Salvar' : 'Criar'}
