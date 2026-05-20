@@ -507,6 +507,18 @@ export const ProfileScreen: React.FC = () => {
 
         <Text style={styles.sectionTitle}>{t('profile.help')}</Text>
         <Card style={styles.menuCard}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('SupportChat')}>
+            <View style={[styles.iconBadge, { backgroundColor: '#E3F2FD' }]}>
+              <Ionicons name="chatbubbles-outline" size={20} color="#1976D2" />
+            </View>
+            <View style={styles.menuTextWrap}>
+              <Text style={styles.menuText}>{t('profile.supportChat')}</Text>
+              <Text style={styles.menuSubtext}>{t('profile.supportChatSub')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        </Card>
+        <Card style={styles.menuCard}>
           <TouchableOpacity style={styles.menuItem} onPress={handleSupport}>
             <View style={[styles.iconBadge, { backgroundColor: '#E7F9EF' }]}>
               <Ionicons name="logo-whatsapp" size={20} color="#25D366" />

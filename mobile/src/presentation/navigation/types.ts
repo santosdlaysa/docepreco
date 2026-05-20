@@ -32,4 +32,5 @@ export type RootStackParamList = {
   CreateSeason: undefined;
   EditSeason: { seasonId: string };
   BeginnerGuide: undefined;
+  SupportChat: undefined;
 };

@@ -307,6 +307,17 @@ CREATE TABLE IF NOT EXISTS onboarding_steps (
   is_active BOOLEAN NOT NULL DEFAULT TRUE,
   created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS support_messages (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  sender_type VARCHAR(10) NOT NULL CHECK (sender_type IN ('user', 'admin')),
+  message TEXT NOT NULL,
+  read_at TIMESTAMP,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages (user_id, created_at);
 `;
 
 async function addColumnIfMissing(

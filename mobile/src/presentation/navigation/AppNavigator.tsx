@@ -32,6 +32,7 @@ import { IngredientPriceHistoryScreen } from '../screens/IngredientPriceHistoryS
 import { SeasonsScreen } from '../screens/SeasonsScreen';
 import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
 import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
+import { SupportChatScreen } from '../screens/SupportChatScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { authApi } from '../../data/api/authApi';
@@ -298,6 +299,7 @@ export function AppNavigator() {
           <Stack.Screen name="CreateSeason" component={CreateSeasonScreen} />
           <Stack.Screen name="EditSeason" component={CreateSeasonScreen} />
           <Stack.Screen name="BeginnerGuide" component={BeginnerGuideScreen} />
+          <Stack.Screen name="SupportChat" component={SupportChatScreen} />
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}

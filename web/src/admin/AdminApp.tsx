@@ -22,6 +22,7 @@ import { SuggestionsPage } from '../pages/SuggestionsPage';
 import { ChangelogPage } from '../pages/ChangelogPage';
 import { OnboardingPage } from '../pages/OnboardingPage';
 import { TelegramAlertsPage } from '../pages/TelegramAlertsPage';
+import { SupportChatPage } from '../pages/SupportChatPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -48,6 +49,7 @@ import {
   Rocket,
   Smartphone,
   Bot,
+  Headset,
   BellRing,
   UserRoundPlus,
   ShoppingCart,
@@ -56,7 +58,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support';
 
 interface NavItem {
   id: Page;
@@ -81,6 +83,7 @@ const NAV: NavItem[] = [
   { id: 'tips', label: 'Dicas', icon: Lightbulb },
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageCircle },
   { id: 'suggestions', label: 'Sugestões', icon: MessagesSquare },
+  { id: 'support', label: 'Suporte Chat', icon: Headset },
 
   { id: 'plans', label: 'Planos', icon: CreditCard, section: 'Configuração' },
   { id: 'coupons', label: 'Cupons', icon: Ticket },
@@ -109,6 +112,45 @@ const EVENT_CONFIG: Record<string, { icon: LucideIcon; color: string; bg: string
   premium_on:  { icon: Crown,        color: 'text-primary-600', bg: 'bg-primary-50', label: 'Novo premium' },
   premium_off: { icon: Crown,        color: 'text-gray-500',  bg: 'bg-gray-50',  label: 'Cancelou premium' },
 };
+
+function SupportBubble({ onNavigate, currentPage }: { onNavigate: (p: Page) => void; currentPage: Page }) {
+  const [unread, setUnread] = useState(0);
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const data = await api.getSupportUnreadCount();
+      setUnread(data.unreadCount);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnread]);
+
+  // Reset when viewing support page
+  useEffect(() => {
+    if (currentPage === 'support') setUnread(0);
+  }, [currentPage]);
+
+  if (currentPage === 'support') return null;
+
+  return (
+    <button
+      onClick={() => onNavigate('support')}
+      className="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary-500 text-white shadow-lg hover:bg-primary-600 transition-all hover:scale-105 flex items-center justify-center"
+      title="Suporte Chat"
+    >
+      <Headset size={24} />
+      {unread > 0 && (
+        <span className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1 flex items-center justify-center bg-red-500 text-white text-xs font-bold rounded-full ring-2 ring-white">
+          {unread > 99 ? '99+' : unread}
+        </span>
+      )}
+    </button>
+  );
+}
 
 function NotificationBell() {
   const [open, setOpen] = useState(false);
@@ -355,6 +397,7 @@ export default function AdminApp() {
             {page === 'categories' && <CategoriesPage toast={toast} />}
             {page === 'feedbacks' && <FeedbacksPage toast={toast} />}
             {page === 'suggestions' && <SuggestionsPage toast={toast} />}
+            {page === 'support' && <SupportChatPage toast={toast} />}
             {page === 'changelog' && <ChangelogPage toast={toast} />}
             {page === 'onboarding' && <OnboardingPage toast={toast} />}
             {page === 'telegram' && <TelegramAlertsPage toast={toast} />}
@@ -362,6 +405,7 @@ export default function AdminApp() {
         </div>
       </main>
 
+      <SupportBubble onNavigate={navigate} currentPage={page} />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

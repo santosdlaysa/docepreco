@@ -34,6 +34,7 @@ import suggestionRoutes from './presentation/routes/suggestionRoutes';
 import changelogRoutes from './presentation/routes/changelogRoutes';
 import onboardingRoutes from './presentation/routes/onboardingRoutes';
 import telegramAlertRoutes from './presentation/routes/telegramAlertRoutes';
+import supportRoutes from './presentation/routes/supportRoutes';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
 import { PostgresTelegramAlertRepository } from './infrastructure/repositories/PostgresTelegramAlertRepository';
@@ -115,6 +116,7 @@ app.use('/api/admin/suggestions', suggestionRoutes);
 app.use('/api/admin/changelog', changelogRoutes);
 app.use('/api/admin/onboarding', onboardingRoutes);
 app.use('/api/admin/telegram-alerts', telegramAlertRoutes);
+app.use('/api/support', supportRoutes);
 
 setupSwagger(app);
 

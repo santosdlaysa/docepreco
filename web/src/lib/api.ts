@@ -367,6 +367,13 @@ export const api = {
   updateFeedbackStatus: (id: string, status: Feedback['status']) =>
     req<Feedback>(`/admin/feedbacks/${id}`, { method: 'PUT', body: JSON.stringify({ status }) }),
 
+  // ── Support Chat ──
+  listSupportConversations: () => req<SupportConversation[]>('/support/admin/conversations'),
+  getSupportMessages: (userId: string) => req<SupportMessage[]>(`/support/admin/conversations/${userId}`),
+  sendSupportMessage: (userId: string, message: string) =>
+    req<SupportMessage>(`/support/admin/conversations/${userId}`, { method: 'POST', body: JSON.stringify({ message }) }),
+  getSupportUnreadCount: () => req<{ unreadCount: number }>('/support/admin/unread'),
+
   // ── Changelog ──
   listChangelog: () => req<ChangelogEntry[]>('/admin/changelog'),
   createChangelog: (data: Omit<ChangelogEntry, 'id' | 'createdAt'>) =>
@@ -591,6 +598,27 @@ export interface Feedback {
   status: 'pending' | 'read' | 'replied';
   reply: string | null;
   createdAt: string;
+}
+
+// ── Support Chat ──
+
+export interface SupportMessage {
+  id: string;
+  userId: string;
+  senderType: 'user' | 'admin';
+  message: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface SupportConversation {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  lastMessage: string;
+  lastMessageAt: string;
+  lastSenderType: 'user' | 'admin';
+  unreadCount: number;
 }
 
 // ── Changelog ──
