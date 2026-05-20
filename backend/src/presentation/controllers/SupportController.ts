@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { PostgresSupportRepository } from '../../infrastructure/repositories/PostgresSupportRepository';
+import { pool } from '../../infrastructure/database/connection';
+import { notifySupportMessage } from '../../infrastructure/services/telegramService';
 
 const repo = new PostgresSupportRepository();
 
@@ -27,9 +29,21 @@ export class SupportController {
         res.status(400).json({ success: false, error: 'message é obrigatório' });
         return;
       }
-      const item = await repo.create({ userId: req.userId!, senderType: 'user', message: message.trim() });
+      const trimmed = message.trim();
+      const item = await repo.create({ userId: req.userId!, senderType: 'user', message: trimmed });
+
+      // Telegram notification (fire-and-forget)
+      pool.query('SELECT company_name, email FROM users WHERE id = $1', [req.userId!])
+        .then(({ rows }) => {
+          if (rows.length > 0) {
+            notifySupportMessage(rows[0].company_name ?? 'Sem nome', rows[0].email, trimmed);
+          }
+        })
+        .catch(() => {});
+
       res.status(201).json({ success: true, data: item });
     } catch (error) {
+      console.error('[Support] sendMessage error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao enviar mensagem' });
     }
@@ -75,6 +89,7 @@ export class SupportController {
       const item = await repo.create({ userId, senderType: 'admin', message: message.trim() });
       res.status(201).json({ success: true, data: item });
     } catch (error) {
+      console.error('[Support] adminSendMessage error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao enviar mensagem' });
     }

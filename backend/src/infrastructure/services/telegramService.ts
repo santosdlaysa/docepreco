@@ -113,6 +113,15 @@ export async function sendSlowApiAlert(method: string, path: string, durationMs:
   sendTelegramMessage(text);
 }
 
+export async function notifySupportMessage(companyName: string, email: string, message: string): Promise<void> {
+  if (!await isAlertEnabled('support_message')) return;
+  const preview = message.length > 100 ? message.substring(0, 100) + '…' : message;
+  const tpl = await getTemplate('support_message');
+  const fallback = `💬 Nova mensagem no suporte!\n\n🏪 ${companyName}\n📧 ${email}\n\n📝 ${preview}\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { companyName, email, message: preview, time: brNow() }) : fallback;
+  sendTelegramMessage(text);
+}
+
 // ── Reports ─────────────────────────────────────────────────────────
 
 export async function sendDailyUserReport(): Promise<void> {
