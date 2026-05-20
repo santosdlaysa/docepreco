@@ -373,6 +373,8 @@ export const api = {
   sendSupportMessage: (userId: string, message: string) =>
     req<SupportMessage>(`/support/admin/conversations/${userId}`, { method: 'POST', body: JSON.stringify({ message }) }),
   getSupportUnreadCount: () => req<{ unreadCount: number }>('/support/admin/unread'),
+  sendSupportTyping: (userId: string) =>
+    req<void>(`/support/admin/conversations/${userId}/typing`, { method: 'POST' }),
 
   // ── Changelog ──
   listChangelog: () => req<ChangelogEntry[]>('/admin/changelog'),

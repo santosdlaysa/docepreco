@@ -24,4 +24,9 @@ export const supportApi = {
     const response = await apiClient.get('/support/unread');
     return response.data.data.unreadCount;
   },
+
+  isAdminTyping: async (): Promise<boolean> => {
+    const response = await apiClient.get('/support/typing');
+    return response.data.data.typing;
+  },
 };

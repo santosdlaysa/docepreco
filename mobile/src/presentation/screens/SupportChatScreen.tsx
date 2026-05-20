@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,6 +18,105 @@ import { supportApi, SupportMessage } from '../../data/api/supportApi';
 import { colors } from '../theme/colors';
 import { useTranslation } from 'react-i18next';
 
+function TypingBubble({ label, align }: { label: string; align: 'left' | 'right' }) {
+  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+
+  useEffect(() => {
+    const animations = dots.map((dot, i) =>
+      Animated.loop(
+        Animated.sequence([
+          Animated.delay(i * 200),
+          Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
+          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+        ])
+      )
+    );
+    animations.forEach(a => a.start());
+    return () => animations.forEach(a => a.stop());
+  }, []);
+
+  const isLeft = align === 'left';
+
+  return (
+    <View style={[typingStyles.container, isLeft ? typingStyles.containerLeft : typingStyles.containerRight]}>
+      <View style={[typingStyles.bubble, isLeft ? typingStyles.bubbleLeft : typingStyles.bubbleRight]}>
+        <Text style={[typingStyles.label, isLeft ? typingStyles.labelLeft : typingStyles.labelRight]}>{label}</Text>
+        <View style={typingStyles.dotsRow}>
+          {dots.map((dot, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                typingStyles.dot,
+                isLeft ? typingStyles.dotLeft : typingStyles.dotRight,
+                { opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+                  transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }] },
+              ]}
+            />
+          ))}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const typingStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingBottom: 4,
+  },
+  containerLeft: {
+    justifyContent: 'flex-start',
+  },
+  containerRight: {
+    justifyContent: 'flex-end',
+  },
+  bubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  bubbleLeft: {
+    backgroundColor: colors.surface,
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  bubbleRight: {
+    backgroundColor: colors.primaryLight,
+    borderBottomRightRadius: 4,
+  },
+  label: {
+    fontSize: 12,
+    marginRight: 6,
+    fontWeight: '500',
+  },
+  labelLeft: {
+    color: colors.textSecondary,
+  },
+  labelRight: {
+    color: colors.primaryDark,
+  },
+  dotsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dotLeft: {
+    backgroundColor: colors.textSecondary,
+  },
+  dotRight: {
+    backgroundColor: colors.primaryDark,
+  },
+});
+
 export const SupportChatScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation();
@@ -24,7 +124,15 @@ export const SupportChatScreen: React.FC = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [adminTyping, setAdminTyping] = useState(false);
   const flatListRef = useRef<FlatList>(null);
+
+  const checkAdminTyping = useCallback(async () => {
+    try {
+      const typing = await supportApi.isAdminTyping();
+      setAdminTyping(typing);
+    } catch { /* silent */ }
+  }, []);
 
   const loadMessages = useCallback(async () => {
     try {
@@ -42,6 +150,12 @@ export const SupportChatScreen: React.FC = () => {
     const interval = setInterval(loadMessages, 10000);
     return () => clearInterval(interval);
   }, [loadMessages]);
+
+  useEffect(() => {
+    checkAdminTyping();
+    const interval = setInterval(checkAdminTyping, 3000);
+    return () => clearInterval(interval);
+  }, [checkAdminTyping]);
 
   const handleSend = async () => {
     const text = newMessage.trim();
@@ -87,7 +201,7 @@ export const SupportChatScreen: React.FC = () => {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.text} />
@@ -123,6 +237,9 @@ export const SupportChatScreen: React.FC = () => {
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
           />
         )}
+
+        {adminTyping && !sending && <TypingBubble label={t('profile.supportTyping')} align="left" />}
+        {sending && <TypingBubble label={t('profile.supportSending')} align="right" />}
 
         <View style={styles.inputBar}>
           <TextInput

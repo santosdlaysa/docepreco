@@ -34,6 +34,8 @@ export function SupportChatPage({ toast }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesPollRef = useRef<ReturnType<typeof setInterval>>();
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const lastTypingSentRef = useRef(0);
 
   const loadConversations = useCallback(async () => {
     try {
@@ -105,6 +107,19 @@ export function SupportChatPage({ toast }: Props) {
     } finally {
       setSending(false);
     }
+  };
+
+  const sendTypingSignal = useCallback(() => {
+    if (!selectedUserId) return;
+    const now = Date.now();
+    if (now - lastTypingSentRef.current < 3000) return;
+    lastTypingSentRef.current = now;
+    api.sendSupportTyping(selectedUserId).catch(() => {});
+  }, [selectedUserId]);
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setNewMessage(e.target.value);
+    if (e.target.value.trim()) sendTypingSignal();
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -264,7 +279,7 @@ export function SupportChatPage({ toast }: Props) {
                     <textarea
                       ref={textareaRef}
                       value={newMessage}
-                      onChange={e => setNewMessage(e.target.value)}
+                      onChange={handleInputChange}
                       onKeyDown={handleKeyDown}
                       placeholder="Digite sua resposta... (Enter para enviar, Shift+Enter nova linha)"
                       rows={1}

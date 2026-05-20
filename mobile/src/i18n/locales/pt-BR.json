@@ -587,6 +587,8 @@
     "supportPlaceholder": "Digite sua mensagem...",
     "supportEmpty": "Nenhuma mensagem ainda. Envie uma mensagem para iniciar o suporte!",
     "supportError": "Erro ao enviar mensagem. Tente novamente.",
+    "supportTyping": "Suporte digitando",
+    "supportSending": "Enviando",
     "whatsappSupport": "Suporte via WhatsApp",
     "whatsappSupportSub": "Fale com a gente, tire dúvidas",
     "about": "Sobre",

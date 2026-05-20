@@ -587,6 +587,8 @@
     "supportPlaceholder": "Type your message...",
     "supportEmpty": "No messages yet. Send a message to start support!",
     "supportError": "Error sending message. Try again.",
+    "supportTyping": "Support typing",
+    "supportSending": "Sending",
     "whatsappSupport": "WhatsApp Support",
     "whatsappSupportSub": "Talk to us, ask questions",
     "about": "About",

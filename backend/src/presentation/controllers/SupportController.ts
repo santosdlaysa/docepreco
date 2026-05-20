@@ -4,6 +4,10 @@ import { PostgresSupportRepository } from '../../infrastructure/repositories/Pos
 
 const repo = new PostgresSupportRepository();
 
+// In-memory typing status: userId -> timestamp when admin started typing
+const adminTyping = new Map<string, number>();
+const TYPING_TIMEOUT_MS = 5000;
+
 export class SupportController {
   async getMessages(req: AuthRequest, res: Response): Promise<void> {
     try {
@@ -74,6 +78,20 @@ export class SupportController {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao enviar mensagem' });
     }
+  }
+
+  async adminSetTyping(req: Request, res: Response): Promise<void> {
+    const { userId } = req.params;
+    adminTyping.set(userId, Date.now());
+    res.json({ success: true });
+  }
+
+  async getAdminTyping(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId!;
+    const lastTyping = adminTyping.get(userId);
+    const isTyping = !!lastTyping && (Date.now() - lastTyping) < TYPING_TIMEOUT_MS;
+    if (!isTyping) adminTyping.delete(userId);
+    res.json({ success: true, data: { typing: isTyping } });
   }
 
   async adminGetUnreadCount(_req: Request, res: Response): Promise<void> {

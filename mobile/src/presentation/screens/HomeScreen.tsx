@@ -37,6 +37,7 @@ import { isGuideAvailable } from './BeginnerGuideScreen';
 import { useTranslation } from 'react-i18next';
 import { AdBanner, AdBannerAlways } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
+import { SupportFab } from '../components/SupportFab';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -656,6 +657,7 @@ export const HomeScreen: React.FC = () => {
         </KeyboardAvoidingView>
       </Modal>
       <DemoGuardModal />
+      <SupportFab />
     </SafeAreaView>
   );
 };
