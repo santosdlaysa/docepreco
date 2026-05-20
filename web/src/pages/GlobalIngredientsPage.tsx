@@ -121,7 +121,7 @@ export function GlobalIngredientsPage({ toast }: Props) {
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
               {filtered.map(item => (
                 <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                   <td className="px-5 py-3 font-medium text-gray-900 dark:text-white flex items-center gap-2">

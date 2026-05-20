@@ -85,19 +85,19 @@ export function LandingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-gray-900 overflow-x-hidden">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-lg border-b border-gray-100/50">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-100/50 dark:border-gray-800/50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-pink-600 flex items-center justify-center shadow-md shadow-primary-500/30">
               <Cake size={18} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 text-lg tracking-tight">DocePreço</span>
+            <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">DocePreço</span>
           </div>
           <div className="flex items-center gap-6">
-            <a href="#funcionalidades" className="hidden sm:block text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Funcionalidades</a>
-            <a href="#planos" className="hidden sm:block text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors">Planos</a>
+            <a href="#funcionalidades" className="hidden sm:block text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Funcionalidades</a>
+            <a href="#planos" className="hidden sm:block text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Planos</a>
             <Link
               to="/admin"
               className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
@@ -111,7 +111,7 @@ export function LandingPage() {
       {/* Hero */}
       <section className="relative">
         {/* Background decorations */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary-50/80 via-white to-white" />
+        <div className="absolute inset-0 bg-gradient-to-b from-primary-50/80 dark:from-gray-900 via-white dark:via-gray-900 to-white dark:to-gray-900" />
         <div className="absolute top-20 -left-10 w-72 h-72 bg-primary-200/30 rounded-full blur-3xl" />
         <div className="absolute top-40 -right-10 w-72 sm:w-96 h-72 sm:h-96 bg-pink-200/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-gradient-to-t from-violet-100/20 to-transparent rounded-full blur-3xl" />
@@ -124,12 +124,12 @@ export function LandingPage() {
                 <Sparkles size={14} className="text-primary-500" />
                 O app que toda confeiteira precisa
               </div>
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 tracking-tight leading-[1.1] animate-slide-up">
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-[1.1] animate-slide-up">
                 Pare de vender<br />
                 seus doces<br />
                 <span className="bg-gradient-to-r from-primary-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">no prejuízo</span>
               </h1>
-              <p className="mt-6 text-lg sm:text-xl text-gray-500 max-w-xl leading-relaxed animate-slide-up lg:mx-0 mx-auto">
+              <p className="mt-6 text-lg sm:text-xl text-gray-500 dark:text-gray-400 max-w-xl leading-relaxed animate-slide-up lg:mx-0 mx-auto">
                 Calcule o custo real de cada receita e descubra quanto cobrar para ter lucro de verdade.
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-4 animate-slide-up">
@@ -169,7 +169,7 @@ export function LandingPage() {
       </section>
 
       {/* Stats */}
-      <section id="stats" className="py-16 sm:py-20 border-y border-gray-100 bg-gray-50/50">
+      <section id="stats" className="py-16 sm:py-20 border-y border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
             {STATIC_STATS.map((s, i) => {
@@ -179,8 +179,8 @@ export function LandingPage() {
                   <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary-50 mb-4">
                     <Icon size={22} className="text-primary-500" />
                   </div>
-                  <p className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">{statsValues[s.key]}</p>
-                  <p className="text-sm text-gray-500 mt-1 font-medium">{s.label}</p>
+                  <p className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">{statsValues[s.key]}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{s.label}</p>
                 </div>
               );
             })}
@@ -193,10 +193,10 @@ export function LandingPage() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <span className="text-xs font-bold text-primary-500 uppercase tracking-widest">Como funciona</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Simples como fazer um bolo
             </h2>
-            <p className="mt-4 text-gray-500 text-lg max-w-lg mx-auto">
+            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-lg mx-auto">
               Em três passos você descobre o preço certo dos seus produtos.
             </p>
           </div>
@@ -209,8 +209,8 @@ export function LandingPage() {
                 <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-primary-500 to-pink-600 text-white text-2xl font-extrabold mb-6 shadow-lg shadow-primary-500/25 group-hover:scale-110 transition-transform">
                   {step.num}
                 </div>
-                <h3 className="font-bold text-gray-900 text-lg">{step.title}</h3>
-                <p className="mt-2 text-sm text-gray-500 leading-relaxed max-w-xs mx-auto">{step.desc}</p>
+                <h3 className="font-bold text-gray-900 dark:text-white text-lg">{step.title}</h3>
+                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-xs mx-auto">{step.desc}</p>
               </div>
             ))}
           </div>
@@ -219,17 +219,17 @@ export function LandingPage() {
 
       {/* Features */}
       <section id="funcionalidades" className="py-20 sm:py-28 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-50 to-white" />
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-50 dark:from-gray-800 to-white dark:to-gray-900" />
         <div className="absolute top-0 right-0 w-96 h-96 bg-primary-100/20 rounded-full blur-3xl" />
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-100/20 rounded-full blur-3xl" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <span className="text-xs font-bold text-primary-500 uppercase tracking-widest">Funcionalidades</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Tudo para sua confeitaria crescer
             </h2>
-            <p className="mt-4 text-gray-500 text-lg max-w-xl mx-auto">
+            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
               Ferramentas profissionais pensadas para quem produz doces artesanais.
             </p>
           </div>
@@ -239,13 +239,13 @@ export function LandingPage() {
               return (
                 <div
                   key={i}
-                  className="bg-white rounded-2xl p-7 border border-gray-100 hover:border-gray-200 hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 group hover:-translate-y-1"
+                  className="bg-white dark:bg-gray-800 rounded-2xl p-7 border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 group hover:-translate-y-1"
                 >
                   <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
                     <Icon size={22} className="text-white" />
                   </div>
-                  <h3 className="font-bold text-gray-900 text-base">{f.title}</h3>
-                  <p className="mt-2 text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-base">{f.title}</h3>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
                 </div>
               );
             })}
@@ -289,10 +289,10 @@ export function LandingPage() {
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
             <span className="text-xs font-bold text-primary-500 uppercase tracking-widest">Planos</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Simples, sem surpresa
             </h2>
-            <p className="mt-4 text-gray-500 text-lg max-w-xl mx-auto">
+            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
               Comece de graça e faça upgrade quando quiser, direto pelo app.
             </p>
           </div>
@@ -303,7 +303,7 @@ export function LandingPage() {
                 className={`rounded-3xl p-8 sm:p-10 transition-all ${
                   plan.highlighted
                     ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-2xl shadow-gray-900/30 relative ring-4 ring-primary-500/20'
-                    : 'bg-white border-2 border-gray-100 hover:border-gray-200 hover:shadow-lg'
+                    : 'bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-lg'
                 }`}
               >
                 {plan.highlighted && (
@@ -321,17 +321,17 @@ export function LandingPage() {
                       ? <Sparkles size={20} className="text-primary-400" />
                       : <Shield size={20} className="text-primary-500" />}
                   </div>
-                  <h3 className={`font-bold text-lg ${plan.highlighted ? 'text-white' : 'text-gray-900'}`}>{plan.name}</h3>
+                  <h3 className={`font-bold text-lg ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.name}</h3>
                 </div>
-                <p className={`text-sm ${plan.highlighted ? 'text-gray-400' : 'text-gray-500'}`}>{plan.desc}</p>
+                <p className={`text-sm ${plan.highlighted ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>{plan.desc}</p>
                 <div className="mt-6 flex items-baseline gap-1">
-                  <span className={`text-5xl font-extrabold tracking-tight ${plan.highlighted ? 'text-white' : 'text-gray-900'}`}>{plan.price}</span>
+                  <span className={`text-5xl font-extrabold tracking-tight ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.price}</span>
                   <span className={`text-sm ${plan.highlighted ? 'text-gray-400' : 'text-gray-400'}`}>{plan.period}</span>
                 </div>
-                <div className={`my-8 h-px ${plan.highlighted ? 'bg-gray-700' : 'bg-gray-100'}`} />
+                <div className={`my-8 h-px ${plan.highlighted ? 'bg-gray-700' : 'bg-gray-100 dark:bg-gray-700'}`} />
                 <ul className="space-y-4">
                   {plan.features.map((feat, j) => (
-                    <li key={j} className={`flex items-center gap-3 text-sm ${plan.highlighted ? 'text-gray-300' : 'text-gray-600'}`}>
+                    <li key={j} className={`flex items-center gap-3 text-sm ${plan.highlighted ? 'text-gray-300' : 'text-gray-600 dark:text-gray-300'}`}>
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
                         plan.highlighted ? 'bg-primary-500/20' : 'bg-primary-50'
                       }`}>
@@ -385,14 +385,14 @@ export function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 bg-white">
+      <footer className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-600 flex items-center justify-center shadow-sm">
                 <Cake size={14} className="text-white" />
               </div>
-              <span className="text-sm text-gray-500">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
                 &copy; {new Date().getFullYear()} DocePreço. Todos os direitos reservados.
               </span>
             </div>

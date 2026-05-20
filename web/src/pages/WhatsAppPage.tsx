@@ -74,7 +74,7 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-bold text-gray-900 dark:text-white">WhatsApp</h1>
-        <p className="text-sm text-gray-500 mt-1">Conexao com a Evolution API para envio de mensagens</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Conexao com a Evolution API para envio de mensagens</p>
       </div>
 
       {/* Status card */}
@@ -103,7 +103,7 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <QrCode size={18} className="text-gray-500 dark:text-gray-400" />
-              <h2 className="font-semibold text-gray-900 text-sm">QR Code</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">QR Code</h2>
             </div>
             <button
               onClick={handleRefreshQr}
@@ -133,8 +133,8 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
             )}
 
             <div className="text-center max-w-xs">
-              <p className="text-sm text-gray-700 font-medium">Como conectar:</p>
-              <ol className="text-xs text-gray-500 mt-2 space-y-1 text-left">
+              <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">Como conectar:</p>
+              <ol className="text-xs text-gray-500 dark:text-gray-400 mt-2 space-y-1 text-left">
                 <li>1. Abra o WhatsApp no celular</li>
                 <li>2. Toque em <strong>Configuracoes</strong> → <strong>Dispositivos conectados</strong></li>
                 <li>3. Toque em <strong>Conectar dispositivo</strong></li>
@@ -148,8 +148,8 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
       {connected && (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-center">
           <Wifi size={40} className="text-green-500 mx-auto mb-3" />
-          <p className="text-sm text-gray-700 font-medium">Tudo certo!</p>
-          <p className="text-xs text-gray-500 mt-1">Voce ja pode enviar mensagens pelo painel de usuarios.</p>
+          <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">Tudo certo!</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Voce ja pode enviar mensagens pelo painel de usuarios.</p>
         </div>
       )}
     </div>

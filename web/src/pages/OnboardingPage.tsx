@@ -114,7 +114,7 @@ export function OnboardingPage({ toast }: Props) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Onboarding</h2>
-          <p className="text-sm text-gray-500 mt-0.5">Configure as telas de boas-vindas para novos usuários</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Configure as telas de boas-vindas para novos usuários</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => { setPreview(!preview); setPreviewIndex(0); }}
@@ -145,7 +145,7 @@ export function OnboardingPage({ toast }: Props) {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{step.title}</p>
-                    <p className="text-xs text-gray-500 line-clamp-1">{step.description}</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">{step.description}</p>
                     {step.icon && <p className="text-xs text-gray-400 mt-0.5">Ícone: {step.icon}</p>}
                   </div>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${step.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
@@ -192,7 +192,7 @@ export function OnboardingPage({ toast }: Props) {
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-gray-900 leading-tight">{activeSteps[previewIndex]?.title}</h3>
-                      <p className="text-xs text-gray-500 mt-2 leading-relaxed">{activeSteps[previewIndex]?.description}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 leading-relaxed">{activeSteps[previewIndex]?.description}</p>
                     </div>
 
                     {/* Footer */}
@@ -235,24 +235,24 @@ export function OnboardingPage({ toast }: Props) {
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {editing ? 'Editar etapa' : 'Nova etapa'}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Título</label>
                 <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Bem-vindo ao DocePreço!" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Descrição</label>
                 <textarea className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none" rows={3}
                   value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} />
               </div>
 
               {/* Icon picker */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Ícone e cores</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Ícone e cores</label>
                 <div className="grid grid-cols-8 gap-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-40 overflow-y-auto">
                   {ICON_SUGGESTIONS.map(({ icon, label, color, bg }) => (
                     <button key={icon} onClick={() => setForm({ ...form, icon, iconColor: color, iconBg: bg })}
@@ -278,12 +278,12 @@ export function OnboardingPage({ toast }: Props) {
               {/* Manual color overrides */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Nome ícone (Ionicons)</label>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Nome ícone (Ionicons)</label>
                   <input className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-xs font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.icon ?? ''} onChange={e => setForm({ ...form, icon: e.target.value || null })} placeholder="calculator-outline" />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Cor do ícone</label>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cor do ícone</label>
                   <div className="flex gap-1">
                     <input type="color" className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
                       value={form.iconColor ?? '#7C3AED'} onChange={e => setForm({ ...form, iconColor: e.target.value })} />
@@ -292,7 +292,7 @@ export function OnboardingPage({ toast }: Props) {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Cor de fundo</label>
+                  <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cor de fundo</label>
                   <div className="flex gap-1">
                     <input type="color" className="w-8 h-8 rounded border border-gray-300 dark:border-gray-600 cursor-pointer"
                       value={form.iconBg ?? '#F3E8FF'} onChange={e => setForm({ ...form, iconBg: e.target.value })} />
@@ -304,12 +304,12 @@ export function OnboardingPage({ toast }: Props) {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">URL da imagem (opcional)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">URL da imagem (opcional)</label>
                   <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.imageUrl ?? ''} onChange={e => setForm({ ...form, imageUrl: e.target.value || null })} placeholder="https://..." />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ordem</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Ordem</label>
                   <input type="number" min="0" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.sortOrder} onChange={e => setForm({ ...form, sortOrder: parseInt(e.target.value) || 0 })} />
                 </div>

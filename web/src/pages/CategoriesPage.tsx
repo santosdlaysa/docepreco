@@ -183,7 +183,7 @@ export function CategoriesPage({ toast }: Props) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Ícone</label>
                 <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center text-2xl border-2 border-dashed border-gray-300 dark:border-gray-600">
+                  <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-2xl border-2 border-dashed border-gray-300 dark:border-gray-600">
                     {form.icon || '?'}
                   </div>
                   <input className="w-20 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 text-center focus:border-primary-400 outline-none"
@@ -194,7 +194,7 @@ export function CategoriesPage({ toast }: Props) {
                 <div className="grid grid-cols-8 gap-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-48 overflow-y-auto">
                   {EMOJI_SUGGESTIONS.map(({ emoji, label }) => (
                     <button key={emoji} onClick={() => setForm({ ...form, icon: emoji, name: form.name || label })}
-                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all hover:scale-110 ${form.icon === emoji ? 'bg-primary-100 ring-2 ring-primary-400 shadow-sm' : 'hover:bg-white hover:shadow-sm'}`}
+                      className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all hover:scale-110 ${form.icon === emoji ? 'bg-primary-100 ring-2 ring-primary-400 shadow-sm' : 'hover:bg-white dark:hover:bg-gray-600 hover:shadow-sm'}`}
                       title={label}>
                       {emoji}
                     </button>

@@ -198,11 +198,11 @@ export function SupportChatPage({ toast }: Props) {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm text-gray-800 truncate">{conv.userName}</span>
+                        <span className="font-medium text-sm text-gray-800 dark:text-gray-100 truncate">{conv.userName}</span>
                         <span className="text-xs text-gray-400 flex-shrink-0 ml-2">{formatTimeAgo(conv.lastMessageAt)}</span>
                       </div>
                       <p className="text-xs text-gray-400 truncate">{conv.userEmail}</p>
-                      <p className="text-sm text-gray-500 truncate mt-0.5">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
                         {conv.lastSenderType === 'admin' && <span className="text-primary-500">Você: </span>}
                         {conv.lastMessage}
                       </p>

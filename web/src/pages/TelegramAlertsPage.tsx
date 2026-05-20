@@ -122,7 +122,7 @@ export function TelegramAlertsPage({ toast }: Props) {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Telegram</h2>
-          <p className="text-sm text-gray-500 mt-1">Controle alertas, mensagens e horários de envio do bot.</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Controle alertas, mensagens e horários de envio do bot.</p>
         </div>
         <button onClick={openNew} className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium">
           <Plus size={16} /> Novo alerta
@@ -168,7 +168,7 @@ export function TelegramAlertsPage({ toast }: Props) {
                             {a.isEnabled ? 'ON' : 'OFF'}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-500 mt-0.5">{a.description}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{a.description}</p>
                         {a.scheduleDescription && (
                           <p className="text-xs text-purple-500 mt-0.5 flex items-center gap-1">
                             <Clock size={10} /> {a.scheduleDescription}
@@ -200,29 +200,29 @@ export function TelegramAlertsPage({ toast }: Props) {
       {showModal && (
         <ModalOverlay onClose={() => setShowModal(false)}>
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
               {editing ? 'Editar alerta' : 'Novo alerta'}
             </h3>
             <div className="space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Chave</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Chave</label>
                 <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.key} onChange={e => setForm({ ...form, key: e.target.value.replace(/\s/g, '_').toLowerCase() })}
                   placeholder="ex: custom_alert" disabled={!!editing} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Nome</label>
                 <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.label} onChange={e => setForm({ ...form, label: e.target.value })} placeholder="Ex: Relatório diário" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Descrição</label>
                 <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} placeholder="Quando isso deve ser disparado?" />
               </div>
               {!editing && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Categoria</label>
                   <select className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}>
                     <option value="alerts">Alertas em tempo real</option>
@@ -234,7 +234,7 @@ export function TelegramAlertsPage({ toast }: Props) {
               {/* Agendamento - só para relatórios */}
               {isReport && (
                 <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-                  <label className="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-1.5">
+                  <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-2 flex items-center gap-1.5">
                     <Clock size={14} /> Horário de disparo
                   </label>
                   <div className="flex flex-wrap gap-1.5 mb-3">
@@ -247,12 +247,12 @@ export function TelegramAlertsPage({ toast }: Props) {
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Cron expression</label>
+                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Cron expression</label>
                       <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                         value={form.scheduleCron} onChange={e => setForm({ ...form, scheduleCron: e.target.value })} placeholder="0 8 * * *" />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-1">Descrição do horário</label>
+                      <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Descrição do horário</label>
                       <input className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                         value={form.scheduleDescription} onChange={e => setForm({ ...form, scheduleDescription: e.target.value })} placeholder="Todo dia às 8h" />
                     </div>
@@ -263,14 +263,14 @@ export function TelegramAlertsPage({ toast }: Props) {
 
               {/* Template da mensagem */}
               <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-                <label className="block text-sm font-bold text-gray-700 mb-1">Mensagem do Telegram</label>
+                <label className="block text-sm font-bold text-gray-700 dark:text-gray-200 mb-1">Mensagem do Telegram</label>
                 <p className="text-xs text-gray-400 mb-2">Use {'{{variavel}}'} para dados dinâmicos. Use \n para quebra de linha.</p>
                 <textarea className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-mono dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
                   rows={6} value={form.messageTemplate} onChange={e => setForm({ ...form, messageTemplate: e.target.value })}
                   placeholder="Ex: 🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}" />
                 {vars.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs font-medium text-gray-500 mb-1">Variáveis disponíveis:</p>
+                    <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Variáveis disponíveis:</p>
                     <div className="flex flex-wrap gap-1.5">
                       {vars.map(v => (
                         <button key={v} onClick={() => setForm({ ...form, messageTemplate: form.messageTemplate + `{{${v}}}` })}

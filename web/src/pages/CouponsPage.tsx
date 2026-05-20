@@ -123,7 +123,7 @@ export function CouponsPage({ toast }: Props) {
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
               {coupons.map(c => {
                 const status = getStatus(c);
                 return (

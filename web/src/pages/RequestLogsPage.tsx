@@ -124,7 +124,7 @@ export function RequestLogsPage() {
           )}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none">
             <div
               onClick={() => setAutoRefresh(v => !v)}
               className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${autoRefresh ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}
@@ -146,11 +146,11 @@ export function RequestLogsPage() {
       {/* Resumo */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border px-4 py-3 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
-          <p className="text-xs font-medium text-gray-500 flex items-center gap-1.5">
+          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 flex items-center gap-1.5">
             <Activity size={14} className="text-gray-400" />
             Total
           </p>
-          <p className="text-2xl font-bold text-gray-800 mt-1">{logs.length}</p>
+          <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{logs.length}</p>
           <p className="text-xs text-gray-400">últimas requisições</p>
         </div>
         <div className="rounded-xl border px-4 py-3 bg-red-50 dark:bg-red-900/20 border-red-200">
@@ -208,7 +208,7 @@ export function RequestLogsPage() {
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-          <p className="font-semibold text-gray-900 text-sm">Feed de requisições</p>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm">Feed de requisições</p>
           <span className="text-xs text-gray-400">{filtered.length} registros</span>
         </div>
 
@@ -229,7 +229,7 @@ export function RequestLogsPage() {
                     <span className={`shrink-0 text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[log.method] ?? 'bg-gray-100 text-gray-600 border-gray-200'}`}>
                       {log.method}
                     </span>
-                    <span className="flex-1 font-mono text-gray-700 truncate" title={log.path}>
+                    <span className="flex-1 font-mono text-gray-700 dark:text-gray-200 truncate" title={log.path}>
                       {log.path}
                       {log.bodyEmail && <span className="ml-2 text-xs text-purple-600 font-sans font-medium">{log.bodyEmail}</span>}
                     </span>

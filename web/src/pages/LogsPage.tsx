@@ -5,10 +5,10 @@ import { UserPlus, DollarSign, Star, Lock, RefreshCw } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const TYPE_CONFIG: Record<LogEntry['type'], { icon: LucideIcon; label: string; color: string; iconColor: string }> = {
-  new_user:    { icon: UserPlus,   label: 'Novo usuário',       color: 'bg-blue-50 border-blue-200 text-blue-700', iconColor: 'text-blue-600' },
-  sale:        { icon: DollarSign, label: 'Venda registrada',   color: 'bg-green-50 border-green-200 text-green-700', iconColor: 'text-green-600' },
-  premium_on:  { icon: Star,       label: 'Premium ativado',    color: 'bg-yellow-50 border-yellow-200 text-yellow-700', iconColor: 'text-yellow-500' },
-  premium_off: { icon: Lock,       label: 'Premium removido',   color: 'bg-gray-50 border-gray-200 text-gray-500', iconColor: 'text-gray-400' },
+  new_user:    { icon: UserPlus,   label: 'Novo usuário',       color: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 text-blue-700', iconColor: 'text-blue-600' },
+  sale:        { icon: DollarSign, label: 'Venda registrada',   color: 'bg-green-50 dark:bg-green-900/20 border-green-200 text-green-700', iconColor: 'text-green-600' },
+  premium_on:  { icon: Star,       label: 'Premium ativado',    color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 text-yellow-700', iconColor: 'text-yellow-500' },
+  premium_off: { icon: Lock,       label: 'Premium removido',   color: 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400', iconColor: 'text-gray-400' },
 };
 
 function fmtTs(ts: string) {
@@ -102,7 +102,7 @@ export function LogsPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer select-none">
+          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none">
             <div
               onClick={() => setAutoRefresh(v => !v)}
               className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${autoRefresh ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}
@@ -142,7 +142,7 @@ export function LogsPage() {
       {/* Feed */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-          <p className="font-semibold text-gray-900 text-sm">Feed de eventos</p>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm">Feed de eventos</p>
           <span className="text-xs text-gray-400">{logs.length} eventos</span>
         </div>
 
@@ -163,7 +163,7 @@ export function LogsPage() {
                       <span className={`text-xs font-semibold px-1.5 py-0.5 rounded ${cfg.color}`}>
                         {cfg.label}
                       </span>
-                      <span className="font-medium text-gray-900 text-sm truncate">{log.label ?? '—'}</span>
+                      <span className="font-medium text-gray-900 dark:text-white text-sm truncate">{log.label ?? '—'}</span>
                     </div>
                     <p className="text-xs text-gray-400 mt-0.5">{log.detail}</p>
                   </div>

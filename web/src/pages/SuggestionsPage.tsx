@@ -122,7 +122,7 @@ export function SuggestionsPage({ toast }: Props) {
       <div className="flex gap-2">
         {(['all', 'pending', 'read', 'done'] as const).map(f => (
           <button key={f} onClick={() => setFilter(f)}
-            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === f ? 'bg-primary-500 text-white' : 'bg-white text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+            className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${filter === f ? 'bg-primary-500 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
             {f === 'all' ? 'Todos' : STATUS_CONFIG[f].label}
           </button>
         ))}
