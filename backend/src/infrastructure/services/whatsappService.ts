@@ -16,6 +16,18 @@ async function evoFetch(path: string, body?: unknown): Promise<any> {
   return json;
 }
 
+async function ensureInstance(): Promise<void> {
+  try {
+    await evoFetch(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
+  } catch {
+    // Instância não existe — cria automaticamente
+    await evoFetch('/instance/create', {
+      instanceName: EVOLUTION_INSTANCE,
+      qrcode: true,
+    });
+  }
+}
+
 export async function createInstance(): Promise<unknown> {
   return evoFetch('/instance/create', {
     instanceName: EVOLUTION_INSTANCE,
@@ -24,15 +36,18 @@ export async function createInstance(): Promise<unknown> {
 }
 
 export async function getQrCode(): Promise<{ base64: string; code: string }> {
+  await ensureInstance();
   return evoFetch(`/instance/connect/${EVOLUTION_INSTANCE}`);
 }
 
 export async function getInstanceStatus(): Promise<{ state: string }> {
+  await ensureInstance();
   const res = await evoFetch(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
   return { state: (res.instance as Record<string, unknown>)?.state as string ?? res.state as string ?? 'unknown' };
 }
 
 export async function sendWhatsAppMessage(phone: string, message: string): Promise<unknown> {
+  await ensureInstance();
   const cleanPhone = phone.replace(/\D/g, '');
   return evoFetch(`/message/sendText/${EVOLUTION_INSTANCE}`, {
     number: cleanPhone,
