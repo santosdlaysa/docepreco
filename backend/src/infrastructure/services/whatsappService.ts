@@ -2,11 +2,9 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:808
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'docepreco-evo-secret-key';
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'docepreco';
 
-const EVO_TIMEOUT_MS = 30_000; // 30s — cobre cold start do Render
-
-async function evoFetch(path: string, body?: unknown): Promise<any> {
+async function evoFetch(path: string, body?: unknown, timeoutMs = 60_000): Promise<any> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), EVO_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const res = await fetch(`${EVOLUTION_API_URL}${path}`, {
       method: body ? 'POST' : 'GET',
@@ -21,7 +19,7 @@ async function evoFetch(path: string, body?: unknown): Promise<any> {
     if (!res.ok) throw new Error((json.message as string) ?? `Evolution API error: ${res.status}`);
     return json;
   } catch (err: unknown) {
-    if (err instanceof DOMException && err.name === 'AbortError') {
+    if (err instanceof Error && err.name === 'AbortError') {
       throw new Error('Evolution API timeout — o serviço pode estar iniciando. Tente novamente em alguns segundos.');
     }
     throw err;
@@ -71,4 +69,14 @@ export async function sendWhatsAppMessage(phone: string, message: string): Promi
     number: cleanPhone,
     textMessage: { text: message },
   });
+}
+
+/** Pinga a Evolution API para mantê-la acordada no Render */
+export async function warmUpEvolutionApi(): Promise<void> {
+  try {
+    await fetch(`${EVOLUTION_API_URL}`, { method: 'GET', signal: AbortSignal.timeout(10_000) });
+    console.log('[EvolutionAPI] warm-up ping ok');
+  } catch {
+    console.log('[EvolutionAPI] warm-up ping falhou (serviço pode estar iniciando)');
+  }
 }

@@ -36,6 +36,7 @@ import onboardingRoutes from './presentation/routes/onboardingRoutes';
 import telegramAlertRoutes from './presentation/routes/telegramAlertRoutes';
 import supportRoutes from './presentation/routes/supportRoutes';
 import whatsappRoutes from './presentation/routes/whatsappRoutes';
+import { warmUpEvolutionApi } from './infrastructure/services/whatsappService';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
 import { PostgresTelegramAlertRepository } from './infrastructure/repositories/PostgresTelegramAlertRepository';
@@ -133,6 +134,10 @@ async function bootstrap() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+    // Ping Evolution API a cada 5 min para evitar cold start
+    warmUpEvolutionApi();
+    cron.schedule('*/5 * * * *', () => warmUpEvolutionApi());
+
     // Telegram reports — lê crons do banco
     const telegramAlertRepo = new PostgresTelegramAlertRepository();
     const cronHandlers: Record<string, () => void> = {
