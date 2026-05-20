@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -27,7 +27,7 @@ function SortIcon({ active }: { active: boolean }) {
   );
 }
 
-function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; onClose: () => void; toast: ToastFn; onImpersonate?: (userId: string) => void }) {
+function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { userId: string; onClose: () => void; toast: ToastFn; onImpersonate?: (userId: string) => void; onWhatsApp: (phone: string, name: string) => void }) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [saving, setSaving] = useState(false);
   const [premiumDays, setPremiumDays] = useState('30');
@@ -150,15 +150,13 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
               <p className="font-semibold text-gray-900">{user.companyName}</p>
               <p className="text-sm text-gray-500">{user.email}</p>
               {user.phone && (
-                <a
-                  href={`https://wa.me/${user.phone.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                <button
+                  onClick={() => onWhatsApp(user.phone!, user.companyName)}
                   className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1 mt-0.5"
                 >
-                  <Phone size={13} />
+                  <MessageCircle size={13} />
                   {user.phone}
-                </a>
+                </button>
               )}
               {user.instagramHandle && (
                 <a
@@ -337,6 +335,59 @@ function UserModal({ userId, onClose, toast, onImpersonate }: { userId: string; 
   );
 }
 
+function WhatsAppModal({ phone, contactName, onClose }: { phone: string; contactName: string; onClose: () => void }) {
+  const [message, setMessage] = useState('');
+  const cleanPhone = phone.replace(/\D/g, '');
+
+  const handleSend = () => {
+    const encoded = encodeURIComponent(message);
+    window.open(`https://wa.me/${cleanPhone}?text=${encoded}`, '_blank');
+    onClose();
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="bg-green-100 p-2 rounded-full">
+              <MessageCircle size={18} className="text-green-600" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-sm">WhatsApp</h3>
+              <p className="text-xs text-gray-500">{contactName} · {phone}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+        <div className="p-4 space-y-3">
+          <textarea
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            rows={4}
+            autoFocus
+            placeholder="Digite sua mensagem..."
+            className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-green-300 focus:bg-white resize-none"
+            onKeyDown={e => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSend();
+            }}
+          />
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-400">Ctrl+Enter para enviar</p>
+            <button
+              onClick={handleSend}
+              className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
+            >
+              <Send size={14} />
+              Enviar no WhatsApp
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalOverlay>
+  );
+}
+
 export function UsersPage({ toast, onImpersonate }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
@@ -355,6 +406,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [sortBy, setSortBy] = useState<SortKey>('createdAt');
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [whatsApp, setWhatsApp] = useState<{ phone: string; name: string } | null>(null);
 
   const activeFilterCount = [
     premiumFilter !== null,
@@ -660,15 +712,13 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                   <td className="px-4 py-3 text-gray-500">{u.email}</td>
                   <td className="px-4 py-3">
                     {u.phone ? (
-                      <a
-                        href={`https://wa.me/${u.phone.replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-green-600 hover:text-green-700"
-                        onClick={e => e.stopPropagation()}
+                      <button
+                        className="text-green-600 hover:text-green-700 flex items-center gap-1"
+                        onClick={e => { e.stopPropagation(); setWhatsApp({ phone: u.phone!, name: u.companyName }); }}
                       >
+                        <MessageCircle size={14} />
                         {u.phone}
-                      </a>
+                      </button>
                     ) : '—'}
                   </td>
                   <td className="px-4 py-3">
@@ -747,6 +797,15 @@ export function UsersPage({ toast, onImpersonate }: Props) {
           onClose={() => { setSelectedId(null); load(); }}
           toast={toast}
           onImpersonate={onImpersonate}
+          onWhatsApp={(phone, name) => setWhatsApp({ phone, name })}
+        />
+      )}
+
+      {whatsApp && (
+        <WhatsAppModal
+          phone={whatsApp.phone}
+          contactName={whatsApp.name}
+          onClose={() => setWhatsApp(null)}
         />
       )}
     </div>
