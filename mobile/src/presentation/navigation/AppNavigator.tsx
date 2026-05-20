@@ -44,6 +44,7 @@ import { registerPushToken } from '../utils/notifications';
 import { requestAdConsent } from '../ads';
 import { initializeMobileAds } from '../ads/initMobileAds';
 import { usePremium } from '../context/PremiumContext';
+import { setForceLogout } from '../../data/api/client';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -162,6 +163,8 @@ export function AppNavigator() {
     setCompanyLogoState(null);
     setAuthState('auth');
   };
+
+  useEffect(() => { setForceLogout(logout); }, []);
 
   const deleteAccount = async () => {
     await authApi.deleteAccount();

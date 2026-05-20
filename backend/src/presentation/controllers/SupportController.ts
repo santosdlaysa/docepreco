@@ -42,8 +42,12 @@ export class SupportController {
         .catch(() => {});
 
       res.status(201).json({ success: true, data: item });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Support] sendMessage error:', error);
+      if (error?.code === '23503') {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao enviar mensagem' });
     }

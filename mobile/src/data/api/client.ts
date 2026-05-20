@@ -3,6 +3,9 @@ import { tokenStorage } from '../storage/tokenStorage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
+let onForceLogout: (() => void) | null = null;
+export function setForceLogout(fn: () => void) { onForceLogout = fn; }
+
 export const apiClient = axios.create({
   baseURL: BASE_URL,
   timeout: 60000,
@@ -31,6 +34,10 @@ apiClient.interceptors.response.use(
     const method = error.config?.method?.toUpperCase();
     const url = error.config?.url;
     const status = error.response?.status ?? 'ERR';
+    // Auto-logout: token inválido ou usuário não existe mais
+    if (status === 401 || (status === 404 && url?.includes('/auth/me'))) {
+      tokenStorage.removeToken().then(() => onForceLogout?.()).catch(() => {});
+    }
     const rawMessage = error.response?.data?.error || error.message || 'Unknown error';
     const message = !error.response && (error.code === 'ECONNABORTED' || error.message?.includes('Network Error'))
       ? 'Sem conexão com o servidor. Tente novamente em alguns segundos.'
