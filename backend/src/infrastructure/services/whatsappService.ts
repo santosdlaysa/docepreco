@@ -2,18 +2,32 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:808
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'docepreco-evo-secret-key';
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'docepreco';
 
+const EVO_TIMEOUT_MS = 30_000; // 30s — cobre cold start do Render
+
 async function evoFetch(path: string, body?: unknown): Promise<any> {
-  const res = await fetch(`${EVOLUTION_API_URL}${path}`, {
-    method: body ? 'POST' : 'GET',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: EVOLUTION_API_KEY,
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  });
-  const json = await res.json().catch(() => ({})) as Record<string, unknown>;
-  if (!res.ok) throw new Error((json.message as string) ?? `Evolution API error: ${res.status}`);
-  return json;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), EVO_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${EVOLUTION_API_URL}${path}`, {
+      method: body ? 'POST' : 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: EVOLUTION_API_KEY,
+      },
+      signal: controller.signal,
+      ...(body ? { body: JSON.stringify(body) } : {}),
+    });
+    const json = await res.json().catch(() => ({})) as Record<string, unknown>;
+    if (!res.ok) throw new Error((json.message as string) ?? `Evolution API error: ${res.status}`);
+    return json;
+  } catch (err: unknown) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Evolution API timeout — o serviço pode estar iniciando. Tente novamente em alguns segundos.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 let instanceVerified = false;
