@@ -29,12 +29,21 @@ export class PostgresPushTokenRepository {
     if (target === 'all') {
       return this.findAll();
     }
-    const isPremium = target === 'premium';
+    if (target === 'premium') {
+      const result = await pool.query(
+        `SELECT pt.* FROM push_tokens pt
+         JOIN users u ON u.id = pt.user_id
+         WHERE u.is_premium = TRUE
+           AND (u.premium_until IS NULL OR u.premium_until > NOW())`
+      );
+      return result.rows.map(this.mapRow);
+    }
+    // free: users who are not premium OR whose premium has expired
     const result = await pool.query(
       `SELECT pt.* FROM push_tokens pt
        JOIN users u ON u.id = pt.user_id
-       WHERE u.is_premium = $1`,
-      [isPremium]
+       WHERE u.is_premium = FALSE
+          OR (u.is_premium = TRUE AND u.premium_until <= NOW())`
     );
     return result.rows.map(this.mapRow);
   }
