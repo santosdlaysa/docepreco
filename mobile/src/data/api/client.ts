@@ -35,7 +35,9 @@ apiClient.interceptors.response.use(
     const url = error.config?.url;
     const status = error.response?.status ?? 'ERR';
     // Auto-logout: token inválido ou usuário não existe mais
-    if (status === 401 || (status === 404 && url?.includes('/auth/me'))) {
+    // Ignora 401 de rotas admin/settings (não significa token inválido, apenas falta de permissão)
+    const isAdminRoute = url?.includes('/admin/');
+    if ((status === 401 && !isAdminRoute) || (status === 404 && url?.includes('/auth/me'))) {
       tokenStorage.removeToken().then(() => onForceLogout?.()).catch(() => {});
     }
     const rawMessage = error.response?.data?.error || error.message || 'Unknown error';
