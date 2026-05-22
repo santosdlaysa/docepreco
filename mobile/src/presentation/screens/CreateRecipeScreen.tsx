@@ -191,7 +191,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const confirmAndAddIngredient = () => {
     if (!selectedIngredient) return;
-    const qty = parseFloat(ingredientQuantity);
+    const qty = parseFloat(ingredientQuantity.replace(',', '.'));
     const unit = ingredientUnit || selectedIngredient.unit;
 
     setIngredients(prev => [
@@ -210,14 +210,15 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const addIngredient = () => {
-    if (!selectedIngredient || !ingredientQuantity || parseFloat(ingredientQuantity) <= 0) return;
+    const normalizedQty = ingredientQuantity.replace(',', '.');
+    if (!selectedIngredient || !ingredientQuantity || parseFloat(normalizedQty) <= 0) return;
     const existing = ingredients.find(i => i.ingredientId === selectedIngredient.id);
     if (existing) {
       showToast(t('createRecipe.alreadyAdded'), 'warning');
       return;
     }
 
-    const qty = parseFloat(ingredientQuantity);
+    const qty = parseFloat(normalizedQty);
     const unit = ingredientUnit || selectedIngredient.unit;
     const qtyInPurchaseUnit = convertToSameUnit(qty, unit, selectedIngredient.unit);
     const ratio = qtyInPurchaseUnit / selectedIngredient.purchaseQuantity;
