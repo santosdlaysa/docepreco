@@ -70,7 +70,12 @@ export class PremiumController {
       return;
     }
 
-    console.log(`[Premium] Webhook ${event.type} for ${event.app_user_id}`);
+    console.log(
+      `[Premium] Webhook ${event.type} for ${event.app_user_id}` +
+      ` | expiration_at_ms=${event.expiration_at_ms ?? 'null'}` +
+      ` | store=${event.store ?? 'null'}` +
+      ` | product=${event.product_id ?? 'null'}`
+    );
 
     try {
       // RevenueCat may send an anonymous ID ($RCAnonymousID:...) as app_user_id
@@ -174,7 +179,7 @@ export class PremiumController {
       const plat: PremiumPlatform = platform === 'android' ? 'android' : 'ios';
       const updated = await userRepo.updatePremiumStatus(userId, true, until, plat);
 
-      console.log(`[Premium] Sync: ${userId} → premium=true via ${plat}`);
+      console.log(`[Premium] Sync: ${userId} → premium=true via ${plat} | expiresAt=${expiresAt ?? 'null'} | prevUntil=${user.premiumUntil ?? 'null'}`);
       if (!user.isPremium) {
         notifyPremiumEvent(user.companyName, 'INITIAL_PURCHASE', plat);
       }

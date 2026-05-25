@@ -59,9 +59,16 @@ export class PostgresUserRepository {
     premiumUntil: Date | null,
     platform: PremiumPlatform | null
   ): Promise<User | null> {
+    // When granting premium, never regress premium_until to an earlier date.
+    // This prevents race conditions between webhooks and mobile sync where an
+    // older expiration (e.g. trial end) overwrites a newer one (e.g. paid renewal).
+    const premiumUntilExpr = isPremium && premiumUntil
+      ? `GREATEST(premium_until, $3)`
+      : `$3`;
+
     const result = await pool.query(
       `UPDATE users
-         SET is_premium = $2, premium_until = $3, premium_platform = $4
+         SET is_premium = $2, premium_until = ${premiumUntilExpr}, premium_platform = $4
          WHERE id = $1
          RETURNING *`,
       [userId, isPremium, premiumUntil, platform]
