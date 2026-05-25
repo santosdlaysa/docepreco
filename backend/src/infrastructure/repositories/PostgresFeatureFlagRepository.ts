@@ -19,6 +19,12 @@ export class PostgresFeatureFlagRepository {
     return result.rows.map(this.mapRow);
   }
 
+  async isEnabled(key: string): Promise<boolean> {
+    const result = await pool.query('SELECT is_enabled FROM feature_flags WHERE key = $1', [key]);
+    if (result.rows.length === 0) return true;
+    return result.rows[0].is_enabled as boolean;
+  }
+
   async create(data: { key: string; description: string; isEnabled: boolean }): Promise<FeatureFlag> {
     const result = await pool.query(
       `INSERT INTO feature_flags (key, description, is_enabled) VALUES ($1, $2, $3) RETURNING *`,
