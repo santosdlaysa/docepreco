@@ -131,6 +131,7 @@ export const CreateClientScreen: React.FC = () => {
               value={phone}
               onChangeText={setPhone}
               keyboardType="phone-pad"
+              maxLength={15}
             />
             <Input
               label={t('common.email')}

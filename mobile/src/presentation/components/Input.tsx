@@ -16,6 +16,7 @@ interface InputProps extends TextInputProps {
   containerStyle?: ViewStyle;
   suffix?: string;
   rightElement?: React.ReactNode;
+  leftElement?: React.ReactNode;
 }
 
 export const Input: React.FC<InputProps> = ({
@@ -24,14 +25,16 @@ export const Input: React.FC<InputProps> = ({
   containerStyle,
   suffix,
   rightElement,
+  leftElement,
   ...props
 }) => {
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
       <View style={[styles.inputWrapper, !!error && styles.inputWrapperError]}>
+        {leftElement}
         <TextInput
-          style={[styles.input, (suffix || rightElement) && styles.inputWithSuffix]}
+          style={[styles.input, !!(suffix || rightElement) && styles.inputWithSuffix]}
           placeholderTextColor={colors.textMuted}
           {...props}
         />

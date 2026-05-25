@@ -18,6 +18,7 @@ import { colors } from '../theme/colors';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
+import { CountryCodePicker } from '../components/CountryCodePicker';
 
 interface Props {
   onRegister: () => void;
@@ -29,6 +30,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [countryCode, setCountryCode] = useState('+55');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -67,7 +69,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     }
     if (phone.trim()) {
       const digits = phone.replace(/\D/g, '');
-      if (digits.length < 10 || digits.length > 13) e.phone = t('register.phoneInvalid');
+      if (digits.length < 8 || digits.length > 12) e.phone = t('register.phoneInvalid');
     }
     if (!password || password.length < 6) e.password = t('register.passwordMin');
     setErrors(e);
@@ -78,7 +80,8 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     if (!validate()) return;
     setLoading(true);
     try {
-      const user = await authApi.register(companyName.trim(), email.trim(), password, phone.trim() || undefined);
+      const fullPhone = phone.trim() ? `${countryCode.replace('+', '')}${phone.replace(/\D/g, '')}` : undefined;
+      const user = await authApi.register(companyName.trim(), email.trim(), password, fullPhone);
       await identifyRevenueCatUser(user.id);
       void setRevenueCatLocationAttributes();
       onRegister();
@@ -148,7 +151,9 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               value={phone}
               onChangeText={(v) => { setPhone(v); if (errors.phone) setErrors(prev => ({ ...prev, phone: '' })); }}
               keyboardType="phone-pad"
+              maxLength={15}
               error={errors.phone}
+              leftElement={<CountryCodePicker value={countryCode} onChange={setCountryCode} />}
             />
             <Input
               label={t('register.passwordLabel')}

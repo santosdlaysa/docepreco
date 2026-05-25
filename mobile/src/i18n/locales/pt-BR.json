@@ -78,7 +78,7 @@
     "emailRequired": "Email obrigatório",
     "emailInvalid": "Email inválido",
     "emailTypo": "Você quis dizer {{suggestion}}?",
-    "phoneInvalid": "Número de celular inválido",
+    "phoneInvalid": "Número inválido. Informe o DDD + número (ex: 99 99999-9999)",
     "passwordMin": "Senha deve ter pelo menos 6 caracteres",
     "registerError": "Erro ao cadastrar"
   },
@@ -554,7 +554,7 @@
     "instagramUpdated": "Instagram atualizado com sucesso!",
     "phoneUpdated": "Celular atualizado com sucesso!",
     "phoneInvalid": "Celular inválido",
-    "phoneHint": "Informe um número válido com DDD",
+    "phoneHint": "Informe DDD + número (ex: 99 99999-9999)",
     "youArePremium": "Você é Premium",
     "allFeaturesUnlocked": "Todos os recursos liberados",
     "renewsIn": "Renova em {{days}} dia{{plural}} ({{date}})",

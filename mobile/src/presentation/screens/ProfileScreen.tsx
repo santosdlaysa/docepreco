@@ -17,6 +17,7 @@ import { Header } from '../components/Header';
 import { Button } from '../components/Button';
 import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notifications';
 import { useTranslation } from 'react-i18next';
+import { CountryCodePicker } from '../components/CountryCodePicker';
 
 const SUPPORT_WHATSAPP = '5595981273912'; // Número do WhatsApp para suporte (com código do país, sem + ou zeros à frente)
 
@@ -30,6 +31,8 @@ export const ProfileScreen: React.FC = () => {
   const [instagramInput, setInstagramInput] = useState('');
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
+  const [phoneCountryCode, setPhoneCountryCode] = useState('+55');
+  const [phoneError, setPhoneError] = useState('');
   const [savingPhone, setSavingPhone] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -41,13 +44,32 @@ export const ProfileScreen: React.FC = () => {
   const [sendingSuggestion, setSendingSuggestion] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
+  const parsePhoneWithCode = (raw: string | null | undefined) => {
+    if (!raw) return { code: '+55', local: '' };
+    const digits = raw.replace(/\D/g, '');
+    // Try to match known country codes (longest first)
+    const codes = ['598', '595', '593', '591', '506', '507', '505', '504', '503', '502', '351', '258', '245', '244', '239', '238', '670', '86', '81', '61', '58', '57', '56', '55', '54', '53', '52', '51', '49', '44', '39', '34', '33', '91', '1'];
+    for (const c of codes) {
+      if (digits.startsWith(c)) {
+        return { code: `+${c}`, local: digits.slice(c.length) };
+      }
+    }
+    return { code: '+55', local: digits };
+  };
+
+  const loadPhone = (raw: string | null | undefined) => {
+    const { code, local } = parsePhoneWithCode(raw);
+    setPhoneCountryCode(code);
+    setPhoneInput(local);
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     try {
       const u = await tokenStorage.getUser();
       setUser(u);
       setInstagramInput(u?.instagramHandle || '');
-      setPhoneInput(u?.phone || '');
+      loadPhone(u?.phone);
       await refresh();
     } finally {
       setRefreshing(false);
@@ -58,7 +80,7 @@ export const ProfileScreen: React.FC = () => {
     tokenStorage.getUser().then((u) => {
       setUser(u);
       setInstagramInput(u?.instagramHandle || '');
-      setPhoneInput(u?.phone || '');
+      loadPhone(u?.phone);
     });
     void refresh();
     getNotificationsEnabled().then(setNotificationsOn);
@@ -93,15 +115,17 @@ export const ProfileScreen: React.FC = () => {
 
   const handleSavePhone = async () => {
     const digits = phoneInput.replace(/\D/g, '');
-    if (digits && (digits.length < 10 || digits.length > 13)) {
-      Alert.alert(t('profile.phoneInvalid'), t('profile.phoneHint'));
+    if (digits && (digits.length < 8 || digits.length > 12)) {
+      setPhoneError(t('profile.phoneHint'));
       return;
     }
+    setPhoneError('');
     setSavingPhone(true);
     try {
-      const updated = await authApi.updateProfile({ phone: digits || null });
+      const fullPhone = digits ? `${phoneCountryCode.replace('+', '')}${digits}` : null;
+      const updated = await authApi.updateProfile({ phone: fullPhone });
       setUser(updated);
-      setPhoneInput(updated.phone || '');
+      loadPhone(updated.phone);
       Alert.alert(t('profile.saved'), t('profile.phoneUpdated'));
     } catch {
       Alert.alert(t('common.error'), t('common.saveError'));
@@ -139,7 +163,8 @@ export const ProfileScreen: React.FC = () => {
     }
   };
 
-  const phoneChanged = (phoneInput.replace(/\D/g, '')) !== (user?.phone || '');
+  const currentFullPhone = phoneInput.replace(/\D/g, '') ? `${phoneCountryCode.replace('+', '')}${phoneInput.replace(/\D/g, '')}` : '';
+  const phoneChanged = currentFullPhone !== (user?.phone || '');
   const instagramChanged = (instagramInput.replace(/^@/, '').trim()) !== (user?.instagramHandle || '');
 
   const pickCompanyLogo = async () => {
@@ -307,18 +332,19 @@ export const ProfileScreen: React.FC = () => {
             <View style={{ flex: 1 }}>
               <Text style={styles.menuText}>{t('profile.phone')}</Text>
               <View style={styles.instagramRow}>
+                <CountryCodePicker value={phoneCountryCode} onChange={setPhoneCountryCode} compact />
                 <TextInput
-                  style={[styles.instagramInput, { marginLeft: 0 }]}
+                  style={[styles.instagramInput, { marginLeft: 0 }, !!phoneError && { borderBottomColor: colors.error }]}
                   placeholder="(99) 99999-9999"
                   placeholderTextColor={colors.textMuted}
                   value={phoneInput}
-                  onChangeText={setPhoneInput}
+                  onChangeText={(v) => { setPhoneInput(v); if (phoneError) setPhoneError(''); }}
                   keyboardType="phone-pad"
-                  maxLength={20}
+                  maxLength={15}
                 />
                 {phoneChanged && (
                   <TouchableOpacity
-                    style={styles.instagramSaveBtn}
+                    style={[styles.instagramSaveBtn, !!phoneError && { backgroundColor: colors.textMuted }]}
                     onPress={handleSavePhone}
                     disabled={savingPhone}
                   >
@@ -330,6 +356,9 @@ export const ProfileScreen: React.FC = () => {
                   </TouchableOpacity>
                 )}
               </View>
+              {!!phoneError && (
+                <Text style={styles.phoneErrorText}>{phoneError}</Text>
+              )}
             </View>
           </View>
         </Card>
@@ -740,6 +769,11 @@ const styles = StyleSheet.create({
     ...typography.bodySmall,
     color: colors.textSecondary,
     marginTop: 2,
+  },
+  phoneErrorText: {
+    ...typography.caption,
+    color: colors.error,
+    marginTop: 4,
   },
   instagramRow: {
     flexDirection: 'row',

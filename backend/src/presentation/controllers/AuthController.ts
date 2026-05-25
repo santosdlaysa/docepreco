@@ -49,7 +49,7 @@ export class AuthController {
       }
       if (phone !== undefined && phone !== null && phone !== '') {
         const digits = String(phone).replace(/\D/g, '');
-        if (digits.length < 10 || digits.length > 13) {
+        if (digits.length < 10 || digits.length > 15) {
           res.status(400).json({ success: false, error: 'Número de celular inválido' });
           return;
         }
@@ -176,7 +176,7 @@ export class AuthController {
 
       if (phone !== undefined) {
         const cleanPhone = phone === null || phone === '' ? null : String(phone).replace(/\D/g, '');
-        if (cleanPhone !== null && (cleanPhone.length < 10 || cleanPhone.length > 13)) {
+        if (cleanPhone !== null && (cleanPhone.length < 10 || cleanPhone.length > 15)) {
           res.status(400).json({ success: false, error: 'Número de celular inválido' });
           return;
         }

@@ -217,6 +217,7 @@ export const CreateOrderScreen: React.FC = () => {
               value={clientPhone}
               onChangeText={setClientPhone}
               keyboardType="phone-pad"
+              maxLength={15}
             />
           </Card>
 
