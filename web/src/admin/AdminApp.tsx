@@ -116,6 +116,7 @@ const EVENT_CONFIG: Record<string, { icon: LucideIcon; color: string; bg: string
   sale:        { icon: ShoppingCart,  color: 'text-blue-600',  bg: 'bg-blue-50',  label: 'Nova venda' },
   premium_on:  { icon: Crown,        color: 'text-primary-600', bg: 'bg-primary-50', label: 'Novo premium' },
   premium_off: { icon: Crown,        color: 'text-gray-500',  bg: 'bg-gray-50',  label: 'Cancelou premium' },
+  suggestion:  { icon: MessagesSquare, color: 'text-indigo-600', bg: 'bg-indigo-50', label: 'Nova sugestão' },
 };
 
 function SupportBubble({ onNavigate, currentPage }: { onNavigate: (p: Page) => void; currentPage: Page }) {

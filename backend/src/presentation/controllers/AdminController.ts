@@ -371,6 +371,15 @@ export class AdminController {
             u.created_at         AS ts
           FROM users u
           WHERE u.is_premium = TRUE AND u.premium_platform IS NOT NULL
+
+          UNION ALL
+
+          SELECT
+            'suggestion'         AS type,
+            sg.user_name         AS label,
+            LEFT(sg.message, 80) AS detail,
+            sg.created_at        AS ts
+          FROM suggestions sg
         ) events
         ORDER BY ts DESC
         LIMIT $1

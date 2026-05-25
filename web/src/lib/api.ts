@@ -434,7 +434,7 @@ export interface Tip {
 }
 
 export interface LogEntry {
-  type: 'new_user' | 'sale' | 'premium_on' | 'premium_off';
+  type: 'new_user' | 'sale' | 'premium_on' | 'premium_off' | 'suggestion';
   label: string;
   detail: string;
   ts: string;
