@@ -3,6 +3,7 @@ import { PostgresUserRepository } from '../../infrastructure/repositories/Postgr
 import { PremiumPlatform } from '../../domain/entities/User';
 import { notifyPremiumEvent } from '../../infrastructure/services/telegramService';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { pool } from '../../infrastructure/database/connection';
 
 const userRepo = new PostgresUserRepository();
 
@@ -126,6 +127,13 @@ export class PremiumController {
           console.log(`[Premium] Unhandled event type: ${event.type}`);
       }
 
+      // Record premium event for history tracking
+      await pool.query(
+        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store)
+         VALUES ($1, $2, 'webhook', $3, $4, $5, $6)`,
+        [userId, event.type, platform, event.product_id ?? null, expiresAt, event.store ?? null]
+      );
+
       notifyPremiumEvent(user.companyName, event.type, platform);
       res.json({ success: true });
     } catch (error) {
@@ -180,6 +188,14 @@ export class PremiumController {
       const updated = await userRepo.updatePremiumStatus(userId, true, until, plat);
 
       console.log(`[Premium] Sync: ${userId} → premium=true via ${plat} | expiresAt=${expiresAt ?? 'null'} | prevUntil=${user.premiumUntil ?? 'null'}`);
+
+      // Record sync event
+      await pool.query(
+        `INSERT INTO premium_events (user_id, event_type, source, platform, expiration_at)
+         VALUES ($1, $2, 'app_sync', $3, $4)`,
+        [userId, user.isPremium ? 'SYNC' : 'INITIAL_PURCHASE', plat, until]
+      );
+
       if (!user.isPremium) {
         notifyPremiumEvent(user.companyName, 'INITIAL_PURCHASE', plat);
       }

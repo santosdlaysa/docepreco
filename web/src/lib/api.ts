@@ -81,6 +81,17 @@ export interface Stats {
   recentUsers: RecentUser[];
 }
 
+export interface PremiumEvent {
+  id: string;
+  eventType: string;
+  source: string;
+  platform: string | null;
+  productId: string | null;
+  expirationAt: string | null;
+  store: string | null;
+  createdAt: string;
+}
+
 export interface AdminUser {
   id: string;
   companyName: string;
@@ -209,6 +220,7 @@ export const api = {
   },
 
   getUser: (id: string) => req<AdminUserDetail>(`/admin/users/${id}`),
+  getPremiumHistory: (id: string) => req<PremiumEvent[]>(`/admin/users/${id}/premium-history`),
   getUserData: (id: string) => req<UserData>(`/admin/users/${id}/data`),
 
   setPremium: (id: string, isPremium: boolean, premiumUntil?: string | null) =>

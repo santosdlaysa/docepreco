@@ -318,6 +318,20 @@ CREATE TABLE IF NOT EXISTS support_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages (user_id, created_at);
+
+CREATE TABLE IF NOT EXISTS premium_events (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  event_type VARCHAR(30) NOT NULL,
+  source VARCHAR(20) NOT NULL DEFAULT 'webhook',
+  platform VARCHAR(20),
+  product_id VARCHAR(100),
+  expiration_at TIMESTAMP,
+  store VARCHAR(20),
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_premium_events_user ON premium_events (user_id, created_at DESC);
 `;
 
 async function addColumnIfMissing(

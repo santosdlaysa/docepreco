@@ -16,6 +16,7 @@ router.post('/users/:id/premium', (req, res) => controller.setPremium(req, res))
 router.post('/users/:id/grant-trial', (req, res) => controller.grantTrial(req, res));
 router.get('/users/:id/data', (req, res) => controller.getUserData(req, res));
 router.post('/users/:id/reset-password', (req, res) => controller.resetUserPassword(req, res));
+router.get('/users/:id/premium-history', (req, res) => controller.getPremiumHistory(req, res));
 router.post('/send-update-email', (req, res) => controller.sendUpdateEmail(req, res));
 router.get('/settings/daily-registration-goal', (req, res) => controller.getDailyRegistrationGoal(req, res));
 router.put('/settings/daily-registration-goal', (req, res) => controller.setDailyRegistrationGoal(req, res));

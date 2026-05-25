@@ -569,4 +569,24 @@ export class AdminController {
       res.status(500).json({ error: 'Internal error' });
     }
   }
+
+  async getPremiumHistory(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    try {
+      const result = await pool.query(
+        `SELECT id, event_type AS "eventType", source, platform, product_id AS "productId",
+                expiration_at AS "expirationAt", store, created_at AS "createdAt"
+         FROM premium_events
+         WHERE user_id = $1
+         ORDER BY created_at DESC
+         LIMIT 50`,
+        [id]
+      );
+      res.json({ success: true, data: result.rows });
+    } catch (error) {
+      console.error('[Admin] getPremiumHistory error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
 }

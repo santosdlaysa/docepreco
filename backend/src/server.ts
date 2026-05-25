@@ -194,6 +194,29 @@ async function bootstrap() {
       }
     }, { timezone: 'America/Sao_Paulo' });
 
+    // Cron: desativa premium de usuários cuja assinatura expirou (a cada hora)
+    cron.schedule('0 * * * *', async () => {
+      try {
+        const { pool } = require('./infrastructure/database/connection');
+        const result = await pool.query(
+          `UPDATE users SET is_premium = FALSE, premium_platform = NULL
+           WHERE is_premium = TRUE AND premium_until IS NOT NULL AND premium_until < NOW()
+           RETURNING id, company_name`
+        );
+        if (result.rowCount > 0) {
+          for (const row of result.rows) {
+            console.log(`[Cron] Premium expirado: ${row.company_name} (${row.id})`);
+            await pool.query(
+              `INSERT INTO premium_events (user_id, event_type, source) VALUES ($1, 'EXPIRED_BY_CRON', 'system')`,
+              [row.id]
+            );
+          }
+        }
+      } catch (err) {
+        console.error('[Cron] Erro ao desativar premiums expirados:', err);
+      }
+    });
+
   } catch (error) {
     console.error('Failed to start server:', error);
     process.exit(1);

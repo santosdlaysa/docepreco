@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api, AdminUser, AdminUserDetail } from '../lib/api';
+import { api, AdminUser, AdminUserDetail, PremiumEvent } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -37,9 +37,13 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   const [notifBody, setNotifBody] = useState('Você ganhou 3 dias grátis de acesso Premium! Aproveite todos os recursos exclusivos do DocePreço.');
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
+  const [premiumHistory, setPremiumHistory] = useState<PremiumEvent[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
     api.getUser(userId).then(setUser).catch(console.error);
+    setLoadingHistory(true);
+    api.getPremiumHistory(userId).then(setPremiumHistory).catch(console.error).finally(() => setLoadingHistory(false));
   }, [userId]);
 
   const togglePremium = async () => {
@@ -311,6 +315,58 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                 </button>
               </div>
             </div>
+
+            {(premiumHistory.length > 0 || loadingHistory) && (
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <History size={15} className="text-purple-500" />
+                  <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Histórico de assinatura</p>
+                </div>
+                {loadingHistory ? (
+                  <Skeleton className="h-16 w-full" />
+                ) : (
+                  <div className="space-y-2">
+                    {premiumHistory.map(ev => {
+                      const eventLabels: Record<string, { label: string; color: string }> = {
+                        INITIAL_PURCHASE: { label: 'Assinou', color: 'text-green-600' },
+                        RENEWAL: { label: 'Renovou', color: 'text-green-600' },
+                        CANCELLATION: { label: 'Cancelou', color: 'text-yellow-600' },
+                        EXPIRATION: { label: 'Expirou', color: 'text-red-600' },
+                        BILLING_ISSUE: { label: 'Problema no pagamento', color: 'text-red-600' },
+                        UNCANCELLATION: { label: 'Reativou', color: 'text-green-600' },
+                        PRODUCT_CHANGE: { label: 'Trocou de plano', color: 'text-blue-600' },
+                        TRANSFER: { label: 'Transferência', color: 'text-blue-600' },
+                        SYNC: { label: 'Sync do app', color: 'text-gray-500' },
+                        NON_RENEWING_PURCHASE: { label: 'Compra avulsa', color: 'text-green-600' },
+                      };
+                      const info = eventLabels[ev.eventType] ?? { label: ev.eventType, color: 'text-gray-600' };
+                      const sourceLabel = ev.source === 'webhook' ? 'RevenueCat' : ev.source === 'app_sync' ? 'App' : ev.source;
+                      return (
+                        <div key={ev.id} className="flex items-start justify-between text-sm border-b border-gray-100 dark:border-gray-700 pb-2">
+                          <div>
+                            <p className={`font-medium ${info.color}`}>{info.label}</p>
+                            <p className="text-xs text-gray-400">
+                              {sourceLabel}
+                              {ev.platform ? ` · ${ev.platform}` : ''}
+                              {ev.productId ? ` · ${ev.productId}` : ''}
+                            </p>
+                            {ev.expirationAt && (
+                              <p className="text-xs text-gray-400">
+                                Validade: {new Date(ev.expirationAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-400 whitespace-nowrap ml-3">
+                            {new Date(ev.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}{' '}
+                            {new Date(ev.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {user.recentSales.length > 0 && (
               <div>
