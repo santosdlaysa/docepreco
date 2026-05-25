@@ -7,11 +7,23 @@ web-build/
 *.p8
 *.p12
 *.key
+*.keystore
 *.mobileprovision
 *.orig.*
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+
+# Credenciais e segredos
+.env
+.env.*
+!.env.example
+credentials.json
+google-services.json
+**/google-services.json
+GoogleService-Info.plist
+**/GoogleService-Info.plist
+credentials/
 
 # Claude Code
 .claude/settings.local.json
