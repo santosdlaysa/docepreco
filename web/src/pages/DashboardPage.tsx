@@ -4,7 +4,7 @@ import { Skeleton, TableSkeleton, ModalOverlay } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
-  Trophy, Flame, Mail, Loader2, X, Eye, UserRoundPlus,
+  Trophy, Flame, Mail, Loader2, X, Eye, UserRoundPlus, RefreshCw,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
@@ -310,10 +310,20 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
   const [emailCtaUrl, setEmailCtaUrl] = useState('https://apps.apple.com/app/precifica-doces/id6744712907');
   const [confirmEmail, setConfirmEmail] = useState(false);
 
-  useEffect(() => {
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadStats = () => {
+    setRefreshing(true);
     api.getStats()
       .then(setStats)
-      .catch(e => setError(e.message));
+      .catch(e => setError(e.message))
+      .finally(() => setRefreshing(false));
+  };
+
+  useEffect(() => {
+    loadStats();
+    const interval = setInterval(loadStats, 60_000);
+    return () => clearInterval(interval);
   }, []);
 
   if (error) return <p className="text-red-600 p-4">{error}</p>;
@@ -354,7 +364,17 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
 
   return (
     <div className="space-y-6 animate-fade-in">
-      <h2 className="text-xl font-bold text-gray-900 dark:text-white">Visão geral</h2>
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Visão geral</h2>
+        <button
+          onClick={loadStats}
+          disabled={refreshing}
+          className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+        >
+          <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
+          {refreshing ? 'Atualizando...' : 'Atualizar'}
+        </button>
+      </div>
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Usuários</p>
