@@ -55,7 +55,7 @@ export class AdminController {
             u.premium_platform AS "premiumPlatform",
             u.premium_until    AS "premiumUntil"
           FROM users u
-          WHERE u.is_premium = TRUE
+          WHERE u.is_premium = TRUE OR (u.premium_until IS NOT NULL AND u.premium_until < NOW())
           ORDER BY u.premium_until ASC NULLS LAST
         `),
         pool.query(`

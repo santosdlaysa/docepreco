@@ -208,16 +208,16 @@ function timeRemaining(dateStr: string | null): { label: string; color: string }
   return { label: remDays > 0 ? `${months}m ${remDays}d` : `${months} mês${months > 1 ? 'es' : ''}`, color: 'text-green-600' };
 }
 
+function platformLabel(p: string | null) {
+  if (p === 'ios') return 'iOS';
+  if (p === 'android') return 'Android';
+  if (p === 'manual') return 'Manual';
+  return p || '—';
+}
+
 function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-
-  const platformLabel = (p: string | null) => {
-    if (p === 'ios') return 'iOS';
-    if (p === 'android') return 'Android';
-    if (p === 'manual') return 'Manual';
-    return p || '—';
-  };
 
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
@@ -255,6 +255,60 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
                 </tr>
               );
             })}
+          </tbody>
+        </table>
+      )}
+    </div>
+  );
+}
+
+function ExpiredSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+  const timeSinceExpired = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days === 0) return 'Expirou hoje';
+    if (days === 1) return 'Há 1 dia';
+    if (days < 30) return `Há ${days} dias`;
+    const months = Math.floor(days / 30);
+    return `Há ${months} mês${months > 1 ? 'es' : ''}`;
+  };
+
+  return (
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
+        <Crown size={18} className="text-gray-400" />
+        <div>
+          <p className="font-semibold text-gray-900 dark:text-white">Assinantes expirados</p>
+          <p className="text-xs text-gray-400 mt-0.5">{subscribers.length} assinatura{subscribers.length !== 1 ? 's' : ''} expirada{subscribers.length !== 1 ? 's' : ''}</p>
+        </div>
+      </div>
+      {subscribers.length === 0 ? (
+        <p className="text-center text-gray-400 py-8">Nenhuma assinatura expirada</p>
+      ) : (
+        <table className="w-full text-sm min-w-[500px]">
+          <thead className="bg-gray-50 dark:bg-gray-900">
+            <tr>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Plataforma</th>
+              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Expirou em</th>
+              <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tempo desde expiração</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+            {subscribers.map(s => (
+              <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                <td className="px-5 py-3">
+                  <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
+                  <p className="text-xs text-gray-400">{s.email}</p>
+                </td>
+                <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{platformLabel(s.premiumPlatform)}</td>
+                <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
+                <td className="px-5 py-3 text-right font-semibold text-red-500">{s.premiumUntil ? timeSinceExpired(s.premiumUntil) : '—'}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       )}
@@ -463,11 +517,18 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Assinaturas</p>
-        <PremiumSubscribersTable subscribers={stats.premiumSubscribers.filter(s => {
-          if (s.email === 'santosdlaysa@gmail.com') return false;
-          if (!s.premiumUntil) return true;
-          return new Date(s.premiumUntil).getTime() > Date.now();
-        })} />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+          <PremiumSubscribersTable subscribers={stats.premiumSubscribers.filter(s => {
+            if (s.email === 'santosdlaysa@gmail.com') return false;
+            if (!s.premiumUntil) return true;
+            return new Date(s.premiumUntil).getTime() > Date.now();
+          })} />
+          <ExpiredSubscribersTable subscribers={stats.premiumSubscribers.filter(s => {
+            if (s.email === 'santosdlaysa@gmail.com') return false;
+            if (!s.premiumUntil) return false;
+            return new Date(s.premiumUntil).getTime() <= Date.now();
+          })} />
+        </div>
       </div>
 
       {/* Email de atualização */}
