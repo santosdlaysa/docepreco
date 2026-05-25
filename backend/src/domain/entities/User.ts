@@ -10,6 +10,7 @@ export interface User {
   isPremium: boolean;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
+  isActive: boolean;
 }
 
 export interface RegisterDTO {

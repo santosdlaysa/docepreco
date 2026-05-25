@@ -399,6 +399,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'users', 'phone', 'VARCHAR(20) NULL');
+    await addColumnIfMissing(client, 'users', 'is_active', 'BOOLEAN NOT NULL DEFAULT TRUE');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
     await addColumnIfMissing(client, 'request_logs', 'body_email', 'VARCHAR(255)');
 

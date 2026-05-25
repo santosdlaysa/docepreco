@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { api, FeatureFlag } from '../lib/api';
+import { api } from '../lib/api';
 import { ToastFn } from '../components';
-import { Target, Save, UserPlus } from 'lucide-react';
+import { Target, Save } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -13,28 +13,13 @@ export function SettingsPage({ toast }: Props) {
   const [savedGoal, setSavedGoal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [registrationEnabled, setRegistrationEnabled] = useState(true);
-  const [registrationFlag, setRegistrationFlag] = useState<FeatureFlag | null>(null);
-  const [togglingRegistration, setTogglingRegistration] = useState(false);
 
   const load = async () => {
     try {
-      const [goalData, flags] = await Promise.all([
-        api.getDailyRegistrationGoal(),
-        api.listFeatureFlags(),
-      ]);
-      setSavedGoal(goalData.goal);
-      setRegisteredToday(goalData.registeredToday);
-      setGoal(String(goalData.goal || ''));
-
-      const regFlag = flags.find(f => f.key === 'allow_registration');
-      if (regFlag) {
-        setRegistrationFlag(regFlag);
-        setRegistrationEnabled(regFlag.isEnabled);
-      } else {
-        setRegistrationEnabled(true);
-        setRegistrationFlag(null);
-      }
+      const data = await api.getDailyRegistrationGoal();
+      setSavedGoal(data.goal);
+      setRegisteredToday(data.registeredToday);
+      setGoal(String(data.goal || ''));
     } catch (e) {
       console.error(e);
     } finally {
@@ -62,30 +47,6 @@ export function SettingsPage({ toast }: Props) {
     }
   };
 
-  const toggleRegistration = async () => {
-    setTogglingRegistration(true);
-    try {
-      if (registrationFlag) {
-        await api.updateFeatureFlag(registrationFlag.id, { isEnabled: !registrationEnabled });
-        setRegistrationEnabled(!registrationEnabled);
-        toast.success(!registrationEnabled ? 'Cadastro ativado!' : 'Cadastro desativado!');
-      } else {
-        const created = await api.createFeatureFlag({
-          key: 'allow_registration',
-          description: 'Permite novos cadastros no app',
-          isEnabled: false,
-        });
-        setRegistrationFlag(created);
-        setRegistrationEnabled(false);
-        toast.success('Cadastro desativado!');
-      }
-    } catch (e: any) {
-      toast.error(e.message || 'Erro ao alterar configuração');
-    } finally {
-      setTogglingRegistration(false);
-    }
-  };
-
   const remaining = Math.max(0, savedGoal - registeredToday);
   const percent = savedGoal > 0 ? Math.min(100, Math.round((registeredToday / savedGoal) * 100)) : 0;
 
@@ -94,40 +55,6 @@ export function SettingsPage({ toast }: Props) {
       <div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Configurações</h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Ajustes gerais do painel e do bot do Telegram.</p>
-      </div>
-
-      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
-        <div className="flex items-center gap-2">
-          <UserPlus size={20} className="text-primary-500" />
-          <h3 className="text-base font-bold text-gray-900 dark:text-white">Cadastro de novos usuários</h3>
-        </div>
-
-        <p className="text-sm text-gray-600 dark:text-gray-300">
-          Controle se novos usuários podem se cadastrar no app. Ao desativar, apenas usuários já cadastrados poderão fazer login.
-        </p>
-
-        {loading ? (
-          <div className="h-10 bg-gray-50 dark:bg-gray-900 rounded-lg animate-pulse" />
-        ) : (
-          <div className="flex items-center justify-between bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
-            <div className="flex items-center gap-3">
-              <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-2.5 py-1 rounded-full ${registrationEnabled ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'}`}>
-                <span className={`w-2 h-2 rounded-full ${registrationEnabled ? 'bg-green-500' : 'bg-red-500'}`} />
-                {registrationEnabled ? 'Ativado' : 'Desativado'}
-              </span>
-            </div>
-            <button
-              onClick={toggleRegistration}
-              disabled={togglingRegistration}
-              className={`text-sm px-4 py-2 rounded-lg font-medium transition-colors ${registrationEnabled
-                ? 'bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400'
-                : 'bg-green-50 hover:bg-green-100 text-green-600 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400'
-              } disabled:opacity-50`}
-            >
-              {togglingRegistration ? 'Salvando...' : registrationEnabled ? 'Desativar cadastro' : 'Ativar cadastro'}
-            </button>
-          </div>
-        )}
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">

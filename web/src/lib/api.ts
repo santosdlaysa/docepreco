@@ -103,6 +103,7 @@ export interface AdminUser {
   premiumUntil: string | null;
   premiumPlatform: string | null;
   lastSeenAt: string | null;
+  isActive: boolean;
   recipeCount: number;
   ingredientCount: number;
   saleCount: number;
@@ -239,6 +240,11 @@ export const api = {
     req<{ success: boolean }>(`/admin/users/${id}/reset-password`, {
       method: 'POST',
       body: JSON.stringify({ newPassword }),
+    }),
+  toggleUserActive: (id: string, isActive: boolean) =>
+    req<{ isActive: boolean }>(`/admin/users/${id}/toggle-active`, {
+      method: 'POST',
+      body: JSON.stringify({ isActive }),
     }),
 
   sendUpdateEmail: (content?: { subject?: string; intro?: string; features?: string[]; ctaText?: string; ctaUrl?: string }) =>

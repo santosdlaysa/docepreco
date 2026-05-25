@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -39,6 +39,24 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   const [resettingPassword, setResettingPassword] = useState(false);
   const [premiumHistory, setPremiumHistory] = useState<PremiumEvent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [togglingActive, setTogglingActive] = useState(false);
+
+  const toggleActive = async () => {
+    if (!user) return;
+    const newActive = !user.isActive;
+    const action = newActive ? 'ativar' : 'desativar';
+    if (!confirm(`Tem certeza que deseja ${action} o usuário ${user.companyName}?`)) return;
+    setTogglingActive(true);
+    try {
+      await api.toggleUserActive(user.id, newActive);
+      setUser({ ...user, isActive: newActive });
+      toast.success(`Usuário ${newActive ? 'ativado' : 'desativado'} com sucesso!`);
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao alterar status');
+    } finally {
+      setTogglingActive(false);
+    }
+  };
 
   useEffect(() => {
     api.getUser(userId).then(setUser).catch(console.error);
@@ -312,6 +330,40 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                 >
                   <KeyRound size={14} />
                   {resettingPassword ? 'Salvando...' : 'Redefinir'}
+                </button>
+              </div>
+            </div>
+
+            <div className={`${user.isActive !== false ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'} border rounded-xl p-4`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {user.isActive !== false ? (
+                    <UserX size={16} className="text-red-600" />
+                  ) : (
+                    <UserCheck size={16} className="text-green-600" />
+                  )}
+                  <div>
+                    <p className={`text-sm font-medium ${user.isActive !== false ? 'text-red-800' : 'text-green-800'}`}>
+                      {user.isActive !== false ? 'Desativar usuário' : 'Usuário desativado'}
+                    </p>
+                    <p className={`text-xs ${user.isActive !== false ? 'text-red-600' : 'text-green-600'}`}>
+                      {user.isActive !== false
+                        ? 'O usuário não conseguirá mais fazer login no app.'
+                        : 'O usuário está bloqueado e não consegue acessar o app.'}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={toggleActive}
+                  disabled={togglingActive}
+                  className={`flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg transition-colors disabled:opacity-50 ${
+                    user.isActive !== false
+                      ? 'bg-red-500 hover:bg-red-600 text-white'
+                      : 'bg-green-500 hover:bg-green-600 text-white'
+                  }`}
+                >
+                  {user.isActive !== false ? <UserX size={14} /> : <UserCheck size={14} />}
+                  {togglingActive ? '...' : user.isActive !== false ? 'Desativar' : 'Reativar'}
                 </button>
               </div>
             </div>
@@ -790,7 +842,14 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                   style={{ animationDelay: `${i * 20}ms` }}
                   onClick={() => setSelectedId(u.id)}
                 >
-                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{u.companyName}</td>
+                  <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">
+                    <span className="flex items-center gap-1.5">
+                      {u.companyName}
+                      {u.isActive === false && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400">Desativado</span>
+                      )}
+                    </span>
+                  </td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{u.email}</td>
                   <td className="px-4 py-3">
                     {u.phone ? (

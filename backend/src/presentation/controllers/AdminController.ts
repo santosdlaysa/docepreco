@@ -167,6 +167,7 @@ export class AdminController {
             u.premium_platform         AS "premiumPlatform",
             u.last_seen_at             AS "lastSeenAt",
             u.instagram_handle         AS "instagramHandle",
+            COALESCE(u.is_active, TRUE) AS "isActive",
             (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id) AS "recipeCount",
             (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",
@@ -201,6 +202,25 @@ export class AdminController {
     } catch (error) {
       console.error('[Admin] setPremium error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async toggleUserActive(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { isActive } = req.body;
+    try {
+      const result = await pool.query(
+        `UPDATE users SET is_active = $1 WHERE id = $2 RETURNING is_active AS "isActive"`,
+        [isActive, id]
+      );
+      if (result.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      res.json({ success: true, data: { isActive: result.rows[0].isActive } });
+    } catch (error) {
+      console.error('[Admin] toggleUserActive error:', error);
       res.status(500).json({ error: 'Internal error' });
     }
   }
@@ -279,6 +299,7 @@ export class AdminController {
             u.premium_platform         AS "premiumPlatform",
             u.last_seen_at             AS "lastSeenAt",
             u.instagram_handle         AS "instagramHandle",
+            COALESCE(u.is_active, TRUE) AS "isActive",
             (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id) AS "recipeCount",
             (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",

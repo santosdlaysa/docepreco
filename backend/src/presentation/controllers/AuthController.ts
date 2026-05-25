@@ -3,13 +3,11 @@ import jwt from 'jsonwebtoken';
 import { User } from '../../domain/entities/User';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
-import { PostgresFeatureFlagRepository } from '../../infrastructure/repositories/PostgresFeatureFlagRepository';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
 
 const userRepo = new PostgresUserRepository();
 const suggestionRepo = new PostgresSuggestionRepository();
-const featureFlagRepo = new PostgresFeatureFlagRepository();
 const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 
 const TYPO_MAP: Record<string, string> = {
@@ -29,12 +27,6 @@ const TYPO_MAP: Record<string, string> = {
 export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const registrationEnabled = await featureFlagRepo.isEnabled('allow_registration');
-      if (!registrationEnabled) {
-        res.status(403).json({ success: false, error: 'Cadastros estão temporariamente desativados. Tente novamente mais tarde.' });
-        return;
-      }
-
       const { companyName, email, password, phone } = req.body;
       if (!companyName || !email || !password) {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
@@ -101,6 +93,11 @@ export class AuthController {
       if (!valid) {
         console.log(`[Auth] Login failed: wrong password — ${email}`);
         res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
+        return;
+      }
+      if (user.isActive === false) {
+        console.log(`[Auth] Login blocked: user deactivated — ${email}`);
+        res.status(403).json({ success: false, error: 'Sua conta foi desativada. Entre em contato com o suporte.' });
         return;
       }
       console.log(`[Auth] Login success: ${email} (${user.companyName})`);

@@ -177,6 +177,7 @@ export class PostgresUserRepository {
       isPremium: Boolean(row.is_premium),
       premiumUntil: premiumUntil ? premiumUntil.toISOString() : null,
       premiumPlatform: (row.premium_platform as PremiumPlatform | null) ?? null,
+      isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
     };
   }
 }
