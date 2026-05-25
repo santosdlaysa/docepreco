@@ -5,6 +5,7 @@ import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
   Trophy, Flame, Mail, Loader2, X, Eye, UserRoundPlus, RefreshCw,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
@@ -215,7 +216,30 @@ function platformLabel(p: string | null) {
   return p || '—';
 }
 
+const PAGE_SIZE = 10;
+
+function PaginationControls({ page, totalPages, onPrev, onNext }: { page: number; totalPages: number; onPrev: () => void; onNext: () => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700 flex items-center justify-between">
+      <p className="text-xs text-gray-400">Página {page} de {totalPages}</p>
+      <div className="flex items-center gap-1">
+        <button onClick={onPrev} disabled={page === 1} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+          <ChevronLeft size={16} className="text-gray-500" />
+        </button>
+        <button onClick={onNext} disabled={page === totalPages} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+          <ChevronRight size={16} className="text-gray-500" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(subscribers.length / PAGE_SIZE));
+  const paged = subscribers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -231,38 +255,45 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
       {subscribers.length === 0 ? (
         <p className="text-center text-gray-400 py-8">Nenhum assinante premium</p>
       ) : (
-        <table className="w-full text-sm min-w-[500px]">
-          <thead className="bg-gray-50 dark:bg-gray-900">
-            <tr>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Plataforma</th>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Válido até</th>
-              <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tempo restante</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {subscribers.map(s => {
-              const remaining = timeRemaining(s.premiumUntil);
-              return (
-                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                  <td className="px-5 py-3">
-                    <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
-                    <p className="text-xs text-gray-400">{s.email}</p>
-                  </td>
-                  <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{platformLabel(s.premiumPlatform)}</td>
-                  <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
-                  <td className={`px-5 py-3 text-right font-semibold ${remaining.color}`}>{remaining.label}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+        <>
+          <table className="w-full text-sm min-w-[500px]">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
+                <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Plataforma</th>
+                <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Válido até</th>
+                <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tempo restante</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {paged.map(s => {
+                const remaining = timeRemaining(s.premiumUntil);
+                return (
+                  <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-5 py-3">
+                      <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
+                      <p className="text-xs text-gray-400">{s.email}</p>
+                    </td>
+                    <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{platformLabel(s.premiumPlatform)}</td>
+                    <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
+                    <td className={`px-5 py-3 text-right font-semibold ${remaining.color}`}>{remaining.label}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <PaginationControls page={page} totalPages={totalPages} onPrev={() => setPage(p => p - 1)} onNext={() => setPage(p => p + 1)} />
+        </>
       )}
     </div>
   );
 }
 
 function ExpiredSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(subscribers.length / PAGE_SIZE));
+  const paged = subscribers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
@@ -288,29 +319,32 @@ function ExpiredSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
       {subscribers.length === 0 ? (
         <p className="text-center text-gray-400 py-8">Nenhuma assinatura expirada</p>
       ) : (
-        <table className="w-full text-sm min-w-[500px]">
-          <thead className="bg-gray-50 dark:bg-gray-900">
-            <tr>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Plataforma</th>
-              <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Expirou em</th>
-              <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tempo desde expiração</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {subscribers.map(s => (
-              <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                <td className="px-5 py-3">
-                  <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
-                  <p className="text-xs text-gray-400">{s.email}</p>
-                </td>
-                <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{platformLabel(s.premiumPlatform)}</td>
-                <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
-                <td className="px-5 py-3 text-right font-semibold text-red-500">{s.premiumUntil ? timeSinceExpired(s.premiumUntil) : '—'}</td>
+        <>
+          <table className="w-full text-sm min-w-[500px]">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Confeitaria</th>
+                <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Plataforma</th>
+                <th className="text-left px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Expirou em</th>
+                <th className="text-right px-5 py-2.5 font-semibold text-gray-500 dark:text-gray-400">Tempo desde expiração</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {paged.map(s => (
+                <tr key={s.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                  <td className="px-5 py-3">
+                    <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
+                    <p className="text-xs text-gray-400">{s.email}</p>
+                  </td>
+                  <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{platformLabel(s.premiumPlatform)}</td>
+                  <td className="px-5 py-3 text-gray-600 dark:text-gray-300">{s.premiumUntil ? fmtDate(s.premiumUntil) : '—'}</td>
+                  <td className="px-5 py-3 text-right font-semibold text-red-500">{s.premiumUntil ? timeSinceExpired(s.premiumUntil) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <PaginationControls page={page} totalPages={totalPages} onPrev={() => setPage(p => p - 1)} onNext={() => setPage(p => p + 1)} />
+        </>
       )}
     </div>
   );
