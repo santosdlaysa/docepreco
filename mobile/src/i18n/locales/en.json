@@ -359,7 +359,18 @@
     "energy": "Energy",
     "energyHint": "Same calculation as gas. E.g.: bill $150 / 20 recipes = $7.50 per recipe.",
     "labor": "Labor",
-    "laborHint": "How much do you want to earn per hour? Multiply by time. E.g.: $20/h x 2h = $40."
+    "laborHint": "How much do you want to earn per hour? Multiply by time. E.g.: $20/h x 2h = $40.",
+    "subRecipesSection": "Sub-recipes",
+    "addSubRecipe": "Add",
+    "noSubRecipes": "No sub-recipes added",
+    "selectSubRecipe": "Select Recipe",
+    "subRecipeQuantity": "Quantity used (yield units)",
+    "subRecipeAlreadyAdded": "This recipe was already added as sub-recipe",
+    "subRecipeIsSelf": "Cannot add the recipe itself as sub-recipe",
+    "confirmSubRecipe": "Confirm sub-recipe",
+    "confirmSubRecipeMessage": "{{name}}\nQuantity: {{qty}} yield units\n\nAdd as sub-recipe?",
+    "subRecipeHint": "Use existing recipes as a base to compose this recipe. E.g.: use your dulce de leche recipe inside a pudding.",
+    "noRecipesAvailable": "No recipes available"
   },
   "recipeDetail": {
     "title": "Recipe Details",
@@ -372,6 +383,8 @@
     "costPerUnit": "Cost per unit",
     "ingredientsCost": "Ingredients cost",
     "additionalCosts": "Additional costs",
+    "subRecipesCost": "Sub-recipes cost",
+    "subRecipesSection": "Sub-recipes",
     "shareQuote": "Share Quote",
     "loadError": "Could not load recipe",
     "shareError": "Error generating quote",

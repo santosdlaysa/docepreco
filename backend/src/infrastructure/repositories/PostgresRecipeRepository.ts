@@ -1,5 +1,5 @@
 import { pool } from '../database/connection';
-import { Recipe, CreateRecipeDTO, RecipeIngredient, AdditionalCost } from '../../domain/entities/Recipe';
+import { Recipe, CreateRecipeDTO, RecipeIngredient, AdditionalCost, SubRecipe } from '../../domain/entities/Recipe';
 import { IRecipeRepository } from '../../domain/repositories/IRecipeRepository';
 
 export class PostgresRecipeRepository implements IRecipeRepository {
@@ -59,6 +59,15 @@ export class PostgresRecipeRepository implements IRecipeRepository {
         );
       }
 
+      if (data.subRecipes) {
+        for (const sub of data.subRecipes) {
+          await client.query(
+            `INSERT INTO recipe_sub_recipes (recipe_id, sub_recipe_id, quantity_used) VALUES ($1, $2, $3)`,
+            [recipe.id, sub.subRecipeId, sub.quantityUsed]
+          );
+        }
+      }
+
       await client.query('COMMIT');
       return this.findById(recipe.id, userId) as Promise<Recipe>;
     } catch (err) {
@@ -112,6 +121,16 @@ export class PostgresRecipeRepository implements IRecipeRepository {
         }
       }
 
+      if (data.subRecipes !== undefined) {
+        await client.query('DELETE FROM recipe_sub_recipes WHERE recipe_id = $1', [id]);
+        for (const sub of data.subRecipes) {
+          await client.query(
+            `INSERT INTO recipe_sub_recipes (recipe_id, sub_recipe_id, quantity_used) VALUES ($1, $2, $3)`,
+            [id, sub.subRecipeId, sub.quantityUsed]
+          );
+        }
+      }
+
       await client.query('COMMIT');
       return this.findById(id, userId);
     } catch (err) {
@@ -142,6 +161,13 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       'SELECT * FROM recipe_additional_costs WHERE recipe_id = $1',
       [row.id]
     );
+    const subRecipesResult = await pool.query(
+      `SELECT sr.*, r.name AS sub_recipe_name
+       FROM recipe_sub_recipes sr
+       JOIN recipes r ON r.id = sr.sub_recipe_id
+       WHERE sr.recipe_id = $1`,
+      [row.id]
+    );
 
     const ingredients: RecipeIngredient[] = ingredientsResult.rows.map(r => ({
       ingredientId: r.ingredient_id,
@@ -155,6 +181,12 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       value: parseFloat(r.value),
     }));
 
+    const subRecipes: SubRecipe[] = subRecipesResult.rows.map(r => ({
+      subRecipeId: r.sub_recipe_id,
+      subRecipeName: r.sub_recipe_name,
+      quantityUsed: parseFloat(r.quantity_used),
+    }));
+
     return {
       id: row.id as string,
       name: row.name as string,
@@ -162,6 +194,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       profitMargin: parseFloat(row.profit_margin as string),
       ingredients,
       additionalCosts,
+      subRecipes,
       createdAt: row.created_at as Date,
       updatedAt: row.updated_at as Date,
     };

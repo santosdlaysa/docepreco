@@ -54,6 +54,13 @@ CREATE TABLE IF NOT EXISTS recipe_additional_costs (
   value DECIMAL(10,2) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS recipe_sub_recipes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  sub_recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE RESTRICT,
+  quantity_used DECIMAL(10,3) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS sales (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

@@ -9,6 +9,12 @@ export interface AdditionalCost {
   value: number;
 }
 
+export interface SubRecipe {
+  subRecipeId: string;
+  subRecipeName?: string;
+  quantityUsed: number;
+}
+
 export interface Recipe {
   id: string;
   name: string;
@@ -16,6 +22,7 @@ export interface Recipe {
   profitMargin: number;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
+  subRecipes: SubRecipe[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -26,4 +33,5 @@ export interface CreateRecipeDTO {
   profitMargin: number;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
+  subRecipes: SubRecipe[];
 }

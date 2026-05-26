@@ -22,7 +22,8 @@ import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
 import { Ingredient } from '../../domain/entities/Ingredient';
-import { RecipeIngredient, AdditionalCost } from '../../domain/entities/Recipe';
+import { RecipeIngredient, AdditionalCost, SubRecipe } from '../../domain/entities/Recipe';
+import { Recipe } from '../../domain/entities/Recipe';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Button } from '../components/Button';
@@ -126,6 +127,11 @@ export const CreateRecipeScreen: React.FC = () => {
   const [prepTimeMinutes, setPrepTimeMinutes] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [applyingSuggestion, setApplyingSuggestion] = useState(false);
+  const [subRecipes, setSubRecipes] = useState<SubRecipe[]>([]);
+  const [availableRecipes, setAvailableRecipes] = useState<Recipe[]>([]);
+  const [showSubRecipeModal, setShowSubRecipeModal] = useState(false);
+  const [selectedSubRecipe, setSelectedSubRecipe] = useState<Recipe | null>(null);
+  const [subRecipeQuantity, setSubRecipeQuantity] = useState('');
   const { showToast } = useToast();
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
@@ -134,9 +140,10 @@ export const CreateRecipeScreen: React.FC = () => {
 
   useEffect(() => {
     iApi.getAll().then(setAvailableIngredients).catch(() => {});
-    if (!isEditing) {
-      rApi.getAll().then(list => setRecipeCount(list.length)).catch(() => {});
-    }
+    rApi.getAll().then(list => {
+      if (!isEditing) setRecipeCount(list.length);
+      setAvailableRecipes(list);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -148,6 +155,7 @@ export const CreateRecipeScreen: React.FC = () => {
         setProfitMargin(String(recipe.profitMargin));
         setIngredients(recipe.ingredients);
         setAdditionalCosts(recipe.additionalCosts);
+        setSubRecipes(recipe.subRecipes || []);
         // Restore labor cost fields if present
         const laborCost = recipe.additionalCosts.find(c => c.name === 'Mão de obra (profissional)');
         if (laborCost && laborCost.value > 0) {
@@ -163,7 +171,7 @@ export const CreateRecipeScreen: React.FC = () => {
     if (!name.trim()) newErrors.name = t('createRecipe.nameRequired');
     if (!yieldAmount || parseInt(yieldAmount) <= 0)
       newErrors.yield = t('createRecipe.yieldRequired');
-    if (ingredients.length === 0) newErrors.ingredients = t('createRecipe.ingredientsRequired');
+    if (ingredients.length === 0 && subRecipes.length === 0) newErrors.ingredients = t('createRecipe.ingredientsRequired');
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -263,6 +271,51 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const removeIngredient = (id: string) => {
     setIngredients(prev => prev.filter(i => i.ingredientId !== id));
+  };
+
+  const addSubRecipe = () => {
+    const normalizedQty = subRecipeQuantity.replace(',', '.');
+    if (!selectedSubRecipe || !subRecipeQuantity || parseFloat(normalizedQty) <= 0) return;
+
+    if (selectedSubRecipe.id === recipeId) {
+      showToast(t('createRecipe.subRecipeIsSelf'), 'warning');
+      return;
+    }
+
+    const existing = subRecipes.find(s => s.subRecipeId === selectedSubRecipe.id);
+    if (existing) {
+      showToast(t('createRecipe.subRecipeAlreadyAdded'), 'warning');
+      return;
+    }
+
+    const qty = parseFloat(normalizedQty);
+    Alert.alert(
+      t('createRecipe.confirmSubRecipe'),
+      t('createRecipe.confirmSubRecipeMessage', { name: selectedSubRecipe.name, qty }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('common.add'),
+          onPress: () => {
+            setSubRecipes(prev => [
+              ...prev,
+              {
+                subRecipeId: selectedSubRecipe.id,
+                subRecipeName: selectedSubRecipe.name,
+                quantityUsed: qty,
+              },
+            ]);
+            setSelectedSubRecipe(null);
+            setSubRecipeQuantity('');
+            setShowSubRecipeModal(false);
+          },
+        },
+      ]
+    );
+  };
+
+  const removeSubRecipe = (id: string) => {
+    setSubRecipes(prev => prev.filter(s => s.subRecipeId !== id));
   };
 
   const updateAdditionalCost = (name: string, value: string) => {
@@ -368,6 +421,7 @@ export const CreateRecipeScreen: React.FC = () => {
         profitMargin: parseFloat(profitMargin) || 30,
         ingredients,
         additionalCosts: getFinalCosts(),
+        subRecipes,
       };
       if (isEditing) {
         await rApi.update(recipeId!, payload);
@@ -554,6 +608,38 @@ export const CreateRecipeScreen: React.FC = () => {
           </Card>
 
           <Card style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>{t('createRecipe.subRecipesSection')}</Text>
+              <TouchableOpacity
+                onPress={() => setShowSubRecipeModal(true)}
+                style={styles.addIngBtn}
+              >
+                <Ionicons name="add" size={20} color="#fff" />
+                <Text style={styles.addIngBtnText}>{t('createRecipe.addSubRecipe')}</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.sectionSubtitle}>{t('createRecipe.subRecipeHint')}</Text>
+            {subRecipes.length === 0 ? (
+              <View style={styles.emptyIngredients}>
+                <Ionicons name="layers-outline" size={32} color={colors.textMuted} />
+                <Text style={styles.emptyText}>{t('createRecipe.noSubRecipes')}</Text>
+              </View>
+            ) : (
+              subRecipes.map(sub => (
+                <View key={sub.subRecipeId} style={styles.ingredientRow}>
+                  <View style={styles.ingredientInfo}>
+                    <Text style={styles.ingredientName}>{sub.subRecipeName}</Text>
+                    <Text style={styles.ingredientQty}>{sub.quantityUsed} un</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeSubRecipe(sub.subRecipeId)}>
+                    <Ionicons name="close-circle" size={22} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+              ))
+            )}
+          </Card>
+
+          <Card style={styles.section}>
             <Text style={styles.sectionTitle}>{t('createRecipe.additionalCosts')}</Text>
             <Text style={styles.sectionSubtitle}>{t('createRecipe.additionalCostsHint')}</Text>
             {localizedAdditionalCosts.map(cost => (
@@ -732,6 +818,75 @@ export const CreateRecipeScreen: React.FC = () => {
         </SafeAreaView>
       </Modal>
 
+      {/* Sub-Recipe Selection Modal */}
+      <Modal visible={showSubRecipeModal} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={styles.modalContainer}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>{t('createRecipe.selectSubRecipe')}</Text>
+            <TouchableOpacity onPress={() => { setShowSubRecipeModal(false); setSelectedSubRecipe(null); setSubRecipeQuantity(''); }}>
+              <Ionicons name="close" size={24} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+
+          {selectedSubRecipe ? (
+            <View style={styles.modalContent}>
+              <Card style={styles.selectedIngCard}>
+                <Text style={styles.selectedIngName}>{selectedSubRecipe.name}</Text>
+                <Text style={styles.selectedIngInfo}>
+                  {t('createRecipe.yield')}: {selectedSubRecipe.yield} un
+                </Text>
+              </Card>
+              <Input
+                label={t('createRecipe.subRecipeQuantity')}
+                placeholder="0"
+                value={subRecipeQuantity}
+                onChangeText={setSubRecipeQuantity}
+                keyboardType="decimal-pad"
+                suffix="un"
+              />
+              <View style={styles.modalActions}>
+                <Button
+                  title={t('common.back')}
+                  variant="outline"
+                  onPress={() => { setSelectedSubRecipe(null); setSubRecipeQuantity(''); }}
+                  style={{ flex: 1, marginRight: 8 }}
+                />
+                <Button
+                  title={t('common.add')}
+                  onPress={addSubRecipe}
+                  style={{ flex: 1 }}
+                />
+              </View>
+            </View>
+          ) : (
+            <FlatList
+              data={availableRecipes.filter(r => r.id !== recipeId && !subRecipes.some(s => s.subRecipeId === r.id))}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{ padding: 20 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => setSelectedSubRecipe(item)}
+                  activeOpacity={0.8}
+                >
+                  <Card style={styles.modalIngCard}>
+                    <View>
+                      <Text style={styles.modalIngName}>{item.name}</Text>
+                      <Text style={styles.modalIngInfo}>
+                        {t('createRecipe.yield')}: {item.yield} un · {item.ingredients.length} ingr.
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+                  </Card>
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.emptyText}>{t('createRecipe.noRecipesAvailable')}</Text>
+              }
+            />
+          )}
+        </SafeAreaView>
+      </Modal>
+
       {/* Confirmation Modal */}
       <Modal visible={showConfirmModal} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modalContainer}>
@@ -771,6 +926,22 @@ export const CreateRecipeScreen: React.FC = () => {
                 </View>
               ))}
             </Card>
+
+            {subRecipes.length > 0 && (
+              <Card style={styles.confirmCard}>
+                <Text style={styles.confirmSectionTitle}>
+                  {t('createRecipe.subRecipesSection')} ({subRecipes.length})
+                </Text>
+                {subRecipes.map((sub, idx) => (
+                  <View key={idx} style={styles.confirmRow}>
+                    <Text style={styles.confirmLabel}>{sub.subRecipeName}</Text>
+                    <Text style={styles.confirmValueHighlight}>
+                      {sub.quantityUsed} un
+                    </Text>
+                  </View>
+                ))}
+              </Card>
+            )}
 
             {getFinalCosts().length > 0 && (
               <Card style={styles.confirmCard}>

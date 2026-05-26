@@ -6,6 +6,7 @@ export interface CalculationResult {
   profitMargin: number;
   ingredientsCost: number;
   additionalCostTotal: number;
+  subRecipesCost: number;
 }
 
 export interface CalculateRecipeDTO {

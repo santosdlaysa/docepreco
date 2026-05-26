@@ -359,7 +359,18 @@
     "energy": "Energia",
     "energyHint": "Mesmo calculo do gas. Ex: conta R$150 / 20 receitas = R$7,50 por receita.",
     "labor": "Mao de obra",
-    "laborHint": "Quanto voce quer ganhar por hora? Multiplique pelo tempo. Ex: R$20/h x 2h = R$40."
+    "laborHint": "Quanto voce quer ganhar por hora? Multiplique pelo tempo. Ex: R$20/h x 2h = R$40.",
+    "subRecipesSection": "Sub-receitas",
+    "addSubRecipe": "Adicionar",
+    "noSubRecipes": "Nenhuma sub-receita adicionada",
+    "selectSubRecipe": "Selecionar Receita",
+    "subRecipeQuantity": "Quantidade usada (unidades do rendimento)",
+    "subRecipeAlreadyAdded": "Esta receita ja foi adicionada como sub-receita",
+    "subRecipeIsSelf": "Nao e possivel adicionar a propria receita como sub-receita",
+    "confirmSubRecipe": "Confirmar sub-receita",
+    "confirmSubRecipeMessage": "{{name}}\nQuantidade: {{qty}} un do rendimento\n\nAdicionar como sub-receita?",
+    "subRecipeHint": "Use receitas existentes como base para compor esta receita. Ex: use a receita de doce de leite dentro do pudim.",
+    "noRecipesAvailable": "Nenhuma receita disponivel"
   },
   "recipeDetail": {
     "title": "Detalhes da Receita",
@@ -372,6 +383,8 @@
     "costPerUnit": "Custo por unidade",
     "ingredientsCost": "Custo ingredientes",
     "additionalCosts": "Custos adicionais",
+    "subRecipesCost": "Custo sub-receitas",
+    "subRecipesSection": "Sub-receitas",
     "shareQuote": "Compartilhar Orçamento",
     "loadError": "Nao foi possivel carregar a receita",
     "shareError": "Erro ao gerar orçamento",

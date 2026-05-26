@@ -145,6 +145,10 @@ export const RecipesScreen: React.FC = () => {
           name: c.name,
           value: c.value,
         })),
+        subRecipes: (recipe.subRecipes || []).map(s => ({
+          subRecipeId: s.subRecipeId,
+          quantityUsed: s.quantityUsed,
+        })),
       });
       showToast(t('recipes.duplicated'), 'success');
       loadRecipes();

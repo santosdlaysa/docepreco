@@ -1,12 +1,18 @@
 import { CalculationResult } from '../entities/Calculation';
 import { Ingredient } from '../entities/Ingredient';
-import { AdditionalCost, RecipeIngredient } from '../entities/Recipe';
+import { AdditionalCost, RecipeIngredient, SubRecipe } from '../entities/Recipe';
+
+export interface SubRecipeCostInfo {
+  subRecipeId: string;
+  costPerUnit: number;
+}
 
 export interface RecipeCalculationInput {
   yield: number;
   profitMargin: number;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
+  subRecipes?: SubRecipe[];
 }
 
 export function convertUnit(quantity: number, fromUnit: string, toUnit: string): number {
@@ -30,7 +36,8 @@ export function convertUnit(quantity: number, fromUnit: string, toUnit: string):
  */
 export function calculateRecipe(
   recipe: RecipeCalculationInput,
-  ingredientsById: Map<string, Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit' | 'purchaseUnitWeight'>>
+  ingredientsById: Map<string, Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit' | 'purchaseUnitWeight'>>,
+  subRecipeCosts?: SubRecipeCostInfo[]
 ): CalculationResult {
   if (recipe.yield <= 0) {
     throw new Error('Recipe yield must be greater than 0');
@@ -53,11 +60,22 @@ export function calculateRecipe(
     ingredientsCost += pricePerUnit * convertedQuantity;
   }
 
+  let subRecipesCost = 0;
+  if (recipe.subRecipes && subRecipeCosts) {
+    const costMap = new Map(subRecipeCosts.map(s => [s.subRecipeId, s.costPerUnit]));
+    for (const sub of recipe.subRecipes) {
+      const costPerUnit = costMap.get(sub.subRecipeId);
+      if (costPerUnit !== undefined) {
+        subRecipesCost += costPerUnit * sub.quantityUsed;
+      }
+    }
+  }
+
   const additionalCostTotal = recipe.additionalCosts.reduce(
     (sum, c) => sum + c.value,
     0
   );
-  const totalCost = ingredientsCost + additionalCostTotal;
+  const totalCost = ingredientsCost + additionalCostTotal + subRecipesCost;
   const costPerUnit = totalCost / recipe.yield;
   const suggestedPrice = costPerUnit * (1 + recipe.profitMargin / 100);
   const estimatedProfit = (suggestedPrice - costPerUnit) * recipe.yield;
@@ -70,5 +88,6 @@ export function calculateRecipe(
     profitMargin: recipe.profitMargin,
     ingredientsCost,
     additionalCostTotal,
+    subRecipesCost,
   };
 }

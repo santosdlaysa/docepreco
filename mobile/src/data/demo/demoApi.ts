@@ -115,6 +115,7 @@ function calculateForRecipe(recipe: Recipe): CalculationResult {
     profitMargin: recipe.profitMargin,
     ingredientsCost: Math.round(ingredientsCost * 100) / 100,
     additionalCostTotal: Math.round(additionalCostTotal * 100) / 100,
+    subRecipesCost: 0,
   };
 }
 

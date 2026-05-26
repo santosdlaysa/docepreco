@@ -339,6 +339,15 @@ const buildHtml = ({ recipe, calculation, companyName }: QuoteInput, pdfSettings
         <span class="breakdown-value">${formatCurrency(calculation.ingredientsCost)}</span>
       </div>
       ${
+        calculation.subRecipesCost > 0
+          ? `
+      <div class="breakdown-row">
+        <span class="breakdown-label">Custo sub-receitas</span>
+        <span class="breakdown-value">${formatCurrency(calculation.subRecipesCost)}</span>
+      </div>`
+          : ''
+      }
+      ${
         calculation.additionalCostTotal > 0
           ? `
       <div class="breakdown-row">

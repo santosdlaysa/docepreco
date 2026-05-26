@@ -182,7 +182,7 @@ export const RecipeDetailScreen: React.FC = () => {
           <View style={styles.metaDivider} />
           <View style={styles.metaItem}>
             <Ionicons name="basket-outline" size={20} color={colors.secondary} />
-            <Text style={styles.metaValue}>{recipe.ingredients.length}</Text>
+            <Text style={styles.metaValue}>{recipe.ingredients.length + (recipe.subRecipes?.length || 0)}</Text>
             <Text style={styles.metaLabel}>{t('createRecipe.ingredientsSection')}</Text>
           </View>
         </View>
@@ -247,6 +247,12 @@ export const RecipeDetailScreen: React.FC = () => {
                 <Text style={styles.breakdownLabel}>{t('recipeDetail.ingredientsCost')}</Text>
                 <Text style={styles.breakdownValue}>{formatCurrency(calculation.ingredientsCost)}</Text>
               </View>
+              {calculation.subRecipesCost > 0 && (
+                <View style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>{t('recipeDetail.subRecipesCost')}</Text>
+                  <Text style={styles.breakdownValue}>{formatCurrency(calculation.subRecipesCost)}</Text>
+                </View>
+              )}
               {calculation.additionalCostTotal > 0 && (
                 <View style={styles.breakdownRow}>
                   <Text style={styles.breakdownLabel}>{t('recipeDetail.additionalCosts')}</Text>
@@ -281,6 +287,20 @@ export const RecipeDetailScreen: React.FC = () => {
                 <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 8 }} />
                 <Text style={styles.listText}>
                   {ing.ingredientName || `Ingrediente ${idx + 1}`} — {ing.quantityUsed} {ing.unit}
+                </Text>
+              </View>
+            ))}
+          </Card>
+        )}
+
+        {recipe.subRecipes && recipe.subRecipes.length > 0 && (
+          <Card style={styles.section}>
+            <Text style={styles.sectionTitle}>{t('recipeDetail.subRecipesSection')}</Text>
+            {recipe.subRecipes.map((sub, idx) => (
+              <View key={idx} style={styles.listRow}>
+                <Ionicons name="layers-outline" size={14} color={colors.primary} style={{ marginTop: 4 }} />
+                <Text style={styles.listText}>
+                  {sub.subRecipeName || `Receita ${idx + 1}`} — {sub.quantityUsed} un
                 </Text>
               </View>
             ))}

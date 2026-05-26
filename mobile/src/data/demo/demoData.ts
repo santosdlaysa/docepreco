@@ -79,6 +79,7 @@ export const demoRecipes: Recipe[] = [
       { ingredientId: 'demo-ing-4', ingredientName: 'Manteiga', quantityUsed: 20, unit: 'g' },
     ],
     additionalCosts: [],
+    subRecipes: [],
     createdAt: now,
     updatedAt: now,
   },
@@ -94,6 +95,7 @@ export const demoRecipes: Recipe[] = [
       { ingredientId: 'demo-ing-6', ingredientName: 'Creme de leite', quantityUsed: 200, unit: 'g' },
     ],
     additionalCosts: [{ name: 'Embalagem', value: 1.50 }],
+    subRecipes: [],
     createdAt: now,
     updatedAt: now,
   },
@@ -108,6 +110,7 @@ export const demoRecipes: Recipe[] = [
       { ingredientId: 'demo-ing-5', ingredientName: 'Açúcar', quantityUsed: 50, unit: 'g' },
     ],
     additionalCosts: [],
+    subRecipes: [],
     createdAt: now,
     updatedAt: now,
   },
@@ -142,6 +145,7 @@ function calcRecipe(recipe: Recipe): CalculationResult {
     profitMargin: recipe.profitMargin,
     ingredientsCost: Math.round(ingredientsCost * 100) / 100,
     additionalCostTotal: Math.round(additionalCostTotal * 100) / 100,
+    subRecipesCost: 0,
   };
 }
 
