@@ -31,14 +31,14 @@ const PLANS = {
     price: 'R$ 10,00',
     priceCents: 1000,
     pixCopyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540510.005802BR5901N6001C62100506mensal63041609',
-    qrImage: require('../../../assets/qrcode-pix (2).png'),
+    qrImage: require('../../../assets/qrcode-pix-monthly.png'),
   },
   annual: {
     label: 'Anual',
     price: 'R$ 120,00',
     priceCents: 12000,
     pixCopyPaste: '00020126330014BR.GOV.BCB.PIX0111033810532805204000053039865406120.005802BR5901N6001C62090505ANUAL6304F5D2',
-    qrImage: require('../../../assets/qrcode-pix (1).png'),
+    qrImage: require('../../../assets/qrcode-pix-annual.png'),
   },
 };
 
