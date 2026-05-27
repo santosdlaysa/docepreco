@@ -1,5 +1,14 @@
 export type OrderStatus = 'pending' | 'in_progress' | 'done' | 'delivered';
 
+export type PaymentMethodType = 'pix' | 'cash' | 'credit' | 'debit';
+
+export interface OrderPayment {
+  id: string;
+  amount: number;
+  method: PaymentMethodType;
+  date: string; // YYYY-MM-DD
+}
+
 export interface Order {
   id: string;
   clientName: string;
@@ -14,7 +23,7 @@ export interface Order {
   status: OrderStatus;
   paid?: boolean;
   paidAmount?: number;
-  paymentMethod?: 'pix' | 'cash' | 'credit' | 'debit' | 'transfer' | 'other';
+  payments?: OrderPayment[];
   notes?: string;
   createdAt: string;
 }

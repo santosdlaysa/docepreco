@@ -1,4 +1,5 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -7,13 +8,14 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Order, OrderStatus } from '../../domain/entities/Order';
+import { Order, OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
 import { orderStorage } from '../../data/storage/orderStorage';
 import { saleApi } from '../../data/api/saleApi';
 import { isDemoMode } from '../../data/demo/demoMode';
@@ -21,6 +23,7 @@ import { demoSaleApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
+import { Input } from '../components/Input';
 import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
 import { useToast } from '../context/ToastContext';
@@ -44,7 +47,7 @@ export const OrdersScreen: React.FC = () => {
     pending: { label: t('orders.pending'), color: '#FF9800', icon: 'time-outline' },
     in_progress: { label: t('orders.inProgress'), color: '#2196F3', icon: 'construct-outline' },
     done: { label: t('orders.done'), color: '#4CAF50', icon: 'checkmark-circle-outline' },
-    delivered: { label: t('orders.delivered'), color: '#9E9E9E', icon: 'gift-outline' },
+    delivered: { label: t('orders.delivered'), color: '#4CAF50', icon: 'gift-outline' },
   };
 
   const FILTER_OPTIONS: { key: OrderStatus | 'all'; label: string }[] = [
@@ -70,6 +73,60 @@ export const OrdersScreen: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
   const [loading, setLoading] = useState(true);
+  const [showNewFeatures, setShowNewFeatures] = useState(false);
+  const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
+
+  const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'pix', icon: 'qr-code-outline' },
+    { key: 'cash', icon: 'cash-outline' },
+    { key: 'credit', icon: 'card-outline' },
+    { key: 'debit', icon: 'card-outline' },
+  ];
+
+  const getMethodLabel = (method: string) => {
+    const key = method.charAt(0).toUpperCase() + method.slice(1);
+    return t(`orders.paymentMethod${key}`, { defaultValue: method });
+  };
+
+  const handleAddPayment = async () => {
+    if (!paymentModalOrder) return;
+    const amount = parseFloat(newPaymentAmount);
+    if (!amount || amount <= 0) return;
+    const payment: OrderPayment = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      amount,
+      method: newPaymentMethod,
+      date: new Date().toISOString().split('T')[0],
+    };
+    const currentPayments = paymentModalOrder.payments || [];
+    const updatedPayments = [...currentPayments, payment];
+    const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+    await orderStorage.update(paymentModalOrder.id, {
+      payments: updatedPayments,
+      paidAmount: newPaidAmount,
+      paid: newPaidAmount >= paymentModalOrder.totalPrice,
+    });
+    setPaymentModalOrder(null);
+    setNewPaymentAmount('');
+    setNewPaymentMethod('pix');
+    loadOrders();
+    showToast(t('orders.paymentAdded'), 'success');
+  };
+
+  const NEWS_KEY = '@docepreco_orders_news_v1';
+
+  useEffect(() => {
+    AsyncStorage.getItem(NEWS_KEY).then(val => {
+      if (!val) setShowNewFeatures(true);
+    });
+  }, []);
+
+  const dismissNewFeatures = () => {
+    setShowNewFeatures(false);
+    AsyncStorage.setItem(NEWS_KEY, 'dismissed');
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -167,11 +224,13 @@ export const OrdersScreen: React.FC = () => {
   const STATUS_LIST: OrderStatus[] = ['pending', 'in_progress', 'done', 'delivered'];
 
   const renderOrder = ({ item }: { item: Order }) => {
+    const isDelivered = item.status === 'delivered';
+    const remaining = item.totalPrice - (item.paidAmount || 0);
     return (
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => navigation.navigate('EditOrder', { orderId: item.id })}
-        onLongPress={() => handleDelete(item)}
+        onLongPress={() => { if (!isDelivered) handleDelete(item); }}
       >
         <Card style={styles.orderCard}>
           <View style={styles.orderHeader}>
@@ -223,13 +282,26 @@ export const OrdersScreen: React.FC = () => {
               </Text>
             </View>
           )}
-          {item.paymentMethod && (
-            <View style={styles.paymentMethodRow}>
-              <Ionicons name="card-outline" size={13} color={colors.textSecondary} />
-              <Text style={styles.paymentMethodText}>
-                {t(`orders.paymentMethod${item.paymentMethod.charAt(0).toUpperCase() + item.paymentMethod.slice(1)}`)}
-              </Text>
+          {item.payments && item.payments.length > 0 && (
+            <View style={styles.paymentsDetailRow}>
+              {item.payments.map(p => (
+                <View key={p.id} style={styles.paymentChip}>
+                  <Text style={styles.paymentChipText}>
+                    {t(`orders.paymentMethod${p.method.charAt(0).toUpperCase() + p.method.slice(1)}`, { defaultValue: p.method })} {formatCurrency(p.amount)}
+                  </Text>
+                </View>
+              ))}
             </View>
+          )}
+          {isDelivered && remaining > 0 && (
+            <TouchableOpacity
+              style={styles.addPaymentBtn}
+              onPress={() => setPaymentModalOrder(item)}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
+              <Text style={styles.addPaymentBtnText}>{t('orders.addPayment')}</Text>
+            </TouchableOpacity>
           )}
           {item.deliveryTime && (
             <Text style={styles.deliveryTime}>
@@ -244,12 +316,14 @@ export const OrdersScreen: React.FC = () => {
               return (
                 <TouchableOpacity
                   key={s}
-                  onPress={() => changeStatus(item, s)}
+                  onPress={() => { if (item.status !== 'delivered') changeStatus(item, s); }}
+                  disabled={item.status === 'delivered'}
                   style={[
                     styles.statusBtn,
                     active && { backgroundColor: cfg.color + '20', borderColor: cfg.color },
+                    item.status === 'delivered' && !active && { opacity: 0.4 },
                   ]}
-                  activeOpacity={0.7}
+                  activeOpacity={item.status === 'delivered' ? 1 : 0.7}
                 >
                   <Ionicons name={cfg.icon} size={14} color={active ? cfg.color : colors.textMuted} />
                   <Text style={[styles.statusBtnText, active && { color: cfg.color, fontWeight: '700' }]}>
@@ -304,6 +378,22 @@ export const OrdersScreen: React.FC = () => {
           </TouchableOpacity>
         ))}
       </View>
+      {showNewFeatures && (
+        <View style={styles.newsCard}>
+          <View style={styles.newsHeader}>
+            <View style={styles.newsIconRow}>
+              <Ionicons name="sparkles" size={18} color={colors.primary} />
+              <Text style={styles.newsTitle}>{t('orders.newsTitle')}</Text>
+            </View>
+            <TouchableOpacity onPress={dismissNewFeatures} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={20} color={colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+          <Text style={styles.newsItem}>{t('orders.newsPayments')}</Text>
+          <Text style={styles.newsItem}>{t('orders.newsDelivered')}</Text>
+        </View>
+      )}
+
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
@@ -325,6 +415,66 @@ export const OrdersScreen: React.FC = () => {
           </View>
         }
       />
+
+      <Modal visible={!!paymentModalOrder} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.paymentModal}>
+            <View style={styles.paymentModalHeader}>
+              <Text style={styles.paymentModalTitle}>{t('orders.addPayment')}</Text>
+              <TouchableOpacity onPress={() => { setPaymentModalOrder(null); setNewPaymentAmount(''); }}>
+                <Ionicons name="close" size={24} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            {paymentModalOrder && (
+              <View>
+                <Text style={styles.paymentModalSub}>
+                  {paymentModalOrder.recipeName} — {paymentModalOrder.clientName}
+                </Text>
+                <View style={styles.paymentModalRemaining}>
+                  <Ionicons name="wallet-outline" size={14} color={colors.warning} />
+                  <Text style={styles.paymentModalRemainingText}>
+                    {t('createOrder.amountRemaining', { amount: formatCurrency(paymentModalOrder.totalPrice - (paymentModalOrder.paidAmount || 0)) })}
+                  </Text>
+                </View>
+                <Input
+                  label={t('createOrder.paymentAmount')}
+                  placeholder="0,00"
+                  value={newPaymentAmount}
+                  onChangeText={setNewPaymentAmount}
+                  keyboardType="decimal-pad"
+                  suffix="R$"
+                />
+                <Text style={styles.paymentModalMethodLabel}>{t('createOrder.paymentMethodLabel')}</Text>
+                <View style={styles.paymentModalMethodGrid}>
+                  {PAYMENT_METHODS.map(({ key, icon }) => {
+                    const selected = newPaymentMethod === key;
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => setNewPaymentMethod(key)}
+                        style={[
+                          styles.paymentModalMethodBtn,
+                          selected && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
+                        ]}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name={icon} size={16} color={selected ? colors.primary : colors.textMuted} />
+                        <Text style={[styles.paymentModalMethodText, selected && { color: colors.primary, fontWeight: '700' }]}>
+                          {getMethodLabel(key)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <TouchableOpacity style={styles.paymentModalConfirm} onPress={handleAddPayment} activeOpacity={0.8}>
+                  <Ionicons name="checkmark" size={18} color="#fff" />
+                  <Text style={styles.paymentModalConfirmText}>{t('orders.addPayment')}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -360,6 +510,24 @@ const styles = StyleSheet.create({
   },
   filterText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
   filterTextActive: { color: '#fff' },
+  newsCard: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: colors.primary + '10',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+    borderRadius: 14,
+    padding: 14,
+  },
+  newsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  newsIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  newsTitle: { ...typography.body, color: colors.primary, fontWeight: '700' },
+  newsItem: { ...typography.bodySmall, color: colors.textSecondary, marginLeft: 24, marginTop: 4, lineHeight: 18 },
   list: { paddingHorizontal: 20, paddingBottom: 32 },
   sectionHeader: {
     ...typography.bodySmall,
@@ -427,13 +595,89 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   paidInfoText: { ...typography.caption, fontWeight: '600' },
-  paymentMethodRow: {
+  paymentsDetailRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
+  },
+  paymentChip: {
+    backgroundColor: colors.primary + '15',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  paymentChipText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
+  addPaymentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginTop: 8,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+  },
+  addPaymentBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  paymentModal: {
+    backgroundColor: colors.background,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    paddingBottom: 32,
+  },
+  paymentModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  paymentModalTitle: { ...typography.h3, color: colors.text },
+  paymentModalSub: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: 8 },
+  paymentModalRemaining: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    marginTop: 4,
+    backgroundColor: '#FFF8E1',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 14,
   },
-  paymentMethodText: { ...typography.caption, color: colors.textSecondary },
+  paymentModalRemainingText: { ...typography.bodySmall, color: '#F57F17', fontWeight: '600' },
+  paymentModalMethodLabel: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600', marginTop: 8, marginBottom: 6 },
+  paymentModalMethodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  paymentModalMethodBtn: {
+    flexBasis: '46%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  paymentModalMethodText: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
+  paymentModalConfirm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: colors.primary,
+    paddingVertical: 14,
+    borderRadius: 12,
+    marginTop: 16,
+  },
+  paymentModalConfirmText: { ...typography.body, color: '#fff', fontWeight: '700' },
   deliveryTime: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
   notes: { ...typography.caption, color: colors.textMuted, marginTop: 4, fontStyle: 'italic' },
   infoCard: {

@@ -15,7 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { OrderStatus } from '../../domain/entities/Order';
+import { OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Client } from '../../domain/entities/Client';
 import { orderStorage } from '../../data/storage/orderStorage';
@@ -59,10 +59,13 @@ export const CreateOrderScreen: React.FC = () => {
   const [deliveryTime, setDeliveryTime] = useState('');
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [notes, setNotes] = useState('');
-  const [paidAmount, setPaidAmount] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cash' | 'credit' | 'debit' | 'transfer' | 'other' | ''>('');
+  const [payments, setPayments] = useState<OrderPayment[]>([]);
+  const [showAddPayment, setShowAddPayment] = useState(false);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [isDelivered, setIsDelivered] = useState(false);
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -97,14 +100,25 @@ export const CreateOrderScreen: React.FC = () => {
         setDeliveryDate(fromIso(order.deliveryDate));
         setDeliveryTime(order.deliveryTime || '');
         setStatus(order.status);
-        setPaidAmount(order.paidAmount ? String(order.paidAmount) : '');
-        setPaymentMethod(order.paymentMethod || '');
+        if (order.status === 'delivered') setIsDelivered(true);
+        if (order.payments && order.payments.length > 0) {
+          setPayments(order.payments);
+        } else if (order.paidAmount && order.paidAmount > 0) {
+          setPayments([{
+            id: 'migrated',
+            amount: order.paidAmount,
+            method: 'cash',
+            date: order.createdAt.split('T')[0],
+          }]);
+        }
         setNotes(order.notes || '');
       });
     }
   }, []);
 
   const totalPrice = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
+  const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
+  const remaining = Math.max(totalPrice - totalPaid, 0);
 
   const filteredClients = clientName.trim().length >= 2
     ? clients.filter(c => c.name.toLowerCase().includes(clientName.toLowerCase()))
@@ -139,8 +153,8 @@ export const CreateOrderScreen: React.FC = () => {
         deliveryDate: toIso(deliveryDate.trim()),
         deliveryTime: deliveryTime.trim() || undefined,
         status,
-        paidAmount: parseFloat(paidAmount) || 0,
-        paymentMethod: paymentMethod || undefined,
+        paidAmount: totalPaid,
+        payments,
         notes: notes.trim() || undefined,
       };
       if (isEditing) {
@@ -173,6 +187,50 @@ export const CreateOrderScreen: React.FC = () => {
   const formatCurrency = (v: number) =>
     v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const generatePaymentId = () =>
+    Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  const handleAddPayment = async () => {
+    const amount = parseFloat(newPaymentAmount);
+    if (!amount || amount <= 0) return;
+    const payment: OrderPayment = {
+      id: generatePaymentId(),
+      amount,
+      method: newPaymentMethod,
+      date: new Date().toISOString().split('T')[0],
+    };
+    const updatedPayments = [...payments, payment];
+    setPayments(updatedPayments);
+    setNewPaymentAmount('');
+    setNewPaymentMethod('pix');
+    setShowAddPayment(false);
+    if (isDelivered && orderId) {
+      const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+      await orderStorage.update(orderId, {
+        payments: updatedPayments,
+        paidAmount: newPaidAmount,
+        paid: newPaidAmount >= totalPrice,
+      });
+      showToast(t('createOrder.paymentAdded'), 'success');
+    }
+  };
+
+  const handleRemovePayment = (paymentId: string) => {
+    setPayments(prev => prev.filter(p => p.id !== paymentId));
+  };
+
+  const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap }[] = [
+    { key: 'pix', icon: 'qr-code-outline' },
+    { key: 'cash', icon: 'cash-outline' },
+    { key: 'credit', icon: 'card-outline' },
+    { key: 'debit', icon: 'card-outline' },
+  ];
+
+  const getMethodLabel = (method: string) => {
+    const key = method.charAt(0).toUpperCase() + method.slice(1);
+    return t(`createOrder.paymentMethod${key}`, { defaultValue: method });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
@@ -183,7 +241,7 @@ export const CreateOrderScreen: React.FC = () => {
       />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-          <Card style={styles.section}>
+          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
             <Text style={styles.sectionTitle}>{t('createOrder.clientSection')}</Text>
             <View>
               <Input
@@ -195,8 +253,9 @@ export const CreateOrderScreen: React.FC = () => {
                   setShowClientSuggestions(true);
                 }}
                 error={errors.clientName}
+                editable={!isDelivered}
               />
-              {showClientSuggestions && filteredClients.length > 0 && (
+              {!isDelivered && showClientSuggestions && filteredClients.length > 0 && (
                 <View style={styles.suggestions}>
                   {filteredClients.slice(0, 5).map(client => (
                     <TouchableOpacity
@@ -221,12 +280,13 @@ export const CreateOrderScreen: React.FC = () => {
               onChangeText={setClientPhone}
               keyboardType="phone-pad"
               maxLength={15}
+              editable={!isDelivered}
             />
           </Card>
 
-          <Card style={styles.section}>
+          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
             <Text style={styles.sectionTitle}>{t('createOrder.productSection')}</Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => setShowRecipePicker(true)}>
+            <TouchableOpacity activeOpacity={0.7} onPress={() => { if (!isDelivered) setShowRecipePicker(true); }}>
               <View pointerEvents="none">
                 <Input
                   label={t('createOrder.recipeLabel')}
@@ -249,6 +309,7 @@ export const CreateOrderScreen: React.FC = () => {
                   onChangeText={setQuantity}
                   keyboardType="number-pad"
                   error={errors.quantity}
+                  editable={!isDelivered}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -260,6 +321,7 @@ export const CreateOrderScreen: React.FC = () => {
                   keyboardType="decimal-pad"
                   suffix="R$"
                   error={errors.unitPrice}
+                  editable={!isDelivered}
                 />
               </View>
             </View>
@@ -271,7 +333,7 @@ export const CreateOrderScreen: React.FC = () => {
             )}
           </Card>
 
-          <Card style={styles.section}>
+          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
             <Text style={styles.sectionTitle}>{t('createOrder.deliverySection')}</Text>
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
@@ -280,7 +342,6 @@ export const CreateOrderScreen: React.FC = () => {
                   placeholder="15-01-2025"
                   value={deliveryDate}
                   onChangeText={(text) => {
-                    // Remove tudo que não é número
                     const nums = text.replace(/\D/g, '').slice(0, 8);
                     let masked = '';
                     if (nums.length > 4) {
@@ -295,6 +356,7 @@ export const CreateOrderScreen: React.FC = () => {
                   keyboardType="number-pad"
                   maxLength={10}
                   error={errors.deliveryDate}
+                  editable={!isDelivered}
                 />
               </View>
               <View style={{ flex: 1 }}>
@@ -314,22 +376,26 @@ export const CreateOrderScreen: React.FC = () => {
                   }}
                   keyboardType="number-pad"
                   maxLength={5}
+                  editable={!isDelivered}
                 />
               </View>
             </View>
           </Card>
 
-          <Card style={styles.section}>
+          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
             <Text style={styles.sectionTitle}>{t('createOrder.statusSection')}</Text>
             <View style={styles.statusGrid}>
               {STATUS_OPTIONS.map(opt => (
                 <TouchableOpacity
                   key={opt.key}
-                  onPress={() => setStatus(opt.key)}
+                  onPress={() => { if (!isDelivered) setStatus(opt.key); }}
+                  disabled={isDelivered}
                   style={[
                     styles.statusCard,
                     status === opt.key && { borderColor: opt.color, backgroundColor: opt.color + '15' },
+                    isDelivered && status !== opt.key && { opacity: 0.4 },
                   ]}
+                  activeOpacity={isDelivered ? 1 : 0.7}
                 >
                   <View style={[styles.statusDot, { backgroundColor: opt.color }]} />
                   <Text
@@ -348,63 +414,107 @@ export const CreateOrderScreen: React.FC = () => {
           <Card style={styles.section}>
             <Text style={styles.sectionTitle}>{t('createOrder.paymentSection')}</Text>
             <Text style={styles.sectionSubtitle}>{t('createOrder.paymentHint')}</Text>
-            <Input
-              label={t('createOrder.paidAmount')}
-              placeholder="0,00"
-              value={paidAmount}
-              onChangeText={setPaidAmount}
-              keyboardType="decimal-pad"
-              suffix="R$"
-            />
-            {totalPrice > 0 && parseFloat(paidAmount) > 0 && (
-              <View style={styles.remainingRow}>
-                <Ionicons name="wallet-outline" size={16} color={colors.warning} />
-                <Text style={styles.remainingText}>
-                  {t('createOrder.amountRemaining', { amount: formatCurrency(Math.max(totalPrice - (parseFloat(paidAmount) || 0), 0)) })}
+
+            {payments.length > 0 && (
+              <View style={styles.paymentsList}>
+                {payments.map(payment => (
+                  <View key={payment.id} style={styles.paymentItem}>
+                    <View style={styles.paymentItemLeft}>
+                      <Ionicons
+                        name={PAYMENT_METHODS.find(m => m.key === payment.method)?.icon || 'cash-outline'}
+                        size={16}
+                        color={colors.primary}
+                      />
+                      <View>
+                        <Text style={styles.paymentItemAmount}>{formatCurrency(payment.amount)}</Text>
+                        <Text style={styles.paymentItemMethod}>{getMethodLabel(payment.method)}</Text>
+                      </View>
+                    </View>
+                    {!isDelivered && (
+                      <TouchableOpacity onPress={() => handleRemovePayment(payment.id)} activeOpacity={0.7}>
+                        <Ionicons name="close-circle" size={20} color={colors.error || '#F44336'} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {totalPrice > 0 && totalPaid > 0 && (
+              <View style={[styles.remainingRow, remaining === 0 && styles.settledRow]}>
+                <Ionicons
+                  name={remaining === 0 ? 'checkmark-circle' : 'wallet-outline'}
+                  size={16}
+                  color={remaining === 0 ? colors.success || '#4CAF50' : colors.warning}
+                />
+                <Text style={[styles.remainingText, remaining === 0 && { color: colors.success || '#4CAF50' }]}>
+                  {remaining > 0
+                    ? t('createOrder.amountRemaining', { amount: formatCurrency(remaining) })
+                    : t('createOrder.allPaid')}
                 </Text>
               </View>
             )}
-            <Text style={[styles.inputLabel, { marginTop: 12 }]}>{t('createOrder.paymentMethodLabel')}</Text>
-            <View style={styles.paymentMethodGrid}>
-              {(['pix', 'cash', 'credit', 'debit', 'transfer', 'other'] as const).map(method => {
-                const labels: Record<string, string> = {
-                  pix: t('createOrder.paymentMethodPix'),
-                  cash: t('createOrder.paymentMethodCash'),
-                  credit: t('createOrder.paymentMethodCredit'),
-                  debit: t('createOrder.paymentMethodDebit'),
-                  transfer: t('createOrder.paymentMethodTransfer'),
-                  other: t('createOrder.paymentMethodOther'),
-                };
-                const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
-                  pix: 'qr-code-outline',
-                  cash: 'cash-outline',
-                  credit: 'card-outline',
-                  debit: 'card-outline',
-                  transfer: 'swap-horizontal-outline',
-                  other: 'ellipsis-horizontal-outline',
-                };
-                const selected = paymentMethod === method;
-                return (
+
+            {(!totalPrice || remaining > 0) && !showAddPayment && (
+              <TouchableOpacity
+                style={styles.addPaymentBtn}
+                onPress={() => setShowAddPayment(true)}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
+                <Text style={styles.addPaymentText}>{t('createOrder.addPayment')}</Text>
+              </TouchableOpacity>
+            )}
+
+            {showAddPayment && (
+              <View style={styles.addPaymentForm}>
+                <Input
+                  label={t('createOrder.paymentAmount')}
+                  placeholder="0,00"
+                  value={newPaymentAmount}
+                  onChangeText={setNewPaymentAmount}
+                  keyboardType="decimal-pad"
+                  suffix="R$"
+                />
+                <Text style={[styles.inputLabel, { marginTop: 8 }]}>{t('createOrder.paymentMethodLabel')}</Text>
+                <View style={styles.paymentMethodGrid}>
+                  {PAYMENT_METHODS.map(({ key, icon }) => {
+                    const selected = newPaymentMethod === key;
+                    return (
+                      <TouchableOpacity
+                        key={key}
+                        onPress={() => setNewPaymentMethod(key)}
+                        style={[
+                          styles.paymentMethodBtn,
+                          selected && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
+                        ]}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name={icon} size={16} color={selected ? colors.primary : colors.textMuted} />
+                        <Text style={[styles.paymentMethodText, selected && { color: colors.primary, fontWeight: '700' }]}>
+                          {getMethodLabel(key)}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                <View style={styles.addPaymentActions}>
                   <TouchableOpacity
-                    key={method}
-                    onPress={() => setPaymentMethod(selected ? '' : method)}
-                    style={[
-                      styles.paymentMethodBtn,
-                      selected && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
-                    ]}
-                    activeOpacity={0.7}
+                    onPress={() => { setShowAddPayment(false); setNewPaymentAmount(''); }}
+                    style={styles.addPaymentCancel}
                   >
-                    <Ionicons name={icons[method]} size={16} color={selected ? colors.primary : colors.textMuted} />
-                    <Text style={[styles.paymentMethodText, selected && { color: colors.primary, fontWeight: '700' }]}>
-                      {labels[method]}
-                    </Text>
+                    <Text style={styles.addPaymentCancelText}>{t('common.cancel')}</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </View>
+                  <TouchableOpacity onPress={handleAddPayment} style={styles.addPaymentConfirm}>
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                    <Text style={styles.addPaymentConfirmText}>{t('createOrder.addPayment')}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
           </Card>
 
-          <Card style={styles.section}>
+          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
             <Text style={styles.sectionTitle}>{t('createOrder.notesSection')}</Text>
             <Input
               placeholder={t('createOrder.notesPlaceholder')}
@@ -412,16 +522,19 @@ export const CreateOrderScreen: React.FC = () => {
               onChangeText={setNotes}
               multiline
               numberOfLines={3}
+              editable={!isDelivered}
             />
           </Card>
 
-          <Button
-            title={isEditing ? t('createOrder.updateButton') : t('createOrder.saveButton')}
-            onPress={handleSave}
-            loading={loading}
-            size="lg"
-            style={styles.saveButton}
-          />
+          {!isDelivered && (
+            <Button
+              title={isEditing ? t('createOrder.updateButton') : t('createOrder.saveButton')}
+              onPress={handleSave}
+              loading={loading}
+              size="lg"
+              style={styles.saveButton}
+            />
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -464,6 +577,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, padding: 20 },
   section: { marginBottom: 16 },
+  readOnlySection: { opacity: 0.5, backgroundColor: '#F5F5F5' },
   sectionTitle: { ...typography.h4, color: colors.text, marginBottom: 16 },
   sectionSubtitle: { ...typography.caption, color: colors.textSecondary, marginTop: -12, marginBottom: 12 },
   infoCard: {
@@ -483,6 +597,20 @@ const styles = StyleSheet.create({
     flex: 1,
     lineHeight: 18,
   },
+  paymentsList: { gap: 8, marginBottom: 8 },
+  paymentItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 12,
+  },
+  paymentItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  paymentItemAmount: { ...typography.body, color: colors.text, fontWeight: '700' },
+  paymentItemMethod: { ...typography.caption, color: colors.textSecondary },
   remainingRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -492,7 +620,42 @@ const styles = StyleSheet.create({
     padding: 12,
     marginTop: 8,
   },
+  settledRow: { backgroundColor: '#E8F5E9' },
   remainingText: { ...typography.body, color: '#F57F17', fontWeight: '600' },
+  addPaymentBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    marginTop: 8,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderStyle: 'dashed',
+  },
+  addPaymentText: { ...typography.body, color: colors.primary, fontWeight: '600' },
+  addPaymentForm: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: 14,
+    marginTop: 10,
+  },
+  addPaymentActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 },
+  addPaymentCancel: { paddingVertical: 8, paddingHorizontal: 16 },
+  addPaymentCancelText: { ...typography.body, color: colors.textSecondary },
+  addPaymentConfirm: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.primary,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  addPaymentConfirmText: { ...typography.body, color: '#fff', fontWeight: '600' },
   row: { flexDirection: 'row' },
   totalRow: {
     flexDirection: 'row',
