@@ -10,6 +10,27 @@ interface Props {
 
 type SortKey = 'createdAt' | 'recipeCount' | 'ingredientCount' | 'saleCount' | 'totalRevenue' | 'lastSeenAt';
 
+function formatPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 13 && digits.startsWith('55')) {
+    // +55 XX XXXXX-XXXX
+    return `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, 9)}-${digits.slice(9)}`;
+  }
+  if (digits.length === 12 && digits.startsWith('55')) {
+    // +55 XX XXXX-XXXX
+    return `+${digits.slice(0, 2)} (${digits.slice(2, 4)}) ${digits.slice(4, 8)}-${digits.slice(8)}`;
+  }
+  if (digits.length === 11) {
+    // (XX) XXXXX-XXXX
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  }
+  if (digits.length === 10) {
+    // (XX) XXXX-XXXX
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
+}
+
 function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: string | null }) {
   if (!isPremium) return <span className="text-xs text-gray-400">Gratuito</span>;
   const label = platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : 'Manual';
@@ -177,7 +198,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                   className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1 mt-0.5"
                 >
                   <MessageCircle size={13} />
-                  {user.phone}
+                  {formatPhone(user.phone!)}
                 </button>
               )}
               {user.instagramHandle && (
@@ -482,7 +503,7 @@ function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; 
             </div>
             <div>
               <h3 className="font-bold text-gray-900 dark:text-white text-sm">WhatsApp</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">{contactName} · {phone}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{contactName} · {formatPhone(phone)}</p>
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
@@ -858,7 +879,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                         onClick={e => { e.stopPropagation(); setWhatsApp({ phone: u.phone!, name: u.companyName }); }}
                       >
                         <MessageCircle size={14} />
-                        {u.phone}
+                        {formatPhone(u.phone!)}
                       </button>
                     ) : '—'}
                   </td>
