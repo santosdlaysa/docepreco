@@ -396,6 +396,16 @@ export class AdminController {
           UNION ALL
 
           SELECT
+            'pix_request'        AS type,
+            u.company_name       AS label,
+            pr.plan_label || ' - ' || CASE WHEN pr.status = 'pending' THEN 'Pendente' WHEN pr.status = 'approved' THEN 'Aprovado' ELSE 'Rejeitado' END AS detail,
+            pr.created_at        AS ts
+          FROM pix_requests pr
+          JOIN users u ON u.id = pr.user_id
+
+          UNION ALL
+
+          SELECT
             'suggestion'         AS type,
             sg.user_name         AS label,
             LEFT(sg.message, 80) AS detail,
