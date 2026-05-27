@@ -133,6 +133,15 @@ export const CreateRecipeScreen: React.FC = () => {
   const [selectedSubRecipe, setSelectedSubRecipe] = useState<Recipe | null>(null);
   const [subRecipeQuantity, setSubRecipeQuantity] = useState('');
   const [subRecipeUnit, setSubRecipeUnit] = useState('un');
+  const [ingredientConfirm, setIngredientConfirm] = useState<{
+    type: 'confirm' | 'warning-high' | 'warning-low';
+    name: string;
+    qty: number;
+    unit: string;
+    cost: number;
+    pkgInfo?: string;
+    ratio?: string;
+  } | null>(null);
   const { showToast } = useToast();
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
@@ -227,45 +236,49 @@ export const CreateRecipeScreen: React.FC = () => {
 
     const qty = parseFloat(normalizedQty);
     const unit = ingredientUnit || selectedIngredient.unit;
+    // Quantidade efetiva na unidade base (ex: 1 lata de 330g = 330g)
+    const effectivePurchaseQty = selectedIngredient.purchaseUnitWeight
+      ? selectedIngredient.purchaseQuantity * selectedIngredient.purchaseUnitWeight
+      : selectedIngredient.purchaseQuantity;
     const qtyInPurchaseUnit = convertToSameUnit(qty, unit, selectedIngredient.unit);
-    const ratio = qtyInPurchaseUnit / selectedIngredient.purchaseQuantity;
+    const ratio = qtyInPurchaseUnit / effectivePurchaseQty;
+
+    const costPerUnit = selectedIngredient.purchasePrice / convertToSameUnit(effectivePurchaseQty, selectedIngredient.unit, unit);
+    const ingredientCost = qty * costPerUnit;
+    const pkgInfo = selectedIngredient.purchaseUnitLabel
+      ? `${selectedIngredient.purchaseQuantity} ${selectedIngredient.purchaseUnitLabel} (${effectivePurchaseQty} ${selectedIngredient.unit})`
+      : `${effectivePurchaseQty} ${selectedIngredient.unit}`;
 
     if (ratio > 3) {
-      const pkgCount = ratio.toFixed(1);
-      Alert.alert(
-        t('createRecipe.highQuantityTitle'),
-        t('createRecipe.highQuantityMessage', { qty, unit, name: selectedIngredient.name, pkgCount, pkgQty: selectedIngredient.purchaseQuantity, pkgUnit: selectedIngredient.unit }),
-        [
-          { text: t('createRecipe.fix'), style: 'cancel' },
-          { text: t('createRecipe.yesCorrect'), onPress: confirmAndAddIngredient },
-        ]
-      );
+      setIngredientConfirm({
+        type: 'warning-high',
+        name: selectedIngredient.name,
+        qty, unit,
+        cost: ingredientCost,
+        pkgInfo,
+        ratio: ratio.toFixed(1),
+      });
       return;
     }
 
     if (ratio < 0.01) {
-      Alert.alert(
-        t('createRecipe.lowQuantityTitle'),
-        t('createRecipe.lowQuantityMessage', { qty, unit, name: selectedIngredient.name, pkgQty: selectedIngredient.purchaseQuantity, pkgUnit: selectedIngredient.unit }),
-        [
-          { text: t('createRecipe.fix'), style: 'cancel' },
-          { text: t('createRecipe.yesCorrect'), onPress: confirmAndAddIngredient },
-        ]
-      );
+      setIngredientConfirm({
+        type: 'warning-low',
+        name: selectedIngredient.name,
+        qty, unit,
+        cost: ingredientCost,
+        pkgInfo,
+      });
       return;
     }
 
-    const costPerUnit = selectedIngredient.purchasePrice / convertToSameUnit(selectedIngredient.purchaseQuantity, selectedIngredient.unit, unit);
-    const ingredientCost = qty * costPerUnit;
-
-    Alert.alert(
-      t('createRecipe.confirmIngredient'),
-      t('createRecipe.confirmIngredientMessage', { name: selectedIngredient.name, qty, unit, cost: ingredientCost.toFixed(2) }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        { text: t('common.add'), onPress: confirmAndAddIngredient },
-      ]
-    );
+    setIngredientConfirm({
+      type: 'confirm',
+      name: selectedIngredient.name,
+      qty, unit,
+      cost: ingredientCost,
+      pkgInfo,
+    });
   };
 
   const removeIngredient = (id: string) => {
@@ -747,7 +760,10 @@ export const CreateRecipeScreen: React.FC = () => {
               <Card style={styles.selectedIngCard}>
                 <Text style={styles.selectedIngName}>{selectedIngredient.name}</Text>
                 <Text style={styles.selectedIngInfo}>
-                  {t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.unit, price: selectedIngredient.purchasePrice.toFixed(2) })}
+                  {selectedIngredient.purchaseUnitLabel
+                    ? t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.purchaseUnitLabel, price: selectedIngredient.purchasePrice.toFixed(2) })
+                      + ` (${selectedIngredient.purchaseQuantity * (selectedIngredient.purchaseUnitWeight ?? 0)} ${selectedIngredient.unit})`
+                    : t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.unit, price: selectedIngredient.purchasePrice.toFixed(2) })}
                 </Text>
               </Card>
               <Input
@@ -805,7 +821,9 @@ export const CreateRecipeScreen: React.FC = () => {
                     <View>
                       <Text style={styles.modalIngName}>{item.name}</Text>
                       <Text style={styles.modalIngInfo}>
-                        {item.purchaseQuantity} {item.unit} — R$ {item.purchasePrice.toFixed(2)}
+                        {item.purchaseUnitLabel
+                          ? `${item.purchaseQuantity} ${item.purchaseUnitLabel} (${item.purchaseQuantity * (item.purchaseUnitWeight ?? 0)} ${item.unit})`
+                          : `${item.purchaseQuantity} ${item.unit}`} — R$ {item.purchasePrice.toFixed(2)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -992,6 +1010,103 @@ export const CreateRecipeScreen: React.FC = () => {
             </View>
           </ScrollView>
         </SafeAreaView>
+      </Modal>
+      {/* Modal de confirmação de ingrediente */}
+      <Modal visible={!!ingredientConfirm} transparent animationType="fade">
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            {ingredientConfirm?.type === 'warning-high' && (
+              <View style={[styles.confirmIconCircle, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="alert-circle" size={32} color="#FF9800" />
+              </View>
+            )}
+            {ingredientConfirm?.type === 'warning-low' && (
+              <View style={[styles.confirmIconCircle, { backgroundColor: '#FFF3E0' }]}>
+                <Ionicons name="alert-circle" size={32} color="#FF9800" />
+              </View>
+            )}
+            {ingredientConfirm?.type === 'confirm' && (
+              <View style={[styles.confirmIconCircle, { backgroundColor: colors.primaryLight }]}>
+                <Ionicons name="checkmark-circle" size={32} color={colors.primary} />
+              </View>
+            )}
+
+            <Text style={styles.confirmTitle}>
+              {ingredientConfirm?.type === 'confirm'
+                ? t('createRecipe.confirmIngredient')
+                : ingredientConfirm?.type === 'warning-high'
+                  ? t('createRecipe.highQuantityTitle')
+                  : t('createRecipe.lowQuantityTitle')}
+            </Text>
+
+            <View style={styles.confirmDetails}>
+              <View style={styles.confirmDetailRow}>
+                <Text style={styles.confirmDetailLabel}>{t('createRecipe.ingredientLabel')}</Text>
+                <Text style={styles.confirmDetailValue}>{ingredientConfirm?.name}</Text>
+              </View>
+              <View style={styles.confirmDivider} />
+              <View style={styles.confirmDetailRow}>
+                <Text style={styles.confirmDetailLabel}>{t('createRecipe.quantityLabel')}</Text>
+                <Text style={styles.confirmDetailValue}>{ingredientConfirm?.qty} {ingredientConfirm?.unit}</Text>
+              </View>
+              <View style={styles.confirmDivider} />
+              <View style={styles.confirmDetailRow}>
+                <Text style={styles.confirmDetailLabel}>{t('createRecipe.purchasedLabel')}</Text>
+                <Text style={styles.confirmDetailValue}>{ingredientConfirm?.pkgInfo}</Text>
+              </View>
+              <View style={styles.confirmDivider} />
+              <View style={styles.confirmDetailRow}>
+                <Text style={styles.confirmDetailLabel}>{t('createRecipe.estimatedCost')}</Text>
+                <Text style={[styles.confirmDetailValue, { color: colors.primary, fontWeight: '800' }]}>
+                  R$ {ingredientConfirm?.cost?.toFixed(2).replace('.', ',')}
+                </Text>
+              </View>
+            </View>
+
+            {ingredientConfirm?.type === 'warning-high' && (
+              <View style={styles.confirmWarningBox}>
+                <Ionicons name="warning" size={16} color="#E65100" />
+                <Text style={styles.confirmWarningText}>
+                  {t('createRecipe.highQuantityWarning', { ratio: ingredientConfirm.ratio })}
+                </Text>
+              </View>
+            )}
+
+            {ingredientConfirm?.type === 'warning-low' && (
+              <View style={styles.confirmWarningBox}>
+                <Ionicons name="warning" size={16} color="#E65100" />
+                <Text style={styles.confirmWarningText}>
+                  {t('createRecipe.lowQuantityWarning')}
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.confirmButtons}>
+              <TouchableOpacity
+                style={styles.confirmCancelBtn}
+                onPress={() => setIngredientConfirm(null)}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.confirmCancelText}>
+                  {ingredientConfirm?.type === 'confirm' ? t('common.cancel') : t('createRecipe.fix')}
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.confirmAddBtn, ingredientConfirm?.type !== 'confirm' && { backgroundColor: '#FF9800' }]}
+                onPress={() => {
+                  setIngredientConfirm(null);
+                  confirmAndAddIngredient();
+                }}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={ingredientConfirm?.type === 'confirm' ? 'add-circle' : 'checkmark'} size={18} color="#fff" />
+                <Text style={styles.confirmAddText}>
+                  {ingredientConfirm?.type === 'confirm' ? t('common.add') : t('createRecipe.yesCorrect')}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -1213,4 +1328,118 @@ const styles = StyleSheet.create({
   confirmValue: { ...typography.body, color: colors.text, fontWeight: '600' as const, textAlign: 'right' as const },
   confirmValueHighlight: { ...typography.body, color: colors.primary, fontWeight: '700' as const, textAlign: 'right' as const },
   confirmActions: { flexDirection: 'row', marginTop: 8, marginBottom: 32 },
+  // Ingredient confirm modal
+  confirmOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  confirmBox: {
+    backgroundColor: colors.surface,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  confirmIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 12,
+  },
+  confirmTitle: {
+    ...typography.h3,
+    color: colors.text,
+    textAlign: 'center',
+    marginBottom: 16,
+  },
+  confirmDetails: {
+    width: '100%',
+    backgroundColor: colors.background,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 12,
+  },
+  confirmDetailRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  confirmDetailLabel: {
+    ...typography.bodySmall,
+    color: colors.textMuted,
+  },
+  confirmDetailValue: {
+    ...typography.body,
+    color: colors.text,
+    fontWeight: '600',
+    textAlign: 'right',
+    flex: 1,
+    marginLeft: 12,
+  },
+  confirmDivider: {
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  confirmWarningBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#FFF3E0',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 12,
+    width: '100%',
+  },
+  confirmWarningText: {
+    ...typography.bodySmall,
+    color: '#E65100',
+    flex: 1,
+  },
+  confirmButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginTop: 4,
+  },
+  confirmCancelBtn: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  confirmCancelText: {
+    ...typography.button,
+    color: colors.textSecondary,
+    fontSize: 14,
+  },
+  confirmAddBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  confirmAddText: {
+    ...typography.button,
+    color: '#fff',
+    fontSize: 14,
+  },
 });
