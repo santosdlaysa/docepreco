@@ -300,7 +300,7 @@ export const RecipeDetailScreen: React.FC = () => {
               <View key={idx} style={styles.listRow}>
                 <Ionicons name="layers-outline" size={14} color={colors.primary} style={{ marginTop: 4 }} />
                 <Text style={styles.listText}>
-                  {sub.subRecipeName || `Receita ${idx + 1}`} — {sub.quantityUsed} un
+                  {sub.subRecipeName || `Receita ${idx + 1}`} — {sub.quantityUsed} {sub.unit || 'un'}
                 </Text>
               </View>
             ))}

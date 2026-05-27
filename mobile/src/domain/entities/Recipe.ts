@@ -14,6 +14,7 @@ export interface SubRecipe {
   subRecipeId: string;
   subRecipeName?: string;
   quantityUsed: number;
+  unit: string;
 }
 
 export interface Recipe {

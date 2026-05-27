@@ -189,77 +189,86 @@ export const PaywallScreen: React.FC = () => {
           ))}
         </View>
 
+        {/* PIX — always visible */}
+        <TouchableOpacity
+          style={styles.pixCta}
+          onPress={() => navigation.navigate('PixPayment', {})}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="qr-code-outline" size={20} color="#fff" />
+          <Text style={styles.ctaText}>{t('paywall.payWithPix')}</Text>
+        </TouchableOpacity>
+
         {loading ? (
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.primary} />
           </View>
-        ) : !configured || !packages || packages.length === 0 ? (
-          <View style={styles.unavailableBox}>
-            <Ionicons name="information-circle-outline" size={24} color={colors.warning} />
-            <Text style={styles.unavailableText}>
-              {!configured
-                ? t('paywall.notConfigured')
-                : t('paywall.loadError')}
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.plans}>
-            {packages.map(pkg => {
-              const isSelected = selected === pkg.identifier;
-              const subtitleText = pkg.isTrialEligible
-                ? t('paywall.trialSubtitle', { days: pkg.trialDays, price: pkg.priceLabel })
-                : pkg.subtitle;
-              return (
-                <TouchableOpacity
-                  key={pkg.identifier}
-                  onPress={() => setSelected(pkg.identifier)}
-                  activeOpacity={0.8}
-                  style={[styles.planCard, isSelected && styles.planCardSelected]}
-                >
-                  {pkg.isTrialEligible ? (
-                    <View style={[styles.planBadge, styles.trialBadge]}>
-                      <Text style={styles.planBadgeText}>
-                        {t('paywall.trialBadge', { days: pkg.trialDays })}
-                      </Text>
-                    </View>
-                  ) : pkg.badge ? (
-                    <View style={styles.planBadge}>
-                      <Text style={styles.planBadgeText}>{pkg.badge}</Text>
-                    </View>
-                  ) : null}
-                  <View style={styles.radio}>
-                    {isSelected && <View style={styles.radioInner} />}
-                  </View>
-                  <View style={styles.planInfo}>
-                    <Text style={styles.planTitle}>{pkg.title}</Text>
-                    {subtitleText && <Text style={styles.planSubtitle}>{subtitleText}</Text>}
-                  </View>
-                  <Text style={styles.planPrice}>{pkg.priceLabel}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+        ) : configured && packages && packages.length > 0 ? (
+          <>
+            <View style={styles.orDivider}>
+              <View style={styles.orLine} />
+              <Text style={styles.orText}>{t('paywall.orStore')}</Text>
+              <View style={styles.orLine} />
+            </View>
 
-        <TouchableOpacity
-          style={[styles.cta, (!selected || purchasing || !configured) && styles.ctaDisabled]}
-          onPress={handlePurchase}
-          disabled={!selected || !!purchasing || !configured}
-          activeOpacity={0.85}
-        >
-          {purchasing ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <>
-              <Ionicons name={selectedPkg?.isTrialEligible ? 'gift-outline' : 'lock-open'} size={18} color="#fff" />
-              <Text style={styles.ctaText}>
-                {selectedPkg?.isTrialEligible
-                  ? t('paywall.startTrial')
-                  : t('paywall.subscribe')}
-              </Text>
-            </>
-          )}
-        </TouchableOpacity>
+            <View style={styles.plans}>
+              {packages.map(pkg => {
+                const isSelected = selected === pkg.identifier;
+                const subtitleText = pkg.isTrialEligible
+                  ? t('paywall.trialSubtitle', { days: pkg.trialDays, price: pkg.priceLabel })
+                  : pkg.subtitle;
+                return (
+                  <TouchableOpacity
+                    key={pkg.identifier}
+                    onPress={() => setSelected(pkg.identifier)}
+                    activeOpacity={0.8}
+                    style={[styles.planCard, isSelected && styles.planCardSelected]}
+                  >
+                    {pkg.isTrialEligible ? (
+                      <View style={[styles.planBadge, styles.trialBadge]}>
+                        <Text style={styles.planBadgeText}>
+                          {t('paywall.trialBadge', { days: pkg.trialDays })}
+                        </Text>
+                      </View>
+                    ) : pkg.badge ? (
+                      <View style={styles.planBadge}>
+                        <Text style={styles.planBadgeText}>{pkg.badge}</Text>
+                      </View>
+                    ) : null}
+                    <View style={styles.radio}>
+                      {isSelected && <View style={styles.radioInner} />}
+                    </View>
+                    <View style={styles.planInfo}>
+                      <Text style={styles.planTitle}>{pkg.title}</Text>
+                      {subtitleText && <Text style={styles.planSubtitle}>{subtitleText}</Text>}
+                    </View>
+                    <Text style={styles.planPrice}>{pkg.priceLabel}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.cta, (!selected || purchasing) && styles.ctaDisabled]}
+              onPress={handlePurchase}
+              disabled={!selected || !!purchasing}
+              activeOpacity={0.85}
+            >
+              {purchasing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name={selectedPkg?.isTrialEligible ? 'gift-outline' : 'lock-open'} size={18} color="#fff" />
+                  <Text style={styles.ctaText}>
+                    {selectedPkg?.isTrialEligible
+                      ? t('paywall.startTrial')
+                      : t('paywall.subscribe')}
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </>
+        ) : null}
 
         <Text style={styles.disclaimer}>
           {selectedPkg?.isTrialEligible
@@ -442,6 +451,37 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.5 },
   ctaText: { ...typography.button, color: '#fff', fontSize: 17 },
+  pixCta: {
+    backgroundColor: '#00A86B',
+    borderRadius: 14,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#00A86B',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 4,
+    marginBottom: 4,
+  },
+  orDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  orLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.border,
+  },
+  orText: {
+    ...typography.caption,
+    color: colors.textMuted,
+    marginHorizontal: 12,
+    fontWeight: '600',
+  },
   disclaimer: {
     ...typography.caption,
     color: colors.textMuted,

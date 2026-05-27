@@ -422,6 +422,17 @@ export const api = {
   whatsappSend: (phone: string, message: string) =>
     req<unknown>('/admin/whatsapp/send', { method: 'POST', body: JSON.stringify({ phone, message }) }),
 
+  // ── PIX Requests ──
+  listPixRequests: (status: string = 'pending') =>
+    req<PixRequestItem[]>(`/admin/pix-requests?status=${status}`),
+  approvePixRequest: (id: string, days: number = 30) =>
+    req<{ userId: string; premiumUntil: string }>(`/admin/pix-requests/${id}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ days }),
+    }),
+  rejectPixRequest: (id: string) =>
+    req<void>(`/admin/pix-requests/${id}/reject`, { method: 'POST' }),
+
   // ── Onboarding ──
   listOnboarding: () => req<OnboardingStep[]>('/admin/onboarding'),
   createOnboarding: (data: Omit<OnboardingStep, 'id' | 'createdAt'>) =>
@@ -661,6 +672,24 @@ export interface ChangelogEntry {
   features: string[];
   isActive: boolean;
   createdAt: string;
+}
+
+// ── PIX Requests ──
+
+export interface PixRequestItem {
+  id: string;
+  userId: string;
+  status: 'pending' | 'approved' | 'rejected';
+  planLabel: string;
+  amountCents: number;
+  createdAt: string;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  companyName: string;
+  email: string;
+  phone: string | null;
+  isPremium: boolean;
+  premiumUntil: string | null;
 }
 
 // ── Onboarding ──

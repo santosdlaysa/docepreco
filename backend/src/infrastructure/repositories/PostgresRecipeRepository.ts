@@ -62,8 +62,8 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       if (data.subRecipes) {
         for (const sub of data.subRecipes) {
           await client.query(
-            `INSERT INTO recipe_sub_recipes (recipe_id, sub_recipe_id, quantity_used) VALUES ($1, $2, $3)`,
-            [recipe.id, sub.subRecipeId, sub.quantityUsed]
+            `INSERT INTO recipe_sub_recipes (recipe_id, sub_recipe_id, quantity_used, unit) VALUES ($1, $2, $3, $4)`,
+            [recipe.id, sub.subRecipeId, sub.quantityUsed, sub.unit || 'un']
           );
         }
       }
@@ -125,8 +125,8 @@ export class PostgresRecipeRepository implements IRecipeRepository {
         await client.query('DELETE FROM recipe_sub_recipes WHERE recipe_id = $1', [id]);
         for (const sub of data.subRecipes) {
           await client.query(
-            `INSERT INTO recipe_sub_recipes (recipe_id, sub_recipe_id, quantity_used) VALUES ($1, $2, $3)`,
-            [id, sub.subRecipeId, sub.quantityUsed]
+            `INSERT INTO recipe_sub_recipes (recipe_id, sub_recipe_id, quantity_used, unit) VALUES ($1, $2, $3, $4)`,
+            [id, sub.subRecipeId, sub.quantityUsed, sub.unit || 'un']
           );
         }
       }
@@ -185,6 +185,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       subRecipeId: r.sub_recipe_id,
       subRecipeName: r.sub_recipe_name,
       quantityUsed: parseFloat(r.quantity_used),
+      unit: r.unit || 'un',
     }));
 
     return {

@@ -58,7 +58,8 @@ CREATE TABLE IF NOT EXISTS recipe_sub_recipes (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
   sub_recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE RESTRICT,
-  quantity_used DECIMAL(10,3) NOT NULL
+  quantity_used DECIMAL(10,3) NOT NULL,
+  unit VARCHAR(10) NOT NULL DEFAULT 'un'
 );
 
 CREATE TABLE IF NOT EXISTS sales (
@@ -339,6 +340,19 @@ CREATE TABLE IF NOT EXISTS premium_events (
 );
 
 CREATE INDEX IF NOT EXISTS idx_premium_events_user ON premium_events (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS pix_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+  plan_label VARCHAR(100) NOT NULL DEFAULT 'Mensal',
+  amount_cents INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT NOW(),
+  reviewed_at TIMESTAMP,
+  reviewed_by VARCHAR(100)
+);
+
+CREATE INDEX IF NOT EXISTS idx_pix_requests_status ON pix_requests (status, created_at DESC);
 `;
 
 async function addColumnIfMissing(
@@ -488,6 +502,9 @@ export async function runMigrations() {
         [key, tpl]
       );
     }
+
+    // Sub-recipe unit field (for existing DBs that lack it)
+    await addColumnIfMissing(client, 'recipe_sub_recipes', 'unit', "VARCHAR(10) NOT NULL DEFAULT 'un'");
 
     await addColumnIfMissing(client, 'onboarding_steps', 'icon', "VARCHAR(50)");
     await addColumnIfMissing(client, 'onboarding_steps', 'icon_color', "VARCHAR(20)");

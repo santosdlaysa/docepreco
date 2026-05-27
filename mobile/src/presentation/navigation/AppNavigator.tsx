@@ -33,6 +33,7 @@ import { SeasonsScreen } from '../screens/SeasonsScreen';
 import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
 import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
 import { SupportChatScreen } from '../screens/SupportChatScreen';
+import { PixPaymentScreen } from '../screens/PixPaymentScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { authApi } from '../../data/api/authApi';
@@ -306,6 +307,11 @@ export function AppNavigator() {
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="PixPayment"
+            component={PixPaymentScreen}
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
         </Stack.Navigator>

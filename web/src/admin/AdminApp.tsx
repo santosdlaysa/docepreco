@@ -24,6 +24,7 @@ import { OnboardingPage } from '../pages/OnboardingPage';
 import { TelegramAlertsPage } from '../pages/TelegramAlertsPage';
 import { SupportChatPage } from '../pages/SupportChatPage';
 import { WhatsAppPage } from '../pages/WhatsAppPage';
+import { PixRequestsPage } from '../pages/PixRequestsPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -58,11 +59,12 @@ import {
   Crown,
   Moon,
   Sun,
+  QrCode,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix';
 
 interface NavItem {
   id: Page;
@@ -89,7 +91,8 @@ const NAV: NavItem[] = [
   { id: 'suggestions', label: 'Sugestões', icon: MessagesSquare },
   { id: 'support', label: 'Suporte Chat', icon: Headset },
 
-  { id: 'plans', label: 'Planos', icon: CreditCard, section: 'Configuração' },
+  { id: 'pix', label: 'PIX', icon: QrCode, section: 'Configuração' },
+  { id: 'plans', label: 'Planos', icon: CreditCard },
   { id: 'coupons', label: 'Cupons', icon: Ticket },
   { id: 'flags', label: 'Feature flags', icon: ToggleLeft },
   { id: 'whatsapp', label: 'WhatsApp', icon: Phone },
@@ -432,6 +435,7 @@ export default function AdminApp() {
             {page === 'settings' && <SettingsPage toast={toast} />}
             {page === 'ingredients' && <GlobalIngredientsPage toast={toast} />}
             {page === 'recipes' && <FeaturedRecipesPage toast={toast} />}
+            {page === 'pix' && <PixRequestsPage toast={toast} />}
             {page === 'plans' && <PlanConfigPage toast={toast} />}
             {page === 'flags' && <FeatureFlagsPage toast={toast} />}
             {page === 'faq' && <FaqPage toast={toast} />}

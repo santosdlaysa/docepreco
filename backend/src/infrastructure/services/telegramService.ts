@@ -72,6 +72,8 @@ const premiumEventLabels: Record<string, string> = {
   PRODUCT_CHANGE: '🔀 Troca de plano',
   BILLING_ISSUE: '⚠️ Problema de cobrança',
   NON_RENEWING_PURCHASE: '💎 Compra avulsa',
+  PIX_REQUEST: '🟡 Solicitação PIX',
+  PIX_APPROVED: '✅ PIX aprovado',
 };
 
 export async function notifyPremiumEvent(companyName: string, eventType: string, platform: string | null): Promise<void> {

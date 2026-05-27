@@ -132,6 +132,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [showSubRecipeModal, setShowSubRecipeModal] = useState(false);
   const [selectedSubRecipe, setSelectedSubRecipe] = useState<Recipe | null>(null);
   const [subRecipeQuantity, setSubRecipeQuantity] = useState('');
+  const [subRecipeUnit, setSubRecipeUnit] = useState('un');
   const { showToast } = useToast();
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
@@ -177,14 +178,12 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const getCompatibleUnits = (unit: string): string[] => {
-    if (unit === 'g' || unit === 'kg') return ['g', 'kg'];
-    if (unit === 'ml' || unit === 'l') return ['ml', 'l'];
+    if (unit === 'g' || unit === 'kg') return ['unit', 'g', 'kg'];
+    if (unit === 'ml' || unit === 'l') return ['unit', 'ml', 'l'];
     return [unit];
   };
 
   const getDefaultUnit = (unit: string): string => {
-    if (unit === 'kg') return 'g';
-    if (unit === 'l') return 'ml';
     return unit;
   };
 
@@ -289,9 +288,10 @@ export const CreateRecipeScreen: React.FC = () => {
     }
 
     const qty = parseFloat(normalizedQty);
+    const unit = subRecipeUnit;
     Alert.alert(
       t('createRecipe.confirmSubRecipe'),
-      t('createRecipe.confirmSubRecipeMessage', { name: selectedSubRecipe.name, qty }),
+      t('createRecipe.confirmSubRecipeMessage', { name: selectedSubRecipe.name, qty, unit }),
       [
         { text: t('common.cancel'), style: 'cancel' },
         {
@@ -303,10 +303,12 @@ export const CreateRecipeScreen: React.FC = () => {
                 subRecipeId: selectedSubRecipe.id,
                 subRecipeName: selectedSubRecipe.name,
                 quantityUsed: qty,
+                unit,
               },
             ]);
             setSelectedSubRecipe(null);
             setSubRecipeQuantity('');
+            setSubRecipeUnit('un');
             setShowSubRecipeModal(false);
           },
         },
@@ -629,7 +631,7 @@ export const CreateRecipeScreen: React.FC = () => {
                 <View key={sub.subRecipeId} style={styles.ingredientRow}>
                   <View style={styles.ingredientInfo}>
                     <Text style={styles.ingredientName}>{sub.subRecipeName}</Text>
-                    <Text style={styles.ingredientQty}>{sub.quantityUsed} un</Text>
+                    <Text style={styles.ingredientQty}>{sub.quantityUsed} {sub.unit || 'un'}</Text>
                   </View>
                   <TouchableOpacity onPress={() => removeSubRecipe(sub.subRecipeId)}>
                     <Ionicons name="close-circle" size={22} color={colors.error} />
@@ -823,7 +825,7 @@ export const CreateRecipeScreen: React.FC = () => {
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <Text style={styles.modalTitle}>{t('createRecipe.selectSubRecipe')}</Text>
-            <TouchableOpacity onPress={() => { setShowSubRecipeModal(false); setSelectedSubRecipe(null); setSubRecipeQuantity(''); }}>
+            <TouchableOpacity onPress={() => { setShowSubRecipeModal(false); setSelectedSubRecipe(null); setSubRecipeQuantity(''); setSubRecipeUnit('un'); }}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
@@ -842,13 +844,30 @@ export const CreateRecipeScreen: React.FC = () => {
                 value={subRecipeQuantity}
                 onChangeText={setSubRecipeQuantity}
                 keyboardType="decimal-pad"
-                suffix="un"
+                suffix={subRecipeUnit}
               />
+              <View style={styles.unitSelector}>
+                {['un', 'g', 'kg', 'ml', 'l'].map(u => (
+                  <TouchableOpacity
+                    key={u}
+                    onPress={() => setSubRecipeUnit(u)}
+                    style={[
+                      styles.unitBtn,
+                      subRecipeUnit === u && styles.unitBtnSelected,
+                    ]}
+                  >
+                    <Text style={[
+                      styles.unitBtnText,
+                      subRecipeUnit === u && styles.unitBtnTextSelected,
+                    ]}>{u}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
               <View style={styles.modalActions}>
                 <Button
                   title={t('common.back')}
                   variant="outline"
-                  onPress={() => { setSelectedSubRecipe(null); setSubRecipeQuantity(''); }}
+                  onPress={() => { setSelectedSubRecipe(null); setSubRecipeQuantity(''); setSubRecipeUnit('un'); }}
                   style={{ flex: 1, marginRight: 8 }}
                 />
                 <Button
@@ -936,7 +955,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   <View key={idx} style={styles.confirmRow}>
                     <Text style={styles.confirmLabel}>{sub.subRecipeName}</Text>
                     <Text style={styles.confirmValueHighlight}>
-                      {sub.quantityUsed} un
+                      {sub.quantityUsed} {sub.unit || 'un'}
                     </Text>
                   </View>
                 ))}

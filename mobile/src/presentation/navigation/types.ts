@@ -19,6 +19,7 @@ export type RootStackParamList = {
   Profile: undefined;
   PrivacyPolicy: undefined;
   Paywall: { trigger?: PaywallTrigger } | undefined;
+  PixPayment: { plan?: 'monthly' | 'annual' } | undefined;
   Orders: undefined;
   CreateOrder: undefined;
   EditOrder: { orderId: string };
