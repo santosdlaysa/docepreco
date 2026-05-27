@@ -22,6 +22,7 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { statsApi } from '../../data/api/statsApi';
 import { demoStatsApi } from '../../data/demo/demoApi';
 import { useTranslation } from 'react-i18next';
+import { useAdInterstitial } from '../ads';
 
 const GUIDE_DISMISSED_KEY = '@docepreco_beginner_guide_dismissed';
 
@@ -51,6 +52,11 @@ const { width } = Dimensions.get('window');
 export const BeginnerGuideScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
+  const { showInterstitial } = useAdInterstitial();
+
+  useEffect(() => {
+    showInterstitial();
+  }, []);
   const [ingredientsCount, setIngredientsCount] = useState(0);
   const [recipesCount, setRecipesCount] = useState(0);
   const [expandedStep, setExpandedStep] = useState<string | null>(null);

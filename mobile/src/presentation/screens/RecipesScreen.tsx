@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -33,7 +33,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { FREE_LIMITS } from '../premium/limits';
 import { planConfigApi } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
-import { AdBanner } from '../ads';
+import { AdBanner, useAdInterstitial } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -48,6 +48,7 @@ export const RecipesScreen: React.FC = () => {
   const { isPremium } = usePremium();
   const { requirePremium } = usePaywall();
   const { guardAction, DemoGuardModal } = useDemoGuard();
+  const { showInterstitial } = useAdInterstitial();
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const [duplicateTarget, setDuplicateTarget] = useState<Recipe | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
@@ -68,10 +69,16 @@ export const RecipesScreen: React.FC = () => {
     }
   };
 
+  const hasShownAd = useRef(false);
+
   useFocusEffect(
     useCallback(() => {
       setLoading(true);
       loadRecipes();
+      if (!hasShownAd.current) {
+        hasShownAd.current = true;
+        showInterstitial();
+      }
     }, [])
   );
 
