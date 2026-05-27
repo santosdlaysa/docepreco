@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber, RecentUser } from '../lib/api';
+import { useEffect, useState, useCallback } from 'react';
+import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber, RecentUser, PixRequestItem } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
   Trophy, Flame, Mail, Loader2, X, Eye, UserRoundPlus, RefreshCw,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, QrCode, CheckCircle, XCircle, Clock,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
@@ -384,6 +384,113 @@ function DashboardSkeleton() {
   );
 }
 
+function PixPendingCard({ toast }: { toast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [requests, setRequests] = useState<PixRequestItem[]>([]);
+  const [approving, setApproving] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    try {
+      const data = await api.listPixRequests('pending');
+      setRequests(data);
+    } catch { /* silent */ }
+  }, []);
+
+  useEffect(() => {
+    load();
+    const interval = setInterval(load, 15000);
+    return () => clearInterval(interval);
+  }, [load]);
+
+  if (requests.length === 0) return null;
+
+  const fmtMoney = (cents: number) =>
+    (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+  const timeSince = (iso: string) => {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'agora';
+    if (mins < 60) return `${mins}min`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h`;
+    return `${Math.floor(hours / 24)}d`;
+  };
+
+  const handleApprove = async (item: PixRequestItem) => {
+    setApproving(item.id);
+    try {
+      const days = item.planLabel === 'Anual' ? 365 : 30;
+      await api.approvePixRequest(item.id, days);
+      toast(`Premium liberado para ${item.companyName}!`, 'success');
+      load();
+    } catch (e: any) {
+      toast(e.message || 'Erro ao aprovar', 'error');
+    } finally {
+      setApproving(null);
+    }
+  };
+
+  const handleReject = async (item: PixRequestItem) => {
+    try {
+      await api.rejectPixRequest(item.id);
+      toast('Solicitação rejeitada', 'success');
+      load();
+    } catch (e: any) {
+      toast(e.message || 'Erro ao rejeitar', 'error');
+    }
+  };
+
+  return (
+    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="w-8 h-8 rounded-lg bg-yellow-100 dark:bg-yellow-800 flex items-center justify-center">
+          <QrCode size={16} className="text-yellow-600" />
+        </div>
+        <div>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm">
+            Pagamentos PIX pendentes
+          </p>
+          <p className="text-xs text-yellow-600">
+            {requests.length} aguardando aprovação — atualiza a cada 15s
+          </p>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {requests.map(req => (
+          <div key={req.id} className="bg-white dark:bg-gray-800 rounded-lg border border-yellow-200 dark:border-yellow-700 p-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <Clock size={16} className="text-yellow-500 shrink-0" />
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 dark:text-white truncate">{req.companyName}</p>
+                <p className="text-xs text-gray-400">{req.email}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="font-semibold text-gray-900 dark:text-white">{req.planLabel}</span>
+              <span className="font-semibold text-green-600">{fmtMoney(req.amountCents)}</span>
+              <span className="text-gray-400">{timeSince(req.createdAt)}</span>
+              <button
+                onClick={() => handleApprove(req)}
+                disabled={approving === req.id}
+                className="flex items-center gap-1 px-3 py-1.5 bg-green-500 hover:bg-green-600 text-white text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                <CheckCircle size={12} />
+                Aprovar
+              </button>
+              <button
+                onClick={() => handleReject(req)}
+                className="p-1.5 border border-gray-200 dark:border-gray-600 text-gray-400 hover:text-red-500 hover:border-red-200 rounded-lg transition-colors"
+              >
+                <XCircle size={12} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success' | 'error') => void }) {
   const [stats, setStats] = useState<Stats | null>(null);
   const [error, setError] = useState('');
@@ -463,6 +570,8 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
           {refreshing ? 'Atualizando...' : 'Atualizar'}
         </button>
       </div>
+
+      <PixPendingCard toast={toast} />
 
       <div>
         <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">Usuários</p>

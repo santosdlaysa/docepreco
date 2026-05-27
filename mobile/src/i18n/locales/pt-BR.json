@@ -245,7 +245,7 @@
     "priceHint": "Ex: pagou R$ 7,99 pelo pacote inteiro? Coloque 7.99 aqui",
     "unitLabel": "Unidade de medida *",
     "customUnitToggle": "Comprei por embalagem (lata, pacote, saco...)",
-    "packageType": "Tipo da embalagem *",
+    "packageType": "Tipo da embalagem (ex: Lata, Pacote, Garrafa...)",
     "packagePlaceholder": "Ou digite: ex. Balde, Sache...",
     "weightPerPackage": "Peso por {{label}} ({{unit}}) *",
     "weightPlaceholder": "Ex: 550 (em {{unit}})",

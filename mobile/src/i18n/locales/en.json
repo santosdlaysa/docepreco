@@ -245,7 +245,7 @@
     "priceHint": "E.g.: paid $7.99 for the whole pack? Enter 7.99 here",
     "unitLabel": "Unit of measurement *",
     "customUnitToggle": "Bought by package (can, pack, bag...)",
-    "packageType": "Package type *",
+    "packageType": "Package type (e.g. Can, Bottle, Box...)",
     "packagePlaceholder": "Or type: e.g. Bucket, Sachet...",
     "weightPerPackage": "Weight per {{label}} ({{unit}}) *",
     "weightPlaceholder": "E.g.: 550 (in {{unit}})",
