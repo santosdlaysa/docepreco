@@ -48,6 +48,7 @@ export const OrdersScreen: React.FC = () => {
     in_progress: { label: t('orders.inProgress'), color: '#2196F3', icon: 'construct-outline' },
     done: { label: t('orders.done'), color: '#4CAF50', icon: 'checkmark-circle-outline' },
     delivered: { label: t('orders.delivered'), color: '#4CAF50', icon: 'gift-outline' },
+    cancelled: { label: t('orders.cancelled'), color: '#F44336', icon: 'close-circle-outline' },
   };
 
   const FILTER_OPTIONS: { key: OrderStatus | 'all'; label: string }[] = [
@@ -56,6 +57,7 @@ export const OrdersScreen: React.FC = () => {
     { key: 'in_progress', label: t('orders.production') },
     { key: 'done', label: t('orders.done') },
     { key: 'delivered', label: t('orders.delivered') },
+    { key: 'cancelled', label: t('orders.cancelled') },
   ];
 
   const formatDate = (dateStr: string) => {
@@ -162,6 +164,25 @@ export const OrdersScreen: React.FC = () => {
     }));
   })();
 
+  const handleCancel = (order: Order) => {
+    Alert.alert(
+      t('orders.cancelTitle'),
+      t('orders.cancelMessage', { recipe: order.recipeName, client: order.clientName }),
+      [
+        { text: t('common.cancel'), style: 'cancel' },
+        {
+          text: t('orders.cancelConfirm'),
+          style: 'destructive',
+          onPress: async () => {
+            await orderStorage.update(order.id, { status: 'cancelled' });
+            showToast(t('orders.orderCancelled'), 'success');
+            loadOrders();
+          },
+        },
+      ],
+    );
+  };
+
   const handleDelete = (order: Order) => {
     Alert.alert(t('orders.deleteTitle'), t('orders.deleteMessage', { recipe: order.recipeName, client: order.clientName }), [
       { text: t('common.cancel'), style: 'cancel' },
@@ -225,12 +246,14 @@ export const OrdersScreen: React.FC = () => {
 
   const renderOrder = ({ item }: { item: Order }) => {
     const isDelivered = item.status === 'delivered';
+    const isCancelled = item.status === 'cancelled';
+    const isLocked = isDelivered || isCancelled;
     const remaining = item.totalPrice - (item.paidAmount || 0);
     return (
       <TouchableOpacity
         activeOpacity={0.8}
         onPress={() => navigation.navigate('EditOrder', { orderId: item.id })}
-        onLongPress={() => { if (!isDelivered) handleDelete(item); }}
+        onLongPress={() => { if (!isLocked) handleDelete(item); }}
       >
         <Card style={styles.orderCard}>
           <View style={styles.orderHeader}>
@@ -309,30 +332,49 @@ export const OrdersScreen: React.FC = () => {
             </Text>
           )}
           {item.notes ? <Text style={styles.notes} numberOfLines={1}>{item.notes}</Text> : null}
-          <View style={styles.statusRow}>
-            {STATUS_LIST.map((s) => {
-              const cfg = STATUS_CONFIG[s];
-              const active = item.status === s;
-              return (
+          {isCancelled ? (
+            <View style={styles.cancelledBanner}>
+              <Ionicons name="close-circle" size={16} color="#F44336" />
+              <Text style={styles.cancelledBannerText}>{t('orders.cancelled')}</Text>
+            </View>
+          ) : (
+            <View style={styles.statusRow}>
+              {STATUS_LIST.map((s) => {
+                const cfg = STATUS_CONFIG[s];
+                const active = item.status === s;
+                return (
+                  <TouchableOpacity
+                    key={s}
+                    onPress={() => { if (!isLocked) changeStatus(item, s); }}
+                    disabled={isLocked}
+                    style={[
+                      styles.statusBtn,
+                      active && { backgroundColor: cfg.color + '20', borderColor: cfg.color },
+                      isDelivered && !active && { opacity: 0.4 },
+                    ]}
+                    activeOpacity={isLocked ? 1 : 0.7}
+                  >
+                    <Ionicons name={cfg.icon} size={14} color={active ? cfg.color : colors.textMuted} />
+                    <Text style={[styles.statusBtnText, active && { color: cfg.color, fontWeight: '700' }]}>
+                      {cfg.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+              {!isDelivered && (
                 <TouchableOpacity
-                  key={s}
-                  onPress={() => { if (item.status !== 'delivered') changeStatus(item, s); }}
-                  disabled={item.status === 'delivered'}
-                  style={[
-                    styles.statusBtn,
-                    active && { backgroundColor: cfg.color + '20', borderColor: cfg.color },
-                    item.status === 'delivered' && !active && { opacity: 0.4 },
-                  ]}
-                  activeOpacity={item.status === 'delivered' ? 1 : 0.7}
+                  onPress={() => handleCancel(item)}
+                  style={[styles.statusBtn, styles.cancelBtn]}
+                  activeOpacity={0.7}
                 >
-                  <Ionicons name={cfg.icon} size={14} color={active ? cfg.color : colors.textMuted} />
-                  <Text style={[styles.statusBtnText, active && { color: cfg.color, fontWeight: '700' }]}>
-                    {cfg.label}
+                  <Ionicons name="close-circle-outline" size={14} color="#F44336" />
+                  <Text style={[styles.statusBtnText, { color: '#F44336' }]}>
+                    {t('orders.cancelled')}
                   </Text>
                 </TouchableOpacity>
-              );
-            })}
-          </View>
+              )}
+            </View>
+          )}
         </Card>
       </TouchableOpacity>
     );
@@ -608,6 +650,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   paymentChipText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
+  cancelBtn: {
+    borderColor: '#F4434630',
+    backgroundColor: '#F4434310',
+  },
+  cancelledBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  cancelledBannerText: { ...typography.bodySmall, color: '#F44336', fontWeight: '700' },
   addPaymentBtn: {
     flexDirection: 'row',
     alignItems: 'center',

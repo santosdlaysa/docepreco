@@ -47,6 +47,7 @@ export const CreateOrderScreen: React.FC = () => {
     { key: 'in_progress', label: t('orders.inProgress'), color: '#2196F3' },
     { key: 'done', label: t('orders.done'), color: '#4CAF50' },
     { key: 'delivered', label: t('orders.delivered'), color: '#9E9E9E' },
+    { key: 'cancelled', label: t('orders.cancelled'), color: '#F44336' },
   ];
 
   const [clientName, setClientName] = useState('');
@@ -100,7 +101,7 @@ export const CreateOrderScreen: React.FC = () => {
         setDeliveryDate(fromIso(order.deliveryDate));
         setDeliveryTime(order.deliveryTime || '');
         setStatus(order.status);
-        if (order.status === 'delivered') setIsDelivered(true);
+        if (order.status === 'delivered' || order.status === 'cancelled') setIsDelivered(true);
         if (order.payments && order.payments.length > 0) {
           setPayments(order.payments);
         } else if (order.paidAmount && order.paidAmount > 0) {
@@ -241,7 +242,7 @@ export const CreateOrderScreen: React.FC = () => {
       />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
+          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
             <Text style={styles.sectionTitle}>{t('createOrder.clientSection')}</Text>
             <View>
               <Input
@@ -284,7 +285,7 @@ export const CreateOrderScreen: React.FC = () => {
             />
           </Card>
 
-          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
+          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
             <Text style={styles.sectionTitle}>{t('createOrder.productSection')}</Text>
             <TouchableOpacity activeOpacity={0.7} onPress={() => { if (!isDelivered) setShowRecipePicker(true); }}>
               <View pointerEvents="none">
@@ -333,7 +334,7 @@ export const CreateOrderScreen: React.FC = () => {
             )}
           </Card>
 
-          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
+          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
             <Text style={styles.sectionTitle}>{t('createOrder.deliverySection')}</Text>
             <View style={styles.row}>
               <View style={{ flex: 1, marginRight: 8 }}>
@@ -382,7 +383,7 @@ export const CreateOrderScreen: React.FC = () => {
             </View>
           </Card>
 
-          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
+          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
             <Text style={styles.sectionTitle}>{t('createOrder.statusSection')}</Text>
             <View style={styles.statusGrid}>
               {STATUS_OPTIONS.map(opt => (
@@ -514,7 +515,7 @@ export const CreateOrderScreen: React.FC = () => {
             )}
           </Card>
 
-          <Card style={[styles.section, isDelivered && styles.readOnlySection]}>
+          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
             <Text style={styles.sectionTitle}>{t('createOrder.notesSection')}</Text>
             <Input
               placeholder={t('createOrder.notesPlaceholder')}

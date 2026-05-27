@@ -1,4 +1,4 @@
-export type OrderStatus = 'pending' | 'in_progress' | 'done' | 'delivered';
+export type OrderStatus = 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
 
 export type PaymentMethodType = 'pix' | 'cash' | 'credit' | 'debit';
 
