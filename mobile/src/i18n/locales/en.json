@@ -744,7 +744,12 @@
     "disclaimerTrial": "{{days}}-day free trial. After the trial, the {{price}} subscription is charged automatically and renews until you cancel. Cancel anytime in {{store}} settings.",
     "welcomeTrial": "Your {{days}}-day free trial has started!",
     "payWithPix": "Pay with PIX",
-    "orStore": "or via store"
+    "orStore": "or via store",
+    "orPix": "or pay with PIX",
+    "pixMonthly": "Monthly",
+    "pixMonthlyDesc": "PIX payment",
+    "pixAnnual": "Annual",
+    "pixAnnualDesc": "PIX payment"
   },
   "pix": {
     "title": "Pay with PIX",

@@ -744,7 +744,12 @@
     "disclaimerTrial": "Teste gratuito de {{days}} dias. Após o período, a assinatura de {{price}} é cobrada automaticamente e renovada até você cancelar. Cancele a qualquer momento nas configurações da {{store}}.",
     "welcomeTrial": "Seu teste grátis de {{days}} dias começou!",
     "payWithPix": "Pagar com PIX",
-    "orStore": "ou pela loja"
+    "orStore": "ou pela loja",
+    "orPix": "ou pague com PIX",
+    "pixMonthly": "Mensal",
+    "pixMonthlyDesc": "Pagamento via PIX",
+    "pixAnnual": "Anual",
+    "pixAnnualDesc": "Pagamento via PIX"
   },
   "pix": {
     "title": "Pagar com PIX",

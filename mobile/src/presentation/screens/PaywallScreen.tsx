@@ -60,6 +60,7 @@ export const PaywallScreen: React.FC = () => {
   const [restoring, setRestoring] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [configured, setConfigured] = useState(isRevenueCatConfigured());
+  const [pixPlan, setPixPlan] = useState<'monthly' | 'annual'>('monthly');
 
   const trigger = route.params?.trigger;
 
@@ -189,86 +190,128 @@ export const PaywallScreen: React.FC = () => {
           ))}
         </View>
 
-        {/* PIX — always visible */}
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={colors.primary} />
+          </View>
+        ) : !configured || !packages || packages.length === 0 ? (
+          <View style={styles.unavailableBox}>
+            <Ionicons name="information-circle-outline" size={24} color={colors.warning} />
+            <Text style={styles.unavailableText}>
+              {!configured
+                ? t('paywall.notConfigured')
+                : t('paywall.loadError')}
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.plans}>
+            {packages.map(pkg => {
+              const isSelected = selected === pkg.identifier;
+              const subtitleText = pkg.isTrialEligible
+                ? t('paywall.trialSubtitle', { days: pkg.trialDays, price: pkg.priceLabel })
+                : pkg.subtitle;
+              return (
+                <TouchableOpacity
+                  key={pkg.identifier}
+                  onPress={() => setSelected(pkg.identifier)}
+                  activeOpacity={0.8}
+                  style={[styles.planCard, isSelected && styles.planCardSelected]}
+                >
+                  {pkg.isTrialEligible ? (
+                    <View style={[styles.planBadge, styles.trialBadge]}>
+                      <Text style={styles.planBadgeText}>
+                        {t('paywall.trialBadge', { days: pkg.trialDays })}
+                      </Text>
+                    </View>
+                  ) : pkg.badge ? (
+                    <View style={styles.planBadge}>
+                      <Text style={styles.planBadgeText}>{pkg.badge}</Text>
+                    </View>
+                  ) : null}
+                  <View style={styles.radio}>
+                    {isSelected && <View style={styles.radioInner} />}
+                  </View>
+                  <View style={styles.planInfo}>
+                    <Text style={styles.planTitle}>{pkg.title}</Text>
+                    {subtitleText && <Text style={styles.planSubtitle}>{subtitleText}</Text>}
+                  </View>
+                  <Text style={styles.planPrice}>{pkg.priceLabel}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[styles.cta, (!selected || purchasing || !configured) && styles.ctaDisabled]}
+          onPress={handlePurchase}
+          disabled={!selected || !!purchasing || !configured}
+          activeOpacity={0.85}
+        >
+          {purchasing ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <>
+              <Ionicons name={selectedPkg?.isTrialEligible ? 'gift-outline' : 'lock-open'} size={18} color="#fff" />
+              <Text style={styles.ctaText}>
+                {selectedPkg?.isTrialEligible
+                  ? t('paywall.startTrial')
+                  : t('paywall.subscribe')}
+              </Text>
+            </>
+          )}
+        </TouchableOpacity>
+
+        {/* PIX — third option */}
+        <View style={styles.orDivider}>
+          <View style={styles.orLine} />
+          <Text style={styles.orText}>{t('paywall.orPix')}</Text>
+          <View style={styles.orLine} />
+        </View>
+
+        <View style={styles.pixPlans}>
+          <TouchableOpacity
+            onPress={() => setPixPlan('monthly')}
+            activeOpacity={0.8}
+            style={[styles.planCard, pixPlan === 'monthly' && styles.planCardSelected]}
+          >
+            <View style={styles.radio}>
+              {pixPlan === 'monthly' && <View style={styles.radioInner} />}
+            </View>
+            <View style={styles.planInfo}>
+              <Text style={styles.planTitle}>{t('paywall.pixMonthly')}</Text>
+              <Text style={styles.planSubtitle}>{t('paywall.pixMonthlyDesc')}</Text>
+            </View>
+            <Text style={styles.planPrice}>R$ 10,00</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setPixPlan('annual')}
+            activeOpacity={0.8}
+            style={[styles.planCard, pixPlan === 'annual' && styles.planCardSelected]}
+          >
+            <View style={[styles.planBadge, { backgroundColor: colors.success }]}>
+              <Text style={styles.planBadgeText}>{t('pix.save33')}</Text>
+            </View>
+            <View style={styles.radio}>
+              {pixPlan === 'annual' && <View style={styles.radioInner} />}
+            </View>
+            <View style={styles.planInfo}>
+              <Text style={styles.planTitle}>{t('paywall.pixAnnual')}</Text>
+              <Text style={styles.planSubtitle}>R$ 10,00/mês</Text>
+            </View>
+            <Text style={styles.planPrice}>R$ 120,00</Text>
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity
           style={styles.pixCta}
-          onPress={() => navigation.navigate('PixPayment', {})}
+          onPress={() => navigation.navigate('PixPayment', { plan: pixPlan })}
           activeOpacity={0.85}
         >
           <Ionicons name="qr-code-outline" size={20} color="#fff" />
           <Text style={styles.ctaText}>{t('paywall.payWithPix')}</Text>
         </TouchableOpacity>
-
-        {loading ? (
-          <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={colors.primary} />
-          </View>
-        ) : configured && packages && packages.length > 0 ? (
-          <>
-            <View style={styles.orDivider}>
-              <View style={styles.orLine} />
-              <Text style={styles.orText}>{t('paywall.orStore')}</Text>
-              <View style={styles.orLine} />
-            </View>
-
-            <View style={styles.plans}>
-              {packages.map(pkg => {
-                const isSelected = selected === pkg.identifier;
-                const subtitleText = pkg.isTrialEligible
-                  ? t('paywall.trialSubtitle', { days: pkg.trialDays, price: pkg.priceLabel })
-                  : pkg.subtitle;
-                return (
-                  <TouchableOpacity
-                    key={pkg.identifier}
-                    onPress={() => setSelected(pkg.identifier)}
-                    activeOpacity={0.8}
-                    style={[styles.planCard, isSelected && styles.planCardSelected]}
-                  >
-                    {pkg.isTrialEligible ? (
-                      <View style={[styles.planBadge, styles.trialBadge]}>
-                        <Text style={styles.planBadgeText}>
-                          {t('paywall.trialBadge', { days: pkg.trialDays })}
-                        </Text>
-                      </View>
-                    ) : pkg.badge ? (
-                      <View style={styles.planBadge}>
-                        <Text style={styles.planBadgeText}>{pkg.badge}</Text>
-                      </View>
-                    ) : null}
-                    <View style={styles.radio}>
-                      {isSelected && <View style={styles.radioInner} />}
-                    </View>
-                    <View style={styles.planInfo}>
-                      <Text style={styles.planTitle}>{pkg.title}</Text>
-                      {subtitleText && <Text style={styles.planSubtitle}>{subtitleText}</Text>}
-                    </View>
-                    <Text style={styles.planPrice}>{pkg.priceLabel}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-
-            <TouchableOpacity
-              style={[styles.cta, (!selected || purchasing) && styles.ctaDisabled]}
-              onPress={handlePurchase}
-              disabled={!selected || !!purchasing}
-              activeOpacity={0.85}
-            >
-              {purchasing ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name={selectedPkg?.isTrialEligible ? 'gift-outline' : 'lock-open'} size={18} color="#fff" />
-                  <Text style={styles.ctaText}>
-                    {selectedPkg?.isTrialEligible
-                      ? t('paywall.startTrial')
-                      : t('paywall.subscribe')}
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </>
-        ) : null}
 
         <Text style={styles.disclaimer}>
           {selectedPkg?.isTrialEligible
@@ -451,6 +494,7 @@ const styles = StyleSheet.create({
   },
   ctaDisabled: { opacity: 0.5 },
   ctaText: { ...typography.button, color: '#fff', fontSize: 17 },
+  pixPlans: { gap: 10, marginBottom: 12 },
   pixCta: {
     backgroundColor: '#00A86B',
     borderRadius: 14,
