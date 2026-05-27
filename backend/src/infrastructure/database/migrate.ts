@@ -479,6 +479,16 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'telegram_alerts', 'schedule_cron', "VARCHAR(30)");
     await addColumnIfMissing(client, 'telegram_alerts', 'schedule_description', "VARCHAR(100)");
 
+    // Add pix_request alert for existing DBs
+    const pixAlertExists = await client.query(`SELECT 1 FROM telegram_alerts WHERE key = 'pix_request'`);
+    if (pixAlertExists.rows.length === 0) {
+      await client.query(
+        `INSERT INTO telegram_alerts (key, label, description, is_enabled, category, message_template) VALUES ($1, $2, $3, TRUE, $4, $5)`,
+        ['pix_request', 'Solicitação PIX', 'Notifica quando um usuário solicita pagamento via PIX', 'alerts',
+         '🟡 Nova solicitação PIX!\n\n🏪 {{companyName}}\n📧 {{email}}\n📋 Plano: {{planLabel}}\n💰 Valor: {{value}}\n🕐 {{time}}\n\n⚠️ Verifique e aprove no painel admin.']
+      );
+    }
+
     // Seed schedule for existing report alerts
     await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 8 * * *', schedule_description = 'Todo dia às 8h' WHERE key = 'daily_report' AND schedule_cron IS NULL`);
     await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 9 * * 1', schedule_description = 'Segunda às 9h' WHERE key = 'weekly_report' AND schedule_cron IS NULL`);
@@ -558,6 +568,7 @@ export async function runMigrations() {
         { key: 'user_milestone', label: 'Marco de usuários', description: 'Quando atinge 50, 100, 200, 500, 1000, 2000, 5000, 10000', category: 'alerts' },
         { key: 'error_alert', label: 'Erro no servidor', description: 'Quando uma rota retorna status 500+', category: 'alerts' },
         { key: 'slow_api', label: 'Rota lenta', description: 'Quando uma rota demora mais de 2 segundos', category: 'alerts' },
+        { key: 'pix_request', label: 'Solicitação PIX', description: 'Notifica quando um usuário solicita pagamento via PIX', category: 'alerts' },
         { key: 'support_message', label: 'Mensagem no suporte', description: 'Notifica quando um usuário envia mensagem no chat de suporte', category: 'alerts' },
         { key: 'daily_report', label: 'Relatório diário', description: 'Enviado todo dia às 8h com total de usuários', category: 'reports' },
         { key: 'weekly_report', label: 'Relatório semanal', description: 'Enviado toda segunda às 9h com resumo da semana', category: 'reports' },
@@ -573,6 +584,7 @@ export async function runMigrations() {
         daily_report: '📊 Relatório diário\n\n👥 Total de usuários: {{total}}\n⭐ Premium: {{premium}}\n🆕 Novos hoje: {{today}}\n🕐 {{time}}',
         weekly_report: '📊 Relatório semanal\n\n🆕 Novos usuários: {{newUsers}}\n🍰 Receitas criadas: {{newRecipes}}\n🧁 Vendas registradas: {{totalSales}}\n💰 Receita total: {{revenue}}\n🕐 {{time}}',
         goal_progress: '📈 Meta de cadastros\n\n{{progressBar}} {{percent}}%\n👥 {{today}}/{{goal}} hoje\n{{status}}\n🕐 {{time}}',
+        pix_request: '🟡 Nova solicitação PIX!\n\n🏪 {{companyName}}\n📧 {{email}}\n📋 Plano: {{planLabel}}\n💰 Valor: {{value}}\n🕐 {{time}}\n\n⚠️ Verifique e aprove no painel admin.',
         support_message: '💬 Nova mensagem no suporte!\n\n🏪 {{companyName}}\n📧 {{email}}\n\n📝 {{message}}\n🕐 {{time}}',
       };
       for (const a of alerts) {

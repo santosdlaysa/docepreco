@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
-import { notifyPremiumEvent } from '../../infrastructure/services/telegramService';
+import { notifyPremiumEvent, notifyPixRequest } from '../../infrastructure/services/telegramService';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
@@ -47,10 +47,11 @@ export class PixController {
 
       const user = await userRepo.findById(userId);
       // Notify admin via Telegram
-      notifyPremiumEvent(
+      notifyPixRequest(
         user?.companyName ?? 'Usuário',
-        'PIX_REQUEST',
-        'pix'
+        user?.email ?? '',
+        planLabel ?? 'Mensal',
+        amountCents ?? 0
       );
 
       res.status(201).json({ success: true, data: result.rows[0] });

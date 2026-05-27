@@ -124,6 +124,15 @@ export async function notifySupportMessage(companyName: string, email: string, m
   sendTelegramMessage(text);
 }
 
+export async function notifyPixRequest(companyName: string, email: string, planLabel: string, amountCents: number): Promise<void> {
+  if (!await isAlertEnabled('pix_request')) return;
+  const value = (amountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const tpl = await getTemplate('pix_request');
+  const fallback = `🟡 Nova solicitação PIX!\n\n🏪 ${companyName}\n📧 ${email}\n📋 Plano: ${planLabel}\n💰 Valor: ${value}\n🕐 ${brNow()}\n\n⚠️ Verifique o pagamento e aprove no painel admin.`;
+  const text = tpl ? applyTemplate(tpl, { companyName, email, planLabel, value, time: brNow() }) : fallback;
+  sendTelegramMessage(text);
+}
+
 // ── Reports ─────────────────────────────────────────────────────────
 
 export async function sendDailyUserReport(): Promise<void> {

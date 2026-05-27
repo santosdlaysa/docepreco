@@ -92,13 +92,13 @@ export const CreateIngredientScreen: React.FC = () => {
   };
 
   const handlePriceChange = (text: string) => {
-    // Remove tudo que não é dígito
-    const digits = text.replace(/\D/g, '');
-    if (!digits) { setPurchasePrice(''); return; }
-    // Converte para centavos e formata com vírgula
-    const cents = parseInt(digits, 10);
-    const formatted = (cents / 100).toFixed(2).replace('.', ',');
-    setPurchasePrice(formatted);
+    // Permite digitar livremente com ponto ou vírgula como decimal
+    // Aceita: "4.80", "4,80", "4", "12.5", etc.
+    const cleaned = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    // Impede múltiplos pontos
+    const parts = cleaned.split('.');
+    const sanitized = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+    setPurchasePrice(sanitized);
   };
 
   useEffect(() => {
@@ -107,7 +107,7 @@ export const CreateIngredientScreen: React.FC = () => {
       .then(ingredient => {
         setName(ingredient.name);
         setPurchaseQuantity(String(ingredient.purchaseQuantity));
-        setPurchasePrice(String(ingredient.purchasePrice));
+        setPurchasePrice(Number(ingredient.purchasePrice).toFixed(2));
         setUnit(ingredient.unit);
         setOriginalPrice(ingredient.purchasePrice);
         setOriginalQty(ingredient.purchaseQuantity);
@@ -263,10 +263,10 @@ export const CreateIngredientScreen: React.FC = () => {
             </Text>
             <Input
               label={t('createIngredient.priceLabel')}
-              placeholder="0,00"
+              placeholder="Ex: 4.80"
               value={purchasePrice}
               onChangeText={handlePriceChange}
-              keyboardType="number-pad"
+              keyboardType="decimal-pad"
               error={errors.purchasePrice}
             />
             <Text style={styles.fieldHint}>
