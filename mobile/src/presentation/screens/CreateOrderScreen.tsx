@@ -60,6 +60,7 @@ export const CreateOrderScreen: React.FC = () => {
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [notes, setNotes] = useState('');
   const [paidAmount, setPaidAmount] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'cash' | 'credit' | 'debit' | 'transfer' | 'other' | ''>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
 
@@ -97,6 +98,7 @@ export const CreateOrderScreen: React.FC = () => {
         setDeliveryTime(order.deliveryTime || '');
         setStatus(order.status);
         setPaidAmount(order.paidAmount ? String(order.paidAmount) : '');
+        setPaymentMethod(order.paymentMethod || '');
         setNotes(order.notes || '');
       });
     }
@@ -138,6 +140,7 @@ export const CreateOrderScreen: React.FC = () => {
         deliveryTime: deliveryTime.trim() || undefined,
         status,
         paidAmount: parseFloat(paidAmount) || 0,
+        paymentMethod: paymentMethod || undefined,
         notes: notes.trim() || undefined,
       };
       if (isEditing) {
@@ -361,6 +364,44 @@ export const CreateOrderScreen: React.FC = () => {
                 </Text>
               </View>
             )}
+            <Text style={[styles.inputLabel, { marginTop: 12 }]}>{t('createOrder.paymentMethodLabel')}</Text>
+            <View style={styles.paymentMethodGrid}>
+              {(['pix', 'cash', 'credit', 'debit', 'transfer', 'other'] as const).map(method => {
+                const labels: Record<string, string> = {
+                  pix: t('createOrder.paymentMethodPix'),
+                  cash: t('createOrder.paymentMethodCash'),
+                  credit: t('createOrder.paymentMethodCredit'),
+                  debit: t('createOrder.paymentMethodDebit'),
+                  transfer: t('createOrder.paymentMethodTransfer'),
+                  other: t('createOrder.paymentMethodOther'),
+                };
+                const icons: Record<string, keyof typeof Ionicons.glyphMap> = {
+                  pix: 'qr-code-outline',
+                  cash: 'cash-outline',
+                  credit: 'card-outline',
+                  debit: 'card-outline',
+                  transfer: 'swap-horizontal-outline',
+                  other: 'ellipsis-horizontal-outline',
+                };
+                const selected = paymentMethod === method;
+                return (
+                  <TouchableOpacity
+                    key={method}
+                    onPress={() => setPaymentMethod(selected ? '' : method)}
+                    style={[
+                      styles.paymentMethodBtn,
+                      selected && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
+                    ]}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name={icons[method]} size={16} color={selected ? colors.primary : colors.textMuted} />
+                    <Text style={[styles.paymentMethodText, selected && { color: colors.primary, fontWeight: '700' }]}>
+                      {labels[method]}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </Card>
 
           <Card style={styles.section}>
@@ -480,6 +521,22 @@ const styles = StyleSheet.create({
   },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   statusLabel: { ...typography.bodySmall, color: colors.textSecondary },
+  inputLabel: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600', marginBottom: 6 },
+  paymentMethodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  paymentMethodBtn: {
+    flexBasis: '30%',
+    flexGrow: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+  },
+  paymentMethodText: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
   saveButton: { marginBottom: 32 },
   suggestions: {
     backgroundColor: colors.surface,

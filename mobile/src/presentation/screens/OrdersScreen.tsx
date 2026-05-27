@@ -223,6 +223,14 @@ export const OrdersScreen: React.FC = () => {
               </Text>
             </View>
           )}
+          {item.paymentMethod && (
+            <View style={styles.paymentMethodRow}>
+              <Ionicons name="card-outline" size={13} color={colors.textSecondary} />
+              <Text style={styles.paymentMethodText}>
+                {t(`orders.paymentMethod${item.paymentMethod.charAt(0).toUpperCase() + item.paymentMethod.slice(1)}`)}
+              </Text>
+            </View>
+          )}
           {item.deliveryTime && (
             <Text style={styles.deliveryTime}>
               <Ionicons name="time-outline" size={12} color={colors.textMuted} /> {item.deliveryTime}
@@ -419,6 +427,13 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   paidInfoText: { ...typography.caption, fontWeight: '600' },
+  paymentMethodRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 4,
+  },
+  paymentMethodText: { ...typography.caption, color: colors.textSecondary },
   deliveryTime: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
   notes: { ...typography.caption, color: colors.textMuted, marginTop: 4, fontStyle: 'italic' },
   infoCard: {

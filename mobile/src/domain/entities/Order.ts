@@ -14,6 +14,7 @@ export interface Order {
   status: OrderStatus;
   paid?: boolean;
   paidAmount?: number;
+  paymentMethod?: 'pix' | 'cash' | 'credit' | 'debit' | 'transfer' | 'other';
   notes?: string;
   createdAt: string;
 }
