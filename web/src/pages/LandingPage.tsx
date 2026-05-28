@@ -1,63 +1,43 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Cake,
-  ChefHat,
-  Calculator,
-  FileText,
-  BarChart3,
-  Users,
-  ShoppingBag,
-  Check,
-  Smartphone,
-  Star,
-  Sparkles,
-  Heart,
-  TrendingUp,
-  Shield,
-  Zap,
-  ArrowDown,
+  Cake, ChefHat, Calculator, FileText, BarChart3, Users,
+  ShoppingBag, Check, Smartphone, Star, Sparkles, Heart,
+  TrendingUp, Shield, Zap, ArrowRight, Play,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
 const FEATURES = [
-  { icon: ShoppingBag, title: 'Ingredientes', desc: 'Cadastre ingredientes com preços atualizados e unidades de medida.', color: 'from-pink-500 to-rose-500' },
-  { icon: ChefHat, title: 'Receitas', desc: 'Monte receitas com cálculo automático do custo por unidade.', color: 'from-violet-500 to-purple-500' },
-  { icon: Calculator, title: 'Precificação', desc: 'Defina margens, mão de obra e embalagem para o preço ideal.', color: 'from-amber-500 to-orange-500' },
-  { icon: FileText, title: 'PDF Profissional', desc: 'Gere fichas técnicas e orçamentos em PDF prontos para enviar.', color: 'from-emerald-500 to-green-500' },
-  { icon: BarChart3, title: 'Dashboard', desc: 'Acompanhe vendas, lucro e produtos mais rentáveis.', color: 'from-blue-500 to-cyan-500' },
-  { icon: Users, title: 'Clientes', desc: 'Gerencie sua carteira de clientes e histórico de pedidos.', color: 'from-primary-500 to-pink-500' },
+  { icon: ShoppingBag, title: 'Ingredientes', desc: 'Cadastre ingredientes com precos atualizados e unidades de medida.', color: 'from-pink-500 to-rose-500', bg: 'bg-pink-50 dark:bg-pink-900/10' },
+  { icon: ChefHat, title: 'Receitas', desc: 'Monte receitas com calculo automatico do custo por unidade.', color: 'from-violet-500 to-purple-500', bg: 'bg-violet-50 dark:bg-violet-900/10' },
+  { icon: Calculator, title: 'Precificacao', desc: 'Defina margens, mao de obra e embalagem para o preco ideal.', color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-900/10' },
+  { icon: FileText, title: 'PDF Profissional', desc: 'Gere fichas tecnicas e orcamentos em PDF prontos para enviar.', color: 'from-emerald-500 to-green-500', bg: 'bg-emerald-50 dark:bg-emerald-900/10' },
+  { icon: BarChart3, title: 'Dashboard', desc: 'Acompanhe vendas, lucro e produtos mais rentaveis.', color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50 dark:bg-blue-900/10' },
+  { icon: Users, title: 'Clientes', desc: 'Gerencie sua carteira de clientes e historico de pedidos.', color: 'from-primary-500 to-pink-500', bg: 'bg-primary-50 dark:bg-primary-900/10' },
 ];
 
 const STEPS = [
-  { num: '1', title: 'Cadastre seus ingredientes', desc: 'Adicione os ingredientes que você usa com o preço de compra.' },
-  { num: '2', title: 'Monte suas receitas', desc: 'Selecione os ingredientes e quantidades de cada receita.' },
-  { num: '3', title: 'Veja o preço ideal', desc: 'O app calcula o custo e sugere o preço de venda com sua margem.' },
+  { num: '01', title: 'Cadastre seus ingredientes', desc: 'Adicione os ingredientes que voce usa com o preco de compra.', icon: ShoppingBag },
+  { num: '02', title: 'Monte suas receitas', desc: 'Selecione os ingredientes e quantidades de cada receita.', icon: ChefHat },
+  { num: '03', title: 'Veja o preco ideal', desc: 'O app calcula o custo e sugere o preco de venda com sua margem.', icon: TrendingUp },
 ];
 
-const STATIC_STATS = [
-  { key: 'users', label: 'Confeiteiras', icon: Heart },
-  { key: 'recipes', label: 'Receitas criadas', icon: ChefHat },
-  { key: 'rating', label: 'Nota na App Store', icon: Star },
-  { key: 'free', label: 'Gratuito para começar', icon: Zap },
-] as const;
+const TESTIMONIALS = [
+  { name: 'Ana Paula', role: 'Confeiteira em Sao Paulo', text: 'Eu nao sabia que estava vendendo meus brigadeiros com prejuizo. O DocePreco mudou meu negocio.', initials: 'AP', color: 'from-primary-400 to-pink-500' },
+  { name: 'Mariana Costa', role: 'Cake Designer no Rio', text: 'Finalmente consigo precificar meus bolos com confianca. O calculo automatico e perfeito.', initials: 'MC', color: 'from-violet-400 to-purple-500' },
+  { name: 'Julia Santos', role: 'Doceira em BH', text: 'O PDF de orcamento impressiona minhas clientes. Parece super profissional.', initials: 'JS', color: 'from-amber-400 to-orange-500' },
+];
 
 const PLANS = [
   {
-    name: 'Gratuito',
-    price: 'R$ 0',
-    period: '/mês',
-    desc: 'Para quem está começando',
-    features: ['Até 10 receitas', 'Ingredientes ilimitados', 'Cálculo de custo', 'Geração de PDF'],
+    name: 'Gratuito', price: 'R$ 0', period: '/mes', desc: 'Para quem esta comecando',
+    features: ['Ate 10 receitas', 'Ingredientes ilimitados', 'Calculo de custo', 'Geracao de PDF'],
     highlighted: false,
   },
   {
-    name: 'Premium',
-    price: 'R$ 14,90',
-    period: '/mês',
-    desc: 'Para quem quer crescer',
-    features: ['Receitas ilimitadas', 'Ingredientes ilimitados', 'Dashboard completo', 'Gestão de clientes', 'Relatórios avançados', 'Suporte prioritário'],
+    name: 'Premium', price: 'R$ 14,90', period: '/mes', desc: 'Para quem quer crescer',
+    features: ['Receitas ilimitadas', 'Ingredientes ilimitados', 'Dashboard completo', 'Gestao de clientes', 'Relatorios avancados', 'Suporte prioritario'],
     highlighted: true,
   },
 ];
@@ -77,172 +57,179 @@ export function LandingPage() {
       .catch(() => {});
   }, []);
 
-  const statsValues: Record<string, string> = {
-    users: apiStats ? formatCount(apiStats.totalUsers) : '100+',
-    recipes: apiStats ? formatCount(apiStats.totalRecipes) : '500+',
-    rating: '5.0',
-    free: '100%',
-  };
+  const userCount = apiStats ? formatCount(apiStats.totalUsers) : '100+';
+  const recipeCount = apiStats ? formatCount(apiStats.totalRecipes) : '500+';
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 overflow-x-hidden">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-lg border-b border-gray-100/50 dark:border-gray-800/50">
+    <div className="min-h-screen bg-white dark:bg-gray-950 overflow-x-hidden">
+      {/* ── Header ── */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl border-b border-gray-100/80 dark:border-gray-800/50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary-500 to-pink-600 flex items-center justify-center shadow-md shadow-primary-500/30">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-pink-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Cake size={18} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">DocePreço</span>
+            <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">DocePreco</span>
           </div>
-          <div className="flex items-center gap-6">
-            <a href="#funcionalidades" className="hidden sm:block text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Funcionalidades</a>
-            <a href="#planos" className="hidden sm:block text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Planos</a>
-            <Link
-              to="/admin"
-              className="text-sm font-medium text-primary-600 hover:text-primary-700 transition-colors"
-            >
-              Painel Admin
-            </Link>
-          </div>
+          <nav className="flex items-center gap-8">
+            <a href="#funcionalidades" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Funcionalidades</a>
+            <a href="#planos" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Planos</a>
+            <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm">
+              <Smartphone size={14} />
+              Baixar app
+            </a>
+          </nav>
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="relative">
-        {/* Background decorations */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary-50/80 dark:from-gray-900 via-white dark:via-gray-900 to-white dark:to-gray-900" />
-        <div className="absolute top-20 -left-10 w-72 h-72 bg-primary-200/30 rounded-full blur-3xl" />
-        <div className="absolute top-40 -right-10 w-72 sm:w-96 h-72 sm:h-96 bg-pink-200/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-64 bg-gradient-to-t from-violet-100/20 to-transparent rounded-full blur-3xl" />
+      {/* ── Hero ── */}
+      <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28">
+        {/* Blurs */}
+        <div className="absolute top-20 left-[-10%] w-[500px] h-[500px] bg-primary-200/40 dark:bg-primary-500/10 rounded-full blur-[120px]" />
+        <div className="absolute top-40 right-[-5%] w-[400px] h-[400px] bg-pink-200/30 dark:bg-pink-500/10 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-violet-100/30 dark:bg-violet-500/5 rounded-full blur-[120px]" />
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-12 sm:pt-24 sm:pb-16">
-          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
             {/* Text */}
             <div className="flex-1 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-primary-50 to-pink-50 border border-primary-100 text-primary-700 text-xs font-semibold px-4 py-2 rounded-full mb-8 animate-fade-in shadow-sm">
+              <div className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold px-4 py-2 rounded-full mb-8 shadow-sm">
                 <Sparkles size={14} className="text-primary-500" />
                 O app que toda confeiteira precisa
               </div>
-              <h1 className="text-3xl sm:text-5xl lg:text-6xl font-extrabold text-gray-900 dark:text-white tracking-tight leading-[1.1] animate-slide-up">
-                Pare de vender<br />
-                seus doces<br />
-                <span className="bg-gradient-to-r from-primary-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">no prejuízo</span>
+
+              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black text-gray-900 dark:text-white tracking-tight leading-[1.08]">
+                Pare de vender{' '}
+                <br className="hidden sm:block" />
+                seus doces{' '}
+                <span className="relative">
+                  <span className="bg-gradient-to-r from-primary-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">no prejuizo</span>
+                  <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none"><path d="M1 5.5C40 2 80 1 100 3C120 5 160 6 199 3" stroke="#e91e8c" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" /></svg>
+                </span>
               </h1>
-              <p className="mt-6 text-lg sm:text-xl text-gray-500 dark:text-gray-400 max-w-xl leading-relaxed animate-slide-up lg:mx-0 mx-auto">
+
+              <p className="mt-6 text-lg text-gray-500 dark:text-gray-400 max-w-lg leading-relaxed lg:mx-0 mx-auto">
                 Calcule o custo real de cada receita e descubra quanto cobrar para ter lucro de verdade.
               </p>
-              <div className="mt-10 flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-4 animate-slide-up">
-                <a
-                  href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-3 bg-gray-900 text-white px-8 py-4 rounded-2xl text-sm font-semibold hover:bg-gray-800 transition-all shadow-xl shadow-gray-900/20 hover:shadow-2xl hover:shadow-gray-900/30 hover:-translate-y-0.5"
-                >
-                  <Smartphone size={20} />
-                  Baixar na App Store
-                </a>
-                <span className="inline-flex items-center gap-2.5 text-gray-400 px-6 py-4 rounded-2xl text-sm font-medium">
+
+              <div className="mt-10 flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-4">
+                <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-xl shadow-gray-900/20 hover:shadow-2xl hover:-translate-y-0.5">
                   <Smartphone size={18} />
+                  Baixar na App Store
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </a>
+                <span className="inline-flex items-center gap-2 text-gray-400 text-sm">
+                  <Smartphone size={16} />
                   Google Play em breve
                 </span>
+              </div>
+
+              {/* Mini social proof */}
+              <div className="mt-10 flex items-center lg:justify-start justify-center gap-4">
+                <div className="flex -space-x-2">
+                  {['AP', 'MC', 'JS', 'LR'].map((initials, i) => (
+                    <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 border-2 border-white dark:border-gray-950 flex items-center justify-center text-white text-[10px] font-bold">
+                      {initials}
+                    </div>
+                  ))}
+                </div>
+                <div>
+                  <div className="flex items-center gap-0.5">
+                    {[...Array(5)].map((_, i) => <Star key={i} size={12} className="text-yellow-400 fill-yellow-400" />)}
+                  </div>
+                  <p className="text-xs text-gray-400 mt-0.5">{userCount} confeiteiras usam</p>
+                </div>
               </div>
             </div>
 
             {/* App Preview */}
-            <div className="flex-1 relative animate-slide-up max-w-sm sm:max-w-md lg:max-w-lg">
-              <img
-                src="/app-preview.png"
-                alt="DocePreço - Telas do aplicativo mostrando o dashboard e cadastro de ingredientes"
-                className="w-full drop-shadow-2xl"
-              />
+            <div className="flex-1 relative max-w-sm sm:max-w-md">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-pink-500/20 rounded-[3rem] blur-3xl scale-90" />
+              <img src="/app-preview.png" alt="DocePreco - Telas do aplicativo" className="relative w-full drop-shadow-2xl" />
             </div>
           </div>
-
-          {/* Scroll indicator */}
-          <div className="flex justify-center mt-8 animate-fade-in">
-            <a href="#stats" className="text-gray-300 hover:text-primary-400 transition-colors">
-              <ArrowDown size={24} className="animate-bounce" />
-            </a>
-          </div>
         </div>
       </section>
 
-      {/* Stats */}
-      <section id="stats" className="py-16 sm:py-20 border-y border-gray-100 dark:border-gray-800 bg-gray-50/50 dark:bg-gray-800/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-12">
-            {STATIC_STATS.map((s, i) => {
-              const Icon = s.icon;
-              return (
-                <div key={i} className="text-center">
-                  <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-primary-50 mb-4">
-                    <Icon size={22} className="text-primary-500" />
-                  </div>
-                  <p className="text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">{statsValues[s.key]}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">{s.label}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section className="py-20 sm:py-28">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-widest">Como funciona</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Simples como fazer um bolo
-            </h2>
-            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-lg mx-auto">
-              Em três passos você descobre o preço certo dos seus produtos.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
-            {STEPS.map((step, i) => (
-              <div key={i} className="relative text-center group">
-                {i < STEPS.length - 1 && (
-                  <div className="hidden sm:block absolute top-10 left-[60%] w-[80%] border-t-2 border-dashed border-primary-200" />
-                )}
-                <div className="relative inline-flex items-center justify-center w-20 h-20 rounded-3xl bg-gradient-to-br from-primary-500 to-pink-600 text-white text-2xl font-extrabold mb-6 shadow-lg shadow-primary-500/25 group-hover:scale-110 transition-transform">
-                  {step.num}
-                </div>
-                <h3 className="font-bold text-gray-900 dark:text-white text-lg">{step.title}</h3>
-                <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed max-w-xs mx-auto">{step.desc}</p>
+      {/* ── Stats ── */}
+      <section className="py-16 sm:py-20 border-y border-gray-100 dark:border-gray-800/50 bg-gray-50/80 dark:bg-gray-900/50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              { value: userCount, label: 'Confeiteiras', icon: Heart, color: 'text-pink-500' },
+              { value: recipeCount, label: 'Receitas criadas', icon: ChefHat, color: 'text-violet-500' },
+              { value: '5.0', label: 'Nota na App Store', icon: Star, color: 'text-yellow-500' },
+              { value: '100%', label: 'Gratuito para comecar', icon: Zap, color: 'text-emerald-500' },
+            ].map((s, i) => (
+              <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 text-center hover:shadow-md transition-shadow">
+                <s.icon size={22} className={`${s.color} mx-auto mb-3`} />
+                <p className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{s.value}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{s.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section id="funcionalidades" className="py-20 sm:py-28 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-50 dark:from-gray-800 to-white dark:to-gray-900" />
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary-100/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-100/20 rounded-full blur-3xl" />
+      {/* ── How it works ── */}
+      <section className="py-24 sm:py-32">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Como funciona</span>
+            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Simples como fazer um bolo
+            </h2>
+            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-md mx-auto">
+              Em tres passos voce descobre o preco certo dos seus produtos.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-3 gap-8">
+            {STEPS.map((step, i) => (
+              <div key={i} className="relative">
+                {/* Connector line */}
+                {i < STEPS.length - 1 && (
+                  <div className="hidden sm:block absolute top-12 left-[60%] w-[80%] border-t-2 border-dashed border-gray-200 dark:border-gray-700" />
+                )}
+                <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700/50 shadow-sm hover:shadow-lg transition-all text-center group hover:-translate-y-1">
+                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-pink-600 text-white mb-5 shadow-lg shadow-primary-500/20 group-hover:scale-110 transition-transform">
+                    <step.icon size={24} />
+                  </div>
+                  <span className="block text-xs font-bold text-primary-500 mb-2">{step.num}</span>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-lg">{step.title}</h3>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Features ── */}
+      <section id="funcionalidades" className="py-24 sm:py-32 relative">
+        <div className="absolute inset-0 bg-gradient-to-b from-gray-50/80 dark:from-gray-900/50 to-white dark:to-gray-950" />
+        <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-primary-100/30 dark:bg-primary-500/5 rounded-full blur-[100px]" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-widest">Funcionalidades</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Funcionalidades</span>
+            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Tudo para sua confeitaria crescer
             </h2>
             <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
               Ferramentas profissionais pensadas para quem produz doces artesanais.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {FEATURES.map((f, i) => {
               const Icon = f.icon;
               return (
-                <div
-                  key={i}
-                  className="bg-white dark:bg-gray-800 rounded-2xl p-7 border border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-xl hover:shadow-gray-200/50 transition-all duration-300 group hover:-translate-y-1"
-                >
-                  <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${f.color} flex items-center justify-center mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon size={22} className="text-white" />
+                <div key={i} className="bg-white dark:bg-gray-800/80 rounded-2xl p-7 border border-gray-100 dark:border-gray-700/50 hover:shadow-xl hover:shadow-gray-200/40 dark:hover:shadow-none transition-all duration-300 group hover:-translate-y-1 hover:border-gray-200 dark:hover:border-gray-600">
+                  <div className={`w-12 h-12 rounded-2xl ${f.bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
+                    <Icon size={22} className={`bg-gradient-to-br ${f.color} bg-clip-text`} style={{ color: i === 0 ? '#ec4899' : i === 1 ? '#8b5cf6' : i === 2 ? '#f59e0b' : i === 3 ? '#10b981' : i === 4 ? '#3b82f6' : '#e91e8c' }} />
                   </div>
                   <h3 className="font-bold text-gray-900 dark:text-white text-base">{f.title}</h3>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
@@ -253,98 +240,96 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Social proof */}
-      <section className="py-20 sm:py-28 bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wMyI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-3xl" />
+      {/* ── Testimonials ── */}
+      <section className="py-24 sm:py-32 bg-gray-950 relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(233,30,140,0.08),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(139,92,246,0.08),transparent_60%)]" />
 
-        <div className="relative max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center gap-1.5 mb-8">
-            {[...Array(5)].map((_, i) => (
-              <Star key={i} size={20} className="text-yellow-400 fill-yellow-400" />
-            ))}
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <span className="text-xs font-bold text-primary-400 uppercase tracking-[0.2em]">Depoimentos</span>
+            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
+              Quem usa, recomenda
+            </h2>
           </div>
-          <blockquote className="text-xl sm:text-3xl lg:text-4xl font-bold text-white leading-snug">
-            "Eu não sabia que estava vendendo meus brigadeiros com prejuízo.
-            <span className="text-primary-400"> O DocePreço mudou meu negócio.</span>"
-          </blockquote>
-          <div className="mt-8 flex items-center justify-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 flex items-center justify-center text-white font-bold text-sm">
-              A
-            </div>
-            <div className="text-left">
-              <p className="text-white font-semibold text-sm">Ana Paula</p>
-              <p className="text-gray-400 text-xs">Confeiteira em São Paulo</p>
-            </div>
+
+          <div className="grid sm:grid-cols-3 gap-6">
+            {TESTIMONIALS.map((t, i) => (
+              <div key={i} className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-2xl p-7 hover:border-gray-700 transition-colors">
+                <div className="flex items-center gap-0.5 mb-4">
+                  {[...Array(5)].map((_, j) => <Star key={j} size={14} className="text-yellow-400 fill-yellow-400" />)}
+                </div>
+                <p className="text-gray-300 text-sm leading-relaxed mb-6">"{t.text}"</p>
+                <div className="flex items-center gap-3 pt-4 border-t border-gray-800">
+                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-white text-xs font-bold`}>
+                    {t.initials}
+                  </div>
+                  <div>
+                    <p className="text-white font-semibold text-sm">{t.name}</p>
+                    <p className="text-gray-500 text-xs">{t.role}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* Plans */}
-      <section id="planos" className="py-20 sm:py-28 relative">
-        <div className="absolute top-20 left-0 w-72 h-72 bg-primary-100/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-0 w-72 h-72 bg-pink-100/20 rounded-full blur-3xl" />
+      {/* ── Plans ── */}
+      <section id="planos" className="py-24 sm:py-32 relative">
+        <div className="absolute top-20 left-0 w-[300px] h-[300px] bg-primary-100/20 dark:bg-primary-500/5 rounded-full blur-[100px]" />
 
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+        <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-widest">Planos</span>
-            <h2 className="mt-3 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Planos</span>
+            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
               Simples, sem surpresa
             </h2>
             <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
-              Comece de graça e faça upgrade quando quiser, direto pelo app.
+              Comece de graca e faca upgrade quando quiser, direto pelo app.
             </p>
           </div>
-          <div className="grid sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
+
+          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
             {PLANS.map((plan, i) => (
-              <div
-                key={i}
-                className={`rounded-3xl p-8 sm:p-10 transition-all ${
-                  plan.highlighted
-                    ? 'bg-gradient-to-br from-gray-900 to-gray-800 text-white shadow-2xl shadow-gray-900/30 relative ring-4 ring-primary-500/20'
-                    : 'bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-700 hover:border-gray-200 dark:hover:border-gray-600 hover:shadow-lg'
-                }`}
-              >
+              <div key={i} className={`rounded-2xl p-8 sm:p-10 transition-all relative ${
+                plan.highlighted
+                  ? 'bg-gray-950 dark:bg-white/5 text-white ring-1 ring-gray-800 dark:ring-gray-700 shadow-2xl shadow-gray-900/30'
+                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600'
+              }`}>
                 {plan.highlighted && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-pink-500 text-white text-xs font-bold px-5 py-1.5 rounded-full shadow-lg shadow-primary-500/30">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-pink-500 text-white text-[11px] font-bold px-5 py-1 rounded-full shadow-lg shadow-primary-500/25">
                     Mais popular
                   </div>
                 )}
-                <div className="flex items-center gap-3 mb-4">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                    plan.highlighted
-                      ? 'bg-primary-500/20'
-                      : 'bg-primary-50'
-                  }`}>
-                    {plan.highlighted
-                      ? <Sparkles size={20} className="text-primary-400" />
-                      : <Shield size={20} className="text-primary-500" />}
+                <div className="flex items-center gap-3 mb-2">
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${plan.highlighted ? 'bg-white/10' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
+                    {plan.highlighted ? <Sparkles size={18} className="text-primary-400" /> : <Shield size={18} className="text-primary-500" />}
                   </div>
                   <h3 className={`font-bold text-lg ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.name}</h3>
                 </div>
-                <p className={`text-sm ${plan.highlighted ? 'text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>{plan.desc}</p>
-                <div className="mt-6 flex items-baseline gap-1">
+                <p className={`text-sm mb-6 ${plan.highlighted ? 'text-gray-400' : 'text-gray-500'}`}>{plan.desc}</p>
+
+                <div className="flex items-baseline gap-1 mb-8">
                   <span className={`text-5xl font-extrabold tracking-tight ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.price}</span>
-                  <span className={`text-sm ${plan.highlighted ? 'text-gray-400' : 'text-gray-400'}`}>{plan.period}</span>
+                  <span className="text-sm text-gray-400">{plan.period}</span>
                 </div>
-                <div className={`my-8 h-px ${plan.highlighted ? 'bg-gray-700' : 'bg-gray-100 dark:bg-gray-700'}`} />
-                <ul className="space-y-4">
+
+                <div className={`h-px mb-8 ${plan.highlighted ? 'bg-gray-800' : 'bg-gray-100 dark:bg-gray-700'}`} />
+
+                <ul className="space-y-3.5">
                   {plan.features.map((feat, j) => (
                     <li key={j} className={`flex items-center gap-3 text-sm ${plan.highlighted ? 'text-gray-300' : 'text-gray-600 dark:text-gray-300'}`}>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${
-                        plan.highlighted ? 'bg-primary-500/20' : 'bg-primary-50'
-                      }`}>
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${plan.highlighted ? 'bg-primary-500/20' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
                         <Check size={12} className={plan.highlighted ? 'text-primary-400' : 'text-primary-500'} />
                       </div>
                       {feat}
                     </li>
                   ))}
                 </ul>
+
                 <p className={`mt-8 text-xs text-center ${plan.highlighted ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {plan.highlighted
-                    ? 'Disponível para assinatura dentro do app'
-                    : 'Incluso ao baixar o app'}
+                  {plan.highlighted ? 'Disponivel para assinatura dentro do app' : 'Incluso ao baixar o app'}
                 </p>
               </div>
             ))}
@@ -352,40 +337,36 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* CTA final */}
-      <section className="py-20 sm:py-28 relative overflow-hidden">
+      {/* ── CTA Final ── */}
+      <section className="py-24 sm:py-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-pink-500 to-rose-600" />
-        <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PGNpcmNsZSBjeD0iMzAiIGN5PSIzMCIgcj0iMiIvPjwvZz48L2c+PC9zdmc+')] opacity-50" />
-        <div className="absolute top-0 left-1/3 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.1),transparent_50%)]" />
 
         <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm mb-8">
-            <TrendingUp size={28} className="text-white" />
+            <Cake size={28} className="text-white" />
           </div>
-          <h2 className="text-2xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
             Pronta para lucrar<br />com seus doces?
           </h2>
           <p className="mt-6 text-lg text-white/80 max-w-lg mx-auto">
-            Baixe o DocePreço agora e descubra em minutos quanto realmente cobrar.
+            Baixe o DocePreco agora e descubra em minutos quanto realmente cobrar.
           </p>
           <div className="mt-10">
-            <a
-              href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5"
-            >
-              <Smartphone size={20} />
+            <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5">
+              <Smartphone size={18} />
               Baixar na App Store
+              <ArrowRight size={16} />
             </a>
           </div>
-          <p className="mt-4 text-sm text-white/60">Grátis para começar. Sem cartão de crédito.</p>
+          <p className="mt-5 text-sm text-white/60">Gratis para comecar. Sem cartao de credito.</p>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900">
+      {/* ── Footer ── */}
+      <footer className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
@@ -393,17 +374,12 @@ export function LandingPage() {
                 <Cake size={14} className="text-white" />
               </div>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                &copy; {new Date().getFullYear()} DocePreço. Todos os direitos reservados.
+                &copy; {new Date().getFullYear()} DocePreco. Todos os direitos reservados.
               </span>
             </div>
-            <div className="flex items-center gap-6">
-              <Link
-                to="/admin"
-                className="text-sm text-gray-400 hover:text-primary-500 transition-colors"
-              >
-                Painel Admin
-              </Link>
-            </div>
+            <Link to="/admin" className="text-sm text-gray-400 hover:text-primary-500 transition-colors">
+              Painel Admin
+            </Link>
           </div>
         </div>
       </footer>
