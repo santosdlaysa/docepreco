@@ -1,7 +1,9 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import { authApi, AuthUser, PremiumPlatform } from '../../data/api/authApi';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { isDemoMode } from '../../data/demo/demoMode';
+import { getActiveEntitlements, getActiveEntitlementExpiration, isRevenueCatConfigured } from '../../data/premium/revenueCat';
 
 interface PremiumContextData {
   isPremium: boolean;
@@ -85,6 +87,34 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setLoading(false);
   }, []);
 
+  /**
+   * Checks if RevenueCat has active entitlements but the backend shows expired.
+   * This handles trial-to-paid conversions where the webhook may not have arrived
+   * or the cron already expired the user before the RENEWAL webhook came in.
+   */
+  const syncIfNeeded = useCallback(async (backendUser: AuthUser) => {
+    if (isDemoMode() || !isRevenueCatConfigured()) return;
+    // Backend already shows active premium — nothing to sync
+    if (isActive(backendUser)) return;
+
+    try {
+      const entitlements = await getActiveEntitlements();
+      if (entitlements.length === 0) return;
+
+      // RevenueCat says active but backend says expired — sync it
+      const expiresAt = await getActiveEntitlementExpiration();
+      const platform = Platform.OS === 'android' ? 'android' : 'ios';
+      const updated = await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android');
+      if (updated) {
+        setUser(updated);
+        void tokenStorage.saveUser(updated);
+        console.log('[Premium] Auto-synced: RevenueCat active, backend was expired');
+      }
+    } catch (error) {
+      console.warn('[Premium] Auto-sync failed:', error);
+    }
+  }, []);
+
   useEffect(() => {
     // Load cached data immediately, then sync with backend
     loadFromStorage().then(() => {
@@ -92,10 +122,12 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
         authApi.me().then((fresh) => {
           setUser(fresh);
           void tokenStorage.saveUser(fresh);
+          // After fetching backend state, check if RevenueCat disagrees
+          void syncIfNeeded(fresh);
         }).catch(() => {});
       }
     });
-  }, [loadFromStorage]);
+  }, [loadFromStorage, syncIfNeeded]);
 
   const value: PremiumContextData = {
     isPremium: isActive(user),

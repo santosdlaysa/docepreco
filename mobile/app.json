@@ -3,7 +3,7 @@
     "name": "DocePreço",
     "slug": "sweet-pricing",
     "owner": "doce-preco",
-    "version": "2.8.0",
+    "version": "2.9.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -21,7 +21,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "32"
+      "buildNumber": "34"
     },
     "android": {
       "adaptiveIcon": {
@@ -33,7 +33,7 @@
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.laysadiniz.sweetpricing",
-      "versionCode": 40,
+      "versionCode": 41,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
