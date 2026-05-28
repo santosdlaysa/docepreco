@@ -751,6 +751,16 @@ export async function runMigrations() {
       }
     }
 
+    // RevenueCat alias mapping: maps RevenueCat IDs (including $RCAnonymousID) to our user UUIDs
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS revenuecat_aliases (
+        rc_id VARCHAR(255) PRIMARY KEY,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_revenuecat_aliases_user ON revenuecat_aliases (user_id)`);
+
     await client.query('COMMIT');
     console.log('Migrations applied successfully');
   } catch (error) {

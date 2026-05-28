@@ -28,6 +28,7 @@ interface RevenueCatEvent {
   type: RevenueCatEventType;
   app_user_id: string;
   original_app_user_id?: string;
+  aliases?: string[];
   product_id?: string;
   store?: 'APP_STORE' | 'PLAY_STORE' | 'STRIPE' | 'PROMOTIONAL';
   expiration_at_ms?: number;
@@ -81,19 +82,54 @@ export class PremiumController {
     try {
       // RevenueCat may send an anonymous ID ($RCAnonymousID:...) as app_user_id
       // when the purchase happened before identifyRevenueCatUser() was called.
-      // Try app_user_id first, then fall back to original_app_user_id.
+      // Strategy: try direct lookup, then aliases table, then original_app_user_id.
       let userId = event.app_user_id;
       let user = await userRepo.findById(userId);
+
+      // Try original_app_user_id
       if (!user && event.original_app_user_id && event.original_app_user_id !== userId) {
         console.log(`[Premium] Trying original_app_user_id: ${event.original_app_user_id}`);
         user = await userRepo.findById(event.original_app_user_id);
         if (user) userId = event.original_app_user_id;
       }
+
+      // Try aliases from event payload
+      if (!user && event.aliases?.length) {
+        for (const alias of event.aliases) {
+          if (alias === userId || alias === event.original_app_user_id) continue;
+          user = await userRepo.findById(alias);
+          if (user) { userId = alias; break; }
+        }
+      }
+
+      // Try our revenuecat_aliases table (maps RC anonymous IDs to our user UUIDs)
+      if (!user) {
+        const rcIds = [event.app_user_id, event.original_app_user_id, ...(event.aliases ?? [])].filter(Boolean) as string[];
+        const aliasResult = await pool.query(
+          `SELECT user_id FROM revenuecat_aliases WHERE rc_id = ANY($1) LIMIT 1`,
+          [rcIds]
+        );
+        if (aliasResult.rows.length > 0) {
+          userId = aliasResult.rows[0].user_id;
+          user = await userRepo.findById(userId);
+          if (user) console.log(`[Premium] Resolved via revenuecat_aliases: ${event.app_user_id} → ${userId}`);
+        }
+      }
+
       if (!user) {
         console.warn(`[Premium] User ${userId} not found — ignoring`);
         // Return 200 so RevenueCat doesn't keep retrying
         res.json({ success: true, message: 'User not found, ignored' });
         return;
+      }
+
+      // Save all known RC IDs as aliases for future lookups
+      const allRcIds = new Set([event.app_user_id, event.original_app_user_id, ...(event.aliases ?? [])].filter(Boolean) as string[]);
+      for (const rcId of allRcIds) {
+        await pool.query(
+          `INSERT INTO revenuecat_aliases (rc_id, user_id) VALUES ($1, $2) ON CONFLICT (rc_id) DO UPDATE SET user_id = $2`,
+          [rcId, userId]
+        );
       }
 
       const platform = storeToPlatform(event.store);
