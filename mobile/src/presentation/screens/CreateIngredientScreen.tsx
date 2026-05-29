@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -9,8 +10,8 @@ import {
   Platform,
   ActivityIndicator,
   FlatList,
-  Modal,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -20,31 +21,49 @@ import { demoIngredientApi } from '../../data/demo/demoApi';
 import { Unit } from '../../domain/entities/Ingredient';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Card } from '../components/Card';
-import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
-import { usePaywall } from '../premium/usePaywall';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
 
-const PURCHASE_UNIT_SUGGESTIONS = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote', 'Bisnaga', 'Tablete'];
+const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
+const UNIT_OPTIONS: { value: Unit; label: string }[] = [
+  { value: 'unit', label: 'un' },
+  { value: 'g', label: 'g' },
+  { value: 'kg', label: 'kg' },
+  { value: 'ml', label: 'ml' },
+  { value: 'l', label: 'l' },
+];
 
 type RouteProps = RouteProp<RootStackParamList, 'EditIngredient'>;
 
 const fmtBRL = (v: number): string => {
-  if (!isFinite(v)) return 'R$ 0,00';
+  if (!isFinite(v) || isNaN(v)) return 'R$ 0,00';
+  if (v < 0.01 && v > 0) return `R$ ${v.toFixed(3).replace('.', ',')}`;
   const fixed = v.toFixed(2);
   const [int, dec] = fixed.split('.');
-  const intFormatted = int.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  return `R$ ${intFormatted},${dec}`;
+  return `R$ ${int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${dec}`;
+};
+
+/* ─── Design tokens ─── */
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 2 } as const,
+  shadowOpacity: 0.07,
+  shadowRadius: 8,
+  elevation: 3,
 };
 
 export const CreateIngredientScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<RouteProps>();
+  const { t } = useTranslation();
   const ingredientId = (route.params as any)?.ingredientId as string | undefined;
   const isEditing = !!ingredientId;
 
@@ -60,544 +79,311 @@ export const CreateIngredientScreen: React.FC = () => {
   const [originalPrice, setOriginalPrice] = useState<number | null>(null);
   const [originalQty, setOriginalQty] = useState<number | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [allNames, setAllNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
-  const { openPaywall } = usePaywall();
-  const { t } = useTranslation();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
-  const UNITS: { value: Unit; label: string }[] = [
-    { value: 'unit', label: t('createIngredient.units.unit') },
-    { value: 'g', label: t('createIngredient.units.g') },
-    { value: 'kg', label: t('createIngredient.units.kg') },
-    { value: 'ml', label: t('createIngredient.units.ml') },
-    { value: 'l', label: t('createIngredient.units.l') },
-  ];
-
   useEffect(() => {
-    if (!isEditing) {
-      api.getAll()
-        .then(list => setAllNames(list.map(i => i.name)))
-        .catch(() => {});
-    }
+    if (!isEditing) api.getAll().then(list => setAllNames(list.map(i => i.name))).catch(() => {});
   }, [isEditing]);
-
-  const handleNameChange = (text: string) => {
-    setName(text);
-    if (text.trim().length >= 2) {
-      const lower = text.toLowerCase();
-      setSuggestions(allNames.filter(n => n.toLowerCase().includes(lower)));
-    } else {
-      setSuggestions([]);
-    }
-  };
-
-  const pickSuggestion = (suggestion: string) => {
-    setName(suggestion);
-    setSuggestions([]);
-  };
-
-  const handlePriceChange = (text: string) => {
-    // Aceita dígitos, ponto e vírgula
-    const cleaned = text.replace(/[^0-9.,]/g, '');
-    // Troca vírgula por ponto para normalizar
-    const normalized = cleaned.replace(',', '.');
-    // Impede múltiplos pontos
-    const parts = normalized.split('.');
-    const value = parts.length > 2
-      ? parts[0] + '.' + parts.slice(1).join('')
-      : normalized;
-    // Limita a 2 casas decimais
-    const dotIdx = value.indexOf('.');
-    const limited = dotIdx >= 0 && value.length - dotIdx > 3
-      ? value.slice(0, dotIdx + 3)
-      : value;
-    setPurchasePrice(limited);
-  };
 
   useEffect(() => {
     if (!ingredientId) return;
     api.getById(ingredientId)
-      .then(ingredient => {
-        setName(ingredient.name);
-        setPurchaseQuantity(String(ingredient.purchaseQuantity));
-        setPurchasePrice(Number(ingredient.purchasePrice).toFixed(2));
-        setUnit(ingredient.unit);
-        setOriginalPrice(ingredient.purchasePrice);
-        setOriginalQty(ingredient.purchaseQuantity);
-        if (ingredient.purchaseUnitLabel) {
+      .then(ing => {
+        setName(ing.name);
+        setPurchaseQuantity(String(ing.purchaseQuantity));
+        setPurchasePrice(Number(ing.purchasePrice).toFixed(2));
+        setUnit(ing.unit);
+        setOriginalPrice(ing.purchasePrice);
+        setOriginalQty(ing.purchaseQuantity);
+        if (ing.purchaseUnitLabel) {
           setUseCustomUnit(true);
-          setPurchaseUnitLabel(ingredient.purchaseUnitLabel);
-          setPurchaseUnitWeight(String(ingredient.purchaseUnitWeight ?? ''));
+          setPurchaseUnitLabel(ing.purchaseUnitLabel);
+          setPurchaseUnitWeight(String(ing.purchaseUnitWeight ?? ''));
         }
       })
       .catch(() => showToast(t('createIngredient.loadError'), 'error'))
       .finally(() => setLoadingData(false));
   }, [ingredientId]);
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!name.trim()) newErrors.name = t('createIngredient.nameRequired');
-    if (!purchaseQuantity || parseFloat(purchaseQuantity) <= 0)
-      newErrors.purchaseQuantity = t('createIngredient.quantityRequired');
-    if (!purchasePrice || parseFloat(purchasePrice.replace(',', '.')) <= 0)
-      newErrors.purchasePrice = t('createIngredient.priceRequired');
-    if (!unit) newErrors.unit = t('createIngredient.unitRequired');
-    if (useCustomUnit) {
-      if (!purchaseUnitLabel.trim()) newErrors.purchaseUnitLabel = t('createIngredient.packageLabelRequired');
-      if (!purchaseUnitWeight || parseFloat(purchaseUnitWeight) <= 0)
-        newErrors.purchaseUnitWeight = t('createIngredient.weightRequired');
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const handleNameChange = (text: string) => {
+    setName(text);
+    setSuggestions(text.trim().length >= 2 ? allNames.filter(n => n.toLowerCase().includes(text.toLowerCase())) : []);
   };
 
-  const handleShowConfirmation = () => {
-    if (!validate()) return;
-    setShowConfirmModal(true);
+  const handlePriceChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    const parts = cleaned.split('.');
+    const value = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+    const dotIdx = value.indexOf('.');
+    setPurchasePrice(dotIdx >= 0 && value.length - dotIdx > 3 ? value.slice(0, dotIdx + 3) : value);
+  };
+
+  const validate = () => {
+    const e: Record<string, string> = {};
+    if (!name.trim()) e.name = 'Obrigatório';
+    if (!purchaseQuantity || parseFloat(purchaseQuantity) <= 0) e.qty = 'Obrigatório';
+    if (!purchasePrice || parseFloat(purchasePrice.replace(',', '.')) <= 0) e.price = 'Obrigatório';
+    if (!unit) e.unit = 'Escolha uma unidade';
+    if (useCustomUnit) {
+      if (!purchaseUnitLabel.trim()) e.pkgLabel = 'Obrigatório';
+      if (!purchaseUnitWeight || parseFloat(purchaseUnitWeight) <= 0) e.pkgWeight = 'Obrigatório';
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSave = async () => {
-    setShowConfirmModal(false);
+    if (!validate()) return;
     setLoading(true);
     try {
+      const payload = {
+        name: name.trim(),
+        purchaseQuantity: parseFloat(purchaseQuantity),
+        purchasePrice: parseFloat(purchasePrice.replace(',', '.')),
+        unit,
+        purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
+        purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight) : undefined,
+      };
       if (isEditing) {
-        const newPrice = parseFloat(purchasePrice.replace(',', '.'));
-        const newQty = parseFloat(purchaseQuantity);
-        await api.update(ingredientId!, {
-          name: name.trim(),
-          purchaseQuantity: newQty,
-          purchasePrice: newPrice,
-          unit,
-          purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
-          purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight) : undefined,
-        });
-        // Save price history if price or quantity changed
-        if (originalPrice !== null && (newPrice !== originalPrice || newQty !== originalQty)) {
-          await priceHistoryApi.add(ingredientId!, {
-            price: newPrice,
-            purchaseQuantity: newQty,
-            unit,
-          }).catch(() => {});
+        await api.update(ingredientId!, payload);
+        if (originalPrice !== null && (payload.purchasePrice !== originalPrice || payload.purchaseQuantity !== originalQty)) {
+          await priceHistoryApi.add(ingredientId!, { price: payload.purchasePrice, purchaseQuantity: payload.purchaseQuantity, unit }).catch(() => {});
         }
         showToast(t('createIngredient.updated'), 'success');
-        navigation.goBack();
       } else {
-        await api.create({
-          name: name.trim(),
-          purchaseQuantity: parseFloat(purchaseQuantity),
-          purchasePrice: parseFloat(purchasePrice.replace(',', '.')),
-          unit,
-          purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
-          purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight) : undefined,
-        });
+        await api.create(payload);
         showToast(t('createIngredient.created'), 'success');
-        navigation.goBack();
       }
+      navigation.goBack();
     } catch (error) {
-      const err = error as Error & { code?: string; current?: number };
-
-      const msg = err.message || String(error);
-      showToast(msg, 'error');
+      showToast((error as Error).message || String(error), 'error');
     } finally {
       setLoading(false);
     }
   };
 
+  // Preview
+  const qty = parseFloat(purchaseQuantity || '0');
+  const price = parseFloat((purchasePrice || '0').replace(',', '.'));
+  const weight = parseFloat(purchaseUnitWeight || '0');
+  const effectiveQty = useCustomUnit && weight > 0 ? qty * weight : qty;
+  const pricePerUnit = effectiveQty > 0 ? price / effectiveQty : 0;
+  const pricePerPkg = qty > 0 ? price / qty : 0;
+  const showPreview = qty > 0 && price > 0;
+
+  /* ─── Loading state ─── */
   if (loadingData) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header title={t('createIngredient.titleEdit')} showBack onBack={() => navigation.goBack()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
-        </View>
+      <SafeAreaView style={st.safe}>
+        <View style={st.sh}><TouchableOpacity onPress={() => navigation.goBack()} style={st.bk}><Ionicons name="arrow-back" size={20} color={INK} /></TouchableOpacity>
+          <View style={st.shT}><Text style={st.shH1}>Editar ingrediente</Text></View><View style={{ width: 60 }} /></View>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}><ActivityIndicator size="large" color={PINK} /></View>
       </SafeAreaView>
     );
   }
 
+  /* ─── Main render ─── */
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header
-        title={isEditing ? t('createIngredient.titleEdit') : t('createIngredient.titleNew')}
-        showBack
-        onBack={() => navigation.goBack()}
-      />
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={{ flex: 1 }}
-      >
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-          <View style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-            <Text style={styles.infoText}>
-              {t('createIngredient.infoText')}
-            </Text>
-          </View>
-          <Card style={styles.card}>
-            {/* 1. Nome do ingrediente */}
-            <View style={styles.nameWrapper}>
-              <Input
-                label={t('createIngredient.nameLabel')}
-                placeholder={t('createIngredient.namePlaceholder')}
-                value={name}
-                onChangeText={handleNameChange}
-                error={errors.name}
-                autoComplete="off"
-              />
-              {suggestions.length > 0 && (
-                <View style={styles.suggestionsBox}>
-                  <FlatList
-                    data={suggestions}
-                    keyExtractor={item => item}
-                    keyboardShouldPersistTaps="handled"
-                    scrollEnabled={suggestions.length > 4}
-                    style={{ maxHeight: 160 }}
-                    renderItem={({ item }) => (
-                      <TouchableOpacity
-                        style={styles.suggestionItem}
-                        onPress={() => pickSuggestion(item)}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.suggestionText}>{item}</Text>
-                      </TouchableOpacity>
-                    )}
-                  />
-                </View>
-              )}
+    <SafeAreaView style={st.safe}>
+      {/* ── Header ── */}
+      <View style={st.sh}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={st.bk}>
+          <Ionicons name="arrow-back" size={20} color={INK} />
+        </TouchableOpacity>
+        <View style={st.shT}><Text style={st.shH1}>{isEditing ? 'Editar ingrediente' : 'Novo ingrediente'}</Text></View>
+        <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.8}
+          style={[st.actPill, { backgroundColor: PINK, shadowColor: PINK, shadowOpacity: 0.3 }]}>
+          {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13.5 }}>Salvar</Text>}
+        </TouchableOpacity>
+      </View>
+
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView style={st.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 14 }}>
+
+          {/* ── Nome ── */}
+          <View style={[st.field, { zIndex: 10 }]}>
+            <Text style={st.label}>Nome do ingrediente</Text>
+            <View style={[st.input, errors.name ? st.inputErr : null]}>
+              <Ionicons name="leaf-outline" size={18} color={INK3} />
+              <TextInput style={st.inputText} value={name} onChangeText={handleNameChange}
+                placeholder="Ex: Leite condensado" placeholderTextColor={INK3} />
             </View>
-
-            {/* 2. Tipo de embalagem */}
-            <Text style={styles.unitLabel}>{t('createIngredient.packageType')}</Text>
-            <View style={styles.unitGrid}>
-              {PURCHASE_UNIT_SUGGESTIONS.map(label => (
-                <TouchableOpacity
-                  key={label}
-                  onPress={() => {
-                    if (purchaseUnitLabel === label) {
-                      setPurchaseUnitLabel('');
-                      setPurchaseUnitWeight('');
-                      setUseCustomUnit(false);
-                    } else {
-                      setPurchaseUnitLabel(label);
-                      setUseCustomUnit(true);
-                    }
-                  }}
-                  style={[styles.unitButton, purchaseUnitLabel === label && styles.unitButtonSelected]}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.unitButtonText, purchaseUnitLabel === label && styles.unitButtonTextSelected]}>
-                    {label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <Input
-              label=""
-              placeholder={t('createIngredient.packagePlaceholder')}
-              value={purchaseUnitLabel}
-              onChangeText={(text) => {
-                setPurchaseUnitLabel(text);
-                setUseCustomUnit(!!text);
-              }}
-              error={errors.purchaseUnitLabel}
-              containerStyle={{ marginTop: 8 }}
-            />
-
-            {/* 3. Peso por embalagem (aparece quando tipo selecionado) */}
-            {useCustomUnit && (
-              <Input
-                label={t('createIngredient.weightPerPackage', { label: purchaseUnitLabel || 'embalagem', unit: unit || 'g' })}
-                placeholder={t('createIngredient.weightPlaceholder', { unit: unit || 'g' })}
-                value={purchaseUnitWeight}
-                onChangeText={setPurchaseUnitWeight}
-                keyboardType="decimal-pad"
-                error={errors.purchaseUnitWeight}
-              />
-            )}
-
-            {/* 4. Quantidade comprada */}
-            <Input
-              label={useCustomUnit && purchaseUnitLabel ? t('createIngredient.quantityLabelCustom', { label: purchaseUnitLabel.toLowerCase() }) : t('createIngredient.quantityLabel')}
-              placeholder={useCustomUnit ? 'Ex: 1' : 'Ex: 1000'}
-              value={purchaseQuantity}
-              onChangeText={setPurchaseQuantity}
-              keyboardType="decimal-pad"
-              error={errors.purchaseQuantity}
-            />
-            <Text style={styles.fieldHint}>
-              {t('createIngredient.quantityHint')}
-            </Text>
-
-            {/* 5. Preço pago */}
-            <Input
-              label={t('createIngredient.priceLabel')}
-              placeholder="Ex: 4.80"
-              value={purchasePrice}
-              onChangeText={handlePriceChange}
-              keyboardType="decimal-pad"
-              error={errors.purchasePrice}
-            />
-            <Text style={styles.fieldHint}>
-              {t('createIngredient.priceHint')}
-            </Text>
-
-            {/* 6. Unidade de medida */}
-            <Text style={styles.unitLabel}>{t('createIngredient.unitLabel')}</Text>
-            <View style={styles.unitGrid}>
-              {UNITS.map(u => (
-                <TouchableOpacity
-                  key={u.value}
-                  onPress={() => setUnit(u.value)}
-                  style={[styles.unitButton, unit === u.value && styles.unitButtonSelected]}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.unitButtonText, unit === u.value && styles.unitButtonTextSelected]}>
-                    {u.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            {errors.unit && <Text style={{ color: colors.error, fontSize: 12, marginTop: 4 }}>{errors.unit}</Text>}
-          </Card>
-
-          {purchaseQuantity && purchasePrice && parseFloat(purchaseQuantity) > 0 && (
-            <Card style={styles.previewCard}>
-              <View>
-                {useCustomUnit && purchaseUnitWeight && parseFloat(purchaseUnitWeight) > 0 ? (
-                  <>
-                    <View style={styles.previewRow}>
-                      <Text style={styles.previewTitle}>{t('createIngredient.pricePerPackage', { label: purchaseUnitLabel || 'embalagem' })}</Text>
-                      <Text style={styles.previewValue}>
-                        {fmtBRL(parseFloat(purchasePrice.replace(',', '.')) / parseFloat(purchaseQuantity))}
-                      </Text>
-                    </View>
-                    <View style={styles.previewRow}>
-                      <Text style={styles.previewTitle}>{t('createIngredient.pricePerUnit', { unit })}</Text>
-                      <Text style={styles.previewValue}>
-                        {fmtBRL(parseFloat(purchasePrice.replace(',', '.')) / (parseFloat(purchaseQuantity) * parseFloat(purchaseUnitWeight)))}
-                      </Text>
-                    </View>
-                    <View style={styles.previewRow}>
-                      <Text style={styles.previewTitle}>{t('createIngredient.totalLabel')}</Text>
-                      <Text style={[styles.previewTitle, { fontWeight: '600' as const }]}>
-                        {parseFloat(purchaseQuantity)} {purchaseUnitLabel || 'embalagem'}(s) = {(parseFloat(purchaseQuantity) * parseFloat(purchaseUnitWeight)).toLocaleString('pt-BR')} {unit}
-                      </Text>
-                    </View>
-                  </>
-                ) : (
-                  <View style={styles.previewRow}>
-                    <Text style={styles.previewTitle}>{t('createIngredient.pricePerUnit', { unit })}</Text>
-                    <Text style={styles.previewValue}>
-                      {fmtBRL(parseFloat(purchasePrice.replace(',', '.')) / parseFloat(purchaseQuantity))}
-                    </Text>
-                  </View>
-                )}
+            {errors.name && <Text style={st.err}>{errors.name}</Text>}
+            {suggestions.length > 0 && (
+              <View style={st.sugBox}>
+                {suggestions.slice(0, 5).map(s => (
+                  <TouchableOpacity key={s} style={st.sugItem} onPress={() => { setName(s); setSuggestions([]); }}>
+                    <Text style={st.sugText}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            </Card>
+            )}
+          </View>
+
+          {/* ── Tipo de embalagem ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Tipo de embalagem</Text>
+            <View style={st.ugrid}>
+              {PKG_TYPES.map(pkg => {
+                const on = purchaseUnitLabel === pkg;
+                return (
+                  <TouchableOpacity key={pkg} activeOpacity={0.8}
+                    style={[st.uchip, on && st.uchipOn]}
+                    onPress={() => {
+                      if (on) { setPurchaseUnitLabel(''); setPurchaseUnitWeight(''); setUseCustomUnit(false); }
+                      else { setPurchaseUnitLabel(pkg); setUseCustomUnit(true); }
+                    }}>
+                    <Text style={[st.uchipText, on && st.uchipTextOn]}>{pkg}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* ── Peso por embalagem ── */}
+          {useCustomUnit && (
+            <View style={st.field}>
+              <Text style={st.label}>Peso por embalagem</Text>
+              <View style={[st.input, errors.pkgWeight ? st.inputErr : null]}>
+                <TextInput style={st.inputText} value={purchaseUnitWeight} onChangeText={setPurchaseUnitWeight}
+                  placeholder="330" placeholderTextColor={INK3} keyboardType="decimal-pad" />
+                <Text style={st.suffix}>{unit || 'g'} por {purchaseUnitLabel}</Text>
+              </View>
+              <Text style={st.hint}>Ex: uma lata de leite condensado tem 330g</Text>
+              {errors.pkgWeight && <Text style={st.err}>{errors.pkgWeight}</Text>}
+            </View>
           )}
 
-          <Button
-            title={isEditing ? t('createIngredient.updateButton') : t('createIngredient.saveButton')}
-            onPress={handleShowConfirmation}
-            loading={loading}
-            style={styles.saveButton}
-          />
+          {/* ── Quantidade + Preço (dois campos) ── */}
+          <View style={st.two}>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Quantidade</Text>
+              <View style={[st.input, errors.qty ? st.inputErr : null]}>
+                <TextInput style={st.inputText} value={purchaseQuantity} onChangeText={setPurchaseQuantity}
+                  placeholder={useCustomUnit ? '2' : '1000'} placeholderTextColor={INK3} keyboardType="decimal-pad" />
+                {useCustomUnit && purchaseUnitLabel ? <Text style={st.suffix}>{purchaseUnitLabel}s</Text> : null}
+              </View>
+              {errors.qty && <Text style={st.err}>{errors.qty}</Text>}
+            </View>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Preço pago</Text>
+              <View style={[st.input, errors.price ? st.inputErr : null]}>
+                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                <TextInput style={st.inputText} value={purchasePrice} onChangeText={handlePriceChange}
+                  placeholder="14,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
+              </View>
+              {errors.price && <Text style={st.err}>{errors.price}</Text>}
+            </View>
+          </View>
+
+          {/* ── Unidade de medida ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Unidade de medida</Text>
+            <View style={st.ugrid}>
+              {UNIT_OPTIONS.map(u => {
+                const on = unit === u.value;
+                return (
+                  <TouchableOpacity key={u.value} activeOpacity={0.8}
+                    style={[st.uchip, on && st.uchipOn]}
+                    onPress={() => setUnit(u.value)}>
+                    <Text style={[st.uchipText, on && st.uchipTextOn]}>{u.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {errors.unit && <Text style={st.err}>{errors.unit}</Text>}
+          </View>
+
+          {/* ── Result card (green) ── */}
+          {showPreview && (
+            <LinearGradient colors={['#34C97B', GREEN, '#2BA060']} locations={[0, 0.6, 1]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.result}>
+              <Text style={st.rl}>Preço por unidade</Text>
+              <Text style={st.rprice}>{fmtBRL(pricePerUnit)}<Text style={st.runit}> /{unit || 'un'}</Text></Text>
+              {useCustomUnit && weight > 0 && (
+                <Text style={st.rsub}>Embalagem: {fmtBRL(pricePerPkg)} · {weight}{unit} cada</Text>
+              )}
+            </LinearGradient>
+          )}
+
+          {/* ── Save button ── */}
+          <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={st.btn}>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>{isEditing ? 'Atualizar ingrediente' : 'Salvar ingrediente'}</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <Modal visible={showConfirmModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t('common.confirmData')}</Text>
-            <TouchableOpacity onPress={() => setShowConfirmModal(false)}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView style={styles.confirmContent} showsVerticalScrollIndicator={false}>
-            <Card style={styles.confirmCard}>
-              <Text style={styles.confirmSectionTitle}>{t('createIngredient.ingredient')}</Text>
-              <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>{t('common.name')}</Text>
-                <Text style={styles.confirmValue}>{name.trim()}</Text>
-              </View>
-              <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>{t('createIngredient.quantityBought')}</Text>
-                <Text style={styles.confirmValue}>
-                  {useCustomUnit && purchaseUnitLabel
-                    ? `${purchaseQuantity} ${purchaseUnitLabel}(s) (${(parseFloat(purchaseQuantity || '0') * parseFloat(purchaseUnitWeight || '0')).toLocaleString('pt-BR')} ${unit})`
-                    : `${purchaseQuantity} ${unit}`}
-                </Text>
-              </View>
-              <View style={styles.confirmRow}>
-                <Text style={styles.confirmLabel}>{t('createIngredient.pricePaid')}</Text>
-                <Text style={styles.confirmValueHighlight}>{fmtBRL(parseFloat((purchasePrice || '0').replace(',', '.')))}</Text>
-              </View>
-              {purchaseQuantity && purchasePrice && parseFloat(purchaseQuantity) > 0 && (
-                <View style={styles.confirmRow}>
-                  <Text style={styles.confirmLabel}>{t('createIngredient.pricePerUnit', { unit })}</Text>
-                  <Text style={styles.confirmValueHighlight}>
-                    {(() => {
-                      const qty = parseFloat(purchaseQuantity);
-                      const price = parseFloat(purchasePrice.replace(',', '.'));
-                      const effectiveQty = useCustomUnit && purchaseUnitWeight ? qty * parseFloat(purchaseUnitWeight) : qty;
-                      return fmtBRL(price / effectiveQty);
-                    })()}
-                  </Text>
-                </View>
-              )}
-            </Card>
-
-            <View style={styles.confirmActions}>
-              <Button
-                title={t('common.backAndFix')}
-                variant="outline"
-                onPress={() => setShowConfirmModal(false)}
-                style={{ flex: 1, marginRight: 8 }}
-              />
-              <Button
-                title={t('common.confirm')}
-                onPress={handleSave}
-                loading={loading}
-                style={{ flex: 1 }}
-              />
-            </View>
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, padding: 20 },
-  card: { marginBottom: 16 },
-  row: { flexDirection: 'row' },
-  fieldHint: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
-    marginBottom: 8,
-    fontStyle: 'italic',
+/* ──────────────────────── STYLES ──────────────────────── */
+const st = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: CREAM },
+
+  /* sub-screen header (.sh) */
+  sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  shT: { flex: 1 },
+  shH1: { fontSize: 22, fontWeight: '700', color: INK, lineHeight: 26 },
+  actPill: { height: 38, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', ...SHADOW },
+
+  body: { flex: 1, paddingHorizontal: 18 },
+
+  /* .field */
+  field: { gap: 7 },
+  label: { fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 },
+  hint: { fontSize: 11.5, color: INK2, fontWeight: '500', marginLeft: 2 },
+  err: { fontSize: 12, color: colors.error, marginLeft: 2 },
+
+  /* .input */
+  input: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15,
+    flexDirection: 'row', alignItems: 'center', gap: 10, ...SHADOW,
   },
-  unitLabel: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginBottom: 8,
-    fontWeight: '600',
+  inputErr: { borderWidth: 1.5, borderColor: colors.error },
+  inputText: { flex: 1, fontSize: 15, color: INK, padding: 0 },
+  suffix: { marginLeft: 'auto' as any, color: INK2, fontWeight: '700', fontSize: 13 },
+
+  /* .two */
+  two: { flexDirection: 'row', gap: 11 },
+
+  /* .ugrid + .uchip */
+  ugrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  uchip: {
+    height: 40, minWidth: 46, paddingHorizontal: 14, borderRadius: 12,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW,
   },
-  unitGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  unitButton: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.cream,
+  uchipOn: { backgroundColor: PINK, shadowColor: PINK, shadowOpacity: 0.3, elevation: 5 },
+  uchipText: { fontWeight: '700', fontSize: 13.5, color: INK2 },
+  uchipTextOn: { color: '#fff' },
+
+  /* .result */
+  result: {
+    borderRadius: 24, padding: 18, ...SHADOW,
+    shadowColor: GREEN, shadowOpacity: 0.34, shadowRadius: 16, elevation: 6,
   },
-  unitButtonSelected: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
+  rl: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.92)', letterSpacing: 0.2 },
+  rprice: { fontSize: 34, fontWeight: '800', color: '#fff', marginTop: 5, letterSpacing: 0.4 },
+  runit: { fontSize: 16, fontWeight: '600' },
+  rsub: { fontSize: 13, color: 'rgba(255,255,255,0.92)', fontWeight: '500', marginTop: 6 },
+
+  /* .btn.btn-primary */
+  btn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowColor: PINK, shadowOpacity: 0.35 },
+  btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  /* suggestions */
+  sugBox: {
+    position: 'absolute', top: 72, left: 0, right: 0, zIndex: 20,
+    backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: PINK, ...SHADOW, shadowOpacity: 0.12,
   },
-  unitButtonText: { ...typography.bodySmall, color: colors.textSecondary },
-  unitButtonTextSelected: { color: colors.primary, fontWeight: '600' },
-  previewCard: {
-    backgroundColor: colors.beige,
-    borderColor: colors.secondaryLight,
-    marginBottom: 16,
-  },
-  previewRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 2,
-  },
-  previewTitle: { ...typography.body, color: colors.text },
-  previewValue: { ...typography.h4, color: colors.secondary },
-  customUnitToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 16,
-    gap: 8,
-  },
-  customUnitToggleText: {
-    ...typography.body,
-    color: colors.textSecondary,
-  },
-  customUnitSection: {
-    marginTop: 12,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  saveButton: { marginBottom: 32 },
-  nameWrapper: { zIndex: 10 },
-  modalContainer: { flex: 1, backgroundColor: colors.background },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  modalTitle: { ...typography.h3, color: colors.text },
-  confirmContent: { padding: 20 },
-  confirmCard: { marginBottom: 12 },
-  confirmSectionTitle: { ...typography.h4, color: colors.text, marginBottom: 12 },
-  confirmRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  confirmLabel: { ...typography.body, color: colors.textSecondary, flex: 1 },
-  confirmValue: { ...typography.body, color: colors.text, fontWeight: '600' as const, textAlign: 'right' as const },
-  confirmValueHighlight: { ...typography.body, color: colors.primary, fontWeight: '700' as const, textAlign: 'right' as const },
-  confirmActions: { flexDirection: 'row', marginTop: 8, marginBottom: 32 },
-  suggestionsBox: {
-    position: 'absolute',
-    top: 74,
-    left: 0,
-    right: 0,
-    backgroundColor: colors.surface,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    zIndex: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  suggestionItem: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  suggestionText: { ...typography.body, color: colors.text },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
+  sugItem: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: LINE },
+  sugText: { fontSize: 14, color: INK },
 });

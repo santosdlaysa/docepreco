@@ -428,6 +428,8 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'ingredients', 'purchase_unit_label', 'VARCHAR(50)');
     await addColumnIfMissing(client, 'ingredients', 'purchase_unit_weight', 'DECIMAL(10,3)');
 
+    await addColumnIfMissing(client, 'recipes', 'photo_url', 'TEXT NULL');
+
     // Recreate featured_recipes with correct schema if it has the old columns
     const hasOldSchema = await client.query(
       `SELECT 1 FROM information_schema.columns WHERE table_name = 'featured_recipes' AND column_name = 'description'`

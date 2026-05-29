@@ -17,7 +17,7 @@ export const planConfigApi = {
       cachedLimit = data.data.freeRecipeLimit;
       return cachedLimit;
     } catch {
-      return 5; // fallback
+      return 3; // fallback
     }
   },
 

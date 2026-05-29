@@ -40,8 +40,8 @@ export class PostgresRecipeRepository implements IRecipeRepository {
     try {
       await client.query('BEGIN');
       const recipeResult = await client.query(
-        `INSERT INTO recipes (user_id, name, yield, profit_margin) VALUES ($1, $2, $3, $4) RETURNING *`,
-        [userId, data.name, data.yield, data.profitMargin]
+        `INSERT INTO recipes (user_id, name, yield, profit_margin, photo_url) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+        [userId, data.name, data.yield, data.profitMargin, data.photoUrl || null]
       );
       const recipe = recipeResult.rows[0];
 
@@ -90,6 +90,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       if (data.name !== undefined) { fields.push(`name = $${idx++}`); values.push(data.name); }
       if (data.yield !== undefined) { fields.push(`yield = $${idx++}`); values.push(data.yield); }
       if (data.profitMargin !== undefined) { fields.push(`profit_margin = $${idx++}`); values.push(data.profitMargin); }
+      if (data.photoUrl !== undefined) { fields.push(`photo_url = $${idx++}`); values.push(data.photoUrl || null); }
 
       if (fields.length > 0) {
         fields.push(`updated_at = NOW()`);
@@ -193,6 +194,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       name: row.name as string,
       yield: row.yield as number,
       profitMargin: parseFloat(row.profit_margin as string),
+      photoUrl: (row.photo_url as string) || undefined,
       ingredients,
       additionalCosts,
       subRecipes,

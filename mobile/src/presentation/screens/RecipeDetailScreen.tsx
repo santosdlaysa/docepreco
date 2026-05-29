@@ -8,7 +8,12 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
+  Dimensions,
+  Image,
+  ImageBackground,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Skeleton } from '../components/Skeleton';
@@ -20,11 +25,6 @@ import { CalculationResult } from '../../domain/entities/Calculation';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi } from '../../data/demo/demoApi';
-import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Header } from '../components/Header';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { shareRecipeQuote } from '../utils/pdfQuote';
@@ -37,6 +37,25 @@ import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
+
+// ── Design tokens ──
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.07,
+  shadowRadius: 12,
+  elevation: 4,
+};
+
+const ING_COLORS = ['#5E3A23', '#E8C98E', '#F2E6D2', '#F4C95D', '#FFD98A', '#90BE6D', '#7B68EE', '#FF9F43'];
 
 const formatCurrency = (value: number) =>
   value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -76,12 +95,39 @@ export const RecipeDetailScreen: React.FC = () => {
     if (isPremium && !isDemoMode()) seasonApi.getActive().then(setActiveSeason).catch(() => {});
   }, [recipeId]);
 
+  const pickPhoto = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.7,
+      allowsEditing: true,
+      aspect: [16, 9],
+    });
+    if (!result.canceled && result.assets[0]) {
+      const uri = result.assets[0].uri;
+      try {
+        await api.update(recipeId, { photoUrl: uri });
+        setRecipe(prev => prev ? { ...prev, photoUrl: uri } : prev);
+      } catch {
+        showToast('Erro ao salvar foto', 'error');
+      }
+    }
+  };
+
+  const removePhoto = async () => {
+    try {
+      await api.update(recipeId, { photoUrl: '' });
+      setRecipe(prev => prev ? { ...prev, photoUrl: undefined } : prev);
+    } catch {
+      showToast('Erro ao remover foto', 'error');
+    }
+  };
+
   const loadRecipe = async () => {
     try {
       const data = await api.getById(recipeId);
       setRecipe(data);
       await handleCalculate(recipeId);
-    } catch (error) {
+    } catch {
       Alert.alert(t('common.error'), t('recipeDetail.loadError'));
     } finally {
       setLoading(false);
@@ -93,9 +139,7 @@ export const RecipeDetailScreen: React.FC = () => {
     try {
       const result = await api.calculate(id || recipeId);
       setCalculation(result);
-    } catch (error) {
-      // silently fail if no ingredients
-    } finally {
+    } catch {} finally {
       setCalculating(false);
     }
   };
@@ -113,42 +157,32 @@ export const RecipeDetailScreen: React.FC = () => {
     }
   };
 
-  // Scale calculator
   const scaleQty = parseFloat(scaleInput.replace(',', '.'));
   const scaleValid = !isNaN(scaleQty) && scaleQty > 0;
   const scaleFactor = recipe && scaleValid ? scaleQty / recipe.yield : null;
 
+  // ── Loading skeleton ──
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header title={t('recipeDetail.title')} showBack onBack={() => navigation.goBack()} />
-        <View style={styles.skeletonContainer}>
-          {/* Recipe meta skeleton */}
-          <View style={styles.skeletonMetaCard}>
-            <View style={styles.skeletonMetaRow}>
-              <Skeleton width={80} height={40} borderRadius={10} />
-              <Skeleton width={80} height={40} borderRadius={10} />
-              <Skeleton width={80} height={40} borderRadius={10} />
-            </View>
-          </View>
-          {/* Price result skeleton */}
-          <View style={styles.skeletonPriceCard}>
+      <SafeAreaView style={s.container}>
+        <View style={s.heroPlaceholder} />
+        <View style={s.skeletonBody}>
+          <Skeleton width={200} height={26} borderRadius={8} />
+          <Skeleton width={160} height={14} borderRadius={4} style={{ marginTop: 8 }} />
+          <View style={s.skeletonLedger}>
             <Skeleton width={100} height={14} borderRadius={4} />
-            <Skeleton width={140} height={32} borderRadius={8} style={{ marginTop: 8 }} />
-            <Skeleton width={120} height={14} borderRadius={4} style={{ marginTop: 8 }} />
-          </View>
-          {/* Ingredients list skeleton */}
-          <View style={styles.skeletonSection}>
-            <Skeleton width={120} height={16} borderRadius={6} />
             {[0, 1, 2, 3].map(i => (
-              <View key={i} style={styles.skeletonIngRow}>
-                <Skeleton width={24} height={24} borderRadius={6} />
-                <Skeleton width={140} height={14} borderRadius={4} style={{ marginLeft: 10 }} />
-                <View style={{ flex: 1 }} />
+              <View key={i} style={s.skeletonRow}>
+                <Skeleton width={30} height={30} borderRadius={9} />
+                <View style={{ flex: 1, marginLeft: 11 }}>
+                  <Skeleton width={140} height={14} borderRadius={4} />
+                  <Skeleton width={100} height={10} borderRadius={4} style={{ marginTop: 4 }} />
+                </View>
                 <Skeleton width={60} height={14} borderRadius={4} />
               </View>
             ))}
           </View>
+          <Skeleton width="100%" height={160} borderRadius={24} />
         </View>
       </SafeAreaView>
     );
@@ -157,538 +191,628 @@ export const RecipeDetailScreen: React.FC = () => {
   if (!recipe) return null;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header
-        title={recipe.name}
-        showBack
-        onBack={() => navigation.goBack()}
-        rightAction={
-          <View style={styles.headerActions}>
-            <TouchableOpacity
-              onPress={() => guardAction(handleShareQuote)}
-              disabled={!calculation || sharing}
-              style={[styles.editBtn, (!calculation || sharing) && styles.editBtnDisabled]}
-            >
-              {sharing ? (
-                <ActivityIndicator size="small" color={colors.primary} />
-              ) : (
-                <Ionicons name="share-outline" size={20} color={colors.primary} />
-              )}
+    <SafeAreaView style={s.container}>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* ═══════ HERO (foto) ═══════ */}
+        {recipe.photoUrl ? (
+          <ImageBackground source={{ uri: recipe.photoUrl }} style={s.hero} imageStyle={s.heroImage}>
+            <View style={s.heroOverlay} />
+            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={20} color={INK} />
             </TouchableOpacity>
-            <TouchableOpacity
-              onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: recipe.id }))}
-              style={styles.editBtn}
-            >
-              <Ionicons name="pencil-outline" size={20} color={colors.primary} />
+            <View style={s.heroActions}>
+              <TouchableOpacity onPress={removePhoto} style={s.heroActionBtn} activeOpacity={0.7}>
+                <Ionicons name="trash-outline" size={16} color="#F44336" />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={pickPhoto} style={s.heroActionBtn} activeOpacity={0.7}>
+                <Ionicons name="camera-outline" size={16} color={INK} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: recipe.id }))}
+                style={s.heroActionBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="pencil" size={16} color={INK} />
+              </TouchableOpacity>
+            </View>
+          </ImageBackground>
+        ) : (
+          <LinearGradient
+            colors={['#8B5E3C', '#4E2E1B']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.hero}
+          >
+            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={20} color={INK} />
             </TouchableOpacity>
-          </View>
-        }
-      />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+            <TouchableOpacity onPress={pickPhoto} style={s.heroAddPhoto} activeOpacity={0.7}>
+              <Ionicons name="camera-outline" size={22} color="rgba(255,255,255,0.8)" />
+              <Text style={s.heroAddPhotoText}>Adicionar foto</Text>
+            </TouchableOpacity>
+            <View style={s.heroActions}>
+              <TouchableOpacity
+                onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: recipe.id }))}
+                style={s.heroActionBtn}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="pencil" size={16} color={INK} />
+              </TouchableOpacity>
+            </View>
+          </LinearGradient>
+        )}
 
-        <View style={styles.infoCard}>
-          <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-          <Text style={styles.infoText}>
-            {t('recipeDetail.infoText')}
+        {/* ═══════ TITLE ═══════ */}
+        <View style={s.titleWrap}>
+          <Text style={s.title}>{recipe.name}</Text>
+          <Text style={s.subtitle}>
+            Rendimento: {recipe.yield} {recipe.yield === 1 ? 'unidade' : 'unidades'}
           </Text>
         </View>
 
-        <View style={styles.recipeMeta}>
-          <View style={styles.metaItem}>
-            <Ionicons name="layers-outline" size={20} color={colors.primary} />
-            <Text style={styles.metaValue}>{recipe.yield}</Text>
-            <Text style={styles.metaLabel}>{t('common.units')}</Text>
-          </View>
-          <View style={styles.metaDivider} />
-          <View style={styles.metaItem}>
-            <Ionicons name="trending-up-outline" size={20} color={colors.success} />
-            <Text style={styles.metaValue}>{recipe.profitMargin}%</Text>
-            <Text style={styles.metaLabel}>{t('recipeDetail.profit')}</Text>
-          </View>
-          <View style={styles.metaDivider} />
-          <View style={styles.metaItem}>
-            <Ionicons name="basket-outline" size={20} color={colors.secondary} />
-            <Text style={styles.metaValue}>{recipe.ingredients.length + (recipe.subRecipes?.length || 0)}</Text>
-            <Text style={styles.metaLabel}>{t('createRecipe.ingredientsSection')}</Text>
-          </View>
-        </View>
-
-        {calculation && (
-          <Card style={styles.resultCard}>
-            <View style={styles.resultHeader}>
-              <Text style={styles.resultTitle}>{t('recipeDetail.calculationResult')}</Text>
-              <TouchableOpacity onPress={() => handleCalculate()} disabled={calculating}>
-                <Ionicons
-                  name="refresh-outline"
-                  size={20}
-                  color={calculating ? colors.textMuted : colors.primary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.mainResult}>
-              <View style={styles.mainResultItem}>
-                <Text style={styles.mainResultLabel}>{t('recipeDetail.suggestedPrice')}</Text>
-                <Text style={styles.mainResultValue}>{formatCurrency(calculation.suggestedPrice)}</Text>
-                <Text style={styles.mainResultSub}>{t('common.perUnit')}</Text>
+        <View style={s.body}>
+          {/* ═══════ INGREDIENTS LEDGER ═══════ */}
+          {recipe.ingredients.length > 0 && (
+            <View style={s.ledger}>
+              <View style={s.ledgerHead}>
+                <Text style={s.ledgerTitle}>Ingredientes</Text>
+                <Text style={s.ledgerCount}>{recipe.ingredients.length} itens</Text>
               </View>
-              <View style={styles.resultDivider} />
-              <View style={styles.mainResultItem}>
-                <Text style={styles.mainResultLabel}>{t('recipeDetail.estimatedProfit')}</Text>
-                <Text style={[styles.mainResultValue, { color: colors.success }]}>
-                  {formatCurrency(calculation.estimatedProfit)}
-                </Text>
-                <Text style={styles.mainResultSub}>{t('common.total')}</Text>
-              </View>
-            </View>
-
-            {activeSeason && (
-              <View style={styles.seasonBanner}>
-                <Ionicons name="pricetag-outline" size={16} color={colors.primary} />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.seasonLabel}>
-                    🎉 {t('recipeDetail.seasonActive', { name: activeSeason.name })}
-                  </Text>
-                  <Text style={styles.seasonPrice}>
-                    {t('recipeDetail.seasonPrice')}{' '}
-                    <Text style={styles.seasonPriceValue}>
-                      {formatCurrency(calculation.suggestedPrice * activeSeason.multiplier)}
+              {recipe.ingredients.map((ing, idx) => (
+                <View key={idx} style={s.ledgerRow}>
+                  <View style={[s.ledgerDot, { backgroundColor: ING_COLORS[idx % ING_COLORS.length] }]} />
+                  <View style={s.ledgerInfo}>
+                    <Text style={s.ledgerName}>{ing.ingredientName || `Ingrediente ${idx + 1}`}</Text>
+                    <Text style={s.ledgerQty}>{ing.quantityUsed} {ing.unit}</Text>
+                  </View>
+                  {calculation && (
+                    <Text style={s.ledgerVal}>
+                      {/* Show proportional cost if available */}
                     </Text>
+                  )}
+                </View>
+              ))}
+              {calculation && (
+                <View style={s.ledgerSum}>
+                  <Text style={s.ledgerSumLabel}>Subtotal ingredientes</Text>
+                  <Text style={s.ledgerSumVal}>{formatCurrency(calculation.ingredientsCost)}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ═══════ SUB-RECIPES ═══════ */}
+          {recipe.subRecipes && recipe.subRecipes.length > 0 && (
+            <View style={s.ledger}>
+              <View style={s.ledgerHead}>
+                <Text style={s.ledgerTitle}>Sub-receitas</Text>
+              </View>
+              {recipe.subRecipes.map((sub, idx) => (
+                <View key={idx} style={s.ledgerRow}>
+                  <View style={[s.ledgerDot, { backgroundColor: '#7B68EE' }]}>
+                    <Ionicons name="layers" size={14} color="#fff" />
+                  </View>
+                  <View style={s.ledgerInfo}>
+                    <Text style={s.ledgerName}>{sub.subRecipeName || `Receita ${idx + 1}`}</Text>
+                    <Text style={s.ledgerQty}>{sub.quantityUsed} {sub.unit || 'un'}</Text>
+                  </View>
+                </View>
+              ))}
+              {calculation && calculation.subRecipesCost > 0 && (
+                <View style={s.ledgerSum}>
+                  <Text style={s.ledgerSumLabel}>Subtotal sub-receitas</Text>
+                  <Text style={s.ledgerSumVal}>{formatCurrency(calculation.subRecipesCost)}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ═══════ ADDITIONAL COSTS ═══════ */}
+          {recipe.additionalCosts.length > 0 && (
+            <View style={s.ledger}>
+              <View style={s.ledgerHead}>
+                <Text style={s.ledgerTitle}>Custos adicionais</Text>
+              </View>
+              {recipe.additionalCosts.map((cost, idx) => {
+                const isLabor = cost.name.toLowerCase().includes('mão de obra') || cost.name.toLowerCase().includes('mao de obra');
+                return (
+                  <View key={idx} style={s.ledgerRow}>
+                    <View style={[s.ledgerDot, { backgroundColor: isLabor ? '#FFF0F6' : '#EEF8FD' }]}>
+                      <Ionicons
+                        name={isLabor ? 'construct' : 'cube'}
+                        size={17}
+                        color={isLabor ? PINK : '#2BA7DD'}
+                      />
+                    </View>
+                    <View style={s.ledgerInfo}>
+                      <Text style={s.ledgerName}>{cost.name}</Text>
+                    </View>
+                    <Text style={s.ledgerVal}>{formatCurrency(cost.value)}</Text>
+                  </View>
+                );
+              })}
+              {calculation && (
+                <View style={s.ledgerSum}>
+                  <Text style={s.ledgerSumLabel}>Custo total de produção</Text>
+                  <Text style={s.ledgerSumVal}>{formatCurrency(calculation.totalCost)}</Text>
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* ═══════ MARGIN ═══════ */}
+          <View style={s.marginCard}>
+            <View style={s.marginTop}>
+              <Text style={s.marginLabel}>Margem de lucro</Text>
+              <Text style={s.marginValue}>{recipe.profitMargin}%</Text>
+            </View>
+            <View style={s.slider}>
+              <LinearGradient
+                colors={['#FF6AAE', PINK]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[s.sliderFill, { width: `${Math.min(recipe.profitMargin, 100)}%` as any }]}
+              />
+              <View style={[s.sliderKnob, { left: `${Math.min(recipe.profitMargin, 100)}%` as any }]} />
+            </View>
+            <View style={s.sliderScale}>
+              <Text style={s.sliderScaleText}>0%</Text>
+              <Text style={s.sliderScaleText}>50%</Text>
+              <Text style={s.sliderScaleText}>100%</Text>
+            </View>
+          </View>
+
+          {/* ═══════ RESULT CARD (green gradient) ═══════ */}
+          {calculation && (
+            <LinearGradient
+              colors={['#34C97B', GREEN, '#2BA060']}
+              locations={[0, 0.6, 1]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={s.resultCard}
+            >
+              <Text style={s.resultLabel}>Preço de venda sugerido</Text>
+              <Text style={s.resultPrice}>{formatCurrency(calculation.suggestedPrice)}</Text>
+
+              {activeSeason && (
+                <View style={s.seasonBadge}>
+                  <Text style={s.seasonText}>
+                    🎉 {activeSeason.name}: {formatCurrency(calculation.suggestedPrice * activeSeason.multiplier)}
                     {' '}({activeSeason.multiplier >= 1 ? '+' : ''}{Math.round((activeSeason.multiplier - 1) * 100)}%)
                   </Text>
                 </View>
-              </View>
-            )}
-
-            <View style={styles.breakdown}>
-              <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>{t('recipeDetail.totalCost')}</Text>
-                <Text style={styles.breakdownValue}>{formatCurrency(calculation.totalCost)}</Text>
-              </View>
-              <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>{t('recipeDetail.costPerUnit')}</Text>
-                <Text style={styles.breakdownValue}>{formatCurrency(calculation.costPerUnit)}</Text>
-              </View>
-              <View style={styles.breakdownRow}>
-                <Text style={styles.breakdownLabel}>{t('recipeDetail.ingredientsCost')}</Text>
-                <Text style={styles.breakdownValue}>{formatCurrency(calculation.ingredientsCost)}</Text>
-              </View>
-              {calculation.subRecipesCost > 0 && (
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>{t('recipeDetail.subRecipesCost')}</Text>
-                  <Text style={styles.breakdownValue}>{formatCurrency(calculation.subRecipesCost)}</Text>
-                </View>
               )}
-              {calculation.additionalCostTotal > 0 && (
-                <View style={styles.breakdownRow}>
-                  <Text style={styles.breakdownLabel}>{t('recipeDetail.additionalCosts')}</Text>
-                  <Text style={styles.breakdownValue}>{formatCurrency(calculation.additionalCostTotal)}</Text>
+
+              <View style={s.resultGrid}>
+                <View style={s.resultGridItem}>
+                  <Text style={s.resultGridVal}>{formatCurrency(calculation.suggestedPrice)}</Text>
+                  <Text style={s.resultGridLbl}>por unidade</Text>
                 </View>
-              )}
-            </View>
-
-            <TouchableOpacity
-              onPress={handleShareQuote}
-              disabled={sharing}
-              activeOpacity={0.8}
-              style={[styles.shareButton, sharing && styles.shareButtonDisabled]}
-            >
-              {sharing ? (
-                <ActivityIndicator size="small" color="#fff" />
-              ) : (
-                <>
-                  <Ionicons name="share-outline" size={18} color="#fff" />
-                  <Text style={styles.shareButtonText}>{t('recipeDetail.shareQuote')}</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </Card>
-        )}
-
-        {recipe.ingredients.length > 0 && (
-          <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('createRecipe.ingredientsSection')}</Text>
-            {recipe.ingredients.map((ing, idx) => (
-              <View key={idx} style={styles.listRow}>
-                <Ionicons name="ellipse" size={6} color={colors.primary} style={{ marginTop: 8 }} />
-                <Text style={styles.listText}>
-                  {ing.ingredientName || `Ingrediente ${idx + 1}`} — {ing.quantityUsed} {ing.unit}
-                </Text>
-              </View>
-            ))}
-          </Card>
-        )}
-
-        {recipe.subRecipes && recipe.subRecipes.length > 0 && (
-          <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('recipeDetail.subRecipesSection')}</Text>
-            {recipe.subRecipes.map((sub, idx) => (
-              <View key={idx} style={styles.listRow}>
-                <Ionicons name="layers-outline" size={14} color={colors.primary} style={{ marginTop: 4 }} />
-                <Text style={styles.listText}>
-                  {sub.subRecipeName || `Receita ${idx + 1}`} — {sub.quantityUsed} {sub.unit || 'un'}
-                </Text>
-              </View>
-            ))}
-          </Card>
-        )}
-
-        {/* Calculadora de Escala */}
-        {recipe.ingredients.length > 0 && calculation && (
-          <Card style={styles.scaleCard}>
-            <TouchableOpacity
-              style={styles.scaleHeader}
-              onPress={() => {
-                if (!scaleOpen && !requirePremium('scaleCalculator')) return;
-                setScaleOpen(!scaleOpen);
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={styles.scaleIconWrap}>
-                <Ionicons name="resize-outline" size={20} color={colors.primary} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.scaleTitle}>{t('recipeDetail.scaleCalculator')}</Text>
-                <Text style={styles.scaleSubtitle}>{t('recipeDetail.scaleSubtitle')}</Text>
-              </View>
-              <Ionicons
-                name={scaleOpen ? 'chevron-up' : 'chevron-down'}
-                size={18}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
-
-            {scaleOpen && (
-              <View style={styles.scaleBody}>
-                <Text style={styles.scaleLabel}>
-                  {t('recipeDetail.originalRecipe', { yield: recipe.yield })}
-                </Text>
-                <View style={styles.scaleInputRow}>
-                  <Text style={styles.scaleInputLabel}>{t('recipeDetail.wantToMake')}</Text>
-                  <TextInput
-                    style={styles.scaleInput}
-                    value={scaleInput}
-                    onChangeText={setScaleInput}
-                    keyboardType="numeric"
-                    placeholder={String(recipe.yield)}
-                    placeholderTextColor={colors.textMuted}
-                  />
-                  <Text style={styles.scaleInputLabel}>{t('common.units')}</Text>
+                <View style={s.resultGridItem}>
+                  <Text style={s.resultGridVal}>{formatCurrency(calculation.costPerUnit)}</Text>
+                  <Text style={s.resultGridLbl}>custo / un</Text>
                 </View>
+                <View style={s.resultGridItem}>
+                  <Text style={s.resultGridVal}>{formatCurrency(calculation.estimatedProfit)}</Text>
+                  <Text style={s.resultGridLbl}>lucro estimado</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          )}
 
-                {scaleFactor !== null && (
+          {/* ═══════ ACTIONS ═══════ */}
+          {calculation && (
+            <View style={s.actions}>
+              <TouchableOpacity
+                style={s.btnGhost}
+                onPress={() => guardAction(handleShareQuote)}
+                disabled={sharing}
+                activeOpacity={0.7}
+              >
+                {sharing ? (
+                  <ActivityIndicator size="small" color={INK} />
+                ) : (
                   <>
-                    <View style={styles.scaleMultiplier}>
-                      <Ionicons name="swap-vertical-outline" size={16} color={colors.primary} />
-                      <Text style={styles.scaleMultiplierText}>
-                        Multiplicador: <Text style={styles.scaleBold}>{scaleFactor.toFixed(2)}x</Text>
-                      </Text>
-                    </View>
-
-                    {/* Ingredientes escalados */}
-                    <View style={styles.scaleIngredients}>
-                      <Text style={styles.scaleIngredientsTitle}>{t('recipeDetail.neededIngredients')}</Text>
-                      {recipe.ingredients.map((ing, idx) => {
-                        const scaled = ing.quantityUsed * scaleFactor;
-                        return (
-                          <View key={idx} style={styles.scaleIngRow}>
-                            <Text style={styles.scaleIngName}>
-                              {ing.ingredientName || `Ingrediente ${idx + 1}`}
-                            </Text>
-                            <Text style={styles.scaleIngQty}>
-                              {formatQuantity(scaled)} {ing.unit}
-                            </Text>
-                          </View>
-                        );
-                      })}
-                    </View>
-
-                    {/* Resumo financeiro escalado */}
-                    <View style={styles.scaleSummary}>
-                      <View style={styles.scaleSummaryRow}>
-                        <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.totalCost')}</Text>
-                        <Text style={styles.scaleSummaryValue}>
-                          {formatCurrency(calculation.totalCost * scaleFactor)}
-                        </Text>
-                      </View>
-                      {calculation.additionalCostTotal > 0 && (
-                        <View style={styles.scaleSummaryRow}>
-                          <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.additionalCosts')}</Text>
-                          <Text style={styles.scaleSummaryValue}>
-                            {formatCurrency(calculation.additionalCostTotal * scaleFactor)}
-                          </Text>
-                        </View>
-                      )}
-                      <View style={styles.scaleSummaryRow}>
-                        <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.totalSalePrice')}</Text>
-                        <Text style={[styles.scaleSummaryValue, { color: colors.primary, fontWeight: '800' }]}>
-                          {formatCurrency(calculation.suggestedPrice * scaleQty)}
-                        </Text>
-                      </View>
-                      <View style={styles.scaleSummaryRow}>
-                        <Text style={styles.scaleSummaryLabel}>{t('recipeDetail.estimatedProfit')}</Text>
-                        <Text style={[styles.scaleSummaryValue, { color: colors.success }]}>
-                          {formatCurrency((calculation.suggestedPrice * scaleQty) - (calculation.totalCost * scaleFactor))}
-                        </Text>
-                      </View>
-                    </View>
+                    <Ionicons name="share-outline" size={18} color={INK} />
+                    <Text style={s.btnGhostText}>Compartilhar</Text>
                   </>
                 )}
-
-                {scaleInput !== '' && !scaleValid && (
-                  <Text style={styles.scaleError}>{t('recipeDetail.invalidNumber')}</Text>
-                )}
-              </View>
-            )}
-          </Card>
-        )}
-
-        {calculation && (
-          <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('recipeDetail.marginComparison')}</Text>
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableCell, styles.tableHeaderText, { flex: 1.2 }]}>Margem</Text>
-              <Text style={[styles.tableCell, styles.tableHeaderText]}>Preço</Text>
-              <Text style={[styles.tableCell, styles.tableHeaderText]}>Lucro/un</Text>
-              <Text style={[styles.tableCell, styles.tableHeaderText]}>Lucro total</Text>
-            </View>
-            {[
-              { value: 50,  label: '🟡 50%' },
-              { value: 70,  label: '⭐ 70%' },
-              { value: 100, label: '🔥 100%' },
-              { value: 150, label: '💎 150%' },
-            ].map(opt => {
-              const price = calculation.costPerUnit * (1 + opt.value / 100);
-              const profitPerUnit = price - calculation.costPerUnit;
-              const totalProfit = profitPerUnit * recipe.yield;
-              const isCurrentMargin = Math.abs(recipe.profitMargin - opt.value) < 1;
-              return (
-                <View
-                  key={opt.value}
-                  style={[styles.tableRow, isCurrentMargin && styles.tableRowHighlight]}
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.85} onPress={() => guardAction(handleShareQuote)} disabled={sharing}>
+                <LinearGradient
+                  colors={['#FF6AAE', PINK]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.btnPrimary}
                 >
-                  <Text style={[styles.tableCell, { flex: 1.2 }, isCurrentMargin && styles.tableCellHighlight]}>
-                    {opt.label}{isCurrentMargin ? ' ✓' : ''}
-                  </Text>
-                  <Text style={[styles.tableCell, isCurrentMargin && styles.tableCellHighlight]}>
-                    {formatCurrency(price)}
-                  </Text>
-                  <Text style={[styles.tableCell, isCurrentMargin && styles.tableCellHighlight]}>
-                    {formatCurrency(profitPerUnit)}
-                  </Text>
-                  <Text style={[styles.tableCell, isCurrentMargin && styles.tableCellHighlight]}>
-                    {formatCurrency(totalProfit)}
-                  </Text>
-                </View>
-              );
-            })}
-          </Card>
-        )}
+                  <Ionicons name="document-text-outline" size={18} color="#fff" />
+                  <Text style={s.btnPrimaryText}>Gerar PDF</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          )}
 
-        {recipe.additionalCosts.length > 0 && (
-          <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('createRecipe.additionalCosts')}</Text>
-            {recipe.additionalCosts.map((cost, idx) => {
-              const isLabor = cost.name.includes('Mão de obra');
-              return (
-                <View key={idx} style={styles.breakdownRow}>
-                  <View style={styles.costLabelRow}>
-                    {isLabor && <Ionicons name="construct-outline" size={14} color={colors.primary} />}
-                    <Text style={[styles.breakdownLabel, isLabor && { color: colors.primary, fontWeight: '600' }]}>
-                      {cost.name}
-                    </Text>
+          {/* ═══════ SCALE CALCULATOR ═══════ */}
+          {recipe.ingredients.length > 0 && calculation && (
+            <View style={s.scaleCard}>
+              <TouchableOpacity
+                style={s.scaleHeader}
+                onPress={() => {
+                  if (!scaleOpen && !requirePremium('scaleCalculator')) return;
+                  setScaleOpen(!scaleOpen);
+                }}
+                activeOpacity={0.7}
+              >
+                <View style={s.scaleIconWrap}>
+                  <Ionicons name="resize-outline" size={20} color={PINK} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.scaleTitle}>{t('recipeDetail.scaleCalculator')}</Text>
+                  <Text style={s.scaleSubtitle}>{t('recipeDetail.scaleSubtitle')}</Text>
+                </View>
+                <Ionicons name={scaleOpen ? 'chevron-up' : 'chevron-down'} size={18} color={INK3} />
+              </TouchableOpacity>
+
+              {scaleOpen && (
+                <View style={s.scaleBody}>
+                  <Text style={s.scaleLabel}>
+                    {t('recipeDetail.originalRecipe', { yield: recipe.yield })}
+                  </Text>
+                  <View style={s.scaleInputRow}>
+                    <Text style={s.scaleInputLabel}>{t('recipeDetail.wantToMake')}</Text>
+                    <TextInput
+                      style={s.scaleInput}
+                      value={scaleInput}
+                      onChangeText={setScaleInput}
+                      keyboardType="numeric"
+                      placeholder={String(recipe.yield)}
+                      placeholderTextColor={INK3}
+                    />
+                    <Text style={s.scaleInputLabel}>{t('common.units')}</Text>
                   </View>
-                  <Text style={styles.breakdownValue}>{formatCurrency(cost.value)}</Text>
-                </View>
-              );
-            })}
-          </Card>
-        )}
 
-        <View style={{ height: 32 }} />
+                  {scaleFactor !== null && (
+                    <>
+                      <View style={s.scaleMultiplier}>
+                        <Ionicons name="swap-vertical-outline" size={16} color={PINK} />
+                        <Text style={s.scaleMultiplierText}>
+                          Multiplicador: <Text style={{ fontWeight: '700', color: INK }}>{scaleFactor.toFixed(2)}x</Text>
+                        </Text>
+                      </View>
+
+                      <View style={s.scaleIngredients}>
+                        <Text style={s.scaleIngredientsTitle}>{t('recipeDetail.neededIngredients')}</Text>
+                        {recipe.ingredients.map((ing, idx) => {
+                          const scaled = ing.quantityUsed * scaleFactor;
+                          return (
+                            <View key={idx} style={s.scaleIngRow}>
+                              <Text style={s.scaleIngName}>{ing.ingredientName || `Ingrediente ${idx + 1}`}</Text>
+                              <Text style={s.scaleIngQty}>{formatQuantity(scaled)} {ing.unit}</Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+
+                      <View style={s.scaleSummary}>
+                        <View style={s.scaleSummaryRow}>
+                          <Text style={s.scaleSummaryLabel}>{t('recipeDetail.totalCost')}</Text>
+                          <Text style={s.scaleSummaryValue}>{formatCurrency(calculation.totalCost * scaleFactor)}</Text>
+                        </View>
+                        <View style={s.scaleSummaryRow}>
+                          <Text style={s.scaleSummaryLabel}>{t('recipeDetail.totalSalePrice')}</Text>
+                          <Text style={[s.scaleSummaryValue, { color: PINK, fontWeight: '800' }]}>
+                            {formatCurrency(calculation.suggestedPrice * scaleQty)}
+                          </Text>
+                        </View>
+                        <View style={s.scaleSummaryRow}>
+                          <Text style={s.scaleSummaryLabel}>{t('recipeDetail.estimatedProfit')}</Text>
+                          <Text style={[s.scaleSummaryValue, { color: GREEN }]}>
+                            {formatCurrency((calculation.suggestedPrice * scaleQty) - (calculation.totalCost * scaleFactor))}
+                          </Text>
+                        </View>
+                      </View>
+                    </>
+                  )}
+
+                  {scaleInput !== '' && !scaleValid && (
+                    <Text style={s.scaleError}>{t('recipeDetail.invalidNumber')}</Text>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
+          <View style={{ height: 40 }} />
+        </View>
       </ScrollView>
       <DemoGuardModal />
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { flex: 1, padding: 20 },
-  headerActions: { flexDirection: 'row', gap: 8 },
-  editBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  editBtnDisabled: { opacity: 0.4 },
-  recipeMeta: {
-    flexDirection: 'row',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  metaItem: { flex: 1, alignItems: 'center', gap: 4 },
-  metaDivider: { width: 1, backgroundColor: colors.border },
-  metaValue: { ...typography.h3, color: colors.text },
-  metaLabel: { ...typography.caption, color: colors.textSecondary },
-  resultCard: { marginBottom: 16, backgroundColor: colors.cream },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  resultTitle: { ...typography.h4, color: colors.text },
-  mainResult: { flexDirection: 'row', marginBottom: 16 },
-  mainResultItem: { flex: 1, alignItems: 'center' },
-  resultDivider: { width: 1, backgroundColor: colors.border },
-  mainResultLabel: { ...typography.caption, color: colors.textSecondary, marginBottom: 4 },
-  mainResultValue: { ...typography.h2, color: colors.primary },
-  mainResultSub: { ...typography.caption, color: colors.textMuted },
-  breakdown: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 12,
-    gap: 8,
-  },
-  shareButton: {
-    marginTop: 16,
-    backgroundColor: colors.primary,
-    borderRadius: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  shareButtonDisabled: { opacity: 0.6 },
-  shareButtonText: {
-    ...typography.button,
-    color: '#fff',
-    fontSize: 14,
-  },
-  breakdownRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  costLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  breakdownLabel: { ...typography.body, color: colors.textSecondary },
-  breakdownValue: { ...typography.body, color: colors.text, fontWeight: '600' },
-  section: { marginBottom: 16 },
-  sectionTitle: { ...typography.h4, color: colors.text, marginBottom: 12 },
-  listRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 4 },
-  listText: { ...typography.body, color: colors.text, flex: 1 },
-  tableHeader: { flexDirection: 'row', borderBottomWidth: 1, borderColor: colors.border, paddingBottom: 8, marginBottom: 4 },
-  tableHeaderText: { ...typography.caption, color: colors.textSecondary, fontWeight: '700' },
-  tableRow: { flexDirection: 'row', paddingVertical: 8, borderBottomWidth: 1, borderColor: colors.border },
-  tableRowHighlight: { backgroundColor: colors.primaryLight, borderRadius: 8, borderColor: 'transparent', marginHorizontal: -4, paddingHorizontal: 4 },
-  tableCell: { ...typography.bodySmall, color: colors.text, flex: 1, textAlign: 'center' },
-  tableCellHighlight: { color: colors.primary, fontWeight: '700' },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
-  seasonBanner: {
+const { width: SCREEN_W } = Dimensions.get('window');
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: CREAM },
+
+  /* ── Hero ── */
+  hero: {
+    height: 158,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+    paddingTop: 8,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
+    justifyContent: 'space-between',
   },
-  seasonLabel: { ...typography.bodySmall, color: colors.text, fontWeight: '700', marginBottom: 2 },
-  seasonPrice: { ...typography.bodySmall, color: colors.textSecondary },
-  seasonPriceValue: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW,
+  },
+  heroImage: {
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+  },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.15)',
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+  },
+  heroAddPhoto: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  heroAddPhotoText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+  },
+  heroActions: { flexDirection: 'row', gap: 8 },
+  heroActionBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW,
+  },
+  heroPlaceholder: {
+    height: 158,
+    backgroundColor: LINE,
+    borderBottomLeftRadius: 26,
+    borderBottomRightRadius: 26,
+  },
 
-  // Calculadora de Escala
-  scaleCard: { marginBottom: 16, padding: 0, overflow: 'hidden' },
-  scaleHeader: {
+  /* ── Title ── */
+  titleWrap: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 2 },
+  title: { fontSize: 25, fontWeight: '700', color: INK, lineHeight: 28 },
+  subtitle: { fontSize: 13, color: INK2, fontWeight: '600', marginTop: 3 },
+
+  /* ── Body ── */
+  body: { paddingHorizontal: 18, paddingTop: 14, gap: 14 },
+
+  /* ── Ledger ── */
+  ledger: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    overflow: 'hidden',
+    ...SHADOW,
+  },
+  ledgerHead: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    padding: 16,
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingTop: 13,
+    paddingBottom: 9,
   },
+  ledgerTitle: {
+    fontSize: 13,
+    color: INK2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    fontWeight: '700',
+  },
+  ledgerCount: { fontSize: 12, fontWeight: '700', color: INK2 },
+  ledgerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 11,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderTopWidth: 1,
+    borderTopColor: LINE,
+  },
+  ledgerDot: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ledgerInfo: { flex: 1 },
+  ledgerName: { fontSize: 14, fontWeight: '600', color: INK },
+  ledgerQty: { fontSize: 11.5, color: INK2, fontWeight: '500', marginTop: 1 },
+  ledgerVal: { fontSize: 14, fontWeight: '700', color: INK },
+  ledgerSum: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: CREAM,
+  },
+  ledgerSumLabel: { fontSize: 13.5, fontWeight: '600', color: INK2 },
+  ledgerSumVal: { fontSize: 17, fontWeight: '700', color: INK },
+
+  /* ── Margin card ── */
+  marginCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 15,
+    paddingHorizontal: 16,
+    ...SHADOW,
+  },
+  marginTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 13,
+  },
+  marginLabel: { fontSize: 14, fontWeight: '600', color: INK },
+  marginValue: { fontSize: 22, fontWeight: '800', color: PINK },
+  slider: {
+    height: 10,
+    borderRadius: 99,
+    backgroundColor: '#FFE3EF',
+    position: 'relative',
+  },
+  sliderFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    borderRadius: 99,
+  },
+  sliderKnob: {
+    position: 'absolute',
+    top: '50%',
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#fff',
+    borderWidth: 3,
+    borderColor: PINK,
+    marginTop: -13,
+    marginLeft: -13,
+    ...SHADOW,
+    shadowColor: PINK,
+    shadowOpacity: 0.4,
+  },
+  sliderScale: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 9,
+  },
+  sliderScaleText: { fontSize: 10.5, color: INK3, fontWeight: '600' },
+
+  /* ── Result card (green gradient) ── */
+  resultCard: {
+    borderRadius: 24,
+    padding: 18,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  resultLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.92)' },
+  resultPrice: { fontSize: 42, fontWeight: '800', color: '#fff', marginTop: 5, letterSpacing: 0.4 },
+  seasonBadge: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 8,
+    alignSelf: 'flex-start',
+  },
+  seasonText: { fontSize: 12, fontWeight: '600', color: '#fff' },
+  resultGrid: { flexDirection: 'row', gap: 10, marginTop: 15 },
+  resultGridItem: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.17)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+  },
+  resultGridVal: { fontSize: 17, fontWeight: '700', color: '#fff' },
+  resultGridLbl: { fontSize: 11, color: 'rgba(255,255,255,0.92)', marginTop: 4, fontWeight: '500' },
+
+  /* ── Actions ── */
+  actions: { flexDirection: 'row', gap: 10 },
+  btnGhost: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    ...SHADOW,
+  },
+  btnGhostText: { fontSize: 15, fontWeight: '700', color: INK },
+  btnPrimary: {
+    flex: 1,
+    height: 50,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+  },
+  btnPrimaryText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  /* ── Scale calculator ── */
+  scaleCard: { backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', ...SHADOW },
+  scaleHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
   scaleIconWrap: {
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#FFF0F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  scaleTitle: { ...typography.h4, color: colors.text },
-  scaleSubtitle: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
-  scaleBody: {
-    paddingHorizontal: 16,
-    paddingBottom: 16,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 16,
-  },
-  scaleLabel: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: 12 },
-  scaleBold: { fontWeight: '700', color: colors.text },
-  scaleInputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 16,
-  },
-  scaleInputLabel: { ...typography.body, color: colors.textSecondary },
+  scaleTitle: { fontSize: 16, fontWeight: '700', color: INK },
+  scaleSubtitle: { fontSize: 12, color: INK2, marginTop: 2 },
+  scaleBody: { paddingHorizontal: 16, paddingBottom: 16, borderTopWidth: 1, borderTopColor: LINE, paddingTop: 16 },
+  scaleLabel: { fontSize: 13, color: INK2, marginBottom: 12 },
+  scaleInputRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
+  scaleInputLabel: { fontSize: 15, color: INK2 },
   scaleInput: {
     flex: 1,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: LINE,
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    ...typography.h3,
-    color: colors.primary,
+    fontSize: 18,
+    fontWeight: '600',
+    color: PINK,
     textAlign: 'center',
-    backgroundColor: colors.cream,
+    backgroundColor: CREAM,
   },
   scaleMultiplier: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.primaryLight,
+    backgroundColor: '#FFF0F6',
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
     alignSelf: 'flex-start',
     marginBottom: 16,
   },
-  scaleMultiplierText: { ...typography.bodySmall, color: colors.primary },
-  scaleIngredients: {
-    backgroundColor: colors.background,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 16,
-  },
+  scaleMultiplierText: { fontSize: 13, color: PINK },
+  scaleIngredients: { backgroundColor: CREAM, borderRadius: 12, padding: 14, marginBottom: 16 },
   scaleIngredientsTitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+    fontSize: 13,
+    color: INK2,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -700,59 +824,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 6,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: LINE,
   },
-  scaleIngName: { ...typography.body, color: colors.text, flex: 1 },
-  scaleIngQty: { ...typography.body, color: colors.primary, fontWeight: '700' },
-  scaleSummary: {
-    backgroundColor: colors.cream,
-    borderRadius: 12,
-    padding: 14,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-  },
-  scaleSummaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  scaleSummaryLabel: { ...typography.body, color: colors.textSecondary },
-  scaleSummaryValue: { ...typography.body, color: colors.text, fontWeight: '700' },
-  scaleError: { ...typography.bodySmall, color: colors.error, marginTop: 4 },
-  skeletonContainer: {
-    padding: 20,
-    gap: 14,
-  },
-  skeletonMetaCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+  scaleIngName: { fontSize: 15, color: INK, flex: 1 },
+  scaleIngQty: { fontSize: 15, color: PINK, fontWeight: '700' },
+  scaleSummary: { backgroundColor: CREAM, borderRadius: 12, padding: 14, gap: 8, borderWidth: 1, borderColor: LINE },
+  scaleSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  scaleSummaryLabel: { fontSize: 15, color: INK2 },
+  scaleSummaryValue: { fontSize: 15, color: INK, fontWeight: '700' },
+  scaleError: { fontSize: 13, color: '#F44336', marginTop: 4 },
+
+  /* ── Skeleton ── */
+  skeletonBody: { padding: 18, gap: 12 },
+  skeletonLedger: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
     padding: 16,
+    gap: 10,
+    marginTop: 8,
+    ...SHADOW,
   },
-  skeletonMetaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  skeletonPriceCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 20,
-    alignItems: 'center',
-  },
-  skeletonSection: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    gap: 12,
-  },
-  skeletonIngRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  skeletonRow: { flexDirection: 'row', alignItems: 'center' },
 });

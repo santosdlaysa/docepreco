@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -50,6 +50,19 @@ import { setForceLogout } from '../../data/api/client';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
+// Placeholder screen for the center "+" tab (never actually rendered)
+const DummyScreen = () => null;
+
+function CenterTabButton({ onPress }: { onPress?: (e: any) => void }) {
+  return (
+    <TouchableOpacity style={tabStyles.centerBtn} onPress={onPress} activeOpacity={0.8}>
+      <View style={tabStyles.centerBtnInner}>
+        <Ionicons name="add" size={32} color="#fff" />
+      </View>
+    </TouchableOpacity>
+  );
+}
+
 function TabNavigator() {
   const insets = useSafeAreaInsets();
 
@@ -60,8 +73,8 @@ function TabNavigator() {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Recipes') iconName = focused ? 'book' : 'book-outline';
-          else if (route.name === 'Ingredients') iconName = focused ? 'basket' : 'basket-outline';
-          else if (route.name === 'Sales') iconName = focused ? 'cash' : 'cash-outline';
+          else if (route.name === 'Sales') iconName = focused ? 'cart' : 'cart-outline';
+          else if (route.name === 'More') iconName = focused ? 'grid' : 'grid-outline';
           return <Ionicons name={iconName} size={size} color={color} />;
         },
         tabBarActiveTintColor: colors.primary,
@@ -70,19 +83,54 @@ function TabNavigator() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           paddingBottom: insets.bottom + 4,
-          height: 60 + insets.bottom,
+          height: 64 + insets.bottom,
         },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Inicio' }} />
-      <Tab.Screen name="Sales" component={SalesScreen} options={{ tabBarLabel: 'Vendas' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Início' }} />
       <Tab.Screen name="Recipes" component={RecipesScreen} options={{ tabBarLabel: 'Receitas' }} />
-      <Tab.Screen name="Ingredients" component={IngredientsScreen} options={{ tabBarLabel: 'Ingredientes' }} />
+      <Tab.Screen
+        name="AddAction"
+        component={DummyScreen}
+        options={{
+          tabBarLabel: () => null,
+          tabBarButton: (props) => <CenterTabButton onPress={props.onPress} />,
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('CreateSale');
+          },
+        })}
+      />
+      <Tab.Screen name="Sales" component={SalesScreen} options={{ tabBarLabel: 'Vendas' }} />
+      <Tab.Screen name="More" component={ProfileScreen} options={{ tabBarLabel: 'Mais' }} />
     </Tab.Navigator>
   );
 }
+
+const tabStyles = StyleSheet.create({
+  centerBtn: {
+    top: -18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerBtnInner: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+});
 
 export function AppNavigator() {
   const [authState, setAuthState] = useState<'loading' | 'auth' | 'app' | 'onboarding' | 'premiumAd'>('loading');

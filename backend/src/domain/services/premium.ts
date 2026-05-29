@@ -2,7 +2,7 @@ import { User } from '../entities/User';
 import { pool } from '../../infrastructure/database/connection';
 
 export const FREE_LIMITS = {
-  recipes: 5,
+  recipes: 3,
 } as const;
 
 export type LimitedFeature = keyof typeof FREE_LIMITS;

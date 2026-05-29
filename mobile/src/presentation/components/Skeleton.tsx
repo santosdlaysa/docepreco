@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, ViewStyle } from 'react-native';
+import { View, Animated, StyleSheet, ViewStyle } from 'react-native';
 import { colors } from '../theme/colors';
 
 interface SkeletonProps {
-  width: number | string;
+  width: number | `${number}%`;
   height: number;
   borderRadius?: number;
   style?: ViewStyle;
@@ -15,19 +15,19 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   borderRadius = 8,
   style,
 }) => {
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  const opacity = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(opacity, {
-          toValue: 1,
-          duration: 800,
+          toValue: 0.8,
+          duration: 750,
           useNativeDriver: true,
         }),
         Animated.timing(opacity, {
-          toValue: 0.3,
-          duration: 800,
+          toValue: 0.4,
+          duration: 750,
           useNativeDriver: true,
         }),
       ]),
@@ -37,13 +37,15 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   }, []);
 
   return (
-    <Animated.View
-      style={[
-        styles.skeleton,
-        { width: width as any, height, borderRadius, opacity },
-        style,
-      ]}
-    />
+    <View style={[{ width, height, borderRadius, overflow: 'hidden' }, style]}>
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.skeleton,
+          { borderRadius, opacity },
+        ]}
+      />
+    </View>
   );
 };
 

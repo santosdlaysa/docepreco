@@ -9,10 +9,10 @@ interface PlanConfig {
 }
 
 const DEFAULTS: PlanConfig = {
-  freeRecipeLimit: 5,
+  freeRecipeLimit: 3,
   premiumPrice: 14.90,
   premiumFeatures: ['Receitas ilimitadas', 'Ficha técnica em PDF', 'Relatórios avançados'],
-  freeFeatures: ['Até 5 receitas', 'Cálculo de custos', 'Registro de vendas'],
+  freeFeatures: ['Até 3 receitas', 'Cálculo de custos', 'Registro de vendas'],
 };
 
 export class PlanConfigController {

@@ -22,6 +22,7 @@ export interface Recipe {
   name: string;
   yield: number;
   profitMargin: number;
+  photoUrl?: string;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
   subRecipes: SubRecipe[];
@@ -33,6 +34,7 @@ export interface CreateRecipeDTO {
   name: string;
   yield: number;
   profitMargin: number;
+  photoUrl?: string;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
   subRecipes: SubRecipe[];

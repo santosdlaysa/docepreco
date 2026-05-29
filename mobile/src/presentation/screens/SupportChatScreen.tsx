@@ -11,16 +11,30 @@ import {
   ActivityIndicator,
   Animated,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Skeleton } from '../components/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supportApi, SupportMessage } from '../../data/api/supportApi';
-import { colors } from '../theme/colors';
 import { useTranslation } from 'react-i18next';
 
-function TypingBubble({ label, align }: { label: string; align: 'left' | 'right' }) {
-  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
+// ── Design tokens ──
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+
+// ── Typing indicator ──
+function TypingDots() {
+  const dots = [
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+    useRef(new Animated.Value(0)).current,
+  ];
 
   useEffect(() => {
     const animations = dots.map((dot, i) =>
@@ -29,94 +43,32 @@ function TypingBubble({ label, align }: { label: string; align: 'left' | 'right'
           Animated.delay(i * 200),
           Animated.timing(dot, { toValue: 1, duration: 300, useNativeDriver: true }),
           Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ])
-      )
+        ]),
+      ),
     );
     animations.forEach(a => a.start());
     return () => animations.forEach(a => a.stop());
   }, []);
 
-  const isLeft = align === 'left';
-
   return (
-    <View style={[typingStyles.container, isLeft ? typingStyles.containerLeft : typingStyles.containerRight]}>
-      <View style={[typingStyles.bubble, isLeft ? typingStyles.bubbleLeft : typingStyles.bubbleRight]}>
-        <Text style={[typingStyles.label, isLeft ? typingStyles.labelLeft : typingStyles.labelRight]}>{label}</Text>
-        <View style={typingStyles.dotsRow}>
-          {dots.map((dot, i) => (
-            <Animated.View
-              key={i}
-              style={[
-                typingStyles.dot,
-                isLeft ? typingStyles.dotLeft : typingStyles.dotRight,
-                { opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
-                  transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }] },
-              ]}
-            />
-          ))}
-        </View>
+    <View style={s.typingWrap}>
+      <View style={s.typingBubble}>
+        {dots.map((dot, i) => (
+          <Animated.View
+            key={i}
+            style={[
+              s.typingDot,
+              {
+                opacity: dot.interpolate({ inputRange: [0, 1], outputRange: [0.3, 1] }),
+                transform: [{ translateY: dot.interpolate({ inputRange: [0, 1], outputRange: [0, -4] }) }],
+              },
+            ]}
+          />
+        ))}
       </View>
     </View>
   );
 }
-
-const typingStyles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingBottom: 4,
-  },
-  containerLeft: {
-    justifyContent: 'flex-start',
-  },
-  containerRight: {
-    justifyContent: 'flex-end',
-  },
-  bubble: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  bubbleLeft: {
-    backgroundColor: colors.surface,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  bubbleRight: {
-    backgroundColor: colors.primaryLight,
-    borderBottomRightRadius: 4,
-  },
-  label: {
-    fontSize: 12,
-    marginRight: 6,
-    fontWeight: '500',
-  },
-  labelLeft: {
-    color: colors.textSecondary,
-  },
-  labelRight: {
-    color: colors.primaryDark,
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-  },
-  dotLeft: {
-    backgroundColor: colors.textSecondary,
-  },
-  dotRight: {
-    backgroundColor: colors.primaryDark,
-  },
-});
 
 export const SupportChatScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -139,9 +91,7 @@ export const SupportChatScreen: React.FC = () => {
     try {
       const data = await supportApi.getMessages();
       setMessages(data);
-    } catch {
-      // silent on polling errors
-    } finally {
+    } catch { /* silent */ } finally {
       setLoading(false);
     }
   }, []);
@@ -161,7 +111,6 @@ export const SupportChatScreen: React.FC = () => {
   const handleSend = async () => {
     const text = newMessage.trim();
     if (!text || sending) return;
-
     setSending(true);
     setNewMessage('');
     try {
@@ -177,90 +126,105 @@ export const SupportChatScreen: React.FC = () => {
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
-    const now = new Date();
-    const isToday = date.toDateString() === now.toDateString();
-    const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    if (isToday) return time;
-    return `${date.toLocaleDateString([], { day: '2-digit', month: '2-digit' })} ${time}`;
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const renderMessage = ({ item }: { item: SupportMessage }) => {
     const isUser = item.senderType === 'user';
     return (
-      <View style={[styles.bubbleRow, isUser ? styles.bubbleRowRight : styles.bubbleRowLeft]}>
-        <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAdmin]}>
-          {!isUser && <Text style={styles.senderLabel}>{t('profile.supportTitle')}</Text>}
-          <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextAdmin]}>
-            {item.message}
-          </Text>
-          <Text style={[styles.bubbleTime, isUser ? styles.bubbleTimeUser : styles.bubbleTimeAdmin]}>
-            {formatTime(item.createdAt)}
-          </Text>
-        </View>
+      <View style={[s.msgRow, isUser ? s.msgRowRight : s.msgRowLeft]}>
+        {isUser ? (
+          <LinearGradient
+            colors={['#FF6AAE', PINK]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[s.bubble, s.bubbleUser]}
+          >
+            <Text style={s.bubbleTextUser}>{item.message}</Text>
+          </LinearGradient>
+        ) : (
+          <View style={[s.bubble, s.bubbleAdmin]}>
+            <Text style={s.bubbleTextAdmin}>{item.message}</Text>
+          </View>
+        )}
+        <Text style={[s.bubbleTime, isUser ? s.timeRight : s.timeLeft]}>
+          {formatTime(item.createdAt)}
+        </Text>
       </View>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={colors.text} />
+    <SafeAreaView style={s.container} edges={['top', 'bottom']}>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+          <Ionicons name="chevron-back" size={20} color={INK} />
         </TouchableOpacity>
-        <View style={styles.headerCenter}>
-          <Text style={styles.headerTitle}>{t('profile.supportTitle')}</Text>
-          <Text style={styles.headerSubtitle}>{t('profile.supportChatSub')}</Text>
+        <LinearGradient
+          colors={['#FF8FB6', PINK]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={s.headerAvatar}
+        >
+          <Ionicons name="chatbubbles" size={18} color="#fff" />
+        </LinearGradient>
+        <View style={s.headerInfo}>
+          <Text style={s.headerTitle}>Suporte DocePreço</Text>
+          <View style={s.onlineRow}>
+            <View style={s.onlineDot} />
+            <Text style={s.onlineText}>online agora</Text>
+          </View>
         </View>
       </View>
 
       <KeyboardAvoidingView
-        style={styles.flex}
+        style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         {loading ? (
-          <View style={styles.skeletonChat}>
+          <View style={s.skeletonChat}>
             {[0, 1, 2, 3, 4].map(i => (
-              <View
-                key={i}
-                style={[
-                  styles.skeletonBubble,
-                  i % 2 === 0 ? styles.skeletonBubbleLeft : styles.skeletonBubbleRight,
-                ]}
-              >
+              <View key={i} style={i % 2 === 0 ? s.skeletonLeft : s.skeletonRight}>
                 <Skeleton
-                  width={i % 2 === 0 ? 200 : 160}
-                  height={i % 3 === 0 ? 50 : 36}
-                  borderRadius={14}
+                  width={i % 2 === 0 ? 220 : 170}
+                  height={i % 3 === 0 ? 52 : 38}
+                  borderRadius={18}
                 />
               </View>
             ))}
           </View>
         ) : messages.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Ionicons name="chatbubbles-outline" size={64} color={colors.border} />
-            <Text style={styles.emptyText}>{t('profile.supportEmpty')}</Text>
+          <View style={s.emptyContainer}>
+            <View style={s.emptyIcon}>
+              <Ionicons name="chatbubbles-outline" size={36} color={INK3} />
+            </View>
+            <Text style={s.emptyTitle}>{t('profile.supportEmpty')}</Text>
+            <Text style={s.emptySub}>Envie uma mensagem e responderemos o mais rápido possível.</Text>
           </View>
         ) : (
           <FlatList
             ref={flatListRef}
             data={messages}
-            keyExtractor={(item) => item.id}
+            keyExtractor={item => item.id}
             renderItem={renderMessage}
-            contentContainerStyle={styles.messagesList}
+            contentContainerStyle={s.messagesList}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             onLayout={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            ListHeaderComponent={
+              <Text style={s.dayLabel}>Hoje</Text>
+            }
           />
         )}
 
-        {adminTyping && !sending && <TypingBubble label={t('profile.supportTyping')} align="left" />}
-        {sending && <TypingBubble label={t('profile.supportSending')} align="right" />}
+        {adminTyping && !sending && <TypingDots />}
 
-        <View style={styles.inputBar}>
+        {/* ── Input bar ── */}
+        <View style={s.inputBar}>
           <TextInput
-            style={styles.input}
-            placeholder={t('profile.supportPlaceholder')}
-            placeholderTextColor={colors.textMuted}
+            style={s.input}
+            placeholder="Escreva uma mensagem…"
+            placeholderTextColor={INK3}
             value={newMessage}
             onChangeText={setNewMessage}
             multiline
@@ -268,15 +232,22 @@ export const SupportChatScreen: React.FC = () => {
             textAlignVertical="top"
           />
           <TouchableOpacity
-            style={[styles.sendBtn, (!newMessage.trim() || sending) && styles.sendBtnDisabled]}
             onPress={handleSend}
             disabled={!newMessage.trim() || sending}
+            activeOpacity={0.8}
           >
-            {sending ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <Ionicons name="send" size={20} color="#fff" />
-            )}
+            <LinearGradient
+              colors={['#FF6AAE', PINK]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[s.sendBtn, (!newMessage.trim() || sending) && s.sendBtnDisabled]}
+            >
+              {sending ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Ionicons name="arrow-up" size={20} color="#fff" />
+              )}
+            </LinearGradient>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
@@ -284,159 +255,147 @@ export const SupportChatScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  flex: {
-    flex: 1,
-  },
+// ── Shared shadow ──
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.07,
+  shadowRadius: 12,
+  elevation: 4,
+};
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: CREAM },
+  flex: { flex: 1 },
+
+  /* ── Header ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: colors.surface,
+    paddingVertical: 14,
+    backgroundColor: 'rgba(255,255,255,0.7)',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: LINE,
+    gap: 12,
   },
   backBtn: {
-    marginRight: 12,
-  },
-  headerCenter: {
-    flex: 1,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  headerSubtitle: {
-    fontSize: 13,
-    color: colors.textMuted,
-    marginTop: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#fff',
     alignItems: 'center',
-  },
-  emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
+    ...SHADOW,
   },
-  emptyText: {
-    fontSize: 15,
-    color: colors.textMuted,
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerInfo: { flex: 1 },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: INK },
+  onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  onlineDot: { width: 7, height: 7, borderRadius: 99, backgroundColor: GREEN },
+  onlineText: { fontSize: 12.5, color: INK2, fontWeight: '600' },
+
+  /* ── Messages ── */
+  messagesList: { padding: 16, paddingBottom: 8 },
+  dayLabel: {
     textAlign: 'center',
-    marginTop: 16,
-    lineHeight: 22,
+    fontSize: 11.5,
+    color: INK3,
+    fontWeight: '600',
+    marginBottom: 12,
   },
-  messagesList: {
-    padding: 16,
-    paddingBottom: 8,
-  },
-  bubbleRow: {
-    marginBottom: 8,
-    flexDirection: 'row',
-  },
-  bubbleRowRight: {
-    justifyContent: 'flex-end',
-  },
-  bubbleRowLeft: {
-    justifyContent: 'flex-start',
-  },
+  msgRow: { marginBottom: 10 },
+  msgRowRight: { alignItems: 'flex-end' },
+  msgRowLeft: { alignItems: 'flex-start' },
   bubble: {
-    maxWidth: '78%',
-    borderRadius: 16,
+    maxWidth: '74%',
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 11,
+    borderRadius: 18,
   },
   bubbleUser: {
-    backgroundColor: colors.primary,
-    borderBottomRightRadius: 4,
+    borderBottomRightRadius: 5,
   },
   bubbleAdmin: {
-    backgroundColor: colors.surface,
-    borderBottomLeftRadius: 4,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: '#fff',
+    borderBottomLeftRadius: 5,
+    ...SHADOW,
   },
-  senderLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: colors.primary,
-    marginBottom: 3,
+  bubbleTextUser: { fontSize: 14, fontWeight: '500', color: '#fff', lineHeight: 20 },
+  bubbleTextAdmin: { fontSize: 14, fontWeight: '500', color: INK, lineHeight: 20 },
+  bubbleTime: { fontSize: 10, fontWeight: '600', marginTop: 3 },
+  timeRight: { color: INK3, alignSelf: 'flex-end' },
+  timeLeft: { color: INK3, alignSelf: 'flex-start' },
+
+  /* ── Typing ── */
+  typingWrap: { paddingHorizontal: 16, paddingBottom: 8, alignItems: 'flex-start' },
+  typingBubble: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 13,
+    borderRadius: 18,
+    borderBottomLeftRadius: 5,
+    ...SHADOW,
   },
-  bubbleText: {
-    fontSize: 15,
-    lineHeight: 21,
-  },
-  bubbleTextUser: {
-    color: '#fff',
-  },
-  bubbleTextAdmin: {
-    color: colors.text,
-  },
-  bubbleTime: {
-    fontSize: 11,
-    marginTop: 4,
-    alignSelf: 'flex-end',
-  },
-  bubbleTimeUser: {
-    color: 'rgba(255,255,255,0.7)',
-  },
-  bubbleTimeAdmin: {
-    color: colors.textMuted,
-  },
+  typingDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: INK3 },
+
+  /* ── Input bar ── */
   inputBar: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: colors.surface,
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    paddingBottom: Platform.OS === 'ios' ? 12 : 12,
+    backgroundColor: 'rgba(255,255,255,0.9)',
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: LINE,
   },
   input: {
     flex: 1,
-    backgroundColor: colors.background,
-    borderRadius: 20,
+    backgroundColor: CREAM,
+    borderRadius: 999,
     paddingHorizontal: 16,
-    paddingTop: 10,
-    paddingBottom: 10,
-    fontSize: 15,
-    color: colors.text,
+    paddingTop: 11,
+    paddingBottom: 11,
+    fontSize: 14,
+    color: INK,
     maxHeight: 100,
-    marginRight: 8,
   },
   sendBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.primary,
-    justifyContent: 'center',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  sendBtnDisabled: {
-    opacity: 0.5,
+  sendBtnDisabled: { opacity: 0.4 },
+
+  /* ── Empty state ── */
+  emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
+  emptyIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: '#FFF0F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
   },
-  skeletonChat: {
-    flex: 1,
-    padding: 16,
-    gap: 12,
-    justifyContent: 'flex-end',
-  },
-  skeletonBubble: {
-    maxWidth: '75%',
-  },
-  skeletonBubbleLeft: {
-    alignSelf: 'flex-start',
-  },
-  skeletonBubbleRight: {
-    alignSelf: 'flex-end',
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: INK, marginBottom: 6 },
+  emptySub: { fontSize: 13, color: INK2, fontWeight: '500', textAlign: 'center', lineHeight: 19, maxWidth: 240 },
+
+  /* ── Skeleton ── */
+  skeletonChat: { flex: 1, padding: 16, gap: 12, justifyContent: 'flex-end' },
+  skeletonLeft: { alignSelf: 'flex-start' },
+  skeletonRight: { alignSelf: 'flex-end' },
 });

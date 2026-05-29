@@ -1,116 +1,88 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Animated,
-  Dimensions,
-  ViewStyle,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { statsApi } from '../../data/api/statsApi';
 import { demoStatsApi } from '../../data/demo/demoApi';
 import { useTranslation } from 'react-i18next';
 import { useAdInterstitial } from '../ads';
+import { useEffect } from 'react';
 
 const GUIDE_DISMISSED_KEY = '@docepreco_beginner_guide_dismissed';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-type StepStatus = 'locked' | 'current' | 'done';
+// ── Design tokens ──
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const CREAM = '#FFF6F0';
+const CREAM2 = '#FCEFE6';
+const LINE = '#F1E2DA';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
 
-interface GuideStep {
-  id: string;
-  number: number;
-  icon: keyof typeof Ionicons.glyphMap;
-  iconDone: keyof typeof Ionicons.glyphMap;
-  title: string;
-  description: string;
-  tip: string;
-  action: string;
-  route: keyof RootStackParamList;
-  color: string;
-  colorLight: string;
-  checkDone: (stats: { ingredientsCount: number; recipesCount: number }) => boolean;
-}
+type StepStatus = 'done' | 'current' | 'lock';
 
-// STEPS moved inside component for i18n
-
-const { width } = Dimensions.get('window');
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.07,
+  shadowRadius: 12,
+  elevation: 4,
+};
 
 export const BeginnerGuideScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { showInterstitial } = useAdInterstitial();
 
-  useEffect(() => {
-    showInterstitial();
-  }, []);
+  useEffect(() => { showInterstitial(); }, []);
+
   const [ingredientsCount, setIngredientsCount] = useState(0);
   const [recipesCount, setRecipesCount] = useState(0);
-  const [expandedStep, setExpandedStep] = useState<string | null>(null);
 
-  const STEPS: GuideStep[] = [
+  const steps = [
     {
       id: 'ingredients',
-      number: 1,
-      icon: 'basket-outline',
-      iconDone: 'basket',
+      n: '1',
       title: t('beginnerGuide.step1Title'),
-      description: t('beginnerGuide.step1Desc'),
-      tip: t('beginnerGuide.step1Tip'),
-      action: t('beginnerGuide.step1Action'),
-      route: 'CreateIngredient',
-      color: colors.secondary,
-      colorLight: '#F5E6D0',
-      checkDone: (stats) => stats.ingredientsCount >= 1,
+      desc: t('beginnerGuide.step1Desc'),
+      route: 'CreateIngredient' as const,
+      actionLabel: t('beginnerGuide.step1Action'),
+      isDone: ingredientsCount >= 1,
     },
     {
       id: 'recipe',
-      number: 2,
-      icon: 'book-outline',
-      iconDone: 'book',
+      n: '2',
       title: t('beginnerGuide.step2Title'),
-      description: t('beginnerGuide.step2Desc'),
-      tip: t('beginnerGuide.step2Tip'),
-      action: t('beginnerGuide.step2Action'),
-      route: 'CreateRecipe',
-      color: colors.primary,
-      colorLight: colors.primaryLight,
-      checkDone: (stats) => stats.recipesCount >= 1,
+      desc: t('beginnerGuide.step2Desc'),
+      route: 'CreateRecipe' as const,
+      actionLabel: t('beginnerGuide.step2Action'),
+      isDone: recipesCount >= 1,
     },
     {
       id: 'margin',
-      number: 3,
-      icon: 'trending-up-outline',
-      iconDone: 'trending-up',
+      n: '3',
       title: t('beginnerGuide.step3Title'),
-      description: t('beginnerGuide.step3Desc'),
-      tip: t('beginnerGuide.step3Tip'),
-      action: t('beginnerGuide.step3Action'),
-      route: 'Recipes',
-      color: '#4CAF50',
-      colorLight: '#E8F5E9',
-      checkDone: (stats) => stats.recipesCount >= 1,
+      desc: t('beginnerGuide.step3Desc'),
+      route: 'Recipes' as const,
+      actionLabel: t('beginnerGuide.step3Action'),
+      isDone: recipesCount >= 1,
     },
   ];
-
-  const [animations] = useState(() =>
-    STEPS.map(() => new Animated.Value(0))
-  );
-
-  const stats = { ingredientsCount, recipesCount };
 
   const loadStats = async () => {
     try {
@@ -121,236 +93,122 @@ export const BeginnerGuideScreen: React.FC = () => {
     } catch {}
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadStats();
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { loadStats(); }, []));
 
-  const getStepStatus = (step: GuideStep, index: number): StepStatus => {
-    if (step.checkDone(stats)) return 'done';
+  const getStatus = (index: number): StepStatus => {
+    if (steps[index].isDone) return 'done';
     if (index === 0) return 'current';
-    const prevDone = STEPS[index - 1].checkDone(stats);
-    return prevDone ? 'current' : 'locked';
+    return steps[index - 1].isDone ? 'current' : 'lock';
   };
 
-  const completedCount = STEPS.filter((s) => s.checkDone(stats)).length;
-  const progress = completedCount / STEPS.length;
-  const allDone = completedCount === STEPS.length;
-
-  const toggleExpand = (stepId: string, index: number) => {
-    const isExpanding = expandedStep !== stepId;
-    setExpandedStep(isExpanding ? stepId : null);
-    Animated.spring(animations[index], {
-      toValue: isExpanding ? 1 : 0,
-      useNativeDriver: false,
-      tension: 40,
-      friction: 8,
-    }).start();
-    // Collapse others
-    animations.forEach((anim, i) => {
-      if (i !== index) {
-        Animated.spring(anim, {
-          toValue: 0,
-          useNativeDriver: false,
-          tension: 40,
-          friction: 8,
-        }).start();
-      }
-    });
-  };
-
-  const handleAction = (step: GuideStep) => {
-    navigation.navigate(step.route as never);
-  };
+  const completedCount = steps.filter(s => s.isDone).length;
+  const progress = completedCount / steps.length;
 
   const dismissGuide = async () => {
     await AsyncStorage.setItem(GUIDE_DISMISSED_KEY, 'true');
     navigation.goBack();
   };
 
+  const STATUS_COLORS: Record<StepStatus, [string, string]> = {
+    done: [GREEN, '#fff'],
+    current: [PINK, '#fff'],
+    lock: [CREAM2, INK3],
+  };
+
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
+    <SafeAreaView style={s.container} edges={['top']}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+        {/* ── Header ── */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+            <Ionicons name="chevron-back" size={20} color={INK} />
           </TouchableOpacity>
-          <View style={{ flex: 1 }} />
-          <TouchableOpacity onPress={dismissGuide} style={styles.dismissBtn}>
-            <Text style={styles.dismissText}>{t('beginnerGuide.skipGuide')}</Text>
+          <View style={s.headerTitle}>
+            <Text style={s.headerTitleText}>Primeiros passos</Text>
+          </View>
+          <TouchableOpacity onPress={dismissGuide} style={s.skipBtn} activeOpacity={0.7}>
+            <Text style={s.skipText}>Pular</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Hero */}
-        <View style={styles.hero}>
-          <View style={styles.heroIconCircle}>
-            <Ionicons name="school-outline" size={40} color={colors.primary} />
-          </View>
-          <Text style={styles.heroTitle}>
-            {allDone ? t('beginnerGuide.completedTitle') : t('beginnerGuide.title')}
-          </Text>
-          <Text style={styles.heroSubtitle}>
-            {allDone
-              ? t('beginnerGuide.completedSubtitle')
-              : t('beginnerGuide.subtitle')}
-          </Text>
-        </View>
-
-        {/* Progress */}
-        <Card style={styles.progressCard}>
-          <View style={styles.progressHeader}>
-            <Text style={styles.progressTitle}>{t('beginnerGuide.progress')}</Text>
-            <Text style={styles.progressCount}>
-              {completedCount}/{STEPS.length} {t('beginnerGuide.steps')}
-            </Text>
-          </View>
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressBar, { width: `${progress * 100}%` as any }]} />
-          </View>
-          {allDone && (
-            <View style={styles.completeBanner}>
-              <Ionicons name="trophy" size={20} color="#FF9800" />
-              <Text style={styles.completeText}>
-                {t('beginnerGuide.completeBanner')}
-              </Text>
+        <View style={s.body}>
+          {/* ── Hero ── */}
+          <LinearGradient
+            colors={['#FF6AAE', PINK, '#C7367A']}
+            locations={[0, 0.52, 1]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.hero}
+          >
+            <View style={s.heroRow}>
+              <View style={s.heroIcon}>
+                <Ionicons name="school" size={26} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.heroTitle}>Vamos começar!</Text>
+                <Text style={s.heroSub}>{completedCount} de {steps.length} passos concluídos</Text>
+              </View>
             </View>
-          )}
-        </Card>
+            <View style={s.heroTrack}>
+              <View style={[s.heroFill, { width: `${progress * 100}%` as any }]} />
+            </View>
+          </LinearGradient>
 
-        {/* Steps */}
-        {STEPS.map((step, index) => {
-          const status = getStepStatus(step, index);
-          const isExpanded = expandedStep === step.id;
-          const maxHeight = animations[index].interpolate({
-            inputRange: [0, 1],
-            outputRange: [0, 250],
-          });
-          const opacity = animations[index].interpolate({
-            inputRange: [0, 0.5, 1],
-            outputRange: [0, 0, 1],
-          });
+          {/* ── Steps timeline ── */}
+          <View style={s.timeline}>
+            {steps.map((step, i) => {
+              const status = getStatus(i);
+              const [bg, fg] = STATUS_COLORS[status];
+              const isLast = i === steps.length - 1;
 
-          return (
-            <TouchableOpacity
-              key={step.id}
-              activeOpacity={0.85}
-              onPress={() => status !== 'locked' && toggleExpand(step.id, index)}
-              disabled={status === 'locked'}
-            >
-              <Card
-                style={StyleSheet.flatten([
-                  styles.stepCard,
-                  status === 'current' && styles.stepCardCurrent,
-                  status === 'done' && styles.stepCardDone,
-                  status === 'locked' && styles.stepCardLocked,
-                ]) as ViewStyle}
-              >
-                {/* Step header row */}
-                <View style={styles.stepRow}>
-                  {/* Step number / check */}
+              return (
+                <View key={step.id} style={s.step}>
+                  {/* Left: number + connector */}
+                  <View style={s.stepLeft}>
+                    <View style={[s.stepNum, { backgroundColor: bg }]}>
+                      {status === 'done' ? (
+                        <Ionicons name="checkmark" size={20} color={fg} />
+                      ) : status === 'lock' ? (
+                        <Ionicons name="lock-closed" size={14} color={fg} />
+                      ) : (
+                        <Text style={[s.stepNumText, { color: fg }]}>{step.n}</Text>
+                      )}
+                    </View>
+                    {!isLast && <View style={[s.connector, status === 'done' && s.connectorDone]} />}
+                  </View>
+
+                  {/* Right: card */}
                   <View
                     style={[
-                      styles.stepNumberCircle,
-                      {
-                        backgroundColor:
-                          status === 'done'
-                            ? '#4CAF50'
-                            : status === 'current'
-                            ? step.color
-                            : colors.border,
-                      },
+                      s.stepCard,
+                      status === 'current' && s.stepCardCurrent,
+                      status === 'lock' && s.stepCardLock,
                     ]}
                   >
-                    {status === 'done' ? (
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                    ) : (
-                      <Text style={styles.stepNumberText}>{step.number}</Text>
+                    <Text style={s.stepTitle}>{step.title}</Text>
+                    <Text style={s.stepDesc}>{step.desc}</Text>
+                    {status === 'current' && (
+                      <TouchableOpacity
+                        activeOpacity={0.85}
+                        onPress={() => navigation.navigate(step.route as never)}
+                      >
+                        <LinearGradient
+                          colors={['#FF6AAE', PINK]}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={s.stepBtn}
+                        >
+                          <Text style={s.stepBtnText}>{step.actionLabel}</Text>
+                          <Ionicons name="chevron-forward" size={16} color="#fff" />
+                        </LinearGradient>
+                      </TouchableOpacity>
                     )}
                   </View>
-
-                  {/* Title + subtitle */}
-                  <View style={styles.stepContent}>
-                    <View style={styles.stepTitleRow}>
-                      <Text
-                        style={[
-                          styles.stepTitle,
-                          status === 'locked' && styles.stepTitleLocked,
-                          status === 'done' && styles.stepTitleDone,
-                        ]}
-                      >
-                        {step.title}
-                      </Text>
-                    </View>
-                    <Text style={styles.stepStatusText}>
-                      {status === 'done'
-                        ? t('beginnerGuide.completed')
-                        : status === 'current'
-                        ? t('beginnerGuide.tapDetails')
-                        : t('beginnerGuide.completePrevious')}
-                    </Text>
-                  </View>
-
-                  {/* Icon */}
-                  <View style={[styles.stepIcon, { backgroundColor: step.colorLight }]}>
-                    <Ionicons
-                      name={status === 'done' ? step.iconDone : step.icon}
-                      size={24}
-                      color={status === 'locked' ? colors.textMuted : step.color}
-                    />
-                  </View>
                 </View>
-
-                {/* Expandable details */}
-                <Animated.View style={[styles.stepDetails, { maxHeight, opacity }]}>
-                  <View style={styles.stepDivider} />
-                  <Text style={styles.stepDescription}>{step.description}</Text>
-                  <View style={styles.stepTip}>
-                    <Ionicons name="bulb-outline" size={16} color={colors.warning} />
-                    <Text style={styles.stepTipText}>{step.tip}</Text>
-                  </View>
-                  {status === 'current' && (
-                    <TouchableOpacity
-                      style={[styles.stepActionBtn, { backgroundColor: step.color }]}
-                      onPress={() => handleAction(step)}
-                      activeOpacity={0.85}
-                    >
-                      <Ionicons name="arrow-forward" size={18} color="#fff" />
-                      <Text style={styles.stepActionText}>{step.action}</Text>
-                    </TouchableOpacity>
-                  )}
-                </Animated.View>
-              </Card>
-
-              {/* Connector line */}
-              {index < STEPS.length - 1 && (
-                <View style={styles.connector}>
-                  <View
-                    style={[
-                      styles.connectorLine,
-                      status === 'done' && styles.connectorLineDone,
-                    ]}
-                  />
-                </View>
-              )}
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* Bottom CTA */}
-        {allDone && (
-          <TouchableOpacity
-            style={styles.finishBtn}
-            onPress={dismissGuide}
-            activeOpacity={0.85}
-          >
-            <Ionicons name="rocket-outline" size={20} color="#fff" />
-            <Text style={styles.finishBtnText}>{t('beginnerGuide.exploreApp')}</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={{ height: 40 }} />
+              );
+            })}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -365,240 +223,126 @@ export const resetGuide = async (): Promise<void> => {
   await AsyncStorage.removeItem(GUIDE_DISMISSED_KEY);
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: CREAM },
+  body: { paddingHorizontal: 18, gap: 16 },
+
+  /* ── Header ── */
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
     paddingTop: 8,
-    paddingBottom: 8,
+    paddingBottom: 10,
+    gap: 12,
   },
   backBtn: {
-    width: 40,
-    height: 40,
+    width: 38,
+    height: 38,
     borderRadius: 12,
-    backgroundColor: colors.surface,
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: colors.border,
+    ...SHADOW,
   },
-  dismissBtn: {
-    paddingHorizontal: 12,
+  headerTitle: { flex: 1 },
+  headerTitleText: { fontSize: 22, fontWeight: '700', color: INK },
+  skipBtn: {
+    backgroundColor: '#fff',
+    paddingHorizontal: 14,
     paddingVertical: 8,
+    borderRadius: 12,
+    ...SHADOW,
   },
-  dismissText: {
-    ...typography.bodySmall,
-    color: colors.textMuted,
-  },
+  skipText: { fontSize: 13.5, fontWeight: '700', color: INK },
+
+  /* ── Hero ── */
   hero: {
-    alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 24,
+    borderRadius: 26,
+    padding: 18,
   },
-  heroIconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: colors.primaryLight,
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+  },
+  heroIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 16,
   },
-  heroTitle: {
-    ...typography.h2,
-    color: colors.text,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
-  heroSubtitle: {
-    ...typography.body,
-    color: colors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 12,
-  },
-  progressCard: {
-    marginBottom: 24,
-    padding: 16,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  progressTitle: {
-    ...typography.h4,
-    color: colors.text,
-  },
-  progressCount: {
-    ...typography.bodySmall,
-    color: colors.primary,
-    fontWeight: '700',
-  },
-  progressTrack: {
+  heroTitle: { fontSize: 19, fontWeight: '700', color: '#fff' },
+  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.92)', fontWeight: '500', marginTop: 2 },
+  heroTrack: {
     height: 8,
-    backgroundColor: colors.border,
-    borderRadius: 4,
+    borderRadius: 99,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    marginTop: 14,
     overflow: 'hidden',
   },
-  progressBar: {
+  heroFill: {
     height: '100%',
-    backgroundColor: colors.primary,
-    borderRadius: 4,
+    borderRadius: 99,
+    backgroundColor: '#fff',
   },
-  completeBanner: {
+
+  /* ── Timeline ── */
+  timeline: { gap: 0 },
+  step: {
     flexDirection: 'row',
+    gap: 14,
+  },
+  stepLeft: {
     alignItems: 'center',
-    gap: 8,
-    marginTop: 12,
-    backgroundColor: '#FFF8E1',
-    borderRadius: 10,
-    padding: 10,
+    width: 42,
   },
-  completeText: {
-    ...typography.bodySmall,
-    color: '#6D5000',
+  stepNum: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
+  },
+  stepNumText: { fontSize: 18, fontWeight: '800' },
+  connector: {
+    width: 2,
     flex: 1,
-    fontWeight: '600',
+    backgroundColor: LINE,
+    marginVertical: -2,
+    zIndex: 1,
   },
+  connectorDone: { backgroundColor: GREEN },
+
+  /* ── Step card ── */
   stepCard: {
-    marginBottom: 0,
-    padding: 16,
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 18,
+    ...SHADOW,
   },
   stepCardCurrent: {
-    borderColor: colors.primary,
-    borderWidth: 1.5,
+    borderWidth: 2,
+    borderColor: PINK,
   },
-  stepCardDone: {
-    borderColor: '#4CAF50',
-    borderWidth: 1,
-    opacity: 0.9,
+  stepCardLock: {
+    opacity: 0.65,
   },
-  stepCardLocked: {
-    opacity: 0.5,
-  },
-  stepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepNumberCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  stepNumberText: {
-    ...typography.body,
-    color: '#fff',
-    fontWeight: '700',
-  },
-  stepContent: {
-    flex: 1,
-  },
-  stepTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  stepTitle: {
-    ...typography.h4,
-    color: colors.text,
-  },
-  stepTitleLocked: {
-    color: colors.textMuted,
-  },
-  stepTitleDone: {
-    textDecorationLine: 'line-through',
-    color: colors.textSecondary,
-  },
-  stepStatusText: {
-    ...typography.caption,
-    color: colors.textMuted,
-    marginTop: 2,
-  },
-  stepIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  stepDetails: {
-    overflow: 'hidden',
-  },
-  stepDivider: {
-    height: 1,
-    backgroundColor: colors.border,
-    marginTop: 14,
-    marginBottom: 14,
-  },
-  stepDescription: {
-    ...typography.body,
-    color: colors.textSecondary,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  stepTip: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: '#FFF8E1',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 14,
-  },
-  stepTipText: {
-    ...typography.bodySmall,
-    color: '#6D5000',
-    flex: 1,
-    lineHeight: 18,
-  },
-  stepActionBtn: {
+  stepTitle: { fontSize: 15.5, fontWeight: '700', color: INK, lineHeight: 19 },
+  stepDesc: { fontSize: 12.5, color: INK2, fontWeight: '500', marginTop: 5, lineHeight: 18 },
+  stepBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    borderRadius: 12,
-    paddingVertical: 14,
+    gap: 6,
+    height: 42,
+    borderRadius: 14,
+    marginTop: 11,
   },
-  stepActionText: {
-    ...typography.button,
-    color: '#fff',
-  },
-  connector: {
-    alignItems: 'center',
-    height: 20,
-  },
-  connectorLine: {
-    width: 2,
-    height: 20,
-    backgroundColor: colors.border,
-  },
-  connectorLineDone: {
-    backgroundColor: '#4CAF50',
-  },
-  finishBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.primary,
-    borderRadius: 16,
-    paddingVertical: 16,
-    marginTop: 24,
-  },
-  finishBtnText: {
-    ...typography.button,
-    color: '#fff',
-  },
+  stepBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

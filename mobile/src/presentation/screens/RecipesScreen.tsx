@@ -391,12 +391,21 @@ export const RecipesScreen: React.FC = () => {
           <Text style={styles.headerTitle}>{t('recipes.title')}</Text>
           <Text style={styles.headerSubtitle}>Suas fichas técnicas e preços</Text>
         </View>
-        <TouchableOpacity
-          onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))}
-          style={styles.addButton}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity
+            onPress={() => guardAction(() => navigation.navigate('CreateIngredient'))}
+            style={styles.addIngredientButton}
+          >
+            <Ionicons name="basket-outline" size={16} color={colors.primary} />
+            <Text style={styles.addIngredientText}>+ Ingrediente</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))}
+            style={styles.addButton}
+          >
+            <Ionicons name="add" size={24} color="#fff" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <FlatList
@@ -483,7 +492,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
@@ -498,6 +507,27 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 2,
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  addIngredientButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.cream,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  addIngredientText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: colors.primary,
+  },
   addButton: {
     width: 44,
     height: 44,
@@ -505,7 +535,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 4,
   },
 
   // Search

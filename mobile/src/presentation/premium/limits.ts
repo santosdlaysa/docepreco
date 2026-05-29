@@ -3,7 +3,7 @@
  * Keep in sync with backend/src/domain/services/premium.ts FREE_LIMITS.
  */
 export const FREE_LIMITS = {
-  recipes: 5,
+  recipes: 3,
 } as const;
 
 export type LimitedFeature = keyof typeof FREE_LIMITS;
