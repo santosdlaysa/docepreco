@@ -44,7 +44,11 @@ const SHADOW = {
   elevation: 4,
 };
 
-export const BeginnerGuideScreen: React.FC = () => {
+interface Props {
+  onComplete?: () => void;
+}
+
+export const BeginnerGuideScreen: React.FC<Props> = ({ onComplete }) => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { showInterstitial } = useAdInterstitial();
@@ -104,9 +108,19 @@ export const BeginnerGuideScreen: React.FC = () => {
   const completedCount = steps.filter(s => s.isDone).length;
   const progress = completedCount / steps.length;
 
-  const dismissGuide = async () => {
-    await AsyncStorage.setItem(GUIDE_DISMISSED_KEY, 'true');
-    navigation.goBack();
+  const dismissGuide = () => {
+    console.log('[BeginnerGuide] dismissGuide called, onComplete:', !!onComplete, 'canGoBack:', navigation.canGoBack());
+    AsyncStorage.setItem(GUIDE_DISMISSED_KEY, 'true').catch(() => {});
+    if (onComplete) {
+      onComplete();
+      return;
+    }
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    // Fallback: navigate to Home tab
+    (navigation as any).reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
   const STATUS_COLORS: Record<StepStatus, [string, string]> = {
@@ -120,7 +134,7 @@ export const BeginnerGuideScreen: React.FC = () => {
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* ── Header ── */}
         <View style={s.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+          <TouchableOpacity onPress={dismissGuide} style={s.backBtn} activeOpacity={0.7}>
             <Ionicons name="chevron-back" size={20} color={INK} />
           </TouchableOpacity>
           <View style={s.headerTitle}>

@@ -25,6 +25,7 @@ import { useDemoGuard } from '../hooks/useDemoGuard';
 import { usePaywall } from '../premium/usePaywall';
 import { AdBanner } from '../ads';
 import { SupportFab } from '../components/SupportFab';
+import { isGuideAvailable } from './BeginnerGuideScreen';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -57,11 +58,13 @@ export const HomeScreen: React.FC = () => {
 
   const [stats, setStats] = useState<AppStats | null>(null);
   const [allSales, setAllSales] = useState<Sale[]>([]);
+  const [showGuide, setShowGuide] = useState(false);
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const stApi = isDemoMode() ? demoStatsApi : statsApi;
 
   useEffect(() => {
+    isGuideAvailable().then(setShowGuide).catch(() => {});
     stApi.getStats().then(setStats).catch(() => {});
     sApi.getAll().then(setAllSales).catch(() => {});
   }, []);
@@ -221,6 +224,24 @@ export const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* ═══════ BEGINNER GUIDE ═══════ */}
+        {showGuide && (
+          <TouchableOpacity
+            style={s.guideBanner}
+            onPress={() => navigation.navigate('BeginnerGuide')}
+            activeOpacity={0.85}
+          >
+            <View style={s.guideIcon}>
+              <Ionicons name="school" size={20} color={PINK} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.guideTitle}>Primeiros passos</Text>
+              <Text style={s.guideSub}>Aprenda a usar o DocePreço em 3 passos</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={PINK} />
+          </TouchableOpacity>
+        )}
 
         {/* ═══════ WEEKLY CHART ═══════ */}
         <View style={s.secHeader}>
@@ -664,4 +685,29 @@ const s = StyleSheet.create({
   proCtaTitle: { fontSize: 15.5, fontWeight: '700', color: INK },
   proCtaSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
   adWrap: { paddingHorizontal: 18, marginBottom: 14 },
+  guideBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 18,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#FFE3EF',
+    ...SHADOW,
+    shadowOpacity: 0.04,
+  },
+  guideIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#FFF0F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  guideTitle: { fontSize: 15, fontWeight: '700', color: INK },
+  guideSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
 });

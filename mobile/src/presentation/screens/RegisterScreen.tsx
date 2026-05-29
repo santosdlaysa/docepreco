@@ -32,6 +32,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
   const [phone, setPhone] = useState('');
   const [countryCode, setCountryCode] = useState('+55');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -72,6 +73,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
       if (digits.length < 8 || digits.length > 12) e.phone = t('register.phoneInvalid');
     }
     if (!password || password.length < 6) e.password = t('register.passwordMin');
+    else if (password !== confirmPassword) e.confirmPassword = 'As senhas não coincidem';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -167,6 +169,14 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
                   <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
                 </TouchableOpacity>
               }
+            />
+            <Input
+              label="Confirmar senha"
+              placeholder="Digite a senha novamente"
+              value={confirmPassword}
+              onChangeText={(v) => { setConfirmPassword(v); if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: '' })); }}
+              secureTextEntry={!showPassword}
+              error={errors.confirmPassword}
             />
 
             <TouchableOpacity

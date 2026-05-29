@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
@@ -531,10 +532,12 @@ export const CreateRecipeScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1, paddingHorizontal: 18 }} showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 14 }}>
 
           {/* ── Info banner ── */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: '#EEF8FD', borderWidth: 1, borderColor: '#DCF1FB', borderRadius: 20, padding: 15, marginBottom: 14 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: '#EEF8FD', borderWidth: 1, borderColor: '#DCF1FB', borderRadius: 20, padding: 15 }}>
             <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
               <Ionicons name="information-circle" size={18} color="#2BA7DD" />
             </View>
@@ -544,261 +547,108 @@ export const CreateRecipeScreen: React.FC = () => {
             </View>
           </View>
 
-          <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('createRecipe.basicInfo')}</Text>
-            <Input
-              label={t('createRecipe.nameLabel')}
-              placeholder={t('createRecipe.namePlaceholder')}
-              value={name}
-              onChangeText={(text) => { setName(text); setShowSuggestions(false); }}
-              error={errors.name}
-            />
-            {!isEditing && (
-              <TouchableOpacity
-                onPress={() => setShowSuggestions(!showSuggestions)}
-                style={styles.suggestionsToggle}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="sparkles" size={16} color={isPremium ? colors.primary : colors.textMuted} />
-                <Text style={[styles.suggestionsToggleText, !isPremium && { color: colors.textMuted }]}>
-                  {t('createRecipe.suggestions')}
-                </Text>
-                {!isPremium && (
-                  <View style={styles.premiumBadge}>
-                    <Ionicons name="lock-closed" size={10} color="#fff" />
-                    <Text style={styles.premiumBadgeText}>Premium</Text>
-                  </View>
-                )}
-                <Ionicons
-                  name={showSuggestions ? 'chevron-up' : 'chevron-down'}
-                  size={16}
-                  color={isPremium ? colors.primary : colors.textMuted}
-                />
-              </TouchableOpacity>
-            )}
-            {showSuggestions && (
-              <View style={styles.suggestionsContainer}>
-                {applyingSuggestion ? (
-                  <View style={styles.suggestionsLoading}>
-                    <ActivityIndicator size="small" color={colors.primary} />
-                    <Text style={styles.suggestionsLoadingText}>{t('createRecipe.preparingRecipe')}</Text>
-                  </View>
-                ) : (
-                  <ScrollView
-                    horizontal
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={styles.suggestionsScroll}
-                  >
-                    {SUGGESTED_RECIPES.map((recipe) => (
-                      <TouchableOpacity
-                        key={recipe.name}
-                        onPress={() => handleSelectSuggestion(recipe)}
-                        style={styles.suggestionChip}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.suggestionChipName}>{recipe.name}</Text>
-                        <Text style={styles.suggestionChipInfo}>
-                          {recipe.ingredients.length} ingr. · {recipe.yield} un
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </ScrollView>
-                )}
-              </View>
-            )}
-            <Input
-              label={t('createRecipe.yieldLabel')}
-              placeholder="20"
-              value={yieldAmount}
-              onChangeText={setYieldAmount}
-              keyboardType="number-pad"
-              suffix="un"
-              error={errors.yield}
-            />
+          {/* ── Dados básicos ── */}
+          <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Dados básicos</Text>
+          <View style={{ gap: 7 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Nome da receita</Text>
+            <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, ...SH }}>
+              <Ionicons name="cafe-outline" size={18} color={INK3} />
+              <TextInput style={{ flex: 1, fontSize: 15, color: INK, padding: 0 }} value={name} onChangeText={(text) => { setName(text); setShowSuggestions(false); }}
+                placeholder="Ex: Bolo de Chocolate" placeholderTextColor={INK3} />
+            </View>
+            {errors.name && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.name}</Text>}
+          </View>
+          <View style={{ gap: 7 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Rendimento</Text>
+            <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, ...SH }}>
+              <TextInput style={{ flex: 1, fontSize: 15, color: INK, padding: 0 }} value={yieldAmount} onChangeText={setYieldAmount}
+                placeholder="12" placeholderTextColor={INK3} keyboardType="number-pad" />
+              <Text style={{ color: INK2, fontWeight: '700', fontSize: 13 }}>unidades</Text>
+            </View>
+            {errors.yield && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.yield}</Text>}
+          </View>
 
-            <Text style={styles.marginLabel}>{t('createRecipe.profitMargin')}</Text>
-            <View style={styles.marginGrid}>
-              {localizedMarginPresets.map(preset => {
+          {/* ── Margem de lucro (3-col grid) ── */}
+          <View style={{ gap: 7 }}>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Margem de lucro</Text>
+            <View style={{ flexDirection: 'row', gap: 9 }}>
+              {MARGIN_PRESETS.slice(0, 3).map(preset => {
                 const selected = String(preset.value) === profitMargin || Number(profitMargin) === preset.value;
                 return (
-                  <TouchableOpacity
-                    key={preset.value}
-                    onPress={() => setProfitMargin(String(preset.value))}
-                    style={[styles.marginCard, selected && styles.marginCardSelected]}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.marginEmoji}>{preset.emoji}</Text>
-                    <Text style={[styles.marginValue, selected && styles.marginValueSelected]}>
-                      {preset.value}%
-                    </Text>
-                    <Text style={[styles.marginCardLabel, selected && styles.marginCardLabelSelected]}>
-                      {preset.label}
-                    </Text>
+                  <TouchableOpacity key={preset.value} onPress={() => setProfitMargin(String(preset.value))} activeOpacity={0.8}
+                    style={{ flex: 1, backgroundColor: selected ? '#FFF0F6' : '#fff', borderRadius: 14, padding: 11, alignItems: 'center', borderWidth: 2, borderColor: selected ? PINK : 'transparent', ...SH }}>
+                    <Text style={{ fontSize: 19, fontWeight: '800', color: PINK, lineHeight: 22 }}>{preset.value}%</Text>
+                    <Text style={{ fontSize: 10.5, color: INK2, fontWeight: '600', marginTop: 3 }}>{preset.label}</Text>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            {(() => {
-              const preset = localizedMarginPresets.find(p => p.value === Number(profitMargin));
-              return preset ? (
-                <Text style={styles.marginDesc}>{preset.emoji} {preset.desc}</Text>
-              ) : null;
-            })()}
-          </Card>
-
-          <Card style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('createRecipe.ingredientsSection')}</Text>
-              <TouchableOpacity
-                onPress={() => setShowIngredientModal(true)}
-                style={styles.addIngBtn}
-              >
-                <Ionicons name="add" size={20} color="#fff" />
-                <Text style={styles.addIngBtnText}>{t('createRecipe.addIngredient')}</Text>
-              </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 9 }}>
+              {MARGIN_PRESETS.slice(3).map(preset => {
+                const selected = String(preset.value) === profitMargin || Number(profitMargin) === preset.value;
+                return (
+                  <TouchableOpacity key={preset.value} onPress={() => setProfitMargin(String(preset.value))} activeOpacity={0.8}
+                    style={{ flex: 1, backgroundColor: selected ? '#FFF0F6' : '#fff', borderRadius: 14, padding: 11, alignItems: 'center', borderWidth: 2, borderColor: selected ? PINK : 'transparent', ...SH }}>
+                    <Text style={{ fontSize: 19, fontWeight: '800', color: PINK, lineHeight: 22 }}>{preset.value}%</Text>
+                    <Text style={{ fontSize: 10.5, color: INK2, fontWeight: '600', marginTop: 3 }}>{preset.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={{ flex: 1 }} />
             </View>
-            {errors.ingredients && <Text style={styles.errorText}>{errors.ingredients}</Text>}
-            {ingredients.length === 0 ? (
-              <View style={styles.emptyIngredients}>
-                <Ionicons name="basket-outline" size={32} color={colors.textMuted} />
-                <Text style={styles.emptyText}>{t('createRecipe.noIngredients')}</Text>
-              </View>
-            ) : (
-              ingredients.map(ing => (
-                <View key={ing.ingredientId} style={styles.ingredientRow}>
-                  <View style={styles.ingredientInfo}>
-                    <Text style={styles.ingredientName}>{ing.ingredientName}</Text>
-                    <Text style={styles.ingredientQty}>{ing.quantityUsed} {ing.unit}</Text>
+          </View>
+
+          {/* ── Ingredientes (.gcard) ── */}
+          <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Ingredientes</Text>
+          {ingredients.length > 0 && (
+            <View style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SH }}>
+              {ingredients.map((ing, i) => (
+                <View key={ing.ingredientId} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: LINE2 } : {}) }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: ['#5E3A23','#E8C98E','#F4C95D','#90BE6D','#7B68EE','#FF6B6B'][i % 6], alignItems: 'center', justifyContent: 'center' }} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14.5, fontWeight: '700', color: INK }}>{ing.ingredientName}</Text>
+                    <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{ing.quantityUsed} {ing.unit}</Text>
                   </View>
                   <TouchableOpacity onPress={() => removeIngredient(ing.ingredientId)}>
-                    <Ionicons name="close-circle" size={22} color={colors.error} />
+                    <Ionicons name="close-circle" size={20} color="#C0392B" />
                   </TouchableOpacity>
                 </View>
-              ))
-            )}
-          </Card>
-
-          <Card style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>{t('createRecipe.subRecipesSection')}</Text>
-              <TouchableOpacity
-                onPress={() => setShowSubRecipeModal(true)}
-                style={styles.addIngBtn}
-              >
-                <Ionicons name="add" size={20} color="#fff" />
-                <Text style={styles.addIngBtnText}>{t('createRecipe.addSubRecipe')}</Text>
-              </TouchableOpacity>
+              ))}
             </View>
-            <Text style={styles.sectionSubtitle}>{t('createRecipe.subRecipeHint')}</Text>
-            {subRecipes.length === 0 ? (
-              <View style={styles.emptyIngredients}>
-                <Ionicons name="layers-outline" size={32} color={colors.textMuted} />
-                <Text style={styles.emptyText}>{t('createRecipe.noSubRecipes')}</Text>
-              </View>
-            ) : (
-              subRecipes.map(sub => (
-                <View key={sub.subRecipeId} style={styles.ingredientRow}>
-                  <View style={styles.ingredientInfo}>
-                    <Text style={styles.ingredientName}>{sub.subRecipeName}</Text>
-                    <Text style={styles.ingredientQty}>{sub.quantityUsed} {sub.unit || 'un'}</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => removeSubRecipe(sub.subRecipeId)}>
-                    <Ionicons name="close-circle" size={22} color={colors.error} />
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </Card>
+          )}
+          {errors.ingredients && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.ingredients}</Text>}
+          <TouchableOpacity onPress={() => setShowIngredientModal(true)} activeOpacity={0.7}
+            style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#FFE3EF', borderRadius: 14, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <Ionicons name="add" size={18} color={PINK} />
+            <Text style={{ color: PINK, fontWeight: '700', fontSize: 14 }}>Adicionar ingrediente</Text>
+          </TouchableOpacity>
 
-          <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('createRecipe.additionalCosts')}</Text>
-            <Text style={styles.sectionSubtitle}>{t('createRecipe.additionalCostsHint')}</Text>
-            {localizedAdditionalCosts.map(cost => (
-              <View key={cost.name}>
-                <View style={styles.costInputRow}>
-                  <Ionicons name={cost.icon} size={18} color={colors.primary} style={styles.costIcon} />
-                  <View style={styles.costInputWrapper}>
-                    <Input
-                      label={cost.name}
-                      placeholder="0,00"
-                      value={getAdditionalCostValue(cost.name)}
-                      onChangeText={val => updateAdditionalCost(cost.name, val)}
-                      keyboardType="decimal-pad"
-                      suffix="R$"
-                    />
-                  </View>
+          {/* ── Custos adicionais (.gcard) ── */}
+          <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Custos adicionais</Text>
+          <View style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SH }}>
+            {localizedAdditionalCosts.map((cost, i) => (
+              <View key={cost.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: LINE2 } : {}) }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 14.5, fontWeight: '600', color: INK }}>{cost.name}</Text>
                 </View>
-                <Text style={styles.costHint}>{cost.hint}</Text>
-              </View>
-            ))}
-          </Card>
-
-          {Platform.OS === 'ios' && (<Card style={styles.section}>
-            <TouchableOpacity onPress={handleToggleLabor} style={styles.laborHeader} activeOpacity={0.7}>
-              <View style={styles.laborHeaderLeft}>
-                <Ionicons name="construct-outline" size={20} color={laborExpanded ? colors.primary : colors.textSecondary} />
-                <Text style={styles.sectionTitle}>{t('createRecipe.professionalCosts')}</Text>
-              </View>
-              <View style={styles.laborHeaderRight}>
-                {!isPremium && (
-                  <View style={styles.premiumBadge}>
-                    <Ionicons name="sparkles" size={10} color="#fff" />
-                    <Text style={styles.premiumBadgeText}>Premium</Text>
-                  </View>
-                )}
-                <Ionicons
-                  name={laborExpanded ? 'chevron-up' : 'chevron-down'}
-                  size={18}
-                  color={colors.textMuted}
+                <TextInput
+                  style={{ fontSize: 15, fontWeight: '700', color: INK2, textAlign: 'right', minWidth: 70, padding: 0 }}
+                  value={getAdditionalCostValue(cost.name)}
+                  onChangeText={val => updateAdditionalCost(cost.name, val)}
+                  placeholder="R$ 0,00"
+                  placeholderTextColor={INK3}
+                  keyboardType="decimal-pad"
                 />
               </View>
-            </TouchableOpacity>
-            {laborExpanded && (
-              <View style={styles.laborContent}>
-                <Text style={styles.laborDesc}>
-                  {t('createRecipe.laborDescription')}
-                </Text>
-                <View style={styles.row}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Input
-                      label={t('createRecipe.hourlyRate')}
-                      placeholder="25,00"
-                      value={hourlyRate}
-                      onChangeText={setHourlyRate}
-                      keyboardType="decimal-pad"
-                      suffix="R$/h"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      label={t('createRecipe.prepTime')}
-                      placeholder="120"
-                      value={prepTimeMinutes}
-                      onChangeText={setPrepTimeMinutes}
-                      keyboardType="number-pad"
-                      suffix="min"
-                    />
-                  </View>
-                </View>
-                {laborCostValue > 0 && (
-                  <View style={styles.laborResult}>
-                    <Ionicons name="calculator-outline" size={16} color={colors.primary} />
-                    <Text style={styles.laborResultText}>
-                      {t('createRecipe.laborCost', { value: laborCostValue.toFixed(2) })}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </Card>)}
+            ))}
+          </View>
 
-          <Button
-            title={isEditing ? t('createRecipe.updateButton') : t('createRecipe.saveButton')}
-            onPress={handleShowConfirmation}
-            loading={loading}
-            size="lg"
-            style={styles.saveButton}
-          />
+          {/* ── Save button ── */}
+          <TouchableOpacity onPress={handleShowConfirmation} disabled={loading} activeOpacity={0.85}>
+            <View style={{ height: 54, borderRadius: 16, backgroundColor: PINK, alignItems: 'center', justifyContent: 'center', ...SH, shadowColor: PINK, shadowOpacity: 0.35 }}>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{isEditing ? 'Atualizar receita' : 'Salvar receita'}</Text>}
+            </View>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
 

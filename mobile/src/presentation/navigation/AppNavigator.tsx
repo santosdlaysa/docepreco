@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -31,7 +32,7 @@ import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
 import { IngredientPriceHistoryScreen } from '../screens/IngredientPriceHistoryScreen';
 import { SeasonsScreen } from '../screens/SeasonsScreen';
 import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
-import { BeginnerGuideScreen } from '../screens/BeginnerGuideScreen';
+import { BeginnerGuideScreen, isGuideAvailable, resetGuide } from '../screens/BeginnerGuideScreen';
 import { SupportChatScreen } from '../screens/SupportChatScreen';
 import { PixPaymentScreen } from '../screens/PixPaymentScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
@@ -119,7 +120,7 @@ const tabStyles = StyleSheet.create({
 });
 
 export function AppNavigator() {
-  const [authState, setAuthState] = useState<'loading' | 'auth' | 'app' | 'onboarding' | 'premiumAd'>('loading');
+  const [authState, setAuthState] = useState<'loading' | 'auth' | 'app' | 'onboarding' | 'premiumAd' | 'beginnerGuide'>('loading');
   const [showRegister, setShowRegister] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [companyName, setCompanyName] = useState('');
@@ -263,6 +264,12 @@ export function AppNavigator() {
     }
   };
 
+  const handleRegisterSuccess = async () => {
+    await refreshPremium();
+    await resetGuide();
+    setAuthState('beginnerGuide');
+  };
+
   if (authState === 'auth') {
     if (showForgotPassword) {
       return (
@@ -274,7 +281,7 @@ export function AppNavigator() {
     if (showRegister) {
       return (
         <RegisterScreen
-          onRegister={() => void handleAuthSuccess()}
+          onRegister={() => void handleRegisterSuccess()}
           onGoToLogin={() => setShowRegister(false)}
         />
       );
@@ -286,6 +293,29 @@ export function AppNavigator() {
         onGoToForgotPassword={() => setShowForgotPassword(true)}
         onDemoLogin={loginAsDemo}
       />
+    );
+  }
+
+  if (authState === 'beginnerGuide') {
+    return (
+      <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false }}>
+            <Stack.Screen name="BeginnerGuide">
+              {() => (
+                <BeginnerGuideScreen onComplete={() => {
+                  AsyncStorage.setItem('@docepreco_beginner_guide_dismissed', 'true').catch(() => {});
+                  setAuthState('app');
+                }} />
+              )}
+            </Stack.Screen>
+            <Stack.Screen name="CreateIngredient" component={CreateIngredientScreen} />
+            <Stack.Screen name="CreateRecipe" component={CreateRecipeScreen} />
+            <Stack.Screen name="Recipes" component={RecipesScreen} />
+            <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </AuthContext.Provider>
     );
   }
 
