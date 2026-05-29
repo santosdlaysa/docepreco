@@ -353,6 +353,7 @@ CREATE TABLE IF NOT EXISTS pix_requests (
 );
 
 CREATE INDEX IF NOT EXISTS idx_pix_requests_status ON pix_requests (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_pix_requests_user ON pix_requests (user_id);
 `;
 
 async function addColumnIfMissing(

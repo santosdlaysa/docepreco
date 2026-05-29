@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { api, LogEntry } from '../lib/api';
 import { Skeleton } from '../components';
-import { UserPlus, DollarSign, Star, Lock, RefreshCw, MessagesSquare } from 'lucide-react';
+import { UserPlus, DollarSign, Star, Lock, RefreshCw, MessagesSquare, QrCode } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 const TYPE_CONFIG: Record<LogEntry['type'], { icon: LucideIcon; label: string; color: string; iconColor: string }> = {
@@ -10,6 +10,7 @@ const TYPE_CONFIG: Record<LogEntry['type'], { icon: LucideIcon; label: string; c
   premium_on:  { icon: Star,       label: 'Premium ativado',    color: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 text-yellow-700', iconColor: 'text-yellow-500' },
   premium_off: { icon: Lock,       label: 'Premium removido',   color: 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400', iconColor: 'text-gray-400' },
   suggestion:  { icon: MessagesSquare, label: 'Nova sugestão', color: 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 text-indigo-700', iconColor: 'text-indigo-600' },
+  pix_request: { icon: QrCode, label: 'Solicitação PIX', color: 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 text-purple-700', iconColor: 'text-purple-600' },
 };
 
 function fmtTs(ts: string) {
