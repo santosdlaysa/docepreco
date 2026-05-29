@@ -92,6 +92,20 @@ function TabNavigator() {
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Início' }} />
       <Tab.Screen name="Recipes" component={RecipesScreen} options={{ tabBarLabel: 'Receitas' }} />
+      <Tab.Screen
+        name="AddAction"
+        component={DummyScreen}
+        options={{
+          tabBarLabel: () => null,
+          tabBarButton: (props) => <CenterTabButton onPress={props.onPress} />,
+        }}
+        listeners={({ navigation }) => ({
+          tabPress: (e) => {
+            e.preventDefault();
+            navigation.navigate('CreateSale');
+          },
+        })}
+      />
       <Tab.Screen name="Ingredients" component={IngredientsScreen} options={{ tabBarLabel: 'Ingredientes' }} />
       <Tab.Screen name="Sales" component={SalesScreen} options={{ tabBarLabel: 'Vendas' }} />
     </Tab.Navigator>

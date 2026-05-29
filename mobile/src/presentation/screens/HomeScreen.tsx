@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Image,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -58,6 +59,7 @@ export const HomeScreen: React.FC = () => {
 
   const [stats, setStats] = useState<AppStats | null>(null);
   const [allSales, setAllSales] = useState<Sale[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
@@ -65,8 +67,10 @@ export const HomeScreen: React.FC = () => {
 
   useEffect(() => {
     isGuideAvailable().then(setShowGuide).catch(() => {});
-    stApi.getStats().then(setStats).catch(() => {});
-    sApi.getAll().then(setAllSales).catch(() => {});
+    Promise.all([
+      stApi.getStats().then(setStats).catch(() => {}),
+      sApi.getAll().then(setAllSales).catch(() => {}),
+    ]).finally(() => setLoading(false));
   }, []);
 
   const today = new Date().toISOString().split('T')[0];
@@ -111,6 +115,16 @@ export const HomeScreen: React.FC = () => {
   const dayMonth = now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
   const dateLabel = `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${dayMonth}`;
   const firstName = companyName?.split(' ')[0] || 'Confeiteira';
+
+  if (loading) {
+    return (
+      <SafeAreaView style={s.safeArea} edges={['top']}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator size="large" color={PINK} />
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={s.safeArea} edges={['top']}>
