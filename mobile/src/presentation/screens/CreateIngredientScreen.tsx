@@ -204,6 +204,23 @@ export const CreateIngredientScreen: React.FC = () => {
         <ScrollView style={st.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 14 }}>
 
+          {/* ── Banner informativo ── */}
+          <View style={st.infoBanner}>
+            <View style={st.infoBannerIcon}>
+              <Ionicons name="information-circle" size={18} color="#2BA7DD" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={st.infoBannerTitle}>
+                {isEditing ? 'Atualize os dados' : 'Preencha os dados do ingrediente'}
+              </Text>
+              <Text style={st.infoBannerSub}>
+                {isEditing
+                  ? 'Ao alterar o preço, o histórico será atualizado automaticamente.'
+                  : 'O preço por unidade (g, ml, un) é calculado automaticamente a partir da quantidade e do preço pago.'}
+              </Text>
+            </View>
+          </View>
+
           {/* ── Nome ── */}
           <View style={[st.field, { zIndex: 10 }]}>
             <Text style={st.label}>Nome do ingrediente</Text>
@@ -227,6 +244,7 @@ export const CreateIngredientScreen: React.FC = () => {
           {/* ── Tipo de embalagem ── */}
           <View style={st.field}>
             <Text style={st.label}>Tipo de embalagem</Text>
+            <Text style={st.hint}>Selecione se o ingrediente vem em embalagem (lata, pacote, etc.)</Text>
             <View style={st.ugrid}>
               {PKG_TYPES.map(pkg => {
                 const on = purchaseUnitLabel === pkg;
@@ -283,6 +301,7 @@ export const CreateIngredientScreen: React.FC = () => {
           {/* ── Unidade de medida ── */}
           <View style={st.field}>
             <Text style={st.label}>Unidade de medida</Text>
+            <Text style={st.hint}>Em qual unidade você usa esse ingrediente nas receitas?</Text>
             <View style={st.ugrid}>
               {UNIT_OPTIONS.map(u => {
                 const on = unit === u.value;
@@ -378,6 +397,33 @@ const st = StyleSheet.create({
   /* .btn.btn-primary */
   btn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowColor: PINK, shadowOpacity: 0.35 },
   btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  /* info banner */
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 13,
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 15,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#DCF1FB',
+    ...SHADOW,
+    shadowOpacity: 0.04,
+  },
+  infoBannerIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...SHADOW,
+    shadowOpacity: 0.05,
+  },
+  infoBannerTitle: { fontSize: 14.5, fontWeight: '700', color: INK },
+  infoBannerSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2, lineHeight: 17 },
 
   /* suggestions */
   sugBox: {

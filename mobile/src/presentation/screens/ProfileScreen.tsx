@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image, RefreshControl, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image, RefreshControl } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -11,15 +12,20 @@ import { usePremium } from '../context/PremiumContext';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
-import { Header } from '../components/Header';
-import { Button } from '../components/Button';
 import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notifications';
 import { useTranslation } from 'react-i18next';
-import { CountryCodePicker } from '../components/CountryCodePicker';
 
-const SUPPORT_WHATSAPP = '5595981273912'; // Número do WhatsApp para suporte (com código do país, sem + ou zeros à frente)
+const SUPPORT_WHATSAPP = '5595981273912';
+
+/* ─── Design tokens ─── */
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 2 } as const, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 };
 
 export const ProfileScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -31,8 +37,6 @@ export const ProfileScreen: React.FC = () => {
   const [instagramInput, setInstagramInput] = useState('');
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
-  const [phoneCountryCode, setPhoneCountryCode] = useState('+55');
-  const [phoneError, setPhoneError] = useState('');
   const [savingPhone, setSavingPhone] = useState(false);
   const [showPasswordSection, setShowPasswordSection] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -44,821 +48,317 @@ export const ProfileScreen: React.FC = () => {
   const [sendingSuggestion, setSendingSuggestion] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
-  const parsePhoneWithCode = (raw: string | null | undefined) => {
-    if (!raw) return { code: '+55', local: '' };
-    const digits = raw.replace(/\D/g, '');
-    // Try to match known country codes (longest first)
-    const codes = ['598', '595', '593', '591', '506', '507', '505', '504', '503', '502', '351', '258', '245', '244', '239', '238', '670', '86', '81', '61', '58', '57', '56', '55', '54', '53', '52', '51', '49', '44', '39', '34', '33', '91', '1'];
-    for (const c of codes) {
-      if (digits.startsWith(c)) {
-        return { code: `+${c}`, local: digits.slice(c.length) };
-      }
-    }
-    return { code: '+55', local: digits };
-  };
-
-  const loadPhone = (raw: string | null | undefined) => {
-    const { code, local } = parsePhoneWithCode(raw);
-    setPhoneCountryCode(code);
-    setPhoneInput(local);
-  };
-
   const handleRefresh = async () => {
     setRefreshing(true);
-    try {
-      const u = await tokenStorage.getUser();
-      setUser(u);
-      setInstagramInput(u?.instagramHandle || '');
-      loadPhone(u?.phone);
-      await refresh();
-    } finally {
-      setRefreshing(false);
-    }
+    try { const u = await tokenStorage.getUser(); setUser(u); setInstagramInput(u?.instagramHandle || ''); setPhoneInput(u?.phone || ''); await refresh(); }
+    finally { setRefreshing(false); }
   };
 
   useEffect(() => {
-    tokenStorage.getUser().then((u) => {
-      setUser(u);
-      setInstagramInput(u?.instagramHandle || '');
-      loadPhone(u?.phone);
-    });
-    void refresh();
-    getNotificationsEnabled().then(setNotificationsOn);
+    tokenStorage.getUser().then((u) => { setUser(u); setInstagramInput(u?.instagramHandle || ''); setPhoneInput(u?.phone || ''); });
+    void refresh(); getNotificationsEnabled().then(setNotificationsOn);
   }, []);
 
-  const premiumUntilLabel = premiumUntil
-    ? new Date(premiumUntil).toLocaleDateString('pt-BR', {
-        day: '2-digit',
-        month: 'long',
-        year: 'numeric',
-      })
-    : null;
+  const premiumUntilLabel = premiumUntil ? new Date(premiumUntil).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : null;
 
   const handleSaveInstagram = async () => {
     const handle = instagramInput.replace(/^@/, '').trim();
-    if (handle && !/^[a-zA-Z0-9._]+$/.test(handle)) {
-      Alert.alert(t('profile.instagramInvalid'), t('profile.instagramHint'));
-      return;
-    }
+    if (handle && !/^[a-zA-Z0-9._]+$/.test(handle)) { Alert.alert('Instagram inválido', 'Use apenas letras, números, pontos e underlines.'); return; }
     setSavingInstagram(true);
-    try {
-      const updated = await authApi.updateProfile({ instagramHandle: handle || null });
-      setUser(updated);
-      setInstagramInput(updated.instagramHandle || '');
-      Alert.alert(t('profile.saved'), t('profile.instagramUpdated'));
-    } catch {
-      Alert.alert(t('common.error'), t('common.saveError'));
-    } finally {
-      setSavingInstagram(false);
-    }
+    try { const updated = await authApi.updateProfile({ instagramHandle: handle || null }); setUser(updated); setInstagramInput(updated.instagramHandle || ''); Alert.alert('Salvo!', 'Instagram atualizado.'); }
+    catch { Alert.alert('Erro', 'Não foi possível salvar.'); }
+    finally { setSavingInstagram(false); }
   };
 
   const handleSavePhone = async () => {
     const digits = phoneInput.replace(/\D/g, '');
-    if (digits && (digits.length < 8 || digits.length > 12)) {
-      setPhoneError(t('profile.phoneHint'));
-      return;
-    }
-    setPhoneError('');
     setSavingPhone(true);
-    try {
-      const fullPhone = digits ? `${phoneCountryCode.replace('+', '')}${digits}` : null;
-      const updated = await authApi.updateProfile({ phone: fullPhone });
-      setUser(updated);
-      loadPhone(updated.phone);
-      Alert.alert(t('profile.saved'), t('profile.phoneUpdated'));
-    } catch {
-      Alert.alert(t('common.error'), t('common.saveError'));
-    } finally {
-      setSavingPhone(false);
-    }
+    try { const updated = await authApi.updateProfile({ phone: digits || null }); setUser(updated); setPhoneInput(updated.phone || ''); Alert.alert('Salvo!', 'Telefone atualizado.'); }
+    catch { Alert.alert('Erro', 'Não foi possível salvar.'); }
+    finally { setSavingPhone(false); }
   };
 
   const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !confirmPassword) {
-      Alert.alert(t('common.error'), t('profile.fillAllFields'));
-      return;
-    }
-    if (newPassword.length < 6) {
-      Alert.alert(t('common.error'), t('profile.passwordMin'));
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      Alert.alert(t('common.error'), t('profile.passwordMismatch'));
-      return;
-    }
+    if (!currentPassword || !newPassword || !confirmPassword) { Alert.alert('Erro', 'Preencha todos os campos.'); return; }
+    if (newPassword.length < 6) { Alert.alert('Erro', 'A nova senha deve ter pelo menos 6 caracteres.'); return; }
+    if (newPassword !== confirmPassword) { Alert.alert('Erro', 'As senhas não coincidem.'); return; }
     setSavingPassword(true);
-    try {
-      await authApi.changePassword(currentPassword, newPassword);
-      Alert.alert('', t('profile.passwordChanged'));
-      setShowPasswordSection(false);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
-    } catch (e: any) {
-      const msg = e?.response?.data?.error || t('profile.passwordError');
-      Alert.alert(t('common.error'), msg);
-    } finally {
-      setSavingPassword(false);
-    }
+    try { await authApi.changePassword(currentPassword, newPassword); Alert.alert('', 'Senha alterada com sucesso!'); setShowPasswordSection(false); setCurrentPassword(''); setNewPassword(''); setConfirmPassword(''); }
+    catch (e: any) { Alert.alert('Erro', e?.response?.data?.error || 'Erro ao alterar senha.'); }
+    finally { setSavingPassword(false); }
   };
-
-  const currentFullPhone = phoneInput.replace(/\D/g, '') ? `${phoneCountryCode.replace('+', '')}${phoneInput.replace(/\D/g, '')}` : '';
-  const phoneChanged = currentFullPhone !== (user?.phone || '');
-  const instagramChanged = (instagramInput.replace(/^@/, '').trim()) !== (user?.instagramHandle || '');
 
   const pickCompanyLogo = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.5,
-      base64: true,
-    });
-    if (!result.canceled && result.assets[0]?.base64) {
-      const asset = result.assets[0];
-      const mime = asset.mimeType || 'image/jpeg';
-      setCompanyLogo(`data:${mime};base64,${asset.base64}`);
-    }
-  };
-
-  const removeCompanyLogo = () => {
-    Alert.alert(t('profile.removeLogo'), t('profile.removeLogoMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('profile.remove'), style: 'destructive', onPress: () => setCompanyLogo(null) },
-    ]);
+    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.5, base64: true });
+    if (!result.canceled && result.assets[0]?.base64) { const a = result.assets[0]; setCompanyLogo(`data:${a.mimeType || 'image/jpeg'};base64,${a.base64}`); }
   };
 
   const handleSendSuggestion = async () => {
-    const text = suggestionText.trim();
-    if (!text) {
-      Alert.alert(t('common.error'), t('profile.suggestionEmpty'));
-      return;
-    }
+    if (!suggestionText.trim()) { Alert.alert('Erro', 'Escreva sua sugestão.'); return; }
     setSendingSuggestion(true);
-    try {
-      await authApi.sendSuggestion(text);
-      Alert.alert('', t('profile.suggestionSent'));
-      setSuggestionText('');
-    } catch {
-      Alert.alert(t('common.error'), t('profile.suggestionError'));
-    } finally {
-      setSendingSuggestion(false);
-    }
+    try { await authApi.sendSuggestion(suggestionText.trim()); Alert.alert('', 'Sugestão enviada! Obrigado!'); setSuggestionText(''); }
+    catch { Alert.alert('Erro', 'Não foi possível enviar.'); }
+    finally { setSendingSuggestion(false); }
   };
 
-  const handleLogout = () => {
-    Alert.alert(t('profile.logoutTitle'), t('profile.logoutMessage'), [
-      { text: t('common.cancel'), style: 'cancel' },
-      { text: t('profile.logoutTitle'), style: 'destructive', onPress: logout },
-    ]);
-  };
+  const handleLogout = () => Alert.alert('Sair', 'Deseja sair da sua conta?', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Sair', style: 'destructive', onPress: logout }]);
 
   const handleDeleteAccount = () => {
-    Alert.alert(
-      t('profile.deleteAccountTitle'),
-      t('profile.deleteAccountMessage'),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('profile.deleteAccountConfirm'),
-          style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              t('profile.deleteAccountFinalTitle'),
-              t('profile.deleteAccountFinalMessage'),
-              [
-                { text: t('common.cancel'), style: 'cancel' },
-                {
-                  text: t('profile.deleteAccountFinalConfirm'),
-                  style: 'destructive',
-                  onPress: async () => {
-                    setDeletingAccount(true);
-                    try {
-                      await authApi.deleteAccount();
-                      Alert.alert(
-                        t('profile.deleteAccountSuccessTitle'),
-                        t('profile.deleteAccountSuccessMessage'),
-                        [{ text: 'OK', onPress: logout }]
-                      );
-                    } catch {
-                      Alert.alert(t('common.error'), t('profile.deleteAccountError'));
-                    } finally {
-                      setDeletingAccount(false);
-                    }
-                  },
-                },
-              ]
-            );
-          },
-        },
-      ]
-    );
+    Alert.alert('Excluir conta', 'Todos os seus dados serão apagados permanentemente.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: () => {
+        Alert.alert('Tem certeza?', 'Essa ação não pode ser desfeita.', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Sim, excluir', style: 'destructive', onPress: async () => {
+            setDeletingAccount(true);
+            try { await authApi.deleteAccount(); Alert.alert('Conta excluída', 'Seus dados foram removidos.', [{ text: 'OK', onPress: logout }]); }
+            catch { Alert.alert('Erro', 'Não foi possível excluir.'); }
+            finally { setDeletingAccount(false); }
+          }},
+        ]);
+      }},
+    ]);
   };
 
   const handleSupport = async () => {
     const who = user?.companyName ? ` da ${user.companyName}` : '';
-    const message = `Olá! Sou${who} e preciso de ajuda com o app DocePreço.`;
-    const url = `https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(message)}`;
-    try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert(
-        t('common.error'),
-        t('profile.whatsappError')
-      );
-    }
+    try { await Linking.openURL(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(`Olá! Sou${who} e preciso de ajuda com o app DocePreço.`)}`); }
+    catch { Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'); }
   };
 
+  const instagramChanged = (instagramInput.replace(/^@/, '').trim()) !== (user?.instagramHandle || '');
+  const phoneChanged = (phoneInput.replace(/\D/g, '')) !== (user?.phone?.replace(/\D/g, '') || '');
+  const initials = user?.companyName ? user.companyName.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('') : '?';
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header title={t('profile.title')} showBack onBack={() => navigation.goBack()} />
-      <ScrollView
-        style={styles.container}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        <Card style={styles.card}>
-          <View style={styles.avatarRow}>
-            <TouchableOpacity
-              style={styles.avatarWrap}
-              onPress={pickCompanyLogo}
-              onLongPress={companyLogo ? removeCompanyLogo : undefined}
-              activeOpacity={0.7}
-            >
+    <SafeAreaView style={st.safe}>
+      <ScrollView showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} colors={[PINK]} tintColor={PINK} />}
+        contentContainerStyle={{ paddingBottom: 40 }}>
+
+        {/* ── Back button ── */}
+        <View style={st.backRow}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={st.bk}>
+            <Ionicons name="arrow-back" size={20} color={INK} />
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Avatar + Name ── */}
+        <View style={st.avatarSection}>
+          <TouchableOpacity onPress={pickCompanyLogo} onLongPress={companyLogo ? () => Alert.alert('Remover foto?', '', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Remover', style: 'destructive', onPress: () => setCompanyLogo(null) }]) : undefined} activeOpacity={0.7}>
+            <View style={st.avatarWrap}>
               {companyLogo ? (
-                <Image source={{ uri: companyLogo }} style={styles.avatarImage} />
+                <Image source={{ uri: companyLogo }} style={st.avatarImg} />
               ) : (
-                <View style={styles.avatar}>
-                  <Ionicons name="storefront" size={32} color={colors.primary} />
-                </View>
+                <LinearGradient colors={['#FF8FB6', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.avatarGrad}>
+                  <Text style={st.avatarInitials}>{initials}</Text>
+                </LinearGradient>
               )}
-              <View style={styles.avatarEditBadge}>
-                <Ionicons name="camera" size={12} color="#fff" />
-              </View>
-            </TouchableOpacity>
-            <View style={styles.userInfo}>
-              <Text style={styles.companyName}>{user?.companyName || '—'}</Text>
-              <View style={styles.emailRow}>
-                <Text style={styles.email}>{user?.email || '—'}</Text>
-                {isDemoMode && (
-                  <View style={styles.demoBadge}>
-                    <Text style={styles.demoBadgeText}>Demo</Text>
-                  </View>
-                )}
-                {isPremium && (
-                  <View style={styles.premiumBadge}>
-                    <Ionicons name="sparkles" size={10} color="#fff" />
-                    <Text style={styles.premiumBadgeText}>Premium</Text>
-                  </View>
-                )}
-              </View>
+              <View style={st.cameraBadge}><Ionicons name="camera" size={16} color={INK2} /></View>
             </View>
-          </View>
-        </Card>
-
-        <Card style={styles.card}>
-          <View style={styles.menuItem}>
-            <View style={[styles.iconBadge, { backgroundColor: '#E3F2FD' }]}>
-              <Ionicons name="call-outline" size={20} color="#1976D2" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.menuText}>{t('profile.phone')}</Text>
-              <View style={styles.instagramRow}>
-                <CountryCodePicker value={phoneCountryCode} onChange={setPhoneCountryCode} compact />
-                <TextInput
-                  style={[styles.instagramInput, { marginLeft: 0 }, !!phoneError && { borderBottomColor: colors.error }]}
-                  placeholder="(99) 99999-9999"
-                  placeholderTextColor={colors.textMuted}
-                  value={phoneInput}
-                  onChangeText={(v) => { setPhoneInput(v); if (phoneError) setPhoneError(''); }}
-                  keyboardType="phone-pad"
-                  maxLength={15}
-                />
-                {phoneChanged && (
-                  <TouchableOpacity
-                    style={[styles.instagramSaveBtn, !!phoneError && { backgroundColor: colors.textMuted }]}
-                    onPress={handleSavePhone}
-                    disabled={savingPhone}
-                  >
-                    {savingPhone ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-              {!!phoneError && (
-                <Text style={styles.phoneErrorText}>{phoneError}</Text>
-              )}
-            </View>
-          </View>
-        </Card>
-
-        <Card style={styles.card}>
-          <View style={styles.menuItem}>
-            <View style={[styles.iconBadge, { backgroundColor: '#FCE4EC' }]}>
-              <Ionicons name="logo-instagram" size={20} color="#E1306C" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.menuText}>{t('profile.instagram')}</Text>
-              <View style={styles.instagramRow}>
-                <Text style={styles.instagramAt}>@</Text>
-                <TextInput
-                  style={styles.instagramInput}
-                  placeholder="seu_usuario"
-                  placeholderTextColor={colors.textMuted}
-                  value={instagramInput}
-                  onChangeText={setInstagramInput}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  maxLength={30}
-                />
-                {instagramChanged && (
-                  <TouchableOpacity
-                    style={styles.instagramSaveBtn}
-                    onPress={handleSaveInstagram}
-                    disabled={savingInstagram}
-                  >
-                    {savingInstagram ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Ionicons name="checkmark" size={18} color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          </View>
-        </Card>
-
-        {(isPremium ? (
-          <Card style={styles.premiumActiveCard}>
-            <View style={styles.premiumActiveRow}>
-              <View style={styles.premiumIconWrap}>
-                <Ionicons name="sparkles" size={22} color="#fff" />
-              </View>
-              <View style={styles.premiumActiveText}>
-                <Text style={styles.premiumActiveTitle}>{t('profile.youArePremium')} ✨</Text>
-                <Text style={styles.premiumActiveSubtitle}>
-                  {premiumUntilLabel
-                    ? daysLeft !== null && daysLeft <= 7
-                      ? t('profile.renewsIn', { days: daysLeft, plural: daysLeft === 1 ? '' : 's', date: premiumUntilLabel })
-                      : t('profile.validUntil', { date: premiumUntilLabel })
-                    : t('profile.allFeaturesUnlocked')}
-                </Text>
-              </View>
-            </View>
-          </Card>
-        ) : (
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
-          >
-            <Card style={styles.premiumCtaCard}>
-              <View style={styles.premiumCtaRow}>
-                <View style={styles.premiumIconWrap}>
-                  <Ionicons name="sparkles" size={22} color="#fff" />
-                </View>
-                <View style={styles.premiumCtaText}>
-                  <Text style={styles.premiumCtaTitle}>{t('profile.goPremium')}</Text>
-                  <Text style={styles.premiumCtaSubtitle}>
-                    {t('profile.premiumDescription')}
-                  </Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color={colors.primary} />
-              </View>
-            </Card>
           </TouchableOpacity>
-        ))}
-
-        {isPremium && (
-          <>
-            <Text style={styles.sectionTitle}>{t('profile.premiumSection')}</Text>
-            <Card style={styles.menuCard}>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => navigation.navigate('PdfSettings')}
-              >
-                <View style={[styles.iconBadge, { backgroundColor: colors.primaryLight }]}>
-                  <Ionicons name="document-text-outline" size={20} color={colors.primary} />
-                </View>
-                <View style={styles.menuTextWrap}>
-                  <Text style={styles.menuText}>{t('profile.customizePdf')}</Text>
-                  <Text style={styles.menuSubtext}>{t('profile.customizePdfSub')}</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-              </TouchableOpacity>
-            </Card>
-          </>
-        )}
-
-        <Text style={styles.sectionTitle}>{t('profile.security')}</Text>
-        <Card style={styles.menuCard}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => setShowPasswordSection(!showPasswordSection)}
-          >
-            <View style={[styles.iconBadge, { backgroundColor: '#EDE7F6' }]}>
-              <Ionicons name="lock-closed-outline" size={20} color="#7B1FA2" />
-            </View>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>{t('profile.changePassword')}</Text>
-              <Text style={styles.menuSubtext}>{t('profile.changePasswordSub')}</Text>
-            </View>
-            <Ionicons name={showPasswordSection ? 'chevron-up' : 'chevron-down'} size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-          {showPasswordSection && (
-            <View style={styles.passwordSection}>
-              <TextInput
-                style={styles.passwordInput}
-                placeholder={t('profile.currentPassword')}
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-                value={currentPassword}
-                onChangeText={setCurrentPassword}
-              />
-              <TextInput
-                style={styles.passwordInput}
-                placeholder={t('profile.newPassword')}
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-                value={newPassword}
-                onChangeText={setNewPassword}
-              />
-              <TextInput
-                style={styles.passwordInput}
-                placeholder={t('profile.confirmPassword')}
-                placeholderTextColor={colors.textMuted}
-                secureTextEntry
-                value={confirmPassword}
-                onChangeText={setConfirmPassword}
-              />
-              <Button
-                title={savingPassword ? t('profile.savingPassword') : t('profile.changePasswordButton')}
-                onPress={handleChangePassword}
-                disabled={savingPassword}
-                style={{ marginTop: 8 }}
-              />
-            </View>
+          <Text style={st.companyName}>{user?.companyName || '—'}</Text>
+          <Text style={st.email}>{user?.email || '—'}</Text>
+          {isPremium && (
+            <LinearGradient colors={['#FFC53D', '#FFB01F']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.proChip}>
+              <Ionicons name="trophy" size={14} color="#7A4E00" />
+              <Text style={st.proChipText}>PRO ativo</Text>
+            </LinearGradient>
           )}
-        </Card>
+        </View>
 
-        <Text style={styles.sectionTitle}>{t('profile.preferences')}</Text>
-        <Card style={styles.menuCard}>
-          <View style={styles.menuItem}>
-            <View style={[styles.iconBadge, { backgroundColor: '#FFF3E0' }]}>
-              <Ionicons name="notifications-outline" size={20} color="#FF9800" />
+        <View style={st.body}>
+          {/* ── Phone + Instagram ── */}
+          <View style={st.gcard}>
+            <View style={st.grow}>
+              <View style={[st.gi, { backgroundColor: '#EEF8FD' }]}><Ionicons name="call-outline" size={18} color="#2BA7DD" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.growB}>Telefone</Text>
+                <TextInput style={st.inlineInput} value={phoneInput} onChangeText={setPhoneInput} placeholder="+55 (11) 99999-9999" placeholderTextColor={INK3} keyboardType="phone-pad" />
+              </View>
+              {phoneChanged && (
+                <TouchableOpacity onPress={handleSavePhone} disabled={savingPhone} style={st.saveSmall}>
+                  {savingPhone ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="checkmark" size={16} color="#fff" />}
+                </TouchableOpacity>
+              )}
             </View>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>{t('profile.notifications')}</Text>
-              <Text style={styles.menuSubtext}>{t('profile.notificationsSub')}</Text>
-            </View>
-            <Switch
-              value={notificationsOn}
-              onValueChange={(value) => {
-                setNotificationsOn(value);
-                void setNotificationsEnabled(value);
-              }}
-              trackColor={{ false: colors.border, true: colors.primaryLight }}
-              thumbColor={notificationsOn ? colors.primary : '#f4f3f4'}
-            />
-          </View>
-        </Card>
-
-        <Text style={styles.sectionTitle}>{t('profile.help')}</Text>
-        <Card style={styles.menuCard}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('SupportChat')}>
-            <View style={[styles.iconBadge, { backgroundColor: '#E3F2FD' }]}>
-              <Ionicons name="chatbubbles-outline" size={20} color="#1976D2" />
-            </View>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>{t('profile.supportChat')}</Text>
-              <Text style={styles.menuSubtext}>{t('profile.supportChatSub')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        </Card>
-        <Card style={styles.menuCard}>
-          <TouchableOpacity style={styles.menuItem} onPress={handleSupport}>
-            <View style={[styles.iconBadge, { backgroundColor: '#E7F9EF' }]}>
-              <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
-            </View>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>{t('profile.whatsappSupport')}</Text>
-              <Text style={styles.menuSubtext}>{t('profile.whatsappSupportSub')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        </Card>
-
-        <Card style={styles.menuCard}>
-          <View style={styles.menuItem}>
-            <View style={[styles.iconBadge, { backgroundColor: '#E8EAF6' }]}>
-              <Ionicons name="bulb-outline" size={20} color="#5C6BC0" />
-            </View>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>{t('profile.suggestions')}</Text>
-              <Text style={styles.menuSubtext}>{t('profile.suggestionsSub')}</Text>
+            <View style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]}>
+              <View style={[st.gi, { backgroundColor: '#FFF0F6' }]}><Ionicons name="logo-instagram" size={18} color={PINK} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.growB}>Instagram</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Text style={{ color: INK3, fontSize: 14 }}>@</Text>
+                  <TextInput style={[st.inlineInput, { marginLeft: 2 }]} value={instagramInput} onChangeText={setInstagramInput} placeholder="docesdamarina" placeholderTextColor={INK3} autoCapitalize="none" />
+                </View>
+              </View>
+              {instagramChanged && (
+                <TouchableOpacity onPress={handleSaveInstagram} disabled={savingInstagram} style={st.saveSmall}>
+                  {savingInstagram ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="checkmark" size={16} color="#fff" />}
+                </TouchableOpacity>
+              )}
             </View>
           </View>
-          <TextInput
-            style={styles.suggestionInput}
-            placeholder={t('profile.suggestionPlaceholder')}
-            placeholderTextColor={colors.textMuted}
-            value={suggestionText}
-            onChangeText={setSuggestionText}
-            multiline
-            maxLength={500}
-            textAlignVertical="top"
-          />
-          <TouchableOpacity
-            style={[styles.suggestionSendBtn, !suggestionText.trim() && { opacity: 0.5 }]}
-            onPress={handleSendSuggestion}
-            disabled={sendingSuggestion || !suggestionText.trim()}
-          >
-            {sendingSuggestion ? (
-              <ActivityIndicator size="small" color="#fff" />
-            ) : (
-              <>
-                <Ionicons name="send" size={16} color="#fff" />
-                <Text style={styles.suggestionSendText}>{t('profile.suggestionSend')}</Text>
-              </>
+
+          {/* ── Premium CTA / Status ── */}
+          {isPremium ? (
+            <TouchableOpacity activeOpacity={0.85}>
+              <LinearGradient colors={['#FFF1CE', '#FFE3EF']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={st.proCta}>
+                <View style={st.proCtaIco}><Ionicons name="trophy" size={24} color={PINK} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.proCtaTitle}>Plano PRO ativo</Text>
+                  <Text style={st.proCtaSub}>{premiumUntilLabel ? `Renova em ${premiumUntilLabel}` : 'Todos os recursos liberados'}</Text>
+                </View>
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })} activeOpacity={0.85}>
+              <LinearGradient colors={['#FFF1CE', '#FFE3EF']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={st.proCta}>
+                <View style={st.proCtaIco}><Ionicons name="trophy" size={24} color={PINK} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.proCtaTitle}>Seja PRO</Text>
+                  <Text style={st.proCtaSub}>Receitas ilimitadas e muito mais</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={PINK} />
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
+          {/* ── Conta ── */}
+          <Text style={st.secLabel}>Conta</Text>
+          <View style={st.gcard}>
+            {isPremium && (
+              <TouchableOpacity style={st.grow} onPress={() => navigation.navigate('PdfSettings')} activeOpacity={0.7}>
+                <View style={[st.gi, { backgroundColor: '#FFF0F6' }]}><Ionicons name="document-text-outline" size={18} color={PINK} /></View>
+                <View style={{ flex: 1 }}><Text style={st.growB}>Personalizar PDF</Text></View>
+                <Ionicons name="chevron-forward" size={16} color={INK3} />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
-        </Card>
-
-        <Text style={styles.sectionTitle}>{t('profile.about')}</Text>
-        <Card style={styles.menuCard}>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => navigation.navigate('PrivacyPolicy')}
-          >
-            <View style={[styles.iconBadge, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="shield-checkmark-outline" size={20} color={colors.primary} />
-            </View>
-            <View style={styles.menuTextWrap}>
-              <Text style={styles.menuText}>{t('profile.privacyPolicy')}</Text>
-              <Text style={styles.menuSubtext}>{t('profile.privacyPolicySub')}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-          </TouchableOpacity>
-        </Card>
-
-        <Card style={styles.dangerCard}>
-          <Button
-            title={t('profile.logout')}
-            onPress={handleLogout}
-            variant="outline"
-            style={styles.logoutBtn}
-          />
-        </Card>
-
-        {!isDemoMode && (
-          <TouchableOpacity
-            style={styles.deleteAccountBtn}
-            onPress={handleDeleteAccount}
-            disabled={deletingAccount}
-          >
-            {deletingAccount ? (
-              <ActivityIndicator size="small" color={colors.error} />
-            ) : (
-              <>
-                <Ionicons name="trash-outline" size={16} color={colors.error} />
-                <Text style={styles.deleteAccountText}>{t('profile.deleteAccount')}</Text>
-              </>
+            <TouchableOpacity style={[st.grow, isPremium && { borderTopWidth: 1, borderTopColor: LINE }]} onPress={() => setShowPasswordSection(!showPasswordSection)} activeOpacity={0.7}>
+              <View style={[st.gi, { backgroundColor: '#FCEFE6' }]}><Ionicons name="key-outline" size={18} color={INK2} /></View>
+              <View style={{ flex: 1 }}><Text style={st.growB}>Alterar senha</Text></View>
+              <Ionicons name={showPasswordSection ? 'chevron-up' : 'chevron-forward'} size={16} color={INK3} />
+            </TouchableOpacity>
+            {showPasswordSection && (
+              <View style={{ paddingHorizontal: 15, paddingBottom: 13, gap: 8 }}>
+                <TextInput style={st.passInput} placeholder="Senha atual" placeholderTextColor={INK3} secureTextEntry value={currentPassword} onChangeText={setCurrentPassword} />
+                <TextInput style={st.passInput} placeholder="Nova senha" placeholderTextColor={INK3} secureTextEntry value={newPassword} onChangeText={setNewPassword} />
+                <TextInput style={st.passInput} placeholder="Confirmar nova senha" placeholderTextColor={INK3} secureTextEntry value={confirmPassword} onChangeText={setConfirmPassword} />
+                <TouchableOpacity onPress={handleChangePassword} disabled={savingPassword} activeOpacity={0.85}>
+                  <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.passBtn}>
+                    {savingPassword ? <ActivityIndicator color="#fff" /> : <Text style={st.passBtnText}>Alterar senha</Text>}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
             )}
+            <View style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]}>
+              <View style={[st.gi, { backgroundColor: '#FFF1CE' }]}><Ionicons name="notifications-outline" size={18} color="#C8870B" /></View>
+              <View style={{ flex: 1 }}><Text style={st.growB}>Notificações</Text></View>
+              <Switch value={notificationsOn} onValueChange={(v) => { setNotificationsOn(v); void setNotificationsEnabled(v); }}
+                trackColor={{ false: INK3, true: '#DCF6E5' }} thumbColor={notificationsOn ? GREEN : '#f4f3f4'} />
+            </View>
+          </View>
+
+          {/* ── Ajuda ── */}
+          <Text style={st.secLabel}>Ajuda</Text>
+          <View style={st.gcard}>
+            <TouchableOpacity style={st.grow} onPress={() => navigation.navigate('SupportChat')} activeOpacity={0.7}>
+              <View style={[st.gi, { backgroundColor: '#EEF8FD' }]}><Ionicons name="chatbubbles-outline" size={18} color="#2BA7DD" /></View>
+              <View style={{ flex: 1 }}><Text style={st.growB}>Chat de suporte</Text></View>
+              <Ionicons name="chevron-forward" size={16} color={INK3} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]} onPress={handleSupport} activeOpacity={0.7}>
+              <View style={[st.gi, { backgroundColor: '#DCF6E5' }]}><Ionicons name="logo-whatsapp" size={18} color={GREEN} /></View>
+              <View style={{ flex: 1 }}><Text style={st.growB}>WhatsApp do suporte</Text></View>
+              <Ionicons name="chevron-forward" size={16} color={INK3} />
+            </TouchableOpacity>
+            <View style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE, flexDirection: 'column', alignItems: 'stretch', gap: 8 }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={[st.gi, { backgroundColor: '#FFF0F6' }]}><Ionicons name="sparkles-outline" size={18} color={PINK} /></View>
+                <Text style={st.growB}>Enviar sugestão</Text>
+              </View>
+              <TextInput style={st.suggestionInput} value={suggestionText} onChangeText={setSuggestionText}
+                placeholder="Sua ideia ou feedback..." placeholderTextColor={INK3} multiline maxLength={500} textAlignVertical="top" />
+              <TouchableOpacity onPress={handleSendSuggestion} disabled={sendingSuggestion || !suggestionText.trim()} activeOpacity={0.85}
+                style={[st.suggestionBtn, !suggestionText.trim() && { opacity: 0.5 }]}>
+                {sendingSuggestion ? <ActivityIndicator size="small" color="#fff" /> : (
+                  <><Ionicons name="send" size={14} color="#fff" /><Text style={st.suggestionBtnText}>Enviar</Text></>
+                )}
+              </TouchableOpacity>
+            </View>
+            <TouchableOpacity style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]} onPress={() => navigation.navigate('PrivacyPolicy')} activeOpacity={0.7}>
+              <View style={[st.gi, { backgroundColor: '#FCEFE6' }]}><Ionicons name="shield-checkmark-outline" size={18} color={INK2} /></View>
+              <View style={{ flex: 1 }}><Text style={st.growB}>Política de privacidade</Text></View>
+              <Ionicons name="chevron-forward" size={16} color={INK3} />
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Logout ── */}
+          <TouchableOpacity style={st.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+            <Text style={st.logoutText}>Sair da conta</Text>
           </TouchableOpacity>
-        )}
+
+          {!isDemoMode && (
+            <TouchableOpacity style={st.deleteBtn} onPress={handleDeleteAccount} disabled={deletingAccount}>
+              {deletingAccount ? <ActivityIndicator size="small" color="#C0392B" /> : <Text style={st.deleteText}>Excluir minha conta</Text>}
+            </TouchableOpacity>
+          )}
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, padding: 20 },
-  card: { marginBottom: 16 },
-  avatarRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+/* ──────────────────────── STYLES ──────────────────────── */
+const st = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: CREAM },
+  body: { paddingHorizontal: 18, gap: 14 },
+
+  /* back */
+  backRow: { paddingHorizontal: 16, paddingTop: 8 },
+  bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
+
+  /* avatar section */
+  avatarSection: { alignItems: 'center', paddingTop: 8, paddingBottom: 20 },
   avatarWrap: { position: 'relative' },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarImage: {
-    width: 60,
-    height: 60,
-    borderRadius: 18,
-  },
-  avatarEditBadge: {
-    position: 'absolute',
-    bottom: -2,
-    right: -2,
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: colors.surface,
-  },
-  userInfo: { flex: 1 },
-  companyName: { ...typography.h3, color: colors.text },
-  email: { ...typography.bodySmall, color: colors.textSecondary },
-  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
-  demoBadge: {
-    backgroundColor: '#FFF8E1',
-    borderWidth: 1,
-    borderColor: '#FFE082',
-    borderRadius: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  demoBadgeText: { fontSize: 11, fontWeight: '700', color: '#6D5000' },
-  premiumBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    backgroundColor: colors.primary,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  premiumBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
-  premiumActiveCard: {
-    marginBottom: 16,
-    backgroundColor: colors.cream,
-    borderColor: colors.primary,
-    borderWidth: 1.5,
-  },
-  premiumActiveRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  premiumActiveText: { flex: 1 },
-  premiumActiveTitle: { ...typography.h4, color: colors.text },
-  premiumActiveSubtitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  premiumCtaCard: {
-    marginBottom: 16,
-    backgroundColor: colors.cream,
-    borderColor: colors.primary,
-    borderWidth: 1.5,
-  },
-  premiumCtaRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  premiumCtaText: { flex: 1 },
-  premiumCtaTitle: { ...typography.h4, color: colors.text },
-  premiumCtaSubtitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  premiumIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  sectionTitle: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
-  },
-  menuCard: { marginBottom: 16 },
-  menuItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 6,
-  },
-  iconBadge: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  menuTextWrap: {
-    flex: 1,
-  },
-  menuText: {
-    ...typography.body,
-    color: colors.text,
-    fontWeight: '600',
-  },
-  menuSubtext: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    marginTop: 2,
-  },
-  phoneErrorText: {
-    ...typography.caption,
-    color: colors.error,
-    marginTop: 4,
-  },
-  instagramRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-    gap: 2,
-  },
-  instagramAt: {
-    ...typography.body,
-    color: colors.textMuted,
-    fontSize: 15,
-  },
-  instagramInput: {
-    flex: 1,
-    ...typography.body,
-    color: colors.text,
-    fontSize: 15,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  instagramSaveBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 8,
-  },
-  passwordSection: {
-    marginTop: 12,
-    gap: 10,
-  },
-  passwordInput: {
-    ...typography.body,
-    color: colors.text,
-    fontSize: 15,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-  },
-  suggestionInput: {
-    ...typography.body,
-    color: colors.text,
-    fontSize: 14,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 10,
-    minHeight: 80,
-    marginTop: 8,
-  },
-  suggestionSendBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#5C6BC0',
-    borderRadius: 10,
-    paddingVertical: 10,
-    marginTop: 10,
-  },
-  suggestionSendText: {
-    ...typography.button,
-    color: '#fff',
-    fontSize: 13,
-  },
-  dangerCard: { borderColor: '#FFCDD2', backgroundColor: '#FFF5F5' },
-  logoutBtn: { borderColor: colors.error },
-  deleteAccountBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    marginBottom: 32,
-  },
-  deleteAccountText: {
-    ...typography.bodySmall,
-    color: colors.error,
-    fontWeight: '600',
-  },
+  avatarGrad: { width: 88, height: 88, borderRadius: 30, alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowColor: PINK, shadowOpacity: 0.3, shadowRadius: 12 },
+  avatarImg: { width: 88, height: 88, borderRadius: 30 },
+  avatarInitials: { fontSize: 34, fontWeight: '800', color: '#fff' },
+  cameraBadge: { position: 'absolute', right: -4, bottom: -4, width: 32, height: 32, borderRadius: 11, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  companyName: { fontSize: 22, fontWeight: '700', color: INK, marginTop: 12 },
+  email: { fontSize: 13, color: INK2, fontWeight: '600' },
+  proChip: { flexDirection: 'row', alignItems: 'center', gap: 5, height: 30, paddingHorizontal: 11, borderRadius: 999, marginTop: 10, ...SHADOW, shadowColor: '#FFB01F', shadowOpacity: 0.35 },
+  proChipText: { fontSize: 12.5, fontWeight: '700', color: '#7A4E00' },
+
+  /* pro cta */
+  proCta: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 15, paddingHorizontal: 16, borderWidth: 1, borderColor: '#FFE3EF' },
+  proCtaIco: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowOpacity: 0.04 },
+  proCtaTitle: { fontSize: 15.5, fontWeight: '700', color: INK },
+  proCtaSub: { fontSize: 12, color: INK2, fontWeight: '500' },
+
+  /* section label */
+  secLabel: { fontSize: 13, fontWeight: '700', color: INK2, marginTop: 2, marginLeft: 4 },
+
+  /* grouped card (.gcard + .grow) */
+  gcard: { backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SHADOW },
+  grow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15 },
+  gi: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  growB: { fontSize: 14.5, fontWeight: '600', color: INK },
+  inlineInput: { fontSize: 14, color: INK, padding: 0, marginTop: 2 },
+  saveSmall: { width: 32, height: 32, borderRadius: 10, backgroundColor: PINK, alignItems: 'center', justifyContent: 'center' },
+
+  /* password */
+  passInput: { backgroundColor: CREAM, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: INK },
+  passBtn: { height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginTop: 4 },
+  passBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+
+  /* suggestion */
+  suggestionInput: { backgroundColor: CREAM, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: INK, minHeight: 70 },
+  suggestionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: '#5C6BC0', borderRadius: 10, paddingVertical: 10 },
+  suggestionBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+
+  /* logout / delete */
+  logoutBtn: { backgroundColor: '#fff', borderRadius: 16, height: 50, alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  logoutText: { fontSize: 15, fontWeight: '700', color: '#C0392B' },
+  deleteBtn: { alignItems: 'center', paddingVertical: 14 },
+  deleteText: { fontSize: 12.5, fontWeight: '600', color: INK3 },
 });

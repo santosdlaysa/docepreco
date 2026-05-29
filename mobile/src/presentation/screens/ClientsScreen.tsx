@@ -3,13 +3,14 @@ import {
   View,
   Text,
   StyleSheet,
-  FlatList,
+  ScrollView,
   TouchableOpacity,
   Alert,
   Linking,
-  ActivityIndicator,
   TextInput,
+  RefreshControl,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -17,15 +18,37 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Client } from '../../domain/entities/Client';
 import { clientStorage } from '../../data/storage/clientStorage';
-import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
 import { Skeleton } from '../components/Skeleton';
-import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+// ── Design tokens ──
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.07,
+  shadowRadius: 12,
+  elevation: 4,
+};
+
+const AVATAR_GRADIENTS: [string, string][] = [
+  ['#FF8FB6', '#EA4B92'],
+  ['#2BA7DD', '#1A6F96'],
+  ['#FFB01F', '#F2960B'],
+  ['#43BE6E', '#2BA060'],
+  ['#7B68EE', '#5A4BD1'],
+  ['#FF6B6B', '#E04848'],
+];
 
 const isBirthdaySoon = (birthday?: string): boolean => {
   if (!birthday) return false;
@@ -46,27 +69,27 @@ export const ClientsScreen: React.FC = () => {
 
   const formatBirthday = (birthday: string): string => {
     const [mm, dd] = birthday.split('-').map(Number);
-    return t('clients.birthdayFormat', { day: String(dd).padStart(2, '0'), month: monthNames[mm - 1] });
+    return `${String(dd).padStart(2, '0')} de ${monthNames[mm - 1]}`;
   };
+
   const [clients, setClients] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
-      if (!guardScreen('clientsManagement')) {
-        return;
-      }
+      if (!guardScreen('clientsManagement')) return;
       loadClients();
     }, [])
   );
 
   const loadClients = async () => {
     try {
-      const data = await clientStorage.getAll();
-      setClients(data);
+      setClients(await clientStorage.getAll());
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -80,12 +103,9 @@ export const ClientsScreen: React.FC = () => {
       return;
     }
     const phone = client.phone.replace(/\D/g, '');
-    const url = `https://wa.me/55${phone}`;
-    try {
-      await Linking.openURL(url);
-    } catch {
-      Alert.alert(t('common.error'), t('clients.whatsappError'));
-    }
+    await Linking.openURL(`https://wa.me/55${phone}`).catch(() =>
+      Alert.alert(t('common.error'), t('clients.whatsappError'))
+    );
   };
 
   const handleDelete = (client: Client) => {
@@ -94,253 +114,238 @@ export const ClientsScreen: React.FC = () => {
       {
         text: t('common.delete'),
         style: 'destructive',
-        onPress: async () => {
-          await clientStorage.delete(client.id);
-          loadClients();
-        },
+        onPress: async () => { await clientStorage.delete(client.id); loadClients(); },
       },
     ]);
   };
 
-  const renderClient = ({ item }: { item: Client }) => {
-    const birthdaySoon = isBirthdaySoon(item.birthday);
-    return (
-      <TouchableOpacity
-        activeOpacity={0.8}
-        onPress={() => navigation.navigate('EditClient', { clientId: item.id })}
-        onLongPress={() => handleDelete(item)}
-      >
-        <Card style={styles.clientCard}>
-          <View style={styles.clientRow}>
-            <View style={[styles.avatar, birthdaySoon && styles.avatarBirthday]}>
-              {birthdaySoon ? (
-                <Text style={styles.avatarEmoji}>🎂</Text>
-              ) : (
-                <Ionicons name="person" size={20} color={colors.primary} />
-              )}
-            </View>
-            <View style={styles.clientInfo}>
-              <View style={styles.nameRow}>
-                <Text style={styles.clientName}>{item.name}</Text>
-                {birthdaySoon && (
-                  <View style={styles.birthdayBadge}>
-                    <Text style={styles.birthdayBadgeText}>{t('clients.birthday')}</Text>
-                  </View>
-                )}
-              </View>
-              {item.phone && (
-                <Text style={styles.clientPhone}>
-                  <Ionicons name="call-outline" size={12} color={colors.textMuted} /> {item.phone}
-                </Text>
-              )}
-              {item.birthday && (
-                <Text style={styles.clientBirthday}>
-                  <Ionicons name="gift-outline" size={12} color={colors.textMuted} />{' '}
-                  {formatBirthday(item.birthday)}
-                </Text>
-              )}
-            </View>
-            {item.phone && (
-              <TouchableOpacity
-                onPress={() => handleWhatsApp(item)}
-                style={styles.whatsappBtn}
-              >
-                <Ionicons name="logo-whatsapp" size={20} color="#25D366" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </Card>
-      </TouchableOpacity>
-    );
-  };
-
+  // ── Loading skeleton ──
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header title={t('clients.title')} subtitle={t('clients.subtitle')} showBack onBack={() => navigation.goBack()} />
-        <View style={styles.skeletonContainer}>
-          {/* Search skeleton */}
-          <Skeleton width="100%" height={46} borderRadius={12} />
-          {/* Client cards skeleton */}
-          {[0, 1, 2, 3, 4].map(i => (
-            <View key={i} style={styles.skeletonCard}>
-              <Skeleton width={44} height={44} borderRadius={14} />
-              <View style={styles.skeletonCardContent}>
-                <Skeleton width={120} height={16} borderRadius={6} />
-                <Skeleton width={100} height={12} borderRadius={4} style={{ marginTop: 6 }} />
-                <Skeleton width={80} height={10} borderRadius={4} style={{ marginTop: 4 }} />
+      <SafeAreaView style={s.container}>
+        <View style={s.header}>
+          <View><Text style={s.headerTitle}>Clientes</Text><Text style={s.headerSub}>Carregando...</Text></View>
+        </View>
+        <View style={s.body}>
+          <Skeleton width="100%" height={46} borderRadius={15} />
+          <View style={s.card}>
+            {[0, 1, 2, 3].map(i => (
+              <View key={i} style={[s.row, i > 0 && s.rowBorder]}>
+                <Skeleton width={42} height={42} borderRadius={13} />
+                <View style={{ flex: 1, marginLeft: 12 }}>
+                  <Skeleton width={130} height={14} borderRadius={4} />
+                  <Skeleton width={170} height={10} borderRadius={4} style={{ marginTop: 6 }} />
+                </View>
+                <Skeleton width={32} height={32} borderRadius={10} />
               </View>
-              <Skeleton width={40} height={40} borderRadius={12} />
-            </View>
-          ))}
+            ))}
+          </View>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header
-        title={t('clients.title')}
-        subtitle={t('clients.subtitle')}
-        showBack
-        onBack={() => navigation.goBack()}
-        rightAction={
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CreateClient')}
-            style={styles.addBtn}
-          >
-            <Ionicons name="add" size={22} color="#fff" />
-          </TouchableOpacity>
+    <SafeAreaView style={s.container}>
+      {/* ── Header ── */}
+      <View style={s.header}>
+        <View>
+          <Text style={s.headerTitle}>Clientes</Text>
+          <Text style={s.headerSub}>{clients.length} cadastrados</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('CreateClient')}
+          style={s.newBtn}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={s.newBtnText}>Novo</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={s.body}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadClients(); }} colors={[PINK]} />
         }
-      />
-      <View style={styles.searchContainer}>
-        <View style={styles.searchBox}>
-          <Ionicons name="search-outline" size={18} color={colors.textMuted} />
+      >
+        {/* Search */}
+        <View style={s.searchBar}>
+          <Ionicons name="search" size={19} color={INK3} />
           <TextInput
-            style={styles.searchInput}
-            placeholder={t('clients.search')}
-            placeholderTextColor={colors.textMuted}
+            style={s.searchInput}
+            placeholder="Buscar cliente…"
+            placeholderTextColor={INK3}
             value={search}
             onChangeText={setSearch}
           />
           {search.length > 0 && (
             <TouchableOpacity onPress={() => setSearch('')}>
-              <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+              <Ionicons name="close-circle" size={18} color={INK3} />
             </TouchableOpacity>
           )}
         </View>
-      </View>
-      <FlatList
-        data={filtered}
-        keyExtractor={item => item.id}
-        renderItem={renderClient}
-        contentContainerStyle={styles.list}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="people-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.emptyText}>
-              {search ? t('clients.noneFound') : t('clients.noneRegistered')}
+
+        {filtered.length === 0 ? (
+          <View style={s.empty}>
+            <Ionicons name="people-outline" size={48} color={INK3} />
+            <Text style={s.emptyText}>
+              {search ? 'Nenhum cliente encontrado' : 'Nenhum cliente cadastrado'}
             </Text>
             {!search && (
-              <TouchableOpacity
-                onPress={() => navigation.navigate('CreateClient')}
-                style={styles.emptyCta}
-              >
-                <Text style={styles.emptyCtaText}>{t('clients.register')}</Text>
-              </TouchableOpacity>
+              <Text style={s.emptyHint}>Toque em "Novo" para cadastrar</Text>
             )}
           </View>
-        }
-      />
+        ) : (
+          <View style={s.card}>
+            {filtered.map((client, idx) => {
+              const birthdaySoon = isBirthdaySoon(client.birthday);
+              const grad = AVATAR_GRADIENTS[idx % AVATAR_GRADIENTS.length];
+              const initial = client.name.charAt(0).toUpperCase();
+
+              return (
+                <TouchableOpacity
+                  key={client.id}
+                  activeOpacity={0.8}
+                  onPress={() => navigation.navigate('EditClient', { clientId: client.id })}
+                  onLongPress={() => handleDelete(client)}
+                >
+                  <View style={[s.row, idx > 0 && s.rowBorder]}>
+                    <LinearGradient colors={birthdaySoon ? ['#FF8FB6', PINK] : grad} style={s.avatar}>
+                      {birthdaySoon ? (
+                        <Ionicons name="gift" size={20} color="#fff" />
+                      ) : (
+                        <Text style={s.avatarText}>{initial}</Text>
+                      )}
+                    </LinearGradient>
+                    <View style={s.rowInfo}>
+                      <View style={s.nameRow}>
+                        <Text style={s.clientName}>{client.name}</Text>
+                        {birthdaySoon && (
+                          <View style={s.bdBadge}>
+                            <Ionicons name="gift" size={10} color="#BC2A6C" />
+                            <Text style={s.bdBadgeText}>Aniversário</Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={s.clientMeta}>
+                        {client.phone || ''}{client.phone && client.birthday ? ' · ' : ''}{client.birthday ? formatBirthday(client.birthday) : ''}
+                      </Text>
+                    </View>
+                    {client.phone && (
+                      <TouchableOpacity onPress={() => handleWhatsApp(client)} style={s.whatsBtn}>
+                        <Ionicons name="logo-whatsapp" size={17} color={GREEN} />
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+        <View style={{ height: 40 }} />
+      </ScrollView>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: CREAM },
+  body: { paddingHorizontal: 18, gap: 12, paddingBottom: 20 },
+
+  /* ── Header ── */
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 12,
   },
-  searchContainer: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 12 },
-  searchBox: {
+  headerTitle: { fontSize: 22, fontWeight: '700', color: INK },
+  headerSub: { fontSize: 12.5, color: INK2, fontWeight: '600', marginTop: 1 },
+  newBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
+    gap: 6,
+    backgroundColor: PINK,
     paddingHorizontal: 14,
-    gap: 8,
+    paddingVertical: 8,
+    borderRadius: 12,
+    ...SHADOW,
+    shadowColor: PINK,
+    shadowOpacity: 0.3,
   },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 12,
-    ...typography.body,
-    color: colors.text,
-  },
-  infoCard: {
+  newBtnText: { color: '#fff', fontSize: 13.5, fontWeight: '700' },
+
+  /* ── Search ── */
+  searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
+    gap: 9,
+    backgroundColor: '#fff',
+    borderRadius: 15,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    ...SHADOW,
   },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
+  searchInput: { flex: 1, fontSize: 14.5, color: INK, fontWeight: '500', padding: 0 },
+
+  /* ── Card (gcard) ── */
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    overflow: 'hidden',
+    ...SHADOW,
   },
-  list: { paddingHorizontal: 20, paddingBottom: 32 },
-  clientCard: { marginBottom: 10 },
-  clientRow: { flexDirection: 'row', alignItems: 'center' },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 13,
+    paddingHorizontal: 15,
+  },
+  rowBorder: { borderTopWidth: 1, borderTopColor: LINE },
+
+  /* ── Avatar ── */
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  avatarBirthday: { backgroundColor: '#FFF3E0' },
-  avatarEmoji: { fontSize: 20 },
-  clientInfo: { flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  clientName: { ...typography.h4, color: colors.text },
-  clientPhone: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  clientBirthday: { ...typography.caption, color: colors.textMuted, marginTop: 2 },
-  birthdayBadge: {
-    backgroundColor: '#FFF3E0',
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-  },
-  birthdayBadgeText: { fontSize: 10, fontWeight: '700', color: '#FF9800' },
-  whatsappBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#E7F9EF',
+    width: 42,
+    height: 42,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { ...typography.body, color: colors.textMuted },
-  emptyCta: {
-    marginTop: 8,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  emptyCtaText: { ...typography.button, color: '#fff' },
-  skeletonContainer: {
-    padding: 20,
-    gap: 10,
-  },
-  skeletonCard: {
+  avatarText: { fontSize: 18, fontWeight: '700', color: '#fff' },
+
+  /* ── Client info ── */
+  rowInfo: { flex: 1 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  clientName: { fontSize: 14.5, fontWeight: '700', color: INK },
+  clientMeta: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+  bdBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
+    gap: 3,
+    backgroundColor: '#FFE3EF',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
-  skeletonCardContent: {
-    flex: 1,
-    marginLeft: 12,
+  bdBadgeText: { fontSize: 10, fontWeight: '700', color: '#BC2A6C' },
+
+  /* ── WhatsApp button ── */
+  whatsBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#DCF6E5',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+
+  /* ── Empty ── */
+  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
+  emptyText: { fontSize: 15, color: INK3 },
+  emptyHint: { fontSize: 13, color: INK2, fontWeight: '500' },
 });

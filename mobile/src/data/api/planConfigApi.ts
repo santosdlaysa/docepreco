@@ -1,4 +1,6 @@
-import { apiClient } from './client';
+import axios from 'axios';
+
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
 interface PlanConfig {
   freeRecipeLimit: number;
@@ -13,7 +15,10 @@ export const planConfigApi = {
   async getFreeRecipeLimit(): Promise<number> {
     if (cachedLimit !== null) return cachedLimit;
     try {
-      const { data } = await apiClient.get<{ success: boolean; data: PlanConfig }>('/admin/settings/plans');
+      const { data } = await axios.get<{ success: boolean; data: PlanConfig }>(
+        `${BASE_URL}/admin/settings/plans`,
+        { timeout: 10000 },
+      );
       cachedLimit = data.data.freeRecipeLimit;
       return cachedLimit;
     } catch {

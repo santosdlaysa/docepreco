@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Skeleton } from '../components/Skeleton';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -20,19 +21,22 @@ import { saleApi } from '../../data/api/saleApi';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoSaleApi, demoRecipeApi } from '../../data/demo/demoApi';
-import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
-import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
+
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 12, elevation: 4 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-// getMonthLabel moved inside component for i18n
 
 interface MonthlyData {
   label: string;
@@ -231,19 +235,32 @@ export const ReportsScreen: React.FC = () => {
     }
   };
 
+  const now = new Date();
+  const currentMonthLabel = now.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const capitalizedMonth = currentMonthLabel.charAt(0).toUpperCase() + currentMonthLabel.slice(1);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title={t('reports.title')} subtitle={t('reports.subtitle')} showBack onBack={() => navigation.goBack()} />
+        {/* Header skeleton */}
+        <View style={styles.header}>
+          <View>
+            <Skeleton width={120} height={22} borderRadius={6} />
+            <Skeleton width={90} height={14} borderRadius={4} style={{ marginTop: 6 }} />
+          </View>
+          <Skeleton width={70} height={38} borderRadius={12} />
+        </View>
         <View style={styles.skeletonContainer}>
-          {/* Revenue cards skeleton */}
+          {/* Hero skeleton */}
+          <Skeleton width={'100%' as any} height={140} borderRadius={22} />
+          {/* Stat cards skeleton */}
           <View style={styles.skeletonRow}>
-            <View style={styles.skeletonRevenueCard}>
+            <View style={styles.skeletonStatCard}>
               <Skeleton width={80} height={12} borderRadius={4} />
               <Skeleton width={100} height={24} borderRadius={6} style={{ marginTop: 8 }} />
               <Skeleton width={60} height={12} borderRadius={4} style={{ marginTop: 6 }} />
             </View>
-            <View style={styles.skeletonRevenueCard}>
+            <View style={styles.skeletonStatCard}>
               <Skeleton width={80} height={12} borderRadius={4} />
               <Skeleton width={100} height={24} borderRadius={6} style={{ marginTop: 8 }} />
               <Skeleton width={60} height={12} borderRadius={4} style={{ marginTop: 6 }} />
@@ -263,7 +280,7 @@ export const ReportsScreen: React.FC = () => {
             <Skeleton width={160} height={16} borderRadius={6} />
             {[0, 1, 2].map(i => (
               <View key={i} style={styles.skeletonListItem}>
-                <Skeleton width={24} height={24} borderRadius={12} />
+                <Skeleton width={40} height={40} borderRadius={12} />
                 <Skeleton width={140} height={14} borderRadius={4} style={{ marginLeft: 10 }} />
                 <View style={{ flex: 1 }} />
                 <Skeleton width={60} height={14} borderRadius={4} />
@@ -280,102 +297,123 @@ export const ReportsScreen: React.FC = () => {
     ? ((currentMonthRevenue - prevMonthRevenue) / prevMonthRevenue * 100)
     : 0;
 
+  const prevMonthName = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    .toLocaleDateString('pt-BR', { month: 'long' });
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <Header
-        title={t('reports.title')}
-        subtitle={t('reports.subtitle')}
-        showBack
-        onBack={() => navigation.goBack()}
-        rightAction={
-          <TouchableOpacity onPress={handleDownload} disabled={downloading} style={styles.downloadBtn} activeOpacity={0.7}>
-            {downloading
-              ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Ionicons name="download-outline" size={22} color={colors.primary} />}
-          </TouchableOpacity>
-        }
-      />
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.headerTitle}>{t('reports.title')}</Text>
+          <Text style={styles.headerSubtitle}>{capitalizedMonth}</Text>
+        </View>
+        <TouchableOpacity
+          onPress={handleDownload}
+          disabled={downloading}
+          style={styles.pdfPill}
+          activeOpacity={0.7}
+        >
+          {downloading ? (
+            <ActivityIndicator size="small" color={PINK} />
+          ) : (
+            <>
+              <Ionicons name="share-outline" size={16} color={INK} />
+              <Text style={styles.pdfPillText}>PDF</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      </View>
 
-        {/* Revenue Card */}
-        <Card style={styles.revenueCard}>
-          <View style={styles.revenueHeader}>
-            <View style={[styles.iconWrap, { backgroundColor: '#E8F5E9' }]}>
-              <Ionicons name="trending-up" size={22} color={colors.success} />
-            </View>
-            <Text style={styles.cardTitle}>{t('reports.monthRevenue')}</Text>
-          </View>
-          <Text style={styles.revenueValue}>{formatCurrency(currentMonthRevenue)}</Text>
+      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Hero Card */}
+        <LinearGradient
+          colors={['#FF6AAE', PINK, '#C7367A']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.heroCard}
+        >
+          <Text style={styles.heroLabel}>{t('reports.monthRevenue')}</Text>
+          <Text style={styles.heroValue}>{formatCurrency(currentMonthRevenue)}</Text>
           {prevMonthRevenue > 0 && (
-            <View style={styles.compareRow}>
+            <View style={styles.heroCompare}>
               <Ionicons
                 name={revenueChange >= 0 ? 'arrow-up' : 'arrow-down'}
                 size={14}
-                color={revenueChange >= 0 ? colors.success : colors.error}
+                color="#fff"
               />
-              <Text style={[styles.compareText, { color: revenueChange >= 0 ? colors.success : colors.error }]}>
-                {Math.abs(revenueChange).toFixed(1)}% {t('reports.vsPrevMonth')} ({formatCurrency(prevMonthRevenue)})
+              <Text style={styles.heroCompareText}>
+                {revenueChange >= 0 ? '+' : ''}{revenueChange.toFixed(1)}% vs {prevMonthName} ({formatCurrency(prevMonthRevenue)})
               </Text>
             </View>
           )}
-        </Card>
+        </LinearGradient>
 
-        {/* Average Ticket */}
-        <Card style={styles.card}>
-          <View style={styles.revenueHeader}>
-            <View style={[styles.iconWrap, { backgroundColor: '#FFF3E0' }]}>
-              <Ionicons name="receipt-outline" size={22} color={colors.warning} />
-            </View>
-            <Text style={styles.cardTitle}>{t('reports.avgTicket')}</Text>
+        {/* Two stat cards */}
+        <View style={styles.twoCards}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>{t('reports.avgTicket')}</Text>
+            <Text style={styles.statValue}>{formatCurrency(avgTicket)}</Text>
+            <Text style={styles.statSub}>por venda</Text>
           </View>
-          <Text style={styles.ticketValue}>{formatCurrency(avgTicket)}</Text>
-          <Text style={styles.ticketSub}>{t('reports.perSale', { count: sales.length })}</Text>
-        </Card>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>Vendas</Text>
+            <Text style={styles.statValue}>{sales.filter(s => {
+              const sd = new Date(s.saleDate);
+              return sd.getMonth() === now.getMonth() && sd.getFullYear() === now.getFullYear();
+            }).length}</Text>
+            <Text style={styles.statSub}>neste m{'\u00EA'}s</Text>
+          </View>
+        </View>
 
         {/* Monthly Chart */}
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>{t('reports.salesByPeriod')}</Text>
-          <Text style={styles.cardSubtitle}>{t('reports.last6Months')}</Text>
+        <Text style={styles.sectionTitle}>{t('reports.last6Months')}</Text>
+        <View style={styles.chartCard}>
           <View style={styles.chartContainer}>
-            {monthlyData.map((month, idx) => (
-              <View key={idx} style={styles.barColumn}>
-                <Text style={styles.barValue}>
-                  {month.revenue > 0 ? formatCurrency(month.revenue) : '-'}
-                </Text>
-                <View style={styles.barTrack}>
-                  <View
-                    style={[
-                      styles.bar,
-                      {
-                        height: `${Math.max((month.revenue / maxMonthlyRevenue) * 100, 4)}%`,
-                        backgroundColor: idx === monthlyData.length - 1 ? colors.primary : colors.primaryLight,
-                      },
-                    ]}
-                  />
+            {monthlyData.map((month, idx) => {
+              const barHeight = Math.max((month.revenue / maxMonthlyRevenue) * 100, 6);
+              const isLast = idx === monthlyData.length - 1;
+              return (
+                <View key={idx} style={styles.barColumn}>
+                  <View style={styles.barTrack}>
+                    {isLast ? (
+                      <LinearGradient
+                        colors={['#FF6AAE', PINK, '#C7367A']}
+                        style={[styles.bar, { height: `${barHeight}%` }]}
+                      />
+                    ) : (
+                      <View style={[styles.bar, { height: `${barHeight}%`, backgroundColor: '#FFE3EF' }]} />
+                    )}
+                  </View>
+                  <Text style={styles.barLabel}>{month.label}</Text>
                 </View>
-                <Text style={styles.barLabel}>{month.label}</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
-        </Card>
+        </View>
 
         {/* Top Recipes */}
-        <Card style={styles.card}>
-          <View style={styles.revenueHeader}>
-            <View style={[styles.iconWrap, { backgroundColor: colors.primaryLight }]}>
-              <Ionicons name="trophy-outline" size={22} color={colors.primary} />
-            </View>
-            <Text style={styles.cardTitle}>{t('reports.topRecipes')}</Text>
-          </View>
+        <Text style={styles.sectionTitle}>{t('reports.topRecipes')}</Text>
+        <View style={styles.recipesCard}>
           {topRecipes.length === 0 ? (
             <Text style={styles.emptyText}>{t('reports.noSales')}</Text>
           ) : (
             topRecipes.map((recipe, idx) => (
-              <View key={recipe.recipeName} style={styles.rankRow}>
+              <View
+                key={recipe.recipeName}
+                style={[
+                  styles.rankRow,
+                  idx > 0 && { borderTopWidth: 1, borderTopColor: LINE },
+                ]}
+              >
                 <View style={[styles.rankBadge, idx === 0 && styles.rankBadgeFirst]}>
-                  <Text style={[styles.rankNumber, idx === 0 && styles.rankNumberFirst]}>
-                    {idx + 1}
-                  </Text>
+                  {idx === 0 ? (
+                    <Ionicons name="trophy" size={18} color="#B8860B" />
+                  ) : (
+                    <Text style={[styles.rankNumber, idx === 0 && styles.rankNumberFirst]}>
+                      {idx + 1}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.rankInfo}>
                   <Text style={styles.rankName}>{recipe.recipeName}</Text>
@@ -385,7 +423,26 @@ export const ReportsScreen: React.FC = () => {
               </View>
             ))
           )}
-        </Card>
+        </View>
+
+        {/* Download Button */}
+        <TouchableOpacity onPress={handleDownload} disabled={downloading} activeOpacity={0.8}>
+          <LinearGradient
+            colors={['#FF6AAE', PINK, '#C7367A']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.downloadButton}
+          >
+            {downloading ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <>
+                <Ionicons name="document-text-outline" size={20} color="#fff" />
+                <Text style={styles.downloadButtonText}>Baixar relat{'\u00F3'}rio completo</Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
 
         <View style={{ height: 32 }} />
       </ScrollView>
@@ -394,94 +451,210 @@ export const ReportsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  container: { flex: 1, padding: 20 },
-  infoCard: {
+  safeArea: {
+    flex: 1,
+    backgroundColor: CREAM,
+  },
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 12,
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: INK,
+  },
+  headerSubtitle: {
+    fontSize: 14,
+    color: INK2,
+    marginTop: 2,
+  },
+  pdfPill: {
+    height: 38,
+    paddingHorizontal: 14,
     borderRadius: 12,
-    padding: 12,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    ...SHADOW,
+  },
+  pdfPillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: INK,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 20,
+  },
+  heroCard: {
+    borderRadius: 22,
+    padding: 24,
     marginBottom: 14,
   },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
+  heroLabel: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.8)',
+    marginBottom: 6,
   },
-  revenueCard: { marginBottom: 12, backgroundColor: colors.cream },
-  card: { marginBottom: 12 },
-  revenueHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
-  iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+  heroValue: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  heroCompare: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 4,
+    marginTop: 8,
   },
-  cardTitle: { ...typography.h4, color: colors.text },
-  cardSubtitle: { ...typography.caption, color: colors.textSecondary, marginTop: 4, marginBottom: 12 },
-  revenueValue: { ...typography.h1, color: colors.success, marginBottom: 4 },
-  compareRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  compareText: { ...typography.bodySmall },
-  ticketValue: { ...typography.h2, color: colors.warning, marginBottom: 2 },
-  ticketSub: { ...typography.caption, color: colors.textSecondary },
-  chartContainer: { flexDirection: 'row', height: 180, gap: 4, marginTop: 8 },
-  barColumn: { flex: 1, alignItems: 'center' },
+  heroCompareText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
+  },
+  twoCards: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 18,
+    ...SHADOW,
+  },
+  statLabel: {
+    fontSize: 13,
+    color: INK2,
+    marginBottom: 8,
+  },
+  statValue: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: INK,
+  },
+  statSub: {
+    fontSize: 12,
+    color: INK3,
+    marginTop: 4,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: INK,
+    marginBottom: 10,
+  },
+  chartCard: {
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 18,
+    marginBottom: 20,
+    ...SHADOW,
+  },
+  chartContainer: {
+    flexDirection: 'row',
+    height: 160,
+    alignItems: 'flex-end',
+    gap: 6,
+  },
+  barColumn: {
+    flex: 1,
+    alignItems: 'center',
+    height: '100%',
+    justifyContent: 'flex-end',
+  },
   barTrack: {
     flex: 1,
-    width: '80%',
+    width: '70%',
     justifyContent: 'flex-end',
-    borderRadius: 8,
+    alignItems: 'center',
+  },
+  bar: {
+    width: '100%',
+    borderTopLeftRadius: 8,
+    borderTopRightRadius: 8,
+  },
+  barLabel: {
+    fontSize: 11,
+    color: INK2,
+    marginTop: 8,
+  },
+  recipesCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
     overflow: 'hidden',
-    backgroundColor: colors.border,
+    marginBottom: 20,
+    ...SHADOW,
   },
-  bar: { width: '100%', borderRadius: 8 },
-  barValue: {
-    fontSize: 9,
-    color: colors.textSecondary,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  barLabel: { ...typography.caption, color: colors.textSecondary, marginTop: 6 },
   rankRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    padding: 14,
   },
   rankBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.border,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: CREAM,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
   },
-  rankBadgeFirst: { backgroundColor: '#FFD700' },
-  rankNumber: { ...typography.bodySmall, fontWeight: '700', color: colors.textSecondary },
-  rankNumberFirst: { color: '#fff' },
-  rankInfo: { flex: 1 },
-  rankName: { ...typography.body, color: colors.text, fontWeight: '600' },
-  rankSub: { ...typography.caption, color: colors.textSecondary },
-  rankRevenue: { ...typography.h4, color: colors.primary },
-  emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center', paddingVertical: 16 },
-  downloadBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primaryLight,
+  rankBadgeFirst: {
+    backgroundColor: '#FFF3D0',
+  },
+  rankNumber: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: INK2,
+  },
+  rankNumberFirst: {
+    color: '#B8860B',
+  },
+  rankInfo: {
+    flex: 1,
+  },
+  rankName: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: INK,
+  },
+  rankSub: {
+    fontSize: 12,
+    color: INK3,
+    marginTop: 2,
+  },
+  rankRevenue: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: GREEN,
+  },
+  emptyText: {
+    fontSize: 14,
+    color: INK3,
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+  downloadButton: {
+    height: 54,
+    borderRadius: 16,
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
   },
+  downloadButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  // Skeleton styles
   skeletonContainer: {
     padding: 20,
     gap: 14,
@@ -490,20 +663,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  skeletonRevenueCard: {
+  skeletonStatCard: {
     flex: 1,
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 18,
+    ...SHADOW,
   },
   skeletonChartCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    padding: 18,
+    ...SHADOW,
   },
   skeletonBars: {
     flexDirection: 'row',
@@ -513,12 +684,11 @@ const styles = StyleSheet.create({
     marginTop: 16,
   },
   skeletonListCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: '#fff',
+    borderRadius: 18,
     padding: 16,
     gap: 12,
+    ...SHADOW,
   },
   skeletonListItem: {
     flexDirection: 'row',

@@ -124,22 +124,23 @@ export const HomeScreen: React.FC = () => {
               <Text style={s.greeting}>Oi, {firstName}!</Text>
             </View>
           </View>
-          {!isPremium ? (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={['#FFC53D', '#FFB01F']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={s.proChip}
+          <View style={s.topbarRight}>
+            {!isPremium && (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
+                activeOpacity={0.8}
               >
-                <Ionicons name="trophy" size={14} color="#7A4E00" />
-                <Text style={s.proChipText}>Seja PRO</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          ) : (
+                <LinearGradient
+                  colors={['#FFC53D', '#FFB01F']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={s.proChip}
+                >
+                  <Ionicons name="trophy" size={11} color="#7A4E00" />
+                  <Text style={s.proChipText}>Seja PRO</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
             <TouchableOpacity
               style={s.profileBtn}
               onPress={() => navigation.navigate('Profile' as never)}
@@ -151,7 +152,7 @@ export const HomeScreen: React.FC = () => {
                 <Ionicons name="person-circle-outline" size={38} color={PINK} />
               )}
             </TouchableOpacity>
-          )}
+          </View>
         </View>
 
         {/* ═══════ HERO REVENUE ═══════ */}
@@ -307,66 +308,73 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* ═══════ PRO FEATURES (non-premium) ═══════ */}
-        {!isPremium && (
-          <>
-            <View style={[s.secHeader, { marginTop: 20 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                <Text style={s.secTitle}>Recursos PRO</Text>
-                <View style={s.premBadge}>
-                  <Text style={s.premBadgeTxt}>PREMIUM</Text>
-                </View>
+        {/* ═══════ FEATURES GRID (free + premium) ═══════ */}
+        <View style={[s.secHeader, { marginTop: 20 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={s.secTitle}>{isPremium ? 'Atalhos' : 'Recursos PRO'}</Text>
+            {!isPremium && (
+              <View style={s.premBadge}>
+                <Text style={s.premBadgeTxt}>PREMIUM</Text>
               </View>
-            </View>
+            )}
+          </View>
+        </View>
 
-            <View style={s.proGrid}>
-              {([
-                { icon: 'bar-chart-outline' as const, bg: '#FFF0F6', ic: PINK, title: 'Relatórios', sub: 'Gráficos e análises', route: 'Reports' },
-                { icon: 'people-outline' as const, bg: '#EEF8FD', ic: '#2BA7DD', title: 'Clientes', sub: 'Contatos e aniversários', route: 'Clients' },
-                { icon: 'clipboard-outline' as const, bg: '#DCF6E5', ic: GREEN, title: 'Pedidos', sub: 'Entregas e pagamento', route: 'Orders' },
-                { icon: 'list-outline' as const, bg: '#FFF1CE', ic: '#C8870B', title: 'Lista de compras', sub: 'Gerada das receitas', route: 'Recipes' },
-              ] as const).map(item => (
-                <TouchableOpacity
-                  key={item.title}
-                  style={s.proTile}
-                  onPress={() => navigation.navigate(item.route as never)}
-                  activeOpacity={0.8}
-                >
-                  <View style={s.proLock}>
-                    <Ionicons name="lock-closed" size={10} color="#C8870B" />
-                  </View>
-                  <View style={[s.proTileIco, { backgroundColor: item.bg }]}>
-                    <Ionicons name={item.icon} size={22} color={item.ic} />
-                  </View>
-                  <Text style={s.proTileTitle}>{item.title}</Text>
-                  <Text style={s.proTileSub}>{item.sub}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {/* PRO CTA */}
+        <View style={s.proGrid}>
+          {([
+            { icon: 'bar-chart-outline' as const, bg: '#FFF0F6', ic: PINK, title: 'Relatórios', sub: 'Gráficos e análises', route: 'Reports' },
+            { icon: 'people-outline' as const, bg: '#EEF8FD', ic: '#2BA7DD', title: 'Clientes', sub: 'Contatos e aniversários', route: 'Clients' },
+            { icon: 'clipboard-outline' as const, bg: '#DCF6E5', ic: GREEN, title: 'Encomendas', sub: 'Entregas e pagamento', route: 'Orders' },
+            { icon: 'pricetag-outline' as const, bg: '#FFF1CE', ic: '#C8870B', title: 'Épocas', sub: 'Ajuste sazonal de preços', route: 'Seasons' },
+          ] as const).map(item => (
             <TouchableOpacity
-              style={s.proCtaWrap}
-              onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
-              activeOpacity={0.85}
+              key={item.title}
+              style={s.proTile}
+              onPress={() => navigation.navigate(item.route as never)}
+              activeOpacity={0.8}
             >
-              <LinearGradient
-                colors={['#FFF1CE', '#FFE3EF']}
-                start={{ x: 0, y: 0.5 }}
-                end={{ x: 1, y: 0.5 }}
-                style={s.proCta}
-              >
-                <View style={s.proCtaIco}>
-                  <Ionicons name="sparkles" size={20} color={PINK} />
+              {!isPremium && (
+                <View style={s.proLock}>
+                  <Ionicons name="lock-closed" size={10} color="#C8870B" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.proCtaTitle}>Desbloqueie tudo no PRO</Text>
-                  <Text style={s.proCtaSub}>3 dias grátis · depois R$ 14,90/mês ou R$ 10 no PIX</Text>
+              )}
+              {isPremium && (
+                <View style={s.proUnlocked}>
+                  <Ionicons name="checkmark" size={10} color={GREEN} />
                 </View>
-                <Ionicons name="chevron-forward" size={20} color={PINK} />
-              </LinearGradient>
+              )}
+              <View style={[s.proTileIco, { backgroundColor: item.bg }]}>
+                <Ionicons name={item.icon} size={22} color={item.ic} />
+              </View>
+              <Text style={s.proTileTitle}>{item.title}</Text>
+              <Text style={s.proTileSub}>{item.sub}</Text>
             </TouchableOpacity>
-          </>
+          ))}
+        </View>
+
+        {/* PRO CTA (only free) */}
+        {!isPremium && (
+          <TouchableOpacity
+            style={s.proCtaWrap}
+            onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={['#FFF1CE', '#FFE3EF']}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={s.proCta}
+            >
+              <View style={s.proCtaIco}>
+                <Ionicons name="sparkles" size={20} color={PINK} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.proCtaTitle}>Desbloqueie tudo no PRO</Text>
+                <Text style={s.proCtaSub}>3 dias grátis · depois R$ 14,90/mês ou R$ 10 no PIX</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color={PINK} />
+            </LinearGradient>
+          </TouchableOpacity>
         )}
 
         <View style={s.adWrap}><AdBanner /></View>
@@ -401,6 +409,7 @@ const s = StyleSheet.create({
     paddingBottom: 14,
   },
   topbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   logoBadge: {
     width: 46,
     height: 46,
@@ -417,17 +426,17 @@ const s = StyleSheet.create({
   proChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    height: 30,
-    paddingHorizontal: 12,
+    gap: 4,
+    height: 26,
+    paddingHorizontal: 9,
     borderRadius: 999,
     shadowColor: '#FFB01F',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  proChipText: { color: '#7A4E00', fontSize: 12.5, fontWeight: '700' },
+  proChipText: { color: '#7A4E00', fontSize: 10.5, fontWeight: '700' },
   profileBtn: {
     width: 46,
     height: 46,
@@ -610,6 +619,17 @@ const s = StyleSheet.create({
     height: 22,
     borderRadius: 7,
     backgroundColor: '#FFF1CE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proUnlocked: {
+    position: 'absolute',
+    top: 11,
+    right: 11,
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    backgroundColor: '#DCF6E5',
     alignItems: 'center',
     justifyContent: 'center',
   },

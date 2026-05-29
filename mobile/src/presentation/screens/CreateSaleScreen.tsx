@@ -2,12 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
+  Modal,
+  FlatList,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -17,42 +22,65 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
 import { Recipe } from '../../domain/entities/Recipe';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Card } from '../components/Card';
-import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
+
+/* ─── Design tokens ─── */
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 2 } as const,
+  shadowOpacity: 0.07,
+  shadowRadius: 8,
+  elevation: 3,
+};
+
+const THUMB_COLORS = ['#5E3A23', '#8B5E3C', '#EA4B92', '#F9C74F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4'];
+
+const fmtCurrency = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export const CreateSaleScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
+  const { showToast } = useToast();
+  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
+  const sApi = isDemoMode() ? demoSaleApi : saleApi;
+
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
-  const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [quantity, setQuantity] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const { showToast } = useToast();
-  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
-  const sApi = isDemoMode() ? demoSaleApi : saleApi;
+  const [showPicker, setShowPicker] = useState(false);
 
-  useEffect(() => {
-    rApi.getAll().then(setRecipes).catch(() => {});
-  }, []);
+  useEffect(() => { rApi.getAll().then(setRecipes).catch(() => {}); }, []);
+
+  const handlePriceChange = (text: string) => {
+    const cleaned = text.replace(/[^0-9.,]/g, '').replace(',', '.');
+    const parts = cleaned.split('.');
+    const value = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
+    const dotIdx = value.indexOf('.');
+    setSalePrice(dotIdx >= 0 && value.length - dotIdx > 3 ? value.slice(0, dotIdx + 3) : value);
+  };
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!selectedRecipe) newErrors.recipe = t('createSale.recipeRequired');
-    if (!quantity || parseInt(quantity) <= 0) newErrors.quantity = t('createSale.quantityRequired');
-    if (!salePrice || parseFloat(salePrice) <= 0) newErrors.salePrice = t('createSale.priceRequired');
-    if (!saleDate) newErrors.saleDate = t('createSale.dateRequired');
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const e: Record<string, string> = {};
+    if (!selectedRecipe) e.recipe = 'Escolha uma receita';
+    if (!quantity || parseInt(quantity) <= 0) e.qty = 'Obrigatório';
+    if (!salePrice || parseFloat(salePrice) <= 0) e.price = 'Obrigatório';
+    if (!saleDate) e.date = 'Obrigatório';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSave = async () => {
@@ -66,200 +94,235 @@ export const CreateSaleScreen: React.FC = () => {
         saleDate,
         notes: notes.trim() || undefined,
       });
-      showToast(t('createSale.success'), 'success');
+      showToast('Venda registrada!', 'success');
       navigation.goBack();
     } catch (error) {
-      const msg = error instanceof Error ? error.message : t('createSale.error');
-      showToast(msg, 'error');
+      showToast((error as Error).message || 'Erro ao salvar', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  const totalRevenue = selectedRecipe && quantity && salePrice
+  const totalRevenue = quantity && salePrice
     ? parseInt(quantity) * parseFloat(salePrice)
     : null;
+  const showTotal = totalRevenue !== null && !isNaN(totalRevenue) && totalRevenue > 0;
+
+  const recipeInitials = selectedRecipe
+    ? selectedRecipe.name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
+    : '';
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header title={t('createSale.title')} showBack onBack={() => navigation.goBack()} />
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={st.safe}>
+      {/* ── Header ── */}
+      <View style={st.sh}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={st.bk}>
+          <Ionicons name="arrow-back" size={20} color={INK} />
+        </TouchableOpacity>
+        <View style={st.shT}><Text style={st.shH1}>Registrar venda</Text></View>
+        <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.8}
+          style={[st.actPill, { backgroundColor: PINK, shadowColor: PINK, shadowOpacity: 0.3 }]}>
+          {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={st.actPillText}>Salvar</Text>}
+        </TouchableOpacity>
+      </View>
 
-          <View style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-            <Text style={styles.infoText}>
-              {t('createSale.infoText')}
-            </Text>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView style={st.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 14 }}>
+
+          {/* ── Receita ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Receita</Text>
+            <TouchableOpacity style={[st.input, errors.recipe ? st.inputErr : null]} onPress={() => setShowPicker(true)} activeOpacity={0.8}>
+              {selectedRecipe ? (
+                <>
+                  <LinearGradient colors={['#8B5E3C', '#5E3A23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={st.recipeThumb}>
+                    <Text style={st.recipeThumbText}>{recipeInitials}</Text>
+                  </LinearGradient>
+                  <Text style={st.inputVal}>{selectedRecipe.name}</Text>
+                </>
+              ) : (
+                <Text style={st.placeholder}>Selecionar receita</Text>
+              )}
+              <Ionicons name="chevron-forward" size={16} color={INK3} style={{ marginLeft: 'auto' }} />
+            </TouchableOpacity>
+            {errors.recipe && <Text style={st.err}>{errors.recipe}</Text>}
           </View>
 
-          <Card style={styles.section}>
-            <Text style={styles.label}>{t('createSale.recipeLabel')}</Text>
-            <TouchableOpacity
-              style={[styles.picker, errors.recipe && styles.pickerError]}
-              onPress={() => setShowRecipePicker(!showRecipePicker)}
-              activeOpacity={0.8}
-            >
-              <Text style={selectedRecipe ? styles.pickerText : styles.pickerPlaceholder}>
-                {selectedRecipe ? selectedRecipe.name : t('createSale.recipePlaceholder')}
-              </Text>
-              <Ionicons name={showRecipePicker ? 'chevron-up' : 'chevron-down'} size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-            {errors.recipe && <Text style={styles.errorText}>{errors.recipe}</Text>}
-
-            {showRecipePicker && (
-              <View style={styles.dropdownList}>
-                {recipes.length === 0 ? (
-                  <Text style={styles.dropdownEmpty}>{t('createSale.noRecipes')}</Text>
-                ) : (
-                  recipes.map(r => (
-                    <TouchableOpacity
-                      key={r.id}
-                      style={[styles.dropdownItem, selectedRecipe?.id === r.id && styles.dropdownItemSelected]}
-                      onPress={() => { setSelectedRecipe(r); setShowRecipePicker(false); }}
-                    >
-                      <Text style={[styles.dropdownItemText, selectedRecipe?.id === r.id && styles.dropdownItemTextSelected]}>
-                        {r.name}
-                      </Text>
-                      {selectedRecipe?.id === r.id && (
-                        <Ionicons name="checkmark" size={18} color={colors.primary} />
-                      )}
-                    </TouchableOpacity>
-                  ))
-                )}
+          {/* ── Quantidade + Preço ── */}
+          <View style={st.two}>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Quantidade</Text>
+              <View style={[st.input, errors.qty ? st.inputErr : null]}>
+                <TextInput style={st.inputText} value={quantity} onChangeText={setQuantity}
+                  placeholder="2" placeholderTextColor={INK3} keyboardType="number-pad" />
+                <Text style={st.suffix}>un</Text>
               </View>
-            )}
-          </Card>
-
-          <Card style={styles.section}>
-            <View style={styles.row}>
-              <Input
-                label={t('createSale.quantityLabel')}
-                placeholder="0"
-                value={quantity}
-                onChangeText={setQuantity}
-                keyboardType="number-pad"
-                suffix="un"
-                error={errors.quantity}
-                containerStyle={{ flex: 1, marginRight: 8 }}
-              />
-              <Input
-                label={t('createSale.priceLabel')}
-                placeholder="0,00"
-                value={salePrice}
-                onChangeText={setSalePrice}
-                keyboardType="decimal-pad"
-                suffix="R$"
-                error={errors.salePrice}
-                containerStyle={{ flex: 1 }}
-              />
+              {errors.qty && <Text style={st.err}>{errors.qty}</Text>}
             </View>
-            <Input
-              label={t('createSale.dateLabel')}
-              placeholder={t('createSale.datePlaceholder')}
-              value={saleDate}
-              onChangeText={setSaleDate}
-              error={errors.saleDate}
-            />
-            <Input
-              label={t('createSale.notesLabel')}
-              placeholder={t('createSale.notesPlaceholder')}
-              value={notes}
-              onChangeText={setNotes}
-            />
-          </Card>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Preço unitário</Text>
+              <View style={[st.input, errors.price ? st.inputErr : null]}>
+                <Text style={st.phTxt}>R$</Text>
+                <TextInput style={st.inputText} value={salePrice} onChangeText={handlePriceChange}
+                  placeholder="65,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
+              </View>
+              {errors.price && <Text style={st.err}>{errors.price}</Text>}
+            </View>
+          </View>
 
-          {totalRevenue !== null && !isNaN(totalRevenue) && (
-            <Card style={styles.totalCard}>
-              <Text style={styles.totalLabel}>{t('createSale.totalLabel')}</Text>
-              <Text style={styles.totalValue}>
-                {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </Text>
-              <Text style={styles.totalSub}>
-                {quantity} un × {parseFloat(salePrice || '0').toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-              </Text>
-            </Card>
+          {/* ── Data da venda ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Data da venda</Text>
+            <View style={[st.input, errors.date ? st.inputErr : null]}>
+              <Ionicons name="time-outline" size={18} color={INK3} />
+              <TextInput style={st.inputText} value={saleDate} onChangeText={setSaleDate}
+                placeholder="2026-05-29" placeholderTextColor={INK3} />
+            </View>
+            {errors.date && <Text style={st.err}>{errors.date}</Text>}
+          </View>
+
+          {/* ── Notas ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Notas (opcional)</Text>
+            <View style={[st.input, st.inputArea]}>
+              <TextInput style={[st.inputText, { minHeight: 60, textAlignVertical: 'top' }]}
+                value={notes} onChangeText={setNotes} multiline
+                placeholder="Ex: encomenda da Dona Ana" placeholderTextColor={INK3} />
+            </View>
+          </View>
+
+          {/* ── Total (green card) ── */}
+          {showTotal && (
+            <LinearGradient colors={['#34C97B', GREEN, '#2BA060']} locations={[0, 0.6, 1]}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.result}>
+              <Text style={st.rl}>Total da venda</Text>
+              <Text style={st.rprice}>{fmtCurrency(totalRevenue!)}</Text>
+            </LinearGradient>
           )}
 
-          <Button
-            title={t('createSale.saveButton')}
-            onPress={handleSave}
-            loading={loading}
-            size="lg"
-            style={styles.saveButton}
-          />
+          {/* ── Save button ── */}
+          <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={st.btn}>
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>Salvar venda</Text>}
+            </LinearGradient>
+          </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Recipe picker modal ── */}
+      <Modal visible={showPicker} animationType="slide" presentationStyle="pageSheet">
+        <SafeAreaView style={st.modalSafe}>
+          <View style={st.modalHead}>
+            <Text style={st.modalTitle}>Escolher receita</Text>
+            <TouchableOpacity onPress={() => setShowPicker(false)}>
+              <Ionicons name="close" size={24} color={INK} />
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={recipes}
+            keyExtractor={item => item.id}
+            contentContainerStyle={{ padding: 18 }}
+            renderItem={({ item, index }) => {
+              const ini = item.name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
+              const bg = THUMB_COLORS[index % THUMB_COLORS.length];
+              return (
+                <TouchableOpacity
+                  onPress={() => { setSelectedRecipe(item); setShowPicker(false); }}
+                  activeOpacity={0.8}
+                  style={st.pickerRow}
+                >
+                  <View style={[st.pickerThumb, { backgroundColor: bg }]}>
+                    <Text style={st.pickerThumbText}>{ini}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.pickerName}>{item.name}</Text>
+                    <Text style={st.pickerMeta}>{item.yield} un · {item.ingredients.length} ingredientes</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={18} color={INK3} />
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={
+              <View style={{ alignItems: 'center', paddingTop: 40 }}>
+                <Text style={{ color: INK2, fontSize: 14 }}>Nenhuma receita cadastrada</Text>
+              </View>
+            }
+          />
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, padding: 20 },
-  section: { marginBottom: 16 },
-  row: { flexDirection: 'row' },
-  label: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600', marginBottom: 8 },
-  picker: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    backgroundColor: colors.cream,
+/* ──────────────────────── STYLES ──────────────────────── */
+const st = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: CREAM },
+
+  /* header (.sh) */
+  sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  shT: { flex: 1 },
+  shH1: { fontSize: 22, fontWeight: '700', color: INK, lineHeight: 26 },
+  actPill: { height: 38, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  actPillText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+
+  body: { flex: 1, paddingHorizontal: 18 },
+
+  /* field */
+  field: { gap: 7 },
+  label: { fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 },
+  err: { fontSize: 12, color: colors.error, marginLeft: 2 },
+
+  /* input */
+  input: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15,
+    flexDirection: 'row', alignItems: 'center', gap: 10, ...SHADOW,
   },
-  pickerError: { borderColor: colors.error },
-  pickerText: { ...typography.body, color: colors.text },
-  pickerPlaceholder: { ...typography.body, color: colors.textMuted },
-  dropdownList: {
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    overflow: 'hidden',
+  inputErr: { borderWidth: 1.5, borderColor: colors.error },
+  inputArea: { alignItems: 'flex-start' },
+  inputText: { flex: 1, fontSize: 15, color: INK, padding: 0 },
+  inputVal: { fontSize: 15, color: INK, flex: 1 },
+  placeholder: { fontSize: 15, color: INK3, flex: 1 },
+  phTxt: { color: INK3, fontWeight: '700', fontSize: 13 },
+  suffix: { marginLeft: 'auto' as any, color: INK2, fontWeight: '700', fontSize: 13 },
+
+  /* recipe thumbnail in input */
+  recipeThumb: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  recipeThumbText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  /* two columns */
+  two: { flexDirection: 'row', gap: 11 },
+
+  /* result card (green) */
+  result: {
+    borderRadius: 24, padding: 18, ...SHADOW,
+    shadowColor: GREEN, shadowOpacity: 0.34, shadowRadius: 16, elevation: 6,
   },
-  dropdownEmpty: { ...typography.body, color: colors.textMuted, padding: 14, textAlign: 'center' },
-  dropdownItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
+  rl: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.92)', letterSpacing: 0.2 },
+  rprice: { fontSize: 38, fontWeight: '800', color: '#fff', marginTop: 5, letterSpacing: 0.4 },
+
+  /* button */
+  btn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowColor: PINK, shadowOpacity: 0.35 },
+  btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  /* modal */
+  modalSafe: { flex: 1, backgroundColor: CREAM },
+  modalHead: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 18, borderBottomWidth: 1, borderBottomColor: LINE, backgroundColor: '#fff',
   },
-  dropdownItemSelected: { backgroundColor: colors.primaryLight },
-  dropdownItemText: { ...typography.body, color: colors.text },
-  dropdownItemTextSelected: { color: colors.primary, fontWeight: '600' },
-  errorText: { ...typography.caption, color: colors.error, marginTop: 4 },
-  totalCard: {
-    backgroundColor: colors.beige,
-    alignItems: 'center',
-    marginBottom: 16,
+  modalTitle: { fontSize: 20, fontWeight: '700', color: INK },
+  pickerRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', borderRadius: 18, padding: 13, paddingHorizontal: 15,
+    marginBottom: 8, ...SHADOW,
   },
-  totalLabel: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: 4 },
-  totalValue: { ...typography.h2, color: colors.success },
-  totalSub: { ...typography.caption, color: colors.textSecondary, marginTop: 4 },
-  saveButton: { marginBottom: 32 },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
+  pickerThumb: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  pickerThumbText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  pickerName: { fontSize: 14.5, fontWeight: '700', color: INK },
+  pickerMeta: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
 });

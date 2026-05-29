@@ -465,10 +465,24 @@ export const CreateRecipeScreen: React.FC = () => {
     }
   };
 
+  // ─── Design tokens ───
+  const INK = '#3D2233';
+  const INK2 = '#9A7E8C';
+  const INK3 = '#C4B0BB';
+  const PINK = '#EA4B92';
+  const CREAM2 = '#FFF6F0';
+  const LINE2 = '#F1E2DA';
+  const SH = { shadowColor: INK, shadowOffset: { width: 0, height: 2 } as const, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 };
+
   if (loadingData) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header title={t('createRecipe.titleEdit')} showBack onBack={() => navigation.goBack()} />
+      <SafeAreaView style={{ flex: 1, backgroundColor: CREAM2 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SH }}>
+            <Ionicons name="arrow-back" size={20} color={INK} />
+          </TouchableOpacity>
+          <Text style={{ flex: 1, fontSize: 22, fontWeight: '700', color: INK }}>Editar receita</Text>
+        </View>
         <View style={styles.skeletonContainer}>
           {/* Form fields skeleton */}
           <View style={styles.skeletonFormCard}>
@@ -504,16 +518,30 @@ export const CreateRecipeScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header title={isEditing ? t('createRecipe.titleEdit') : t('createRecipe.titleNew')} showBack onBack={() => navigation.goBack()} />
+    <SafeAreaView style={{ flex: 1, backgroundColor: CREAM2 }}>
+      {/* ── Header ── */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SH }}>
+          <Ionicons name="arrow-back" size={20} color={INK} />
+        </TouchableOpacity>
+        <Text style={{ flex: 1, fontSize: 22, fontWeight: '700', color: INK }}>{isEditing ? 'Editar receita' : 'Nova receita'}</Text>
+        <TouchableOpacity onPress={handleShowConfirmation} disabled={loading} activeOpacity={0.8}
+          style={{ height: 38, paddingHorizontal: 14, borderRadius: 12, backgroundColor: PINK, alignItems: 'center', justifyContent: 'center', ...SH, shadowColor: PINK, shadowOpacity: 0.3 }}>
+          {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13.5 }}>Salvar</Text>}
+        </TouchableOpacity>
+      </View>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
 
-          <View style={styles.infoCard}>
-            <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-            <Text style={styles.infoText}>
-              {t('createRecipe.infoText')}
-            </Text>
+          {/* ── Info banner ── */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: '#EEF8FD', borderWidth: 1, borderColor: '#DCF1FB', borderRadius: 20, padding: 15, marginBottom: 14 }}>
+            <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="information-circle" size={18} color="#2BA7DD" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>Preencha os dados</Text>
+              <Text style={{ fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 }}>O preço sugerido é calculado automaticamente.</Text>
+            </View>
           </View>
 
           <Card style={styles.section}>

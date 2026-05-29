@@ -2,14 +2,17 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
+  ActivityIndicator,
   Modal,
   FlatList,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -24,16 +27,47 @@ import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
-import { Button } from '../components/Button';
-import { Input } from '../components/Input';
-import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditOrder'>;
+
+/* ─── Design tokens ─── */
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 2 } as const,
+  shadowOpacity: 0.07,
+  shadowRadius: 8,
+  elevation: 3,
+};
+
+const fmtCurrency = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const STATUS_OPTIONS: { key: OrderStatus; label: string; bg: string; color: string }[] = [
+  { key: 'pending', label: 'Pendente', bg: '#FFF1CE', color: '#8A5A00' },
+  { key: 'in_progress', label: 'Produção', bg: '#DCF1FB', color: '#1A6F96' },
+  { key: 'done', label: 'Pronto', bg: '#FFE3EF', color: '#BC2A6C' },
+  { key: 'delivered', label: 'Entregue', bg: '#DCF6E5', color: '#1F8A48' },
+  { key: 'cancelled', label: 'Cancelado', bg: '#FBE0E0', color: '#C0392B' },
+];
+
+const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
+  { key: 'pix', icon: 'qr-code-outline', label: 'Pix' },
+  { key: 'cash', icon: 'cash-outline', label: 'Dinheiro' },
+  { key: 'credit', icon: 'card-outline', label: 'Crédito' },
+  { key: 'debit', icon: 'card-outline', label: 'Débito' },
+];
+
+const THUMB_COLORS = ['#FF8FB6', '#EA4B92', '#2BA7DD', '#FFB01F', '#43BE6E', '#7B68EE'];
 
 export const CreateOrderScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -41,14 +75,8 @@ export const CreateOrderScreen: React.FC = () => {
   const { t } = useTranslation();
   const orderId = (route.params as any)?.orderId as string | undefined;
   const isEditing = !!orderId;
-
-  const STATUS_OPTIONS: { key: OrderStatus; label: string; color: string }[] = [
-    { key: 'pending', label: t('orders.pending'), color: '#FF9800' },
-    { key: 'in_progress', label: t('orders.inProgress'), color: '#2196F3' },
-    { key: 'done', label: t('orders.done'), color: '#4CAF50' },
-    { key: 'delivered', label: t('orders.delivered'), color: '#9E9E9E' },
-    { key: 'cancelled', label: t('orders.cancelled'), color: '#F44336' },
-  ];
+  const { showToast } = useToast();
+  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
 
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -61,30 +89,20 @@ export const CreateOrderScreen: React.FC = () => {
   const [status, setStatus] = useState<OrderStatus>('pending');
   const [notes, setNotes] = useState('');
   const [payments, setPayments] = useState<OrderPayment[]>([]);
-  const [showAddPayment, setShowAddPayment] = useState(false);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
+  const [showAddPayment, setShowAddPayment] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [isDelivered, setIsDelivered] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
-  const { showToast } = useToast();
-  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
 
-  // DD-MM-AAAA → YYYY-MM-DD (para armazenamento)
-  const toIso = (d: string) => {
-    const [dd, mm, aaaa] = d.split('-');
-    return `${aaaa}-${mm}-${dd}`;
-  };
-  // YYYY-MM-DD → DD-MM-AAAA (para exibição)
-  const fromIso = (d: string) => {
-    const [aaaa, mm, dd] = d.split('-');
-    return `${dd}-${mm}-${aaaa}`;
-  };
+  const toIso = (d: string) => { const [dd, mm, aaaa] = d.split('-'); return `${aaaa}-${mm}-${dd}`; };
+  const fromIso = (d: string) => { const [aaaa, mm, dd] = d.split('-'); return `${dd}-${mm}-${aaaa}`; };
 
   useEffect(() => {
     rApi.getAll().then(setRecipes).catch(() => {});
@@ -101,17 +119,8 @@ export const CreateOrderScreen: React.FC = () => {
         setDeliveryDate(fromIso(order.deliveryDate));
         setDeliveryTime(order.deliveryTime || '');
         setStatus(order.status);
-        if (order.status === 'delivered' || order.status === 'cancelled') setIsDelivered(true);
-        if (order.payments && order.payments.length > 0) {
-          setPayments(order.payments);
-        } else if (order.paidAmount && order.paidAmount > 0) {
-          setPayments([{
-            id: 'migrated',
-            amount: order.paidAmount,
-            method: 'cash',
-            date: order.createdAt.split('T')[0],
-          }]);
-        }
+        if (order.status === 'delivered' || order.status === 'cancelled') setIsLocked(true);
+        setPayments(order.payments && order.payments.length > 0 ? order.payments : order.paidAmount && order.paidAmount > 0 ? [{ id: 'migrated', amount: order.paidAmount, method: 'cash', date: order.createdAt.split('T')[0] }] : []);
         setNotes(order.notes || '');
       });
     }
@@ -126,17 +135,15 @@ export const CreateOrderScreen: React.FC = () => {
     : [];
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!clientName.trim()) newErrors.clientName = t('createOrder.clientRequired');
-    if (!recipeName.trim()) newErrors.recipeName = t('createOrder.recipeRequired');
-    if (!quantity || parseFloat(quantity) <= 0) newErrors.quantity = t('createOrder.quantityRequired');
-    if (!unitPrice || parseFloat(unitPrice) <= 0) newErrors.unitPrice = t('createOrder.priceRequired');
-    if (!deliveryDate.trim()) newErrors.deliveryDate = t('createOrder.dateRequired');
-    if (deliveryDate && !/^\d{2}-\d{2}-\d{4}$/.test(deliveryDate)) {
-      newErrors.deliveryDate = t('createOrder.deliveryDateFormat');
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const e: Record<string, string> = {};
+    if (!clientName.trim()) e.client = 'Obrigatório';
+    if (!recipeName.trim()) e.recipe = 'Obrigatório';
+    if (!quantity || parseFloat(quantity) <= 0) e.qty = 'Obrigatório';
+    if (!unitPrice || parseFloat(unitPrice) <= 0) e.price = 'Obrigatório';
+    if (!deliveryDate.trim()) e.date = 'Obrigatório';
+    if (deliveryDate && !/^\d{2}-\d{2}-\d{4}$/.test(deliveryDate)) e.date = 'Use DD-MM-AAAA';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
   const handleSave = async () => {
@@ -144,429 +151,276 @@ export const CreateOrderScreen: React.FC = () => {
     setLoading(true);
     try {
       const data = {
-        clientName: clientName.trim(),
-        clientPhone: clientPhone.trim() || undefined,
-        recipeId,
-        recipeName: recipeName.trim(),
-        quantity: parseFloat(quantity),
-        unitPrice: parseFloat(unitPrice),
-        totalPrice,
-        deliveryDate: toIso(deliveryDate.trim()),
-        deliveryTime: deliveryTime.trim() || undefined,
-        status,
-        paidAmount: totalPaid,
-        payments,
-        notes: notes.trim() || undefined,
+        clientName: clientName.trim(), clientPhone: clientPhone.trim() || undefined,
+        recipeId, recipeName: recipeName.trim(),
+        quantity: parseFloat(quantity), unitPrice: parseFloat(unitPrice), totalPrice,
+        deliveryDate: toIso(deliveryDate.trim()), deliveryTime: deliveryTime.trim() || undefined,
+        status, paidAmount: totalPaid, payments, notes: notes.trim() || undefined,
       };
-      if (isEditing) {
-        await orderStorage.update(orderId!, data);
-        showToast(t('createOrder.updated'), 'success');
-      } else {
-        await orderStorage.create(data);
-        showToast(t('createOrder.created'), 'success');
-      }
+      if (isEditing) { await orderStorage.update(orderId!, data); showToast('Encomenda atualizada!', 'success'); }
+      else { await orderStorage.create(data); showToast('Encomenda criada!', 'success'); }
       navigation.goBack();
-    } catch {
-      showToast(t('createOrder.saveError'), 'error');
-    } finally {
-      setLoading(false);
-    }
+    } catch { showToast('Erro ao salvar', 'error'); }
+    finally { setLoading(false); }
   };
 
-  const selectRecipe = (recipe: Recipe) => {
-    setRecipeName(recipe.name);
-    setRecipeId(recipe.id);
-    setShowRecipePicker(false);
-  };
-
-  const selectClient = (client: Client) => {
-    setClientName(client.name);
-    if (client.phone) setClientPhone(client.phone);
-    setShowClientSuggestions(false);
-  };
-
-  const formatCurrency = (v: number) =>
-    v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-  const generatePaymentId = () =>
-    Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-
-  const handleAddPayment = async () => {
+  const handleAddPayment = () => {
     const amount = parseFloat(newPaymentAmount);
     if (!amount || amount <= 0) return;
-    const payment: OrderPayment = {
-      id: generatePaymentId(),
-      amount,
-      method: newPaymentMethod,
-      date: new Date().toISOString().split('T')[0],
-    };
-    const updatedPayments = [...payments, payment];
-    setPayments(updatedPayments);
-    setNewPaymentAmount('');
-    setNewPaymentMethod('pix');
-    setShowAddPayment(false);
-    if (isDelivered && orderId) {
-      const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
-      await orderStorage.update(orderId, {
-        payments: updatedPayments,
-        paidAmount: newPaidAmount,
-        paid: newPaidAmount >= totalPrice,
-      });
-      showToast(t('createOrder.paymentAdded'), 'success');
-    }
+    setPayments(prev => [...prev, { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] }]);
+    setNewPaymentAmount(''); setNewPaymentMethod('pix'); setShowAddPayment(false);
   };
 
-  const handleRemovePayment = (paymentId: string) => {
-    setPayments(prev => prev.filter(p => p.id !== paymentId));
+  const maskDate = (text: string) => {
+    const nums = text.replace(/\D/g, '').slice(0, 8);
+    if (nums.length > 4) return `${nums.slice(0, 2)}-${nums.slice(2, 4)}-${nums.slice(4)}`;
+    if (nums.length > 2) return `${nums.slice(0, 2)}-${nums.slice(2)}`;
+    return nums;
   };
 
-  const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { key: 'pix', icon: 'qr-code-outline' },
-    { key: 'cash', icon: 'cash-outline' },
-    { key: 'credit', icon: 'card-outline' },
-    { key: 'debit', icon: 'card-outline' },
-  ];
-
-  const getMethodLabel = (method: string) => {
-    const key = method.charAt(0).toUpperCase() + method.slice(1);
-    return t(`createOrder.paymentMethod${key}`, { defaultValue: method });
+  const maskTime = (text: string) => {
+    const nums = text.replace(/\D/g, '').slice(0, 4);
+    if (nums.length > 2) return `${nums.slice(0, 2)}:${nums.slice(2)}`;
+    return nums;
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header
-        title={isEditing ? t('createOrder.titleEdit') : t('createOrder.titleNew')}
-        subtitle={t('createOrder.subtitle')}
-        showBack
-        onBack={() => navigation.goBack()}
-      />
+    <SafeAreaView style={st.safe}>
+      {/* ── Header ── */}
+      <View style={st.sh}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={st.bk}>
+          <Ionicons name="arrow-back" size={20} color={INK} />
+        </TouchableOpacity>
+        <View style={st.shT}><Text style={st.shH1}>{isEditing ? 'Editar encomenda' : 'Nova encomenda'}</Text></View>
+        {!isLocked && (
+          <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.8}
+            style={[st.actPill, { backgroundColor: PINK, shadowColor: PINK, shadowOpacity: 0.3 }]}>
+            {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={st.actPillText}>Salvar</Text>}
+          </TouchableOpacity>
+        )}
+      </View>
+
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
-            <Text style={styles.sectionTitle}>{t('createOrder.clientSection')}</Text>
-            <View>
-              <Input
-                label={t('createOrder.clientName')}
-                placeholder={t('createOrder.clientPlaceholder')}
-                value={clientName}
-                onChangeText={(text) => {
-                  setClientName(text);
-                  setShowClientSuggestions(true);
-                }}
-                error={errors.clientName}
-                editable={!isDelivered}
-              />
-              {!isDelivered && showClientSuggestions && filteredClients.length > 0 && (
-                <View style={styles.suggestions}>
-                  {filteredClients.slice(0, 5).map(client => (
-                    <TouchableOpacity
-                      key={client.id}
-                      onPress={() => selectClient(client)}
-                      style={styles.suggestionItem}
-                    >
-                      <Ionicons name="person-outline" size={16} color={colors.textSecondary} />
-                      <Text style={styles.suggestionText}>{client.name}</Text>
-                      {client.phone && (
-                        <Text style={styles.suggestionSub}>{client.phone}</Text>
-                      )}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+        <ScrollView style={st.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 13 }}>
+
+          {/* ── Cliente ── */}
+          <Text style={st.sec}>Cliente</Text>
+          <View style={st.field}>
+            <View style={[st.input, errors.client ? st.inputErr : null]}>
+              <Ionicons name="person-outline" size={18} color={INK3} />
+              <TextInput style={st.inputText} value={clientName} placeholder="Nome do cliente" placeholderTextColor={INK3}
+                editable={!isLocked} onChangeText={(t) => { setClientName(t); setShowClientSuggestions(true); }} />
             </View>
-            <Input
-              label={t('common.phone')}
-              placeholder={t('createOrder.phonePlaceholder')}
-              value={clientPhone}
-              onChangeText={setClientPhone}
-              keyboardType="phone-pad"
-              maxLength={15}
-              editable={!isDelivered}
-            />
-          </Card>
-
-          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
-            <Text style={styles.sectionTitle}>{t('createOrder.productSection')}</Text>
-            <TouchableOpacity activeOpacity={0.7} onPress={() => { if (!isDelivered) setShowRecipePicker(true); }}>
-              <View pointerEvents="none">
-                <Input
-                  label={t('createOrder.recipeLabel')}
-                  placeholder={t('createOrder.recipePlaceholder')}
-                  value={recipeName}
-                  editable={false}
-                  error={errors.recipeName}
-                  rightElement={
-                    <Ionicons name="chevron-down" size={18} color={colors.textMuted} />
-                  }
-                />
-              </View>
-            </TouchableOpacity>
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Input
-                  label={t('createOrder.quantityLabel')}
-                  placeholder="10"
-                  value={quantity}
-                  onChangeText={setQuantity}
-                  keyboardType="number-pad"
-                  error={errors.quantity}
-                  editable={!isDelivered}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label={t('createOrder.unitPriceLabel')}
-                  placeholder="5,00"
-                  value={unitPrice}
-                  onChangeText={setUnitPrice}
-                  keyboardType="decimal-pad"
-                  suffix="R$"
-                  error={errors.unitPrice}
-                  editable={!isDelivered}
-                />
-              </View>
-            </View>
-            {totalPrice > 0 && (
-              <View style={styles.totalRow}>
-                <Text style={styles.totalLabel}>{t('common.total')}</Text>
-                <Text style={styles.totalValue}>{formatCurrency(totalPrice)}</Text>
-              </View>
-            )}
-          </Card>
-
-          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
-            <Text style={styles.sectionTitle}>{t('createOrder.deliverySection')}</Text>
-            <View style={styles.row}>
-              <View style={{ flex: 1, marginRight: 8 }}>
-                <Input
-                  label={t('createOrder.deliveryDate')}
-                  placeholder="15-01-2025"
-                  value={deliveryDate}
-                  onChangeText={(text) => {
-                    const nums = text.replace(/\D/g, '').slice(0, 8);
-                    let masked = '';
-                    if (nums.length > 4) {
-                      masked = `${nums.slice(0, 2)}-${nums.slice(2, 4)}-${nums.slice(4)}`;
-                    } else if (nums.length > 2) {
-                      masked = `${nums.slice(0, 2)}-${nums.slice(2)}`;
-                    } else {
-                      masked = nums;
-                    }
-                    setDeliveryDate(masked);
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={10}
-                  error={errors.deliveryDate}
-                  editable={!isDelivered}
-                />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Input
-                  label={t('createOrder.time')}
-                  placeholder="14:00"
-                  value={deliveryTime}
-                  onChangeText={(text) => {
-                    const nums = text.replace(/\D/g, '').slice(0, 4);
-                    let masked = '';
-                    if (nums.length > 2) {
-                      masked = `${nums.slice(0, 2)}:${nums.slice(2)}`;
-                    } else {
-                      masked = nums;
-                    }
-                    setDeliveryTime(masked);
-                  }}
-                  keyboardType="number-pad"
-                  maxLength={5}
-                  editable={!isDelivered}
-                />
-              </View>
-            </View>
-          </Card>
-
-          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
-            <Text style={styles.sectionTitle}>{t('createOrder.statusSection')}</Text>
-            <View style={styles.statusGrid}>
-              {STATUS_OPTIONS.map(opt => (
-                <TouchableOpacity
-                  key={opt.key}
-                  onPress={() => { if (!isDelivered) setStatus(opt.key); }}
-                  disabled={isDelivered}
-                  style={[
-                    styles.statusCard,
-                    status === opt.key && { borderColor: opt.color, backgroundColor: opt.color + '15' },
-                    isDelivered && status !== opt.key && { opacity: 0.4 },
-                  ]}
-                  activeOpacity={isDelivered ? 1 : 0.7}
-                >
-                  <View style={[styles.statusDot, { backgroundColor: opt.color }]} />
-                  <Text
-                    style={[
-                      styles.statusLabel,
-                      status === opt.key && { color: opt.color, fontWeight: '700' },
-                    ]}
-                  >
-                    {opt.label}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </Card>
-
-          <Card style={styles.section}>
-            <Text style={styles.sectionTitle}>{t('createOrder.paymentSection')}</Text>
-            <Text style={styles.sectionSubtitle}>{t('createOrder.paymentHint')}</Text>
-
-            {payments.length > 0 && (
-              <View style={styles.paymentsList}>
-                {payments.map(payment => (
-                  <View key={payment.id} style={styles.paymentItem}>
-                    <View style={styles.paymentItemLeft}>
-                      <Ionicons
-                        name={PAYMENT_METHODS.find(m => m.key === payment.method)?.icon || 'cash-outline'}
-                        size={16}
-                        color={colors.primary}
-                      />
-                      <View>
-                        <Text style={styles.paymentItemAmount}>{formatCurrency(payment.amount)}</Text>
-                        <Text style={styles.paymentItemMethod}>{getMethodLabel(payment.method)}</Text>
-                      </View>
-                    </View>
-                    {!isDelivered && (
-                      <TouchableOpacity onPress={() => handleRemovePayment(payment.id)} activeOpacity={0.7}>
-                        <Ionicons name="close-circle" size={20} color={colors.error || '#F44336'} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
+            {errors.client && <Text style={st.err}>{errors.client}</Text>}
+            {!isLocked && showClientSuggestions && filteredClients.length > 0 && (
+              <View style={st.sugBox}>
+                {filteredClients.slice(0, 5).map(c => (
+                  <TouchableOpacity key={c.id} style={st.sugItem} onPress={() => { setClientName(c.name); if (c.phone) setClientPhone(c.phone); setShowClientSuggestions(false); }}>
+                    <Ionicons name="person-outline" size={14} color={INK2} />
+                    <Text style={st.sugText}>{c.name}</Text>
+                  </TouchableOpacity>
                 ))}
               </View>
             )}
+          </View>
+          <View style={st.input}>
+            <Ionicons name="call-outline" size={18} color={INK3} />
+            <TextInput style={st.inputText} value={clientPhone} placeholder="(11) 98888-7777" placeholderTextColor={INK3}
+              keyboardType="phone-pad" maxLength={15} editable={!isLocked} onChangeText={setClientPhone} />
+          </View>
 
-            {totalPrice > 0 && totalPaid > 0 && (
-              <View style={[styles.remainingRow, remaining === 0 && styles.settledRow]}>
-                <Ionicons
-                  name={remaining === 0 ? 'checkmark-circle' : 'wallet-outline'}
-                  size={16}
-                  color={remaining === 0 ? colors.success || '#4CAF50' : colors.warning}
-                />
-                <Text style={[styles.remainingText, remaining === 0 && { color: colors.success || '#4CAF50' }]}>
-                  {remaining > 0
-                    ? t('createOrder.amountRemaining', { amount: formatCurrency(remaining) })
-                    : t('createOrder.allPaid')}
-                </Text>
+          {/* ── Produto ── */}
+          <Text style={st.sec}>Produto</Text>
+          <TouchableOpacity style={[st.input, errors.recipe ? st.inputErr : null]} onPress={() => { if (!isLocked) setShowRecipePicker(true); }} activeOpacity={0.8}>
+            {recipeName ? (
+              <>
+                <LinearGradient colors={['#FF8FB6', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{ width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{recipeName.slice(0, 2).toUpperCase()}</Text>
+                </LinearGradient>
+                <Text style={{ flex: 1, fontSize: 15, color: INK }}>{recipeName}</Text>
+              </>
+            ) : (
+              <Text style={{ flex: 1, fontSize: 15, color: INK3 }}>Selecionar receita</Text>
+            )}
+            <Ionicons name="chevron-forward" size={16} color={INK3} />
+          </TouchableOpacity>
+          {errors.recipe && <Text style={st.err}>{errors.recipe}</Text>}
+
+          <View style={st.two}>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Qtd</Text>
+              <View style={[st.input, errors.qty ? st.inputErr : null]}>
+                <TextInput style={st.inputText} value={quantity} placeholder="1" placeholderTextColor={INK3}
+                  keyboardType="number-pad" editable={!isLocked} onChangeText={setQuantity} />
               </View>
-            )}
-
-            {(!totalPrice || remaining > 0) && !showAddPayment && (
-              <TouchableOpacity
-                style={styles.addPaymentBtn}
-                onPress={() => setShowAddPayment(true)}
-                activeOpacity={0.7}
-              >
-                <Ionicons name="add-circle-outline" size={18} color={colors.primary} />
-                <Text style={styles.addPaymentText}>{t('createOrder.addPayment')}</Text>
-              </TouchableOpacity>
-            )}
-
-            {showAddPayment && (
-              <View style={styles.addPaymentForm}>
-                <Input
-                  label={t('createOrder.paymentAmount')}
-                  placeholder="0,00"
-                  value={newPaymentAmount}
-                  onChangeText={setNewPaymentAmount}
-                  keyboardType="decimal-pad"
-                  suffix="R$"
-                />
-                <Text style={[styles.inputLabel, { marginTop: 8 }]}>{t('createOrder.paymentMethodLabel')}</Text>
-                <View style={styles.paymentMethodGrid}>
-                  {PAYMENT_METHODS.map(({ key, icon }) => {
-                    const selected = newPaymentMethod === key;
-                    return (
-                      <TouchableOpacity
-                        key={key}
-                        onPress={() => setNewPaymentMethod(key)}
-                        style={[
-                          styles.paymentMethodBtn,
-                          selected && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
-                        ]}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name={icon} size={16} color={selected ? colors.primary : colors.textMuted} />
-                        <Text style={[styles.paymentMethodText, selected && { color: colors.primary, fontWeight: '700' }]}>
-                          {getMethodLabel(key)}
-                        </Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                <View style={styles.addPaymentActions}>
-                  <TouchableOpacity
-                    onPress={() => { setShowAddPayment(false); setNewPaymentAmount(''); }}
-                    style={styles.addPaymentCancel}
-                  >
-                    <Text style={styles.addPaymentCancelText}>{t('common.cancel')}</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={handleAddPayment} style={styles.addPaymentConfirm}>
-                    <Ionicons name="checkmark" size={18} color="#fff" />
-                    <Text style={styles.addPaymentConfirmText}>{t('createOrder.addPayment')}</Text>
-                  </TouchableOpacity>
-                </View>
+            </View>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Preço un.</Text>
+              <View style={[st.input, errors.price ? st.inputErr : null]}>
+                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                <TextInput style={st.inputText} value={unitPrice} placeholder="120,00" placeholderTextColor={INK3}
+                  keyboardType="decimal-pad" editable={!isLocked} onChangeText={setUnitPrice} />
               </View>
-            )}
-          </Card>
+            </View>
+          </View>
 
-          <Card style={isDelivered ? { ...styles.section, ...styles.readOnlySection } : styles.section}>
-            <Text style={styles.sectionTitle}>{t('createOrder.notesSection')}</Text>
-            <Input
-              placeholder={t('createOrder.notesPlaceholder')}
-              value={notes}
-              onChangeText={setNotes}
-              multiline
-              numberOfLines={3}
-              editable={!isDelivered}
-            />
-          </Card>
-
-          {!isDelivered && (
-            <Button
-              title={isEditing ? t('createOrder.updateButton') : t('createOrder.saveButton')}
-              onPress={handleSave}
-              loading={loading}
-              size="lg"
-              style={styles.saveButton}
-            />
+          {totalPrice > 0 && (
+            <View style={st.totalRow}>
+              <Text style={st.totalLabel}>Total</Text>
+              <Text style={st.totalValue}>{fmtCurrency(totalPrice)}</Text>
+            </View>
           )}
+
+          {/* ── Entrega ── */}
+          <Text style={st.sec}>Entrega</Text>
+          <View style={st.two}>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Data</Text>
+              <View style={[st.input, errors.date ? st.inputErr : null]}>
+                <TextInput style={st.inputText} value={deliveryDate} placeholder="15-01-2026" placeholderTextColor={INK3}
+                  keyboardType="number-pad" maxLength={10} editable={!isLocked}
+                  onChangeText={(t) => setDeliveryDate(maskDate(t))} />
+              </View>
+              {errors.date && <Text style={st.err}>{errors.date}</Text>}
+            </View>
+            <View style={[st.field, { flex: 1 }]}>
+              <Text style={st.label}>Horário</Text>
+              <View style={st.input}>
+                <TextInput style={st.inputText} value={deliveryTime} placeholder="16:00" placeholderTextColor={INK3}
+                  keyboardType="number-pad" maxLength={5} editable={!isLocked}
+                  onChangeText={(t) => setDeliveryTime(maskTime(t))} />
+              </View>
+            </View>
+          </View>
+
+          {/* ── Status ── */}
+          <Text style={st.sec}>Status</Text>
+          <View style={st.ugrid}>
+            {STATUS_OPTIONS.map(s => {
+              const on = status === s.key;
+              return (
+                <TouchableOpacity key={s.key} activeOpacity={isLocked ? 1 : 0.8} disabled={isLocked}
+                  style={[st.statusChip, { backgroundColor: s.bg }, on && { borderWidth: 2, borderColor: s.color }]}
+                  onPress={() => setStatus(s.key)}>
+                  <Text style={[st.statusChipText, { color: s.color }]}>{s.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* ── Pagamentos ── */}
+          <Text style={st.sec}>Pagamentos</Text>
+          {payments.length > 0 && (
+            <View style={st.gcard}>
+              {payments.map((p, i) => (
+                <View key={p.id} style={[st.grow, i > 0 && { borderTopWidth: 1, borderTopColor: LINE }]}>
+                  <View style={[st.gi, { backgroundColor: '#EEF8FD' }]}>
+                    <Ionicons name={PAYMENT_METHODS.find(m => m.key === p.method)?.icon || 'cash-outline'} size={16} color="#2BA7DD" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.growB}>{PAYMENT_METHODS.find(m => m.key === p.method)?.label || p.method}</Text>
+                    <Text style={st.growS}>{p.date}</Text>
+                  </View>
+                  <Text style={[st.growV, { color: GREEN }]}>{fmtCurrency(p.amount)}</Text>
+                  {!isLocked && (
+                    <TouchableOpacity onPress={() => setPayments(prev => prev.filter(x => x.id !== p.id))}>
+                      <Ionicons name="close-circle" size={18} color="#C0392B" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </View>
+          )}
+
+          {totalPrice > 0 && totalPaid > 0 && (
+            <View style={st.remainingRow}>
+              <Text style={st.remainingLabel}>Restante</Text>
+              <Text style={st.remainingValue}>{fmtCurrency(remaining)}</Text>
+            </View>
+          )}
+
+          {!isLocked && remaining > 0 && !showAddPayment && (
+            <TouchableOpacity style={st.addPayBtn} onPress={() => setShowAddPayment(true)} activeOpacity={0.7}>
+              <Ionicons name="add-circle-outline" size={16} color={PINK} />
+              <Text style={st.addPayText}>Adicionar pagamento</Text>
+            </TouchableOpacity>
+          )}
+
+          {showAddPayment && (
+            <View style={st.addPayForm}>
+              <View style={st.input}>
+                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                <TextInput style={st.inputText} value={newPaymentAmount} onChangeText={setNewPaymentAmount}
+                  placeholder="0,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
+              </View>
+              <View style={st.ugrid}>
+                {PAYMENT_METHODS.map(m => {
+                  const on = newPaymentMethod === m.key;
+                  return (
+                    <TouchableOpacity key={m.key} onPress={() => setNewPaymentMethod(m.key)}
+                      style={[st.statusChip, { backgroundColor: on ? PINK + '15' : '#fff', borderWidth: on ? 2 : 0, borderColor: PINK }]} activeOpacity={0.7}>
+                      <Ionicons name={m.icon} size={14} color={on ? PINK : INK3} />
+                      <Text style={[st.statusChipText, { color: on ? PINK : INK2, marginLeft: 4 }]}>{m.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+                <TouchableOpacity onPress={() => { setShowAddPayment(false); setNewPaymentAmount(''); }} style={{ padding: 10 }}>
+                  <Text style={{ color: INK2, fontWeight: '600' }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleAddPayment} activeOpacity={0.85}>
+                  <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 }}>
+                    <Ionicons name="checkmark" size={16} color="#fff" />
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Adicionar</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ── Observações ── */}
+          <Text style={st.sec}>Observações</Text>
+          <View style={[st.input, { alignItems: 'flex-start' }]}>
+            <TextInput style={[st.inputText, { minHeight: 60, textAlignVertical: 'top' }]}
+              value={notes} onChangeText={setNotes} multiline editable={!isLocked}
+              placeholder="Ex: sem glúten, bolo rosa" placeholderTextColor={INK3} />
+          </View>
+
+          {/* ── Save button ── */}
+          {!isLocked && (
+            <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+              <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.btn}>
+                {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>{isEditing ? 'Atualizar encomenda' : 'Salvar encomenda'}</Text>}
+              </LinearGradient>
+            </TouchableOpacity>
+          )}
+
         </ScrollView>
       </KeyboardAvoidingView>
 
+      {/* ── Recipe picker ── */}
       <Modal visible={showRecipePicker} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t('createOrder.selectRecipe')}</Text>
-            <TouchableOpacity onPress={() => setShowRecipePicker(false)}>
-              <Ionicons name="close" size={24} color={colors.text} />
-            </TouchableOpacity>
+        <SafeAreaView style={{ flex: 1, backgroundColor: CREAM }}>
+          <View style={st.modalHead}>
+            <Text style={st.modalTitle}>Escolher receita</Text>
+            <TouchableOpacity onPress={() => setShowRecipePicker(false)}><Ionicons name="close" size={24} color={INK} /></TouchableOpacity>
           </View>
-          <FlatList
-            data={recipes}
-            keyExtractor={item => item.id}
-            contentContainerStyle={{ padding: 20 }}
-            renderItem={({ item }) => (
-              <TouchableOpacity onPress={() => selectRecipe(item)} activeOpacity={0.8}>
-                <Card style={styles.recipeCard}>
-                  <View>
-                    <Text style={styles.recipeCardName}>{item.name}</Text>
-                    <Text style={styles.recipeCardInfo}>
-                      {t('createOrder.recipeYield', { yield: item.yield, count: item.ingredients.length })}
-                    </Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
-                </Card>
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>{t('createOrder.noRecipes')}</Text>
-            }
+          <FlatList data={recipes} keyExtractor={item => item.id} contentContainerStyle={{ padding: 18 }}
+            renderItem={({ item, index }) => {
+              const bg = THUMB_COLORS[index % THUMB_COLORS.length];
+              return (
+                <TouchableOpacity onPress={() => { setRecipeName(item.name); setRecipeId(item.id); setShowRecipePicker(false); }} activeOpacity={0.8} style={st.pickerRow}>
+                  <View style={[st.pickerThumb, { backgroundColor: bg }]}><Text style={st.pickerThumbText}>{item.name.slice(0, 2).toUpperCase()}</Text></View>
+                  <View style={{ flex: 1 }}><Text style={st.pickerName}>{item.name}</Text><Text style={st.pickerMeta}>{item.yield} un · {item.ingredients.length} ingredientes</Text></View>
+                  <Ionicons name="chevron-forward" size={18} color={INK3} />
+                </TouchableOpacity>
+              );
+            }}
+            ListEmptyComponent={<View style={{ alignItems: 'center', paddingTop: 40 }}><Text style={{ color: INK2 }}>Nenhuma receita cadastrada</Text></View>}
           />
         </SafeAreaView>
       </Modal>
@@ -574,172 +428,64 @@ export const CreateOrderScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  container: { flex: 1, padding: 20 },
-  section: { marginBottom: 16 },
-  readOnlySection: { opacity: 0.5, backgroundColor: '#F5F5F5' },
-  sectionTitle: { ...typography.h4, color: colors.text, marginBottom: 16 },
-  sectionSubtitle: { ...typography.caption, color: colors.textSecondary, marginTop: -12, marginBottom: 12 },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
-  paymentsList: { gap: 8, marginBottom: 8 },
-  paymentItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 12,
-  },
-  paymentItemLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  paymentItemAmount: { ...typography.body, color: colors.text, fontWeight: '700' },
-  paymentItemMethod: { ...typography.caption, color: colors.textSecondary },
-  remainingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#FFF8E1',
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 8,
-  },
-  settledRow: { backgroundColor: '#E8F5E9' },
-  remainingText: { ...typography.body, color: '#F57F17', fontWeight: '600' },
-  addPaymentBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    marginTop: 8,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-  },
-  addPaymentText: { ...typography.body, color: colors.primary, fontWeight: '600' },
-  addPaymentForm: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 10,
-  },
-  addPaymentActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 10, marginTop: 12 },
-  addPaymentCancel: { paddingVertical: 8, paddingHorizontal: 16 },
-  addPaymentCancelText: { ...typography.body, color: colors.textSecondary },
-  addPaymentConfirm: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: colors.primary,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-  },
-  addPaymentConfirmText: { ...typography.body, color: '#fff', fontWeight: '600' },
-  row: { flexDirection: 'row' },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: colors.cream,
-    borderRadius: 12,
-    padding: 14,
-    marginTop: 8,
-  },
-  totalLabel: { ...typography.body, color: colors.textSecondary, fontWeight: '600' },
-  totalValue: { ...typography.h3, color: colors.primary },
-  statusGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  statusCard: {
-    flex: 1,
-    minWidth: '45%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  statusDot: { width: 10, height: 10, borderRadius: 5 },
-  statusLabel: { ...typography.bodySmall, color: colors.textSecondary },
-  inputLabel: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600', marginBottom: 6 },
-  paymentMethodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  paymentMethodBtn: {
-    flexBasis: '30%',
-    flexGrow: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  paymentMethodText: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
-  saveButton: { marginBottom: 32 },
-  suggestions: {
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 12,
-    marginTop: -8,
-    marginBottom: 8,
-    overflow: 'hidden',
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  suggestionText: { ...typography.body, color: colors.text, flex: 1 },
-  suggestionSub: { ...typography.caption, color: colors.textMuted },
-  modalContainer: { flex: 1, backgroundColor: colors.background },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  modalTitle: { ...typography.h3, color: colors.text },
-  recipeCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  recipeCardName: { ...typography.body, color: colors.text, fontWeight: '600' },
-  recipeCardInfo: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  emptyText: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginTop: 32 },
+/* ──────────────────────── STYLES ──────────────────────── */
+const st = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: CREAM },
+  body: { flex: 1, paddingHorizontal: 18 },
+
+  sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  shT: { flex: 1 },
+  shH1: { fontSize: 22, fontWeight: '700', color: INK, lineHeight: 26 },
+  actPill: { height: 38, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  actPillText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+
+  sec: { fontSize: 16, fontWeight: '700', color: INK, marginTop: 6, marginBottom: -2, marginLeft: 2 },
+  field: { gap: 7 },
+  label: { fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 },
+  err: { fontSize: 12, color: colors.error, marginLeft: 2 },
+
+  input: { backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, ...SHADOW },
+  inputErr: { borderWidth: 1.5, borderColor: colors.error },
+  inputText: { flex: 1, fontSize: 15, color: INK, padding: 0 },
+
+  two: { flexDirection: 'row', gap: 11 },
+
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF1CE', borderRadius: 14, padding: 14, marginTop: -4 },
+  totalLabel: { fontSize: 14, fontWeight: '600', color: '#8A5A00' },
+  totalValue: { fontSize: 18, fontWeight: '800', color: PINK },
+
+  ugrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  statusChip: { height: 40, minWidth: 46, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', ...SHADOW },
+  statusChipText: { fontWeight: '700', fontSize: 13.5 },
+
+  gcard: { backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SHADOW },
+  grow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15 },
+  gi: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  growB: { fontSize: 14.5, fontWeight: '700', color: INK },
+  growS: { fontSize: 12, color: INK2, fontWeight: '500' },
+  growV: { fontSize: 15, fontWeight: '700' },
+
+  remainingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 4 },
+  remainingLabel: { fontSize: 13, fontWeight: '700', color: INK2 },
+  remainingValue: { fontSize: 16, fontWeight: '700', color: PINK },
+
+  addPayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderColor: PINK, borderStyle: 'dashed' },
+  addPayText: { fontSize: 13, color: PINK, fontWeight: '700' },
+  addPayForm: { backgroundColor: '#fff', borderRadius: 18, padding: 14, gap: 10, ...SHADOW },
+
+  btn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowColor: PINK, shadowOpacity: 0.35 },
+  btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+
+  sugBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: PINK, marginTop: -4, overflow: 'hidden', ...SHADOW, shadowOpacity: 0.12 },
+  sugItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LINE },
+  sugText: { fontSize: 14, color: INK },
+
+  modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: LINE, backgroundColor: '#fff' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: INK },
+  pickerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 18, padding: 13, paddingHorizontal: 15, marginBottom: 8, ...SHADOW },
+  pickerThumb: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  pickerThumbText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  pickerName: { fontSize: 14.5, fontWeight: '700', color: INK },
+  pickerMeta: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
 });

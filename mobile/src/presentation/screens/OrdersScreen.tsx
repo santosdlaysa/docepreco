@@ -3,13 +3,16 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
+  TextInput,
   StyleSheet,
   SectionList,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   Modal,
+  ScrollView,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -21,21 +24,48 @@ import { saleApi } from '../../data/api/saleApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoSaleApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
-import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
 import { Skeleton } from '../components/Skeleton';
-import { Input } from '../components/Input';
-import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const formatCurrency = (v: number) =>
+/* ─── Design tokens ─── */
+const INK = '#3D2233';
+const INK2 = '#9A7E8C';
+const INK3 = '#C4B0BB';
+const PINK = '#EA4B92';
+const GREEN = '#43BE6E';
+const CREAM = '#FFF6F0';
+const LINE = '#F1E2DA';
+const SHADOW = {
+  shadowColor: INK,
+  shadowOffset: { width: 0, height: 2 } as const,
+  shadowOpacity: 0.07,
+  shadowRadius: 8,
+  elevation: 3,
+};
+
+const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 type Section = { title: string; data: Order[] };
+
+const STATUS_STAGES: { key: OrderStatus; label: string }[] = [
+  { key: 'pending', label: 'Pendente' },
+  { key: 'in_progress', label: 'Produção' },
+  { key: 'done', label: 'Pronto' },
+  { key: 'delivered', label: 'Entregue' },
+];
+
+const FILTER_ALL: { key: OrderStatus | 'all'; label: string }[] = [
+  { key: 'all', label: 'Todos' },
+  { key: 'pending', label: 'Pendente' },
+  { key: 'in_progress', label: 'Produção' },
+  { key: 'done', label: 'Pronto' },
+  { key: 'delivered', label: 'Entregue' },
+];
 
 export const OrdersScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -44,109 +74,38 @@ export const OrdersScreen: React.FC = () => {
   const { t } = useTranslation();
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
 
-  const STATUS_CONFIG: Record<OrderStatus, { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
-    pending: { label: t('orders.pending'), color: '#FF9800', icon: 'time-outline' },
-    in_progress: { label: t('orders.inProgress'), color: '#2196F3', icon: 'construct-outline' },
-    done: { label: t('orders.done'), color: '#4CAF50', icon: 'checkmark-circle-outline' },
-    delivered: { label: t('orders.delivered'), color: '#4CAF50', icon: 'gift-outline' },
-    cancelled: { label: t('orders.cancelled'), color: '#F44336', icon: 'close-circle-outline' },
-  };
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
+  const [loading, setLoading] = useState(true);
+  const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
+  const [newPaymentAmount, setNewPaymentAmount] = useState('');
+  const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
 
-  const FILTER_OPTIONS: { key: OrderStatus | 'all'; label: string }[] = [
-    { key: 'all', label: t('orders.all') },
-    { key: 'pending', label: t('orders.pending') },
-    { key: 'in_progress', label: t('orders.production') },
-    { key: 'done', label: t('orders.done') },
-    { key: 'delivered', label: t('orders.delivered') },
-    { key: 'cancelled', label: t('orders.cancelled') },
+  const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
+    { key: 'pix', icon: 'qr-code-outline', label: 'Pix' },
+    { key: 'cash', icon: 'cash-outline', label: 'Dinheiro' },
+    { key: 'credit', icon: 'card-outline', label: 'Crédito' },
+    { key: 'debit', icon: 'card-outline', label: 'Débito' },
   ];
 
   const formatDate = (dateStr: string) => {
     const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    if (date.getTime() === today.getTime()) return t('common.today');
-    if (date.getTime() === tomorrow.getTime()) return t('common.tomorrow');
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
+    if (date.getTime() === today.getTime()) return 'Hoje';
+    if (date.getTime() === tomorrow.getTime()) return 'Amanhã';
     return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
   };
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
-  const [loading, setLoading] = useState(true);
-  const [showNewFeatures, setShowNewFeatures] = useState(false);
-  const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
-  const [newPaymentAmount, setNewPaymentAmount] = useState('');
-  const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
 
-  const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap }[] = [
-    { key: 'pix', icon: 'qr-code-outline' },
-    { key: 'cash', icon: 'cash-outline' },
-    { key: 'credit', icon: 'card-outline' },
-    { key: 'debit', icon: 'card-outline' },
-  ];
-
-  const getMethodLabel = (method: string) => {
-    const key = method.charAt(0).toUpperCase() + method.slice(1);
-    return t(`orders.paymentMethod${key}`, { defaultValue: method });
-  };
-
-  const handleAddPayment = async () => {
-    if (!paymentModalOrder) return;
-    const amount = parseFloat(newPaymentAmount);
-    if (!amount || amount <= 0) return;
-    const payment: OrderPayment = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      amount,
-      method: newPaymentMethod,
-      date: new Date().toISOString().split('T')[0],
-    };
-    const currentPayments = paymentModalOrder.payments || [];
-    const updatedPayments = [...currentPayments, payment];
-    const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
-    await orderStorage.update(paymentModalOrder.id, {
-      payments: updatedPayments,
-      paidAmount: newPaidAmount,
-      paid: newPaidAmount >= paymentModalOrder.totalPrice,
-    });
-    setPaymentModalOrder(null);
-    setNewPaymentAmount('');
-    setNewPaymentMethod('pix');
+  useFocusEffect(useCallback(() => {
+    if (!guardScreen('ordersManagement')) return;
     loadOrders();
-    showToast(t('orders.paymentAdded'), 'success');
-  };
-
-  const NEWS_KEY = '@docepreco_orders_news_v1';
-
-  useEffect(() => {
-    AsyncStorage.getItem(NEWS_KEY).then(val => {
-      if (!val) setShowNewFeatures(true);
-    });
-  }, []);
-
-  const dismissNewFeatures = () => {
-    setShowNewFeatures(false);
-    AsyncStorage.setItem(NEWS_KEY, 'dismissed');
-  };
-
-  useFocusEffect(
-    useCallback(() => {
-      if (!guardScreen('ordersManagement')) {
-        return;
-      }
-      loadOrders();
-    }, [])
-  );
+  }, []));
 
   const loadOrders = async () => {
-    try {
-      const data = await orderStorage.getAll();
-      setOrders(data);
-    } finally {
-      setLoading(false);
-    }
+    try { setOrders(await orderStorage.getAll()); }
+    finally { setLoading(false); }
   };
 
   const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
@@ -154,389 +113,245 @@ export const OrdersScreen: React.FC = () => {
   const sections: Section[] = (() => {
     const map = new Map<string, Order[]>();
     const sorted = [...filtered].sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
-    for (const order of sorted) {
-      const key = order.deliveryDate;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key)!.push(order);
-    }
-    return Array.from(map.entries()).map(([date, data]) => ({
-      title: formatDate(date),
-      data,
-    }));
+    for (const o of sorted) { if (!map.has(o.deliveryDate)) map.set(o.deliveryDate, []); map.get(o.deliveryDate)!.push(o); }
+    return Array.from(map.entries()).map(([date, data]) => ({ title: formatDate(date), data }));
   })();
 
   const handleCancel = (order: Order) => {
-    Alert.alert(
-      t('orders.cancelTitle'),
-      t('orders.cancelMessage', { recipe: order.recipeName, client: order.clientName }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('orders.cancelConfirm'),
-          style: 'destructive',
-          onPress: async () => {
-            await orderStorage.update(order.id, { status: 'cancelled' });
-            showToast(t('orders.orderCancelled'), 'success');
-            loadOrders();
-          },
-        },
-      ],
-    );
+    Alert.alert('Cancelar encomenda?', `${order.recipeName} — ${order.clientName}`, [
+      { text: 'Não', style: 'cancel' },
+      { text: 'Cancelar', style: 'destructive', onPress: async () => { await orderStorage.update(order.id, { status: 'cancelled' }); showToast('Encomenda cancelada', 'success'); loadOrders(); } },
+    ]);
   };
 
   const handleDelete = (order: Order) => {
-    Alert.alert(t('orders.deleteTitle'), t('orders.deleteMessage', { recipe: order.recipeName, client: order.clientName }), [
-      { text: t('common.cancel'), style: 'cancel' },
-      {
-        text: t('common.delete'),
-        style: 'destructive',
-        onPress: async () => {
-          await orderStorage.delete(order.id);
-          loadOrders();
-        },
-      },
+    Alert.alert('Excluir encomenda?', `${order.recipeName} — ${order.clientName}`, [
+      { text: 'Não', style: 'cancel' },
+      { text: 'Excluir', style: 'destructive', onPress: async () => { await orderStorage.delete(order.id); loadOrders(); } },
     ]);
   };
 
   const registerSale = async (order: Order) => {
     try {
-      await sApi.create({
-        recipeId: order.recipeId || '',
-        quantitySold: order.quantity,
-        salePrice: order.unitPrice,
-        saleDate: new Date().toISOString().split('T')[0],
-        notes: t('orders.orderFrom', { name: order.clientName }),
-      });
-      showToast(t('orders.saleRegistered'), 'success');
-    } catch {
-      showToast(t('orders.saleError'), 'warning');
-    }
+      await sApi.create({ recipeId: order.recipeId || '', quantitySold: order.quantity, salePrice: order.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${order.clientName}` });
+      showToast('Venda registrada!', 'success');
+    } catch { showToast('Erro ao registrar venda', 'warning'); }
   };
 
   const changeStatus = async (order: Order, newStatus: OrderStatus) => {
     if (newStatus === 'delivered') {
-      Alert.alert(
-        t('orders.paymentTitle'),
-        t('orders.paymentMessage', { client: order.clientName }),
-        [
-          {
-            text: t('orders.notYet'),
-            style: 'cancel',
-            onPress: async () => {
-              await orderStorage.update(order.id, { status: 'delivered', paid: false });
-              loadOrders();
-            },
-          },
-          {
-            text: t('orders.yesPaid'),
-            onPress: async () => {
-              await orderStorage.update(order.id, { status: 'delivered', paid: true });
-              await registerSale(order);
-              loadOrders();
-            },
-          },
-        ],
-      );
+      Alert.alert('Pagamento', `${order.clientName} já pagou?`, [
+        { text: 'Ainda não', style: 'cancel', onPress: async () => { await orderStorage.update(order.id, { status: 'delivered', paid: false }); loadOrders(); } },
+        { text: 'Sim, pago!', onPress: async () => { await orderStorage.update(order.id, { status: 'delivered', paid: true }); await registerSale(order); loadOrders(); } },
+      ]);
       return;
     }
     await orderStorage.update(order.id, { status: newStatus });
     loadOrders();
   };
 
-  const STATUS_LIST: OrderStatus[] = ['pending', 'in_progress', 'done', 'delivered'];
+  const handleAddPayment = async () => {
+    if (!paymentModalOrder) return;
+    const amount = parseFloat(newPaymentAmount);
+    if (!amount || amount <= 0) return;
+    const payment: OrderPayment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] };
+    const updatedPayments = [...(paymentModalOrder.payments || []), payment];
+    const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+    await orderStorage.update(paymentModalOrder.id, { payments: updatedPayments, paidAmount: newPaidAmount, paid: newPaidAmount >= paymentModalOrder.totalPrice });
+    setPaymentModalOrder(null); setNewPaymentAmount(''); setNewPaymentMethod('pix');
+    loadOrders(); showToast('Pagamento adicionado', 'success');
+  };
 
   const renderOrder = ({ item }: { item: Order }) => {
     const isDelivered = item.status === 'delivered';
     const isCancelled = item.status === 'cancelled';
     const isLocked = isDelivered || isCancelled;
     const remaining = item.totalPrice - (item.paidAmount || 0);
+    const stageIdx = STATUS_STAGES.findIndex(s => s.key === item.status);
+
     return (
-      <TouchableOpacity
-        activeOpacity={0.8}
+      <TouchableOpacity activeOpacity={0.85}
         onPress={() => navigation.navigate('EditOrder', { orderId: item.id })}
-        onLongPress={() => { if (!isLocked) handleDelete(item); }}
-      >
-        <Card style={styles.orderCard}>
-          <View style={styles.orderHeader}>
-            <View style={styles.orderInfo}>
-              <Text style={styles.recipeName}>{item.recipeName}</Text>
-              <Text style={styles.clientName}>
-                <Ionicons name="person-outline" size={13} color={colors.textSecondary} />{' '}
-                {item.clientName}
-              </Text>
+        onLongPress={() => { if (!isLocked) handleDelete(item); }}>
+        <View style={st.card}>
+          {/* Top: name + total */}
+          <View style={st.cardTop}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={st.cardRecipe}>{item.recipeName}</Text>
+              <Text style={st.cardClient}>{item.clientName} · {item.quantity} un × {fmtCurrency(item.unitPrice)}</Text>
+            </View>
+            <View style={{ alignItems: 'flex-end' }}>
+              <Text style={st.cardTotal}>{fmtCurrency(item.totalPrice)}</Text>
+              <View style={[st.badge, item.paid ? st.badgeGreen : st.badgeYellow]}>
+                <Text style={[st.badgeText, { color: item.paid ? '#1F8A48' : '#8A5A00' }]}>{item.paid ? 'Pago' : 'Não pago'}</Text>
+              </View>
             </View>
           </View>
-          <View style={styles.orderDetails}>
-            <Text style={styles.orderDetail}>
-              {item.quantity}x {formatCurrency(item.unitPrice)}
-            </Text>
-            <View style={styles.orderTotalRow}>
-              {item.status === 'delivered' && (
-                <TouchableOpacity
-                  onPress={async () => {
-                    const wasPaid = item.paid;
-                    await orderStorage.update(item.id, { paid: !wasPaid });
-                    if (!wasPaid) await registerSale(item);
-                    loadOrders();
-                  }}
-                  style={[styles.paidBadge, item.paid ? styles.paidBadgeYes : styles.paidBadgeNo]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={item.paid ? 'checkmark-circle' : 'alert-circle-outline'}
-                    size={13}
-                    color={item.paid ? '#fff' : '#fff'}
-                  />
-                  <Text style={styles.paidBadgeText}>
-                    {item.paid ? t('orders.paid') : t('orders.notPaid')}
-                  </Text>
-                </TouchableOpacity>
-              )}
-              <Text style={styles.orderTotal}>{formatCurrency(item.totalPrice)}</Text>
-            </View>
-          </View>
-          {(item.paidAmount != null && item.paidAmount > 0) && (
-            <View style={styles.paidInfoRow}>
-              <Ionicons name="wallet-outline" size={13} color={item.paidAmount >= item.totalPrice ? colors.success : colors.warning} />
-              <Text style={[styles.paidInfoText, { color: item.paidAmount >= item.totalPrice ? colors.success : colors.warning }]}>
-                {t('orders.paidAmount', { amount: formatCurrency(item.paidAmount) })}
-                {item.paidAmount < item.totalPrice
-                  ? ` • ${t('orders.remaining', { amount: formatCurrency(item.totalPrice - item.paidAmount) })}`
-                  : ` • ${t('orders.settled')}`}
-              </Text>
-            </View>
-          )}
-          {item.payments && item.payments.length > 0 && (
-            <View style={styles.paymentsDetailRow}>
-              {item.payments.map(p => (
-                <View key={p.id} style={styles.paymentChip}>
-                  <Text style={styles.paymentChipText}>
-                    {t(`orders.paymentMethod${p.method.charAt(0).toUpperCase() + p.method.slice(1)}`, { defaultValue: p.method })} {formatCurrency(p.amount)}
-                  </Text>
+
+          {/* Partial payments */}
+          {(item.paidAmount != null && item.paidAmount > 0 && !item.paid) && (
+            <View style={st.partialRow}>
+              {item.payments?.map(p => (
+                <View key={p.id} style={st.partialBadge}>
+                  <Text style={st.partialBadgeText}>{p.method === 'pix' ? 'Pix' : p.method} {fmtCurrency(p.amount)}</Text>
                 </View>
               ))}
+              <Text style={st.partialRemaining}>Restante {fmtCurrency(remaining)}</Text>
             </View>
           )}
-          {isDelivered && remaining > 0 && (
-            <TouchableOpacity
-              style={styles.addPaymentBtn}
-              onPress={() => setPaymentModalOrder(item)}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="add-circle-outline" size={16} color={colors.primary} />
-              <Text style={styles.addPaymentBtnText}>{t('orders.addPayment')}</Text>
-            </TouchableOpacity>
-          )}
-          {item.deliveryTime && (
-            <Text style={styles.deliveryTime}>
-              <Ionicons name="time-outline" size={12} color={colors.textMuted} /> {item.deliveryTime}
-            </Text>
-          )}
-          {item.notes ? <Text style={styles.notes} numberOfLines={1}>{item.notes}</Text> : null}
+
+          {/* Status stages */}
           {isCancelled ? (
-            <View style={styles.cancelledBanner}>
-              <Ionicons name="close-circle" size={16} color="#F44336" />
-              <Text style={styles.cancelledBannerText}>{t('orders.cancelled')}</Text>
+            <View style={st.cancelledRow}>
+              <Ionicons name="close-circle" size={16} color="#C0392B" />
+              <Text style={st.cancelledText}>Cancelado</Text>
             </View>
           ) : (
-            <View style={styles.statusRow}>
-              {STATUS_LIST.map((s) => {
-                const cfg = STATUS_CONFIG[s];
-                const active = item.status === s;
+            <View style={st.stagesRow}>
+              {STATUS_STAGES.map((s, i) => {
+                const active = i === stageIdx;
                 return (
-                  <TouchableOpacity
-                    key={s}
-                    onPress={() => { if (!isLocked) changeStatus(item, s); }}
-                    disabled={isLocked}
-                    style={[
-                      styles.statusBtn,
-                      active && { backgroundColor: cfg.color + '20', borderColor: cfg.color },
-                      isDelivered && !active && { opacity: 0.4 },
-                    ]}
-                    activeOpacity={isLocked ? 1 : 0.7}
-                  >
-                    <Ionicons name={cfg.icon} size={14} color={active ? cfg.color : colors.textMuted} />
-                    <Text style={[styles.statusBtnText, active && { color: cfg.color, fontWeight: '700' }]}>
-                      {cfg.label}
-                    </Text>
+                  <TouchableOpacity key={s.key} style={[st.stageBtn, active && st.stageBtnOn]}
+                    onPress={() => { if (!isLocked) changeStatus(item, s.key); }}
+                    disabled={isLocked} activeOpacity={isLocked ? 1 : 0.7}>
+                    <Text style={[st.stageText, active && st.stageTextOn, i < stageIdx && { color: INK2 }]}>{s.label}</Text>
                   </TouchableOpacity>
                 );
               })}
-              {!isDelivered && (
-                <TouchableOpacity
-                  onPress={() => handleCancel(item)}
-                  style={[styles.statusBtn, styles.cancelBtn]}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons name="close-circle-outline" size={14} color="#F44336" />
-                  <Text style={[styles.statusBtnText, { color: '#F44336' }]}>
-                    {t('orders.cancelled')}
-                  </Text>
-                </TouchableOpacity>
-              )}
             </View>
           )}
-        </Card>
+
+          {/* Delivery + notes */}
+          <View style={st.deliveryRow}>
+            <Ionicons name="time-outline" size={15} color={INK2} />
+            <Text style={st.deliveryText}>
+              Entrega {formatDate(item.deliveryDate)}{item.deliveryTime ? `, ${item.deliveryTime}` : ''}
+              {item.notes ? ` · ${item.notes}` : ''}
+            </Text>
+          </View>
+
+          {/* Add payment button */}
+          {isDelivered && remaining > 0 && (
+            <TouchableOpacity style={st.addPayBtn} onPress={() => setPaymentModalOrder(item)} activeOpacity={0.7}>
+              <Ionicons name="add-circle-outline" size={16} color={PINK} />
+              <Text style={st.addPayText}>Adicionar pagamento</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </TouchableOpacity>
     );
   };
 
+  /* ─── Loading ─── */
   if (loading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
-        <Header title={t('orders.title')} subtitle={t('orders.subtitle')} showBack onBack={() => navigation.goBack()} />
-        <View style={styles.skeletonContainer}>
-          {/* Filter pills skeleton */}
-          <View style={styles.skeletonFilters}>
-            {[55, 65, 50, 70, 60].map((w, i) => (
-              <Skeleton key={i} width={w} height={32} borderRadius={20} />
-            ))}
-          </View>
-          {/* Section header */}
-          <Skeleton width={100} height={14} borderRadius={6} style={{ marginTop: 4 }} />
-          {/* Order cards skeleton */}
-          {[0, 1, 2].map(i => (
-            <View key={i} style={styles.skeletonCard}>
-              <View style={{ gap: 8, flex: 1 }}>
-                <Skeleton width={150} height={16} borderRadius={6} />
-                <Skeleton width={110} height={12} borderRadius={4} />
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                  <Skeleton width={80} height={12} borderRadius={4} />
-                  <Skeleton width={70} height={18} borderRadius={6} />
-                </View>
-                <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
-                  <Skeleton width={75} height={30} borderRadius={10} />
-                  <Skeleton width={75} height={30} borderRadius={10} />
-                  <Skeleton width={75} height={30} borderRadius={10} />
-                </View>
-              </View>
-            </View>
-          ))}
+      <SafeAreaView style={st.safe}>
+        <View style={st.sh}><View style={st.shT}><Text style={st.shH1}>Encomendas</Text><Text style={st.shSub}>Carregando...</Text></View></View>
+        <View style={{ padding: 18, gap: 12 }}>
+          <View style={{ flexDirection: 'row', gap: 8 }}>{[0, 1, 2, 3].map(i => <Skeleton key={i} width={80} height={32} borderRadius={20} />)}</View>
+          {[0, 1, 2].map(i => <Skeleton key={i} width="100%" height={160} borderRadius={18} />)}
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <Header
-        title={t('orders.title')}
-        subtitle={t('orders.subtitle')}
-        showBack
-        onBack={() => navigation.goBack()}
-        rightAction={
-          <TouchableOpacity
-            onPress={() => navigation.navigate('CreateOrder')}
-            style={styles.addBtn}
-          >
-            <Ionicons name="add" size={22} color="#fff" />
-          </TouchableOpacity>
-        }
-      />
-      <View style={styles.filterRow}>
-        {FILTER_OPTIONS.map(opt => (
-          <TouchableOpacity
-            key={opt.key}
-            onPress={() => setFilter(opt.key)}
-            style={[styles.filterPill, filter === opt.key && styles.filterPillActive]}
-          >
-            <Text style={[styles.filterText, filter === opt.key && styles.filterTextActive]}>
-              {opt.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      {showNewFeatures && (
-        <View style={styles.newsCard}>
-          <View style={styles.newsHeader}>
-            <View style={styles.newsIconRow}>
-              <Ionicons name="sparkles" size={18} color={colors.primary} />
-              <Text style={styles.newsTitle}>{t('orders.newsTitle')}</Text>
-            </View>
-            <TouchableOpacity onPress={dismissNewFeatures} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-              <Ionicons name="close" size={20} color={colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.newsItem}>{t('orders.newsPayments')}</Text>
-          <Text style={styles.newsItem}>{t('orders.newsDelivered')}</Text>
+    <SafeAreaView style={st.safe}>
+      {/* ── Header ── */}
+      <View style={st.sh}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={st.bk}>
+          <Ionicons name="arrow-back" size={20} color={INK} />
+        </TouchableOpacity>
+        <View style={st.shT}>
+          <Text style={st.shH1}>Encomendas</Text>
+          <Text style={st.shSub}>{orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length} em andamento</Text>
         </View>
-      )}
+        <TouchableOpacity onPress={() => navigation.navigate('CreateOrder')} activeOpacity={0.8}
+          style={[st.actPill, { backgroundColor: PINK, shadowColor: PINK, shadowOpacity: 0.3 }]}>
+          <Ionicons name="add" size={18} color="#fff" />
+          <Text style={st.actPillText}>Nova</Text>
+        </TouchableOpacity>
+      </View>
 
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
         renderItem={renderOrder}
         renderSectionHeader={({ section }) => (
-          <Text style={styles.sectionHeader}>{section.title}</Text>
+          <Text style={st.secHead}>{section.title}</Text>
         )}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 32 }}
+        showsVerticalScrollIndicator={false}
+        stickySectionHeadersEnabled={false}
+        ListHeaderComponent={
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            contentContainerStyle={st.filterRow} style={{ marginHorizontal: -18, paddingHorizontal: 0 }}>
+            {FILTER_ALL.map(f => {
+              const on = filter === f.key;
+              return (
+                <TouchableOpacity key={f.key} onPress={() => setFilter(f.key)}
+                  style={[st.pill, on && st.pillOn]} activeOpacity={0.7}>
+                  <Text style={[st.pillText, on && st.pillTextOn]}>{f.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+        }
         ListEmptyComponent={
-          <View style={styles.empty}>
-            <Ionicons name="calendar-outline" size={48} color={colors.textMuted} />
-            <Text style={styles.emptyText}>{t('orders.emptyText')}</Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('CreateOrder')}
-              style={styles.emptyCta}
-            >
-              <Text style={styles.emptyCtaText}>{t('orders.createOrder')}</Text>
+          <View style={st.empty}>
+            <View style={st.emptyIco}><Ionicons name="calendar-outline" size={36} color={PINK} /></View>
+            <Text style={st.emptyTitle}>Nenhuma encomenda</Text>
+            <Text style={st.emptyDesc}>Organize seus pedidos, entregas e pagamentos.</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('CreateOrder')} activeOpacity={0.85}>
+              <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.emptyBtn}>
+                <Text style={st.emptyBtnText}>Nova encomenda</Text>
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         }
       />
 
+      {/* ── Payment modal ── */}
       <Modal visible={!!paymentModalOrder} animationType="slide" transparent>
-        <View style={styles.modalOverlay}>
-          <View style={styles.paymentModal}>
-            <View style={styles.paymentModalHeader}>
-              <Text style={styles.paymentModalTitle}>{t('orders.addPayment')}</Text>
+        <View style={st.modalOverlay}>
+          <View style={st.payModal}>
+            <View style={st.payModalHead}>
+              <Text style={st.payModalTitle}>Adicionar pagamento</Text>
               <TouchableOpacity onPress={() => { setPaymentModalOrder(null); setNewPaymentAmount(''); }}>
-                <Ionicons name="close" size={24} color={colors.text} />
+                <Ionicons name="close" size={24} color={INK} />
               </TouchableOpacity>
             </View>
             {paymentModalOrder && (
               <View>
-                <Text style={styles.paymentModalSub}>
-                  {paymentModalOrder.recipeName} — {paymentModalOrder.clientName}
-                </Text>
-                <View style={styles.paymentModalRemaining}>
-                  <Ionicons name="wallet-outline" size={14} color={colors.warning} />
-                  <Text style={styles.paymentModalRemainingText}>
-                    {t('createOrder.amountRemaining', { amount: formatCurrency(paymentModalOrder.totalPrice - (paymentModalOrder.paidAmount || 0)) })}
-                  </Text>
+                <Text style={st.payModalSub}>{paymentModalOrder.recipeName} — {paymentModalOrder.clientName}</Text>
+                <View style={st.payRemaining}>
+                  <Ionicons name="wallet-outline" size={14} color="#F57F17" />
+                  <Text style={st.payRemainingText}>Restante {fmtCurrency(paymentModalOrder.totalPrice - (paymentModalOrder.paidAmount || 0))}</Text>
                 </View>
-                <Input
-                  label={t('createOrder.paymentAmount')}
-                  placeholder="0,00"
-                  value={newPaymentAmount}
-                  onChangeText={setNewPaymentAmount}
-                  keyboardType="decimal-pad"
-                  suffix="R$"
-                />
-                <Text style={styles.paymentModalMethodLabel}>{t('createOrder.paymentMethodLabel')}</Text>
-                <View style={styles.paymentModalMethodGrid}>
-                  {PAYMENT_METHODS.map(({ key, icon }) => {
-                    const selected = newPaymentMethod === key;
+                <Text style={st.payLabel}>Valor</Text>
+                <View style={st.payInput}>
+                  <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                  <TextInput style={st.payInputText} value={newPaymentAmount} onChangeText={setNewPaymentAmount}
+                    placeholder="0,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
+                </View>
+                <Text style={st.payLabel}>Método</Text>
+                <View style={st.payMethodGrid}>
+                  {PAYMENT_METHODS.map(m => {
+                    const on = newPaymentMethod === m.key;
                     return (
-                      <TouchableOpacity
-                        key={key}
-                        onPress={() => setNewPaymentMethod(key)}
-                        style={[
-                          styles.paymentModalMethodBtn,
-                          selected && { borderColor: colors.primary, backgroundColor: colors.primary + '15' },
-                        ]}
-                        activeOpacity={0.7}
-                      >
-                        <Ionicons name={icon} size={16} color={selected ? colors.primary : colors.textMuted} />
-                        <Text style={[styles.paymentModalMethodText, selected && { color: colors.primary, fontWeight: '700' }]}>
-                          {getMethodLabel(key)}
-                        </Text>
+                      <TouchableOpacity key={m.key} onPress={() => setNewPaymentMethod(m.key)}
+                        style={[st.payMethodBtn, on && { borderColor: PINK, backgroundColor: PINK + '15' }]} activeOpacity={0.7}>
+                        <Ionicons name={m.icon} size={16} color={on ? PINK : INK3} />
+                        <Text style={[st.payMethodText, on && { color: PINK, fontWeight: '700' }]}>{m.label}</Text>
                       </TouchableOpacity>
                     );
                   })}
                 </View>
-                <TouchableOpacity style={styles.paymentModalConfirm} onPress={handleAddPayment} activeOpacity={0.8}>
-                  <Ionicons name="checkmark" size={18} color="#fff" />
-                  <Text style={styles.paymentModalConfirmText}>{t('orders.addPayment')}</Text>
+                <TouchableOpacity onPress={handleAddPayment} activeOpacity={0.85}>
+                  <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.payConfirmBtn}>
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                    <Text style={st.payConfirmText}>Adicionar pagamento</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
               </View>
             )}
@@ -547,262 +362,93 @@ export const OrdersScreen: React.FC = () => {
   );
 };
 
-const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.background },
-  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    gap: 8,
-  },
-  filterPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  filterPillActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
-  },
-  filterText: { ...typography.caption, color: colors.textSecondary, fontWeight: '600' },
-  filterTextActive: { color: '#fff' },
-  newsCard: {
-    marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: colors.primary + '10',
-    borderWidth: 1,
-    borderColor: colors.primary + '30',
-    borderRadius: 14,
-    padding: 14,
-  },
-  newsHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  newsIconRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  newsTitle: { ...typography.body, color: colors.primary, fontWeight: '700' },
-  newsItem: { ...typography.bodySmall, color: colors.textSecondary, marginLeft: 24, marginTop: 4, lineHeight: 18 },
-  list: { paddingHorizontal: 20, paddingBottom: 32 },
-  sectionHeader: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    fontWeight: '700',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  orderCard: { marginBottom: 10 },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  orderInfo: { flex: 1, marginRight: 8 },
-  recipeName: { ...typography.h4, color: colors.text },
-  clientName: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  statusRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  statusBtn: {
-    flexBasis: '47%',
-    flexGrow: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 4,
-    paddingVertical: 7,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  statusBtnText: { fontSize: 11, color: colors.textMuted, fontWeight: '500' },
-  orderDetails: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  orderDetail: { ...typography.bodySmall, color: colors.textSecondary },
-  orderTotalRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  orderTotal: { ...typography.h4, color: colors.primary },
-  paidBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  paidBadgeYes: { backgroundColor: '#4CAF50' },
-  paidBadgeNo: { backgroundColor: '#F44336' },
-  paidBadgeText: { fontSize: 11, fontWeight: '700', color: '#fff' },
-  paidInfoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginTop: 6,
-  },
-  paidInfoText: { ...typography.caption, fontWeight: '600' },
-  paymentsDetailRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
-  },
-  paymentChip: {
-    backgroundColor: colors.primary + '15',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  paymentChipText: { fontSize: 11, color: colors.primary, fontWeight: '600' },
-  cancelBtn: {
-    borderColor: '#F4434630',
-    backgroundColor: '#F4434310',
-  },
-  cancelledBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 10,
-    paddingVertical: 10,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  cancelledBannerText: { ...typography.bodySmall, color: '#F44336', fontWeight: '700' },
-  addPaymentBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 8,
-    marginTop: 8,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.primary,
-    borderStyle: 'dashed',
-  },
-  addPaymentBtnText: { ...typography.caption, color: colors.primary, fontWeight: '700' },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  paymentModal: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    paddingBottom: 32,
-  },
-  paymentModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  paymentModalTitle: { ...typography.h3, color: colors.text },
-  paymentModalSub: { ...typography.bodySmall, color: colors.textSecondary, marginBottom: 8 },
-  paymentModalRemaining: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: '#FFF8E1',
-    borderRadius: 10,
-    padding: 10,
-    marginBottom: 14,
-  },
-  paymentModalRemainingText: { ...typography.bodySmall, color: '#F57F17', fontWeight: '600' },
-  paymentModalMethodLabel: { ...typography.bodySmall, color: colors.textSecondary, fontWeight: '600', marginTop: 8, marginBottom: 6 },
-  paymentModalMethodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  paymentModalMethodBtn: {
-    flexBasis: '46%',
-    flexGrow: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.surface,
-  },
-  paymentModalMethodText: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
-  paymentModalConfirm: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    backgroundColor: colors.primary,
-    paddingVertical: 14,
-    borderRadius: 12,
-    marginTop: 16,
-  },
-  paymentModalConfirmText: { ...typography.body, color: '#fff', fontWeight: '700' },
-  deliveryTime: { ...typography.caption, color: colors.textMuted, marginTop: 4 },
-  notes: { ...typography.caption, color: colors.textMuted, marginTop: 4, fontStyle: 'italic' },
-  infoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
-    borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-  },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-    flex: 1,
-    lineHeight: 18,
-  },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyText: { ...typography.body, color: colors.textMuted },
-  emptyCta: {
-    marginTop: 8,
-    backgroundColor: colors.primary,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-  },
-  emptyCtaText: { ...typography.button, color: '#fff' },
-  skeletonContainer: {
-    padding: 20,
-    gap: 10,
-  },
-  skeletonFilters: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  skeletonCard: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-  },
+/* ──────────────────────── STYLES ──────────────────────── */
+const st = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: CREAM },
+
+  /* header */
+  sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  shT: { flex: 1 },
+  shH1: { fontSize: 22, fontWeight: '700', color: INK, lineHeight: 26 },
+  shSub: { fontSize: 12.5, color: INK2, fontWeight: '600', marginTop: 1 },
+  actPill: { height: 38, paddingHorizontal: 14, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 6, ...SHADOW },
+  actPillText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+
+  /* filters (.pill) */
+  filterRow: { paddingHorizontal: 18, gap: 8, paddingTop: 6, paddingBottom: 10 },
+  pill: { height: 32, paddingHorizontal: 14, borderRadius: 999, backgroundColor: '#fff', justifyContent: 'center', ...SHADOW },
+  pillOn: { backgroundColor: INK },
+  pillText: { fontSize: 13, fontWeight: '600', color: INK2 },
+  pillTextOn: { color: '#fff' },
+
+  /* section header */
+  secHead: { fontSize: 13, fontWeight: '700', color: INK2, textTransform: 'uppercase', letterSpacing: 0.4, marginTop: 4, marginBottom: 9, marginLeft: 4 },
+
+  /* order card (.gcard) */
+  card: { backgroundColor: '#fff', borderRadius: 18, padding: 14, marginBottom: 11, ...SHADOW },
+  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 },
+  cardRecipe: { fontSize: 16, fontWeight: '700', color: INK, lineHeight: 19 },
+  cardClient: { fontSize: 12.5, color: INK2, fontWeight: '600', marginTop: 2 },
+  cardTotal: { fontSize: 16, fontWeight: '700', color: INK },
+
+  /* badges */
+  badge: { marginTop: 4, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
+  badgeGreen: { backgroundColor: '#DCF6E5' },
+  badgeYellow: { backgroundColor: '#FFF1CE' },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+
+  /* partial payments */
+  partialRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 8, flexWrap: 'wrap' },
+  partialBadge: { backgroundColor: '#DCF1FB', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  partialBadgeText: { fontSize: 11, fontWeight: '700', color: '#1A6F96' },
+  partialRemaining: { fontSize: 11.5, color: INK2, fontWeight: '600' },
+
+  /* status stages */
+  stagesRow: { flexDirection: 'row', gap: 5, marginTop: 11 },
+  stageBtn: { flex: 1, alignItems: 'center', paddingVertical: 7, borderRadius: 9, backgroundColor: '#FCEFE6' },
+  stageBtnOn: { backgroundColor: PINK },
+  stageText: { fontSize: 10.5, fontWeight: '700', color: INK3 },
+  stageTextOn: { color: '#fff' },
+
+  /* cancelled */
+  cancelledRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 11, paddingTop: 10, borderTopWidth: 1, borderTopColor: LINE },
+  cancelledText: { fontSize: 13, fontWeight: '700', color: '#C0392B' },
+
+  /* delivery */
+  deliveryRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, },
+  deliveryText: { fontSize: 12, color: INK2, fontWeight: '600', flex: 1 },
+
+  /* add payment */
+  addPayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, marginTop: 8, borderRadius: 10, borderWidth: 1.5, borderColor: PINK, borderStyle: 'dashed' },
+  addPayText: { fontSize: 12, color: PINK, fontWeight: '700' },
+
+  /* empty */
+  empty: { alignItems: 'center', paddingTop: 60, gap: 10, paddingHorizontal: 24 },
+  emptyIco: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#FFF0F6', alignItems: 'center', justifyContent: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '700', color: INK },
+  emptyDesc: { fontSize: 13, color: INK2, fontWeight: '500', textAlign: 'center', lineHeight: 19, maxWidth: 240 },
+  emptyBtn: { height: 48, borderRadius: 14, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  emptyBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+
+  /* FAB */
+  fab: { position: 'absolute', right: 18, bottom: 30, borderRadius: 19, ...SHADOW, shadowColor: '#D8377F', shadowOpacity: 0.42, shadowRadius: 12, elevation: 8 },
+  fabInner: { width: 58, height: 58, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+
+  /* Payment modal */
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(61,34,51,0.35)', justifyContent: 'flex-end' },
+  payModal: { backgroundColor: CREAM, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 },
+  payModalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  payModalTitle: { fontSize: 20, fontWeight: '700', color: INK },
+  payModalSub: { fontSize: 13, color: INK2, fontWeight: '500', marginBottom: 8 },
+  payRemaining: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF8E1', borderRadius: 10, padding: 10, marginBottom: 14 },
+  payRemainingText: { fontSize: 13, color: '#F57F17', fontWeight: '600' },
+  payLabel: { fontSize: 13, fontWeight: '700', color: INK, marginBottom: 6, marginTop: 8, marginLeft: 2 },
+  payInput: { backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, ...SHADOW },
+  payInputText: { flex: 1, fontSize: 15, color: INK, padding: 0 },
+  payMethodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  payMethodBtn: { flexBasis: '46%' as any, flexGrow: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5, borderColor: LINE, backgroundColor: '#fff' },
+  payMethodText: { fontSize: 12, color: INK3, fontWeight: '500' },
+  payConfirmBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, height: 50, borderRadius: 14, marginTop: 16 },
+  payConfirmText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });
