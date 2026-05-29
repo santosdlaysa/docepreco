@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Skeleton } from '../components/Skeleton';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
@@ -121,8 +122,33 @@ export const RecipeDetailScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title={t('recipeDetail.title')} showBack onBack={() => navigation.goBack()} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonContainer}>
+          {/* Recipe meta skeleton */}
+          <View style={styles.skeletonMetaCard}>
+            <View style={styles.skeletonMetaRow}>
+              <Skeleton width={80} height={40} borderRadius={10} />
+              <Skeleton width={80} height={40} borderRadius={10} />
+              <Skeleton width={80} height={40} borderRadius={10} />
+            </View>
+          </View>
+          {/* Price result skeleton */}
+          <View style={styles.skeletonPriceCard}>
+            <Skeleton width={100} height={14} borderRadius={4} />
+            <Skeleton width={140} height={32} borderRadius={8} style={{ marginTop: 8 }} />
+            <Skeleton width={120} height={14} borderRadius={4} style={{ marginTop: 8 }} />
+          </View>
+          {/* Ingredients list skeleton */}
+          <View style={styles.skeletonSection}>
+            <Skeleton width={120} height={16} borderRadius={6} />
+            {[0, 1, 2, 3].map(i => (
+              <View key={i} style={styles.skeletonIngRow}>
+                <Skeleton width={24} height={24} borderRadius={6} />
+                <Skeleton width={140} height={14} borderRadius={4} style={{ marginLeft: 10 }} />
+                <View style={{ flex: 1 }} />
+                <Skeleton width={60} height={14} borderRadius={4} />
+              </View>
+            ))}
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -694,4 +720,39 @@ const styles = StyleSheet.create({
   scaleSummaryLabel: { ...typography.body, color: colors.textSecondary },
   scaleSummaryValue: { ...typography.body, color: colors.text, fontWeight: '700' },
   scaleError: { ...typography.bodySmall, color: colors.error, marginTop: 4 },
+  skeletonContainer: {
+    padding: 20,
+    gap: 14,
+  },
+  skeletonMetaCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  skeletonMetaRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  skeletonPriceCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 20,
+    alignItems: 'center',
+  },
+  skeletonSection: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 12,
+  },
+  skeletonIngRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
 });

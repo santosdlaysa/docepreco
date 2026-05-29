@@ -20,6 +20,7 @@ import { clientStorage } from '../../data/storage/clientStorage';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
+import { Skeleton } from '../components/Skeleton';
 import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
@@ -157,8 +158,21 @@ export const ClientsScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title={t('clients.title')} subtitle={t('clients.subtitle')} showBack onBack={() => navigation.goBack()} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonContainer}>
+          {/* Search skeleton */}
+          <Skeleton width="100%" height={46} borderRadius={12} />
+          {/* Client cards skeleton */}
+          {[0, 1, 2, 3, 4].map(i => (
+            <View key={i} style={styles.skeletonCard}>
+              <Skeleton width={44} height={44} borderRadius={14} />
+              <View style={styles.skeletonCardContent}>
+                <Skeleton width={120} height={16} borderRadius={6} />
+                <Skeleton width={100} height={12} borderRadius={4} style={{ marginTop: 6 }} />
+                <Skeleton width={80} height={10} borderRadius={4} style={{ marginTop: 4 }} />
+              </View>
+              <Skeleton width={40} height={40} borderRadius={12} />
+            </View>
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -312,4 +326,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   emptyCtaText: { ...typography.button, color: '#fff' },
+  skeletonContainer: {
+    padding: 20,
+    gap: 10,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  skeletonCardContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
 });

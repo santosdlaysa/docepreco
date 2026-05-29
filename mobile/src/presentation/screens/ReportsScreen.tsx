@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { Skeleton } from '../components/Skeleton';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Print from 'expo-print';
@@ -234,8 +235,41 @@ export const ReportsScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title={t('reports.title')} subtitle={t('reports.subtitle')} showBack onBack={() => navigation.goBack()} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonContainer}>
+          {/* Revenue cards skeleton */}
+          <View style={styles.skeletonRow}>
+            <View style={styles.skeletonRevenueCard}>
+              <Skeleton width={80} height={12} borderRadius={4} />
+              <Skeleton width={100} height={24} borderRadius={6} style={{ marginTop: 8 }} />
+              <Skeleton width={60} height={12} borderRadius={4} style={{ marginTop: 6 }} />
+            </View>
+            <View style={styles.skeletonRevenueCard}>
+              <Skeleton width={80} height={12} borderRadius={4} />
+              <Skeleton width={100} height={24} borderRadius={6} style={{ marginTop: 8 }} />
+              <Skeleton width={60} height={12} borderRadius={4} style={{ marginTop: 6 }} />
+            </View>
+          </View>
+          {/* Chart skeleton */}
+          <View style={styles.skeletonChartCard}>
+            <Skeleton width={140} height={16} borderRadius={6} />
+            <View style={styles.skeletonBars}>
+              {[60, 80, 45, 90, 55, 70].map((h, i) => (
+                <Skeleton key={i} width={28} height={h} borderRadius={4} />
+              ))}
+            </View>
+          </View>
+          {/* Top recipes skeleton */}
+          <View style={styles.skeletonListCard}>
+            <Skeleton width={160} height={16} borderRadius={6} />
+            {[0, 1, 2].map(i => (
+              <View key={i} style={styles.skeletonListItem}>
+                <Skeleton width={24} height={24} borderRadius={12} />
+                <Skeleton width={140} height={14} borderRadius={4} style={{ marginLeft: 10 }} />
+                <View style={{ flex: 1 }} />
+                <Skeleton width={60} height={14} borderRadius={4} />
+              </View>
+            ))}
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -447,5 +481,47 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primaryLight,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  skeletonContainer: {
+    padding: 20,
+    gap: 14,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  skeletonRevenueCard: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  skeletonChartCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  skeletonBars: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-around',
+    height: 100,
+    marginTop: 16,
+  },
+  skeletonListCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 12,
+  },
+  skeletonListItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
 });

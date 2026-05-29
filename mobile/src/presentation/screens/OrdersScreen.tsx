@@ -23,6 +23,7 @@ import { demoSaleApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
+import { Skeleton } from '../components/Skeleton';
 import { Input } from '../components/Input';
 import { Header } from '../components/Header';
 import { usePaywall } from '../premium/usePaywall';
@@ -384,8 +385,33 @@ export const OrdersScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title={t('orders.title')} subtitle={t('orders.subtitle')} showBack onBack={() => navigation.goBack()} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonContainer}>
+          {/* Filter pills skeleton */}
+          <View style={styles.skeletonFilters}>
+            {[55, 65, 50, 70, 60].map((w, i) => (
+              <Skeleton key={i} width={w} height={32} borderRadius={20} />
+            ))}
+          </View>
+          {/* Section header */}
+          <Skeleton width={100} height={14} borderRadius={6} style={{ marginTop: 4 }} />
+          {/* Order cards skeleton */}
+          {[0, 1, 2].map(i => (
+            <View key={i} style={styles.skeletonCard}>
+              <View style={{ gap: 8, flex: 1 }}>
+                <Skeleton width={150} height={16} borderRadius={6} />
+                <Skeleton width={110} height={12} borderRadius={4} />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Skeleton width={80} height={12} borderRadius={4} />
+                  <Skeleton width={70} height={18} borderRadius={6} />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 6, marginTop: 8 }}>
+                  <Skeleton width={75} height={30} borderRadius={10} />
+                  <Skeleton width={75} height={30} borderRadius={10} />
+                  <Skeleton width={75} height={30} borderRadius={10} />
+                </View>
+              </View>
+            </View>
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -764,4 +790,19 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   emptyCtaText: { ...typography.button, color: '#fff' },
+  skeletonContainer: {
+    padding: 20,
+    gap: 10,
+  },
+  skeletonFilters: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  skeletonCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
 });

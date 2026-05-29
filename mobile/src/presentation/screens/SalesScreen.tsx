@@ -21,6 +21,7 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
+import { Skeleton } from '../components/Skeleton';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -134,8 +135,41 @@ export const SalesScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <Header title={t('sales.title')} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonContainer}>
+          {/* Summary skeleton */}
+          <View style={styles.skeletonSummary}>
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Skeleton width={50} height={20} borderRadius={6} />
+              <Skeleton width={70} height={12} borderRadius={4} style={{ marginTop: 4 }} />
+            </View>
+            <View style={{ width: 1, height: 30, backgroundColor: colors.border }} />
+            <View style={{ flex: 1, alignItems: 'center' }}>
+              <Skeleton width={90} height={20} borderRadius={6} />
+              <Skeleton width={70} height={12} borderRadius={4} style={{ marginTop: 4 }} />
+            </View>
+          </View>
+          {/* Filter skeleton */}
+          <View style={styles.skeletonFilters}>
+            <Skeleton width={80} height={36} borderRadius={10} />
+            <Skeleton width={80} height={36} borderRadius={10} />
+            <Skeleton width={80} height={36} borderRadius={10} />
+          </View>
+          {/* Section header skeleton */}
+          <View style={styles.skeletonSectionHeader}>
+            <Skeleton width={120} height={14} borderRadius={6} />
+            <Skeleton width={70} height={14} borderRadius={6} />
+          </View>
+          {/* Sale cards skeleton */}
+          {[0, 1, 2, 3].map(i => (
+            <View key={i} style={styles.skeletonCard}>
+              <Skeleton width={44} height={44} borderRadius={12} />
+              <View style={styles.skeletonCardContent}>
+                <Skeleton width={130} height={16} borderRadius={6} />
+                <Skeleton width={100} height={12} borderRadius={4} style={{ marginTop: 6 }} />
+              </View>
+              <Skeleton width={70} height={18} borderRadius={6} />
+            </View>
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -325,5 +359,40 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     flex: 1,
     lineHeight: 18,
+  },
+  skeletonContainer: {
+    padding: 20,
+    gap: 10,
+  },
+  skeletonSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  skeletonFilters: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  skeletonSectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+  },
+  skeletonCardContent: {
+    flex: 1,
+    marginLeft: 12,
   },
 });

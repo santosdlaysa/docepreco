@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,14 +20,14 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Recipe } from '../../domain/entities/Recipe';
+import { CalculationResult } from '../../domain/entities/Calculation';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
-import { Card } from '../components/Card';
 import { EmptyState } from '../components/EmptyState';
-import { Header } from '../components/Header';
+import { Skeleton } from '../components/Skeleton';
 import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
 import { usePaywall } from '../premium/usePaywall';
@@ -38,21 +39,36 @@ import { useDemoGuard } from '../hooks/useDemoGuard';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+const CARD_COLORS = ['#5D3A1A', '#E91E8C', '#F9C74F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4', '#FF9F43'];
+const CATEGORIES = ['Todas', 'Bolos', 'Docinhos', 'Tortas', 'Cupcakes', 'Chocolates'];
+
+function getCardColor(index: number) {
+  return CARD_COLORS[index % CARD_COLORS.length];
+}
+
+function formatCurrency(value: number) {
+  return `R$ ${value.toFixed(2).replace('.', ',')}`;
+}
+
 export const RecipesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [calculations, setCalculations] = useState<Record<string, CalculationResult>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('Todas');
   const { showToast } = useToast();
   const { isPremium } = usePremium();
-  const { requirePremium } = usePaywall();
+  const { requirePremium, openPaywall } = usePaywall();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { showInterstitial } = useAdInterstitial();
   const api = isDemoMode() ? demoRecipeApi : recipeApi;
   const [duplicateTarget, setDuplicateTarget] = useState<Recipe | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
   const [freeRecipeLimit, setFreeRecipeLimit] = useState<number>(FREE_LIMITS.recipes);
+
   const loadRecipes = async () => {
     try {
       const [data, limit] = await Promise.all([
@@ -61,6 +77,17 @@ export const RecipesScreen: React.FC = () => {
       ]);
       setRecipes(data);
       setFreeRecipeLimit(limit);
+
+      // Load calculations for all recipes
+      const calcs: Record<string, CalculationResult> = {};
+      await Promise.all(
+        data.map(async (recipe) => {
+          try {
+            calcs[recipe.id] = await api.calculate(recipe.id);
+          } catch {}
+        })
+      );
+      setCalculations(calcs);
     } catch (error) {
       showToast(t('recipes.loadError'), 'error');
     } finally {
@@ -81,6 +108,19 @@ export const RecipesScreen: React.FC = () => {
       }
     }, [])
   );
+
+  const filteredRecipes = useMemo(() => {
+    let filtered = recipes;
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(r => r.name.toLowerCase().includes(query));
+    }
+    if (selectedCategory !== 'Todas') {
+      const cat = selectedCategory.toLowerCase();
+      filtered = filtered.filter(r => r.name.toLowerCase().includes(cat.slice(0, -1).toLowerCase()));
+    }
+    return filtered;
+  }, [recipes, searchQuery, selectedCategory]);
 
   const handleDelete = (recipe: Recipe) => {
     if (!guardAction()) return;
@@ -125,7 +165,7 @@ export const RecipesScreen: React.FC = () => {
           { text: t('common.cancel'), style: 'cancel' },
           {
             text: t('recipes.duplicateButton'),
-            onPress: (name) => executeDuplicate(recipe, (name || '').trim() || defaultName),
+            onPress: (name?: string) => executeDuplicate(recipe, (name || '').trim() || defaultName),
           },
         ],
         'plain-text',
@@ -165,65 +205,179 @@ export const RecipesScreen: React.FC = () => {
     }
   };
 
-  const renderItem = ({ item }: { item: Recipe }) => (
-    <Card style={styles.recipeCard}>
+  const renderItem = ({ item, index }: { item: Recipe; index: number }) => {
+    const calc = calculations[item.id];
+    const cardColor = getCardColor(index);
+
+    return (
       <TouchableOpacity
         onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
-        activeOpacity={0.8}
-        style={styles.recipeContent}
+        activeOpacity={0.7}
+        style={styles.recipeCard}
       >
-        <View style={styles.recipeIcon}>
-          <Text style={styles.recipeEmoji}>🍬</Text>
-        </View>
-        <View style={styles.recipeInfo}>
-          <Text style={styles.recipeName}>{item.name}</Text>
-          <Text style={styles.recipeDetails}>
-            {t('recipes.unitsAndProfit', { yield: item.yield, margin: item.profitMargin })}
+        {/* Thumbnail colorido */}
+        <View style={[styles.thumbnail, { backgroundColor: cardColor }]}>
+          <Text style={styles.thumbnailText}>
+            {item.name.substring(0, 2).toUpperCase()}
           </Text>
-          <View style={styles.recipeTags}>
-            <View style={styles.tag}>
-              <Text style={styles.tagText}>{t('recipes.ingredientsCount', { count: item.ingredients.length })}</Text>
-            </View>
-            {item.additionalCosts.length > 0 && (
-              <View style={[styles.tag, styles.tagSecondary]}>
-                <Text style={[styles.tagText, styles.tagTextSecondary]}>
-                  {t('recipes.costsCount', { count: item.additionalCosts.length })}
+        </View>
+
+        {/* Conteúdo */}
+        <View style={styles.recipeContent}>
+          <Text style={styles.recipeName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.recipeSubtitle} numberOfLines={1}>
+            {item.yield} {item.yield === 1 ? 'unidade' : 'unidades'}
+          </Text>
+
+          {calc ? (
+            <View style={styles.priceRow}>
+              <View style={styles.priceBlock}>
+                <Text style={styles.priceLabel}>CUSTO/UN</Text>
+                <Text style={styles.priceValue}>{formatCurrency(calc.costPerUnit)}</Text>
+              </View>
+              <View style={styles.priceBlock}>
+                <Text style={styles.priceLabel}>PREÇO</Text>
+                <Text style={[styles.priceValue, styles.priceHighlight]}>
+                  {formatCurrency(calc.suggestedPrice)}
                 </Text>
               </View>
-            )}
-          </View>
+            </View>
+          ) : (
+            <View style={styles.priceRow}>
+              <ActivityIndicator size="small" color={colors.primaryLight} />
+            </View>
+          )}
         </View>
-        <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
+
+        {/* Badge de margem */}
+        {calc && (
+          <View style={styles.marginBadge}>
+            <Text style={styles.marginText}>↑ {Math.round(calc.profitMargin)}%</Text>
+          </View>
+        )}
       </TouchableOpacity>
-      <View style={styles.recipeActions}>
-        <TouchableOpacity
-          onPress={() => handleDuplicate(item)}
-          style={styles.actionBtn}
-        >
-          <Ionicons name="copy-outline" size={18} color={colors.secondary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: item.id }))}
-          style={[styles.actionBtn, styles.actionBtnBorder]}
-        >
-          <Ionicons name="pencil-outline" size={18} color={colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => handleDelete(item)}
-          style={[styles.actionBtn, styles.actionBtnBorder]}
-        >
-          <Ionicons name="trash-outline" size={18} color={colors.error} />
-        </TouchableOpacity>
+    );
+  };
+
+  const ListHeader = () => (
+    <View>
+      {/* Barra de busca */}
+      <View style={styles.searchContainer}>
+        <Ionicons name="search-outline" size={18} color={colors.textMuted} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar receita..."
+          placeholderTextColor={colors.textMuted}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearSearch}>
+            <Ionicons name="close-circle" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
       </View>
-    </Card>
+
+      {/* Chips de categoria */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.chipsContainer}
+        contentContainerStyle={styles.chipsContent}
+      >
+        {CATEGORIES.map(cat => (
+          <TouchableOpacity
+            key={cat}
+            onPress={() => setSelectedCategory(cat)}
+            style={[
+              styles.chip,
+              selectedCategory === cat && styles.chipActive,
+            ]}
+          >
+            <Text
+              style={[
+                styles.chipText,
+                selectedCategory === cat && styles.chipTextActive,
+              ]}
+            >
+              {cat}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Barra de progresso (free) */}
+      {!isPremium && (
+        <View style={styles.progressRow}>
+          <Text style={styles.progressPlus}>+</Text>
+          <Text style={styles.progressText}>
+            {Math.min(recipes.length, freeRecipeLimit)} / {freeRecipeLimit} grátis
+          </Text>
+          <View style={styles.progressBarBg}>
+            <View
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${Math.min((recipes.length / freeRecipeLimit) * 100, 100)}%`,
+                  backgroundColor:
+                    recipes.length >= freeRecipeLimit ? colors.warning : colors.success,
+                },
+              ]}
+            />
+          </View>
+          <TouchableOpacity onPress={() => openPaywall({ kind: 'limit', feature: 'recipes', current: recipes.length })}>
+            <Text style={styles.goProText}>Virar PRO</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      <AdBanner />
+    </View>
   );
 
   if (loading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <Header title={t('recipes.title')} />
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.headerTitle}>{t('recipes.title')}</Text>
+            <Text style={styles.headerSubtitle}>Suas fichas técnicas e preços</Text>
+          </View>
+          <View style={[styles.addButton, { opacity: 0.4 }]}>
+            <Ionicons name="add" size={24} color="#fff" />
+          </View>
+        </View>
+        <View style={styles.skeletonContainer}>
+          {/* Search skeleton */}
+          <Skeleton width="100%" height={46} borderRadius={12} />
+
+          {/* Chips skeleton */}
+          <View style={styles.skeletonChips}>
+            <Skeleton width={60} height={34} borderRadius={20} />
+            <Skeleton width={72} height={34} borderRadius={20} />
+            <Skeleton width={80} height={34} borderRadius={20} />
+            <Skeleton width={68} height={34} borderRadius={20} />
+          </View>
+
+          {/* Progress bar skeleton */}
+          <Skeleton width="100%" height={46} borderRadius={12} />
+
+          {/* Card skeletons */}
+          {[0, 1, 2, 3].map(i => (
+            <View key={i} style={styles.skeletonCard}>
+              <Skeleton width={56} height={64} borderRadius={12} />
+              <View style={styles.skeletonCardContent}>
+                <Skeleton width={140} height={16} borderRadius={6} />
+                <Skeleton width={90} height={12} borderRadius={4} style={{ marginTop: 6 }} />
+                <View style={styles.skeletonPriceRow}>
+                  <Skeleton width={70} height={14} borderRadius={4} />
+                  <Skeleton width={70} height={14} borderRadius={4} />
+                </View>
+              </View>
+              <Skeleton width={52} height={30} borderRadius={10} />
+            </View>
+          ))}
         </View>
       </SafeAreaView>
     );
@@ -231,20 +385,22 @@ export const RecipesScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <Header
-        title={t('recipes.title')}
-        subtitle={t('recipes.subtitle', { count: recipes.length, plural: recipes.length !== 1 ? 's' : '' })}
-        rightAction={
-          <TouchableOpacity
-            onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))}
-            style={styles.addButton}
-          >
-            <Ionicons name="add" size={24} color="#fff" />
-          </TouchableOpacity>
-        }
-      />
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <Text style={styles.headerTitle}>{t('recipes.title')}</Text>
+          <Text style={styles.headerSubtitle}>Suas fichas técnicas e preços</Text>
+        </View>
+        <TouchableOpacity
+          onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))}
+          style={styles.addButton}
+        >
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
+
       <FlatList
-        data={recipes}
+        data={filteredRecipes}
         keyExtractor={item => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.list}
@@ -256,61 +412,22 @@ export const RecipesScreen: React.FC = () => {
             colors={[colors.primary]}
           />
         }
-        ListHeaderComponent={
-          recipes.length > 0 ? (
-            <View>
-              {!isPremium && (
-                <View style={styles.progressCard}>
-                  <View style={styles.progressHeader}>
-                    <View style={styles.progressLabelRow}>
-                      <Ionicons name="book-outline" size={16} color={colors.primary} />
-                      <Text style={styles.progressLabel}>{t('recipes.registered')}</Text>
-                    </View>
-                    <Text style={styles.progressCount}>
-                      <Text style={styles.progressCurrent}>{Math.min(recipes.length, freeRecipeLimit)}</Text>
-                      /{freeRecipeLimit}
-                    </Text>
-                  </View>
-                  <View style={styles.progressBarBg}>
-                    <View
-                      style={[
-                        styles.progressBarFill,
-                        {
-                          width: `${Math.min((recipes.length / freeRecipeLimit) * 100, 100)}%`,
-                          backgroundColor: recipes.length >= freeRecipeLimit ? colors.warning : colors.primary,
-                        },
-                      ]}
-                    />
-                  </View>
-                  {recipes.length >= freeRecipeLimit ? (
-                    <Text style={styles.progressHint}>
-                      {t('recipes.limitReached')}
-                    </Text>
-                  ) : (
-                    <Text style={styles.progressHint}>
-                      {t('recipes.remaining', { count: freeRecipeLimit - recipes.length, plural: freeRecipeLimit - recipes.length !== 1 ? 's' : '' })}
-                    </Text>
-                  )}
-                </View>
-              )}
-              <View style={styles.infoCard}>
-                <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
-                <Text style={styles.infoText}>
-                  {t('recipes.infoText')}
-                </Text>
-              </View>
-              <AdBanner />
-            </View>
-          ) : null
-        }
+        ListHeaderComponent={filteredRecipes.length > 0 || searchQuery || selectedCategory !== 'Todas' ? <ListHeader /> : null}
         ListEmptyComponent={
-          <EmptyState
-            icon="book-outline"
-            title={t('recipes.emptyTitle')}
-            description={t('recipes.emptyDescription')}
-            actionLabel={t('recipes.createButton')}
-            onAction={() => guardAction(() => navigation.navigate('CreateRecipe'))}
-          />
+          searchQuery || selectedCategory !== 'Todas' ? (
+            <View style={styles.noResults}>
+              <Ionicons name="search-outline" size={48} color={colors.textMuted} />
+              <Text style={styles.noResultsText}>Nenhuma receita encontrada</Text>
+            </View>
+          ) : (
+            <EmptyState
+              icon="book-outline"
+              title={t('recipes.emptyTitle')}
+              description={t('recipes.emptyDescription')}
+              actionLabel={t('recipes.createButton')}
+              onAction={() => guardAction(() => navigation.navigate('CreateRecipe'))}
+            />
+          )
         }
       />
 
@@ -360,93 +477,107 @@ export const RecipesScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  list: { padding: 20, flexGrow: 1 },
+  list: { paddingHorizontal: 20, paddingBottom: 20, flexGrow: 1 },
+
+  // Header
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    paddingBottom: 8,
+  },
+  headerLeft: { flex: 1 },
+  headerTitle: {
+    ...typography.h1,
+    color: colors.text,
+  },
+  headerSubtitle: {
+    ...typography.bodySmall,
+    color: colors.textSecondary,
+    marginTop: 2,
+  },
   addButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
+    marginTop: 4,
   },
-  recipeCard: { marginBottom: 12, padding: 0, overflow: 'hidden' },
-  recipeContent: {
+
+  // Search
+  searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    backgroundColor: colors.surface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 12,
+    marginBottom: 12,
+    marginTop: 8,
   },
-  recipeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: colors.background,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  recipeEmoji: { fontSize: 24 },
-  recipeInfo: { flex: 1 },
-  recipeName: { ...typography.h4, color: colors.text },
-  recipeDetails: { ...typography.bodySmall, color: colors.textSecondary, marginTop: 2 },
-  recipeTags: { flexDirection: 'row', marginTop: 6, gap: 8 },
-  tag: {
-    backgroundColor: colors.primaryLight,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  tagSecondary: { backgroundColor: colors.beige },
-  tagText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
-  tagTextSecondary: { color: colors.secondary },
-  recipeActions: {
-    flexDirection: 'row',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  actionBtn: {
+  searchIcon: { marginRight: 8 },
+  searchInput: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
+    ...typography.body,
+    color: colors.text,
+    paddingVertical: Platform.OS === 'ios' ? 12 : 10,
   },
-  actionBtnBorder: {
-    borderLeftWidth: 1,
-    borderLeftColor: colors.border,
-  },
-  progressCard: {
+  clearSearch: { padding: 4 },
+
+  // Category chips
+  chipsContainer: { marginBottom: 12 },
+  chipsContent: { gap: 8 },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  chipActive: {
+    backgroundColor: colors.text,
+    borderColor: colors.text,
+  },
+  chipText: {
+    ...typography.bodySmall,
+    fontWeight: '600',
+    color: colors.textSecondary,
+  },
+  chipTextActive: {
+    color: '#fff',
+  },
+
+  // Progress bar
+  progressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
     borderRadius: 12,
-    padding: 14,
-    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 14,
+    gap: 8,
   },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
+  progressPlus: {
+    ...typography.body,
+    fontWeight: '700',
+    color: colors.primary,
   },
-  progressLabelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  progressLabel: {
+  progressText: {
     ...typography.bodySmall,
     color: colors.text,
     fontWeight: '600',
   },
-  progressCount: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
-  },
-  progressCurrent: {
-    ...typography.bodySmall,
-    color: colors.primary,
-    fontWeight: '700',
-  },
   progressBarBg: {
+    flex: 1,
     height: 8,
     borderRadius: 4,
     backgroundColor: colors.primaryLight,
@@ -456,28 +587,133 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 4,
   },
-  progressHint: {
-    ...typography.caption,
-    color: colors.textSecondary,
-    marginTop: 6,
+  goProText: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: colors.primary,
   },
-  infoCard: {
+
+  // Recipe card
+  recipeCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: colors.cream,
+    backgroundColor: colors.surface,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.primaryLight,
-    borderRadius: 12,
+    borderColor: colors.border,
     padding: 12,
-    marginBottom: 14,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  infoText: {
-    ...typography.bodySmall,
-    color: colors.textSecondary,
+  thumbnail: {
+    width: 56,
+    height: 64,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  thumbnailText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: 'rgba(255,255,255,0.85)',
+    letterSpacing: 1,
+  },
+  recipeContent: {
     flex: 1,
-    lineHeight: 18,
   },
+  recipeName: {
+    ...typography.h4,
+    color: colors.text,
+    marginBottom: 1,
+  },
+  recipeSubtitle: {
+    ...typography.caption,
+    color: colors.textSecondary,
+    marginBottom: 6,
+  },
+  priceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  priceBlock: {},
+  priceLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.textMuted,
+    letterSpacing: 0.5,
+    marginBottom: 1,
+  },
+  priceValue: {
+    ...typography.bodySmall,
+    fontWeight: '700',
+    color: colors.text,
+  },
+  priceHighlight: {
+    color: colors.primary,
+  },
+
+  // Margin badge
+  marginBadge: {
+    backgroundColor: '#E8F5E9',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 10,
+    marginLeft: 8,
+  },
+  marginText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2E7D32',
+  },
+
+  // No results
+  noResults: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 60,
+    gap: 12,
+  },
+  noResultsText: {
+    ...typography.body,
+    color: colors.textMuted,
+  },
+
+  // Skeleton loading
+  skeletonContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    gap: 12,
+  },
+  skeletonChips: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  skeletonCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 12,
+  },
+  skeletonCardContent: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  skeletonPriceRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginTop: 8,
+  },
+
+  // Modal (duplicate)
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 32 },
   modalBox: { backgroundColor: colors.surface, borderRadius: 16, padding: 24 },
   modalTitle: { ...typography.h3, color: colors.text, marginBottom: 6 },

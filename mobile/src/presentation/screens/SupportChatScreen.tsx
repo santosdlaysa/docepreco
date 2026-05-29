@@ -12,6 +12,7 @@ import {
   Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Skeleton } from '../components/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { supportApi, SupportMessage } from '../../data/api/supportApi';
@@ -218,8 +219,22 @@ export const SupportChatScreen: React.FC = () => {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
       >
         {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={colors.primary} />
+          <View style={styles.skeletonChat}>
+            {[0, 1, 2, 3, 4].map(i => (
+              <View
+                key={i}
+                style={[
+                  styles.skeletonBubble,
+                  i % 2 === 0 ? styles.skeletonBubbleLeft : styles.skeletonBubbleRight,
+                ]}
+              >
+                <Skeleton
+                  width={i % 2 === 0 ? 200 : 160}
+                  height={i % 3 === 0 ? 50 : 36}
+                  borderRadius={14}
+                />
+              </View>
+            ))}
           </View>
         ) : messages.length === 0 ? (
           <View style={styles.emptyContainer}>
@@ -408,5 +423,20 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: {
     opacity: 0.5,
+  },
+  skeletonChat: {
+    flex: 1,
+    padding: 16,
+    gap: 12,
+    justifyContent: 'flex-end',
+  },
+  skeletonBubble: {
+    maxWidth: '75%',
+  },
+  skeletonBubbleLeft: {
+    alignSelf: 'flex-start',
+  },
+  skeletonBubbleRight: {
+    alignSelf: 'flex-end',
   },
 });

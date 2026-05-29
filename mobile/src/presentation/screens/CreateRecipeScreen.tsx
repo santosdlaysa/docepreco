@@ -13,6 +13,7 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Skeleton } from '../components/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -468,8 +469,35 @@ export const CreateRecipeScreen: React.FC = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title={t('createRecipe.titleEdit')} showBack onBack={() => navigation.goBack()} />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={colors.primary} />
+        <View style={styles.skeletonContainer}>
+          {/* Form fields skeleton */}
+          <View style={styles.skeletonFormCard}>
+            <Skeleton width={100} height={14} borderRadius={4} />
+            <Skeleton width="100%" height={44} borderRadius={10} style={{ marginTop: 8 }} />
+            <View style={styles.skeletonFormRow}>
+              <View style={{ flex: 1 }}>
+                <Skeleton width={80} height={14} borderRadius={4} />
+                <Skeleton width="100%" height={44} borderRadius={10} style={{ marginTop: 8 }} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Skeleton width={100} height={14} borderRadius={4} />
+                <Skeleton width="100%" height={44} borderRadius={10} style={{ marginTop: 8 }} />
+              </View>
+            </View>
+          </View>
+          {/* Ingredients section skeleton */}
+          <View style={styles.skeletonFormCard}>
+            <Skeleton width={120} height={16} borderRadius={6} />
+            {[0, 1, 2].map(i => (
+              <View key={i} style={styles.skeletonFormItem}>
+                <Skeleton width={24} height={24} borderRadius={6} />
+                <Skeleton width={120} height={14} borderRadius={4} style={{ marginLeft: 10 }} />
+                <View style={{ flex: 1 }} />
+                <Skeleton width={50} height={14} borderRadius={4} />
+              </View>
+            ))}
+            <Skeleton width={100} height={36} borderRadius={10} style={{ marginTop: 8 }} />
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -1441,5 +1469,27 @@ const styles = StyleSheet.create({
     ...typography.button,
     color: '#fff',
     fontSize: 14,
+  },
+  skeletonContainer: {
+    padding: 20,
+    gap: 14,
+  },
+  skeletonFormCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    padding: 16,
+    gap: 4,
+  },
+  skeletonFormRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+  },
+  skeletonFormItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 10,
   },
 });
