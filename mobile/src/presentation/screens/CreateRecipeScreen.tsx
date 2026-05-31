@@ -252,6 +252,7 @@ export const CreateRecipeScreen: React.FC = () => {
       : `${effectivePurchaseQty} ${selectedIngredient.unit}`;
 
     if (ratio > 3) {
+      setShowIngredientModal(false);
       setIngredientConfirm({
         type: 'warning-high',
         name: selectedIngredient.name,
@@ -264,6 +265,7 @@ export const CreateRecipeScreen: React.FC = () => {
     }
 
     if (ratio < 0.01) {
+      setShowIngredientModal(false);
       setIngredientConfirm({
         type: 'warning-low',
         name: selectedIngredient.name,
@@ -274,6 +276,7 @@ export const CreateRecipeScreen: React.FC = () => {
       return;
     }
 
+    setShowIngredientModal(false);
     setIngredientConfirm({
       type: 'confirm',
       name: selectedIngredient.name,
@@ -621,6 +624,32 @@ export const CreateRecipeScreen: React.FC = () => {
             style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#FFE3EF', borderRadius: 14, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Ionicons name="add" size={18} color={PINK} />
             <Text style={{ color: PINK, fontWeight: '700', fontSize: 14 }}>Adicionar ingrediente</Text>
+          </TouchableOpacity>
+
+          {/* ── Sub-receitas ── */}
+          <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Receitas para juntar</Text>
+          {subRecipes.length > 0 && (
+            <View style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SH }}>
+              {subRecipes.map((sub, i) => (
+                <View key={sub.subRecipeId} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: LINE2 } : {}) }}>
+                  <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: '#EA4B9222', alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="restaurant-outline" size={18} color={PINK} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14.5, fontWeight: '700', color: INK }}>{sub.subRecipeName}</Text>
+                    <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{sub.quantityUsed} {sub.unit}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => removeSubRecipe(sub.subRecipeId)}>
+                    <Ionicons name="close-circle" size={20} color="#C0392B" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+          <TouchableOpacity onPress={() => setShowSubRecipeModal(true)} activeOpacity={0.7}
+            style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#FFE3EF', borderRadius: 14, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            <Ionicons name="add" size={18} color={PINK} />
+            <Text style={{ color: PINK, fontWeight: '700', fontSize: 14 }}>Adicionar receita para juntar</Text>
           </TouchableOpacity>
 
           {/* ── Custos adicionais (.gcard) ── */}
@@ -990,7 +1019,7 @@ export const CreateRecipeScreen: React.FC = () => {
             <View style={styles.confirmButtons}>
               <TouchableOpacity
                 style={styles.confirmCancelBtn}
-                onPress={() => setIngredientConfirm(null)}
+                onPress={() => { setIngredientConfirm(null); setShowIngredientModal(true); }}
                 activeOpacity={0.8}
               >
                 <Text style={styles.confirmCancelText}>

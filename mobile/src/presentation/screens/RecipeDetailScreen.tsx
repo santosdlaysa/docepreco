@@ -346,20 +346,6 @@ export const RecipeDetailScreen: React.FC = () => {
               <Text style={s.marginLabel}>Margem de lucro</Text>
               <Text style={s.marginValue}>{recipe.profitMargin}%</Text>
             </View>
-            <View style={s.slider}>
-              <LinearGradient
-                colors={['#FF6AAE', PINK]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={[s.sliderFill, { width: `${Math.min(recipe.profitMargin, 100)}%` as any }]}
-              />
-              <View style={[s.sliderKnob, { left: `${Math.min(recipe.profitMargin, 100)}%` as any }]} />
-            </View>
-            <View style={s.sliderScale}>
-              <Text style={s.sliderScaleText}>0%</Text>
-              <Text style={s.sliderScaleText}>50%</Text>
-              <Text style={s.sliderScaleText}>100%</Text>
-            </View>
           </View>
 
           {/* ═══════ RESULT CARD (green gradient) ═══════ */}

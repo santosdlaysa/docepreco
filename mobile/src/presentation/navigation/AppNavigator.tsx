@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer, NavigationContainerRef } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef, useNavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -60,12 +60,27 @@ const Tab = createBottomTabNavigator();
 // Placeholder screen for the center "+" tab (never actually rendered)
 const DummyScreen = () => null;
 
+const ACTION_MAP: Record<string, { route: keyof RootStackParamList; icon: keyof typeof Ionicons.glyphMap; label: string }> = {
+  Home:        { route: 'CreateSale',       icon: 'cart',    label: 'Venda' },
+  Recipes:     { route: 'CreateRecipe',     icon: 'book',    label: 'Receita' },
+  Ingredients: { route: 'CreateIngredient', icon: 'basket',  label: 'Ingrediente' },
+  Sales:       { route: 'CreateSale',       icon: 'cart',    label: 'Venda' },
+};
+
+// CenterTabButton é renderizado DENTRO do Tab navigator,
+// então useNavigationState aqui pega o estado correto do Tab.
 function CenterTabButton({ onPress }: { onPress?: (e: any) => void }) {
+  const activeTab = useNavigationState(s => s?.routes[s.index]?.name ?? 'Home');
+  const action = ACTION_MAP[activeTab];
+
   return (
     <TouchableOpacity style={tabStyles.centerBtn} onPress={onPress} activeOpacity={0.8}>
       <View style={tabStyles.centerBtnInner}>
-        <Ionicons name="add" size={32} color="#fff" />
+        <Ionicons name="add" size={28} color="#fff" />
       </View>
+      {action && (
+        <Text style={tabStyles.centerLabel}>{action.label}</Text>
+      )}
     </TouchableOpacity>
   );
 }
@@ -108,7 +123,11 @@ function TabNavigator() {
         listeners={({ navigation }) => ({
           tabPress: (e) => {
             e.preventDefault();
-            navigation.navigate('CreateSale');
+            // Usa getState() para ler o tab ativo no momento do toque
+            const state = navigation.getState();
+            const currentTab = state?.routes[state.index]?.name ?? 'Home';
+            const destination = ACTION_MAP[currentTab]?.route ?? 'CreateSale';
+            navigation.navigate(destination);
           },
         })}
       />
@@ -123,6 +142,7 @@ const tabStyles = StyleSheet.create({
     top: -18,
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 3,
   },
   centerBtnInner: {
     width: 60,
@@ -136,6 +156,12 @@ const tabStyles = StyleSheet.create({
     shadowOpacity: 0.35,
     shadowRadius: 8,
     elevation: 8,
+  },
+  centerLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.primary,
+    marginTop: 2,
   },
 });
 
