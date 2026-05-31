@@ -27,6 +27,8 @@ import { usePaywall } from '../premium/usePaywall';
 import { AdBanner } from '../ads';
 import { SupportFab } from '../components/SupportFab';
 import { isGuideAvailable } from './BeginnerGuideScreen';
+import { bannerApi, Banner } from '../../data/api/bannerApi';
+import { bannerStorage } from '../../data/storage/bannerStorage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -40,6 +42,13 @@ const CREAM = '#FFF6F0';
 const LINE = '#F1E2DA';
 const PINK = '#EA4B92';
 const GREEN = '#43BE6E';
+
+const BANNER_CONFIG: Record<Banner['type'], { bg: string; border: string; icon: string; iconColor: string }> = {
+  info:    { bg: '#EEF8FD', border: '#B8DDEF', icon: 'information-circle-outline', iconColor: '#2BA7DD' },
+  warning: { bg: '#FFF8E1', border: '#FFE082', icon: 'warning-outline',            iconColor: '#F57F17' },
+  promo:   { bg: '#FFF0F6', border: '#FFD6E9', icon: 'gift-outline',               iconColor: PINK },
+  update:  { bg: '#DCF6E5', border: '#A8E6C0', icon: 'arrow-up-circle-outline',    iconColor: GREEN },
+};
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -61,12 +70,23 @@ export const HomeScreen: React.FC = () => {
   const [allSales, setAllSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
+  const [banners, setBanners] = useState<Banner[]>([]);
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const stApi = isDemoMode() ? demoStatsApi : statsApi;
 
+  const dismissBanner = async (id: string) => {
+    await bannerStorage.dismiss(id);
+    setBanners(prev => prev.filter(b => b.id !== id));
+  };
+
   useEffect(() => {
     isGuideAvailable().then(setShowGuide).catch(() => {});
+    bannerApi.getActive().then(async active => {
+      await bannerStorage.clearExpired(active.map(b => b.id));
+      const dismissed = await bannerStorage.getDismissedIds();
+      setBanners(active.filter(b => !dismissed.includes(b.id)));
+    }).catch(() => {});
     Promise.all([
       stApi.getStats().then(setStats).catch(() => {}),
       sApi.getAll().then(setAllSales).catch(() => {}),
@@ -203,6 +223,23 @@ export const HomeScreen: React.FC = () => {
             </View>
           </LinearGradient>
         </View>
+
+        {/* ═══════ NOTIFICATION BANNERS ═══════ */}
+        {banners.map(banner => {
+          const cfg = BANNER_CONFIG[banner.type];
+          return (
+            <View key={banner.id} style={[s.notifBanner, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+              <Ionicons name={cfg.icon as any} size={22} color={cfg.iconColor} style={{ marginTop: 1 }} />
+              <View style={{ flex: 1 }}>
+                <Text style={[s.notifTitle, { color: cfg.iconColor }]}>{banner.title}</Text>
+                <Text style={s.notifMsg}>{banner.message}</Text>
+              </View>
+              <TouchableOpacity onPress={() => dismissBanner(banner.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Ionicons name="close" size={18} color={INK2} />
+              </TouchableOpacity>
+            </View>
+          );
+        })}
 
         <View style={s.adWrap}><AdBanner /></View>
 
@@ -699,6 +736,19 @@ const s = StyleSheet.create({
   proCtaTitle: { fontSize: 15.5, fontWeight: '700', color: INK },
   proCtaSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
   adWrap: { paddingHorizontal: 18, marginBottom: 14 },
+  notifBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    marginHorizontal: 18,
+    marginBottom: 10,
+    borderRadius: 16,
+    padding: 13,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  notifTitle: { fontSize: 13.5, fontWeight: '700', marginBottom: 2 },
+  notifMsg: { fontSize: 12.5, color: INK2, fontWeight: '500', lineHeight: 17 },
   guideBanner: {
     flexDirection: 'row',
     alignItems: 'center',
