@@ -292,6 +292,17 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
+          {/* ── Admin (só visível para o dono) ── */}
+          {user?.email === 'santosdlaysa@gmail.com' && (
+            <TouchableOpacity
+              style={[st.logoutBtn, { backgroundColor: '#F5F0FF', borderWidth: 1, borderColor: '#E9D8FD' }]}
+              onPress={() => navigation.navigate('AdminDashboard')}
+              activeOpacity={0.8}
+            >
+              <Text style={[st.logoutText, { color: '#7C3AED' }]}>Área Admin</Text>
+            </TouchableOpacity>
+          )}
+
           {/* ── Logout ── */}
           <TouchableOpacity style={st.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
             <Text style={st.logoutText}>Sair da conta</Text>

@@ -35,6 +35,12 @@ import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
 import { BeginnerGuideScreen, isGuideAvailable, resetGuide } from '../screens/BeginnerGuideScreen';
 import { SupportChatScreen } from '../screens/SupportChatScreen';
 import { PixPaymentScreen } from '../screens/PixPaymentScreen';
+import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
+import { AdminUsersScreen } from '../screens/admin/AdminUsersScreen';
+import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
+import { AdminPixScreen } from '../screens/admin/AdminPixScreen';
+import { AdminSupportScreen } from '../screens/admin/AdminSupportScreen';
+import { AdminSupportChatScreen } from '../screens/admin/AdminSupportChatScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { authApi } from '../../data/api/authApi';
@@ -382,6 +388,18 @@ export function AppNavigator() {
           <Stack.Screen name="EditSeason" component={CreateSeasonScreen} />
           <Stack.Screen name="BeginnerGuide" component={BeginnerGuideScreen} />
           <Stack.Screen name="SupportChat" component={SupportChatScreen} />
+          <Stack.Screen name="AdminDashboard">
+            {({ navigation: nav }) => (
+              <AdminDashboardScreen
+                onLogout={() => nav.popToTop()}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+          <Stack.Screen name="AdminUserDetail" component={AdminUserDetailScreen} />
+          <Stack.Screen name="AdminPix" component={AdminPixScreen} />
+          <Stack.Screen name="AdminSupport" component={AdminSupportScreen} />
+          <Stack.Screen name="AdminSupportChat" component={AdminSupportChatScreen} />
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}
