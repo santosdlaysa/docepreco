@@ -223,12 +223,12 @@ export const RecipeDetailScreen: React.FC = () => {
             end={{ x: 1, y: 1 }}
             style={s.hero}
           >
-            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
-              <Ionicons name="chevron-back" size={20} color={INK} />
-            </TouchableOpacity>
             <TouchableOpacity onPress={pickPhoto} style={s.heroAddPhoto} activeOpacity={0.7}>
               <Ionicons name="camera-outline" size={22} color="rgba(255,255,255,0.8)" />
               <Text style={s.heroAddPhotoText}>Adicionar foto</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn} activeOpacity={0.7}>
+              <Ionicons name="chevron-back" size={20} color={INK} />
             </TouchableOpacity>
             <View style={s.heroActions}>
               <TouchableOpacity
