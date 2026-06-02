@@ -210,7 +210,7 @@ export const ProfileScreen: React.FC = () => {
 
           {/* ── Premium CTA / Status ── */}
           {isPremium ? (
-            <TouchableOpacity activeOpacity={expiringSoon ? 0.85 : 1} disabled={!expiringSoon} onPress={expiringSoon ? () => navigation.navigate('PixPayment', { plan: 'monthly' }) : undefined}>
+            <TouchableOpacity activeOpacity={expiringSoon ? 0.85 : 1} disabled={!expiringSoon} onPress={expiringSoon ? () => navigation.navigate('Paywall', { trigger: { kind: 'manual' } }) : undefined}>
               <LinearGradient colors={['#FFF1CE', '#FFE3EF']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={st.proCta}>
                 <View style={st.proCtaIco}><Ionicons name="trophy" size={24} color={PINK} /></View>
                 <View style={{ flex: 1 }}>
@@ -222,7 +222,7 @@ export const ProfileScreen: React.FC = () => {
               </LinearGradient>
             </TouchableOpacity>
           ) : isExpired ? (
-            <TouchableOpacity onPress={() => navigation.navigate('PixPayment', { plan: 'monthly' })} activeOpacity={0.85}>
+            <TouchableOpacity onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })} activeOpacity={0.85}>
               <LinearGradient colors={['#FFE3EF', '#FFD0DD']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[st.proCta, { borderColor: '#FFC2D2' }]}>
                 <View style={st.proCtaIco}><Ionicons name="refresh-circle" size={24} color={PINK} /></View>
                 <View style={{ flex: 1 }}>

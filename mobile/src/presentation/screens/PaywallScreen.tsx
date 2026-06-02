@@ -248,7 +248,7 @@ export const PaywallScreen: React.FC = () => {
                 {pixPlan === 'monthly' && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
               <Text style={st.planName}>Mensal</Text>
-              <Text style={st.planPrice}>R$ 10<Text style={st.planPriceSm}>,00</Text></Text>
+              <Text style={st.planPrice}>R$ 14<Text style={st.planPriceSm}>,90</Text></Text>
               <Text style={st.planPer}>por mês</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.plan, pixPlan === 'annual' && st.planOn]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
