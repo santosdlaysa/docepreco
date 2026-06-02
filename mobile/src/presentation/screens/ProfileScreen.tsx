@@ -60,6 +60,15 @@ export const ProfileScreen: React.FC = () => {
   }, []);
 
   const premiumUntilLabel = premiumUntil ? new Date(premiumUntil).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }) : null;
+  // Assinatura que já foi ativa e venceu (premiumUntil no passado e não está mais premium)
+  const isExpired = !isPremium && !!premiumUntil && new Date(premiumUntil).getTime() <= Date.now();
+  // Texto do tempo restante para expirar
+  const expiryLabel = daysLeft == null
+    ? 'Todos os recursos liberados'
+    : daysLeft === 0
+      ? `Expira hoje${premiumUntilLabel ? ` · ${premiumUntilLabel}` : ''}`
+      : `Expira em ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}${premiumUntilLabel ? ` · ${premiumUntilLabel}` : ''}`;
+  const expiringSoon = daysLeft != null && daysLeft <= 3;
 
   const handleSaveInstagram = async () => {
     const handle = instagramInput.replace(/^@/, '').trim();
@@ -201,13 +210,28 @@ export const ProfileScreen: React.FC = () => {
 
           {/* ── Premium CTA / Status ── */}
           {isPremium ? (
-            <TouchableOpacity activeOpacity={0.85}>
+            <TouchableOpacity activeOpacity={expiringSoon ? 0.85 : 1} disabled={!expiringSoon} onPress={expiringSoon ? () => navigation.navigate('PixPayment', { plan: 'monthly' }) : undefined}>
               <LinearGradient colors={['#FFF1CE', '#FFE3EF']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={st.proCta}>
                 <View style={st.proCtaIco}><Ionicons name="trophy" size={24} color={PINK} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={st.proCtaTitle}>Plano PRO ativo</Text>
-                  <Text style={st.proCtaSub}>{premiumUntilLabel ? `Renova em ${premiumUntilLabel}` : 'Todos os recursos liberados'}</Text>
+                  <Text style={[st.proCtaSub, expiringSoon && { color: '#C0392B', fontWeight: '700' }]}>{expiryLabel}</Text>
+                  {expiringSoon && <Text style={st.proCtaRenew}>Toque para renovar →</Text>}
                 </View>
+                {expiringSoon && <Ionicons name="refresh-circle" size={22} color={PINK} />}
+              </LinearGradient>
+            </TouchableOpacity>
+          ) : isExpired ? (
+            <TouchableOpacity onPress={() => navigation.navigate('PixPayment', { plan: 'monthly' })} activeOpacity={0.85}>
+              <LinearGradient colors={['#FFE3EF', '#FFD0DD']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={[st.proCta, { borderColor: '#FFC2D2' }]}>
+                <View style={st.proCtaIco}><Ionicons name="refresh-circle" size={24} color={PINK} /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={st.proCtaTitle}>Renove sua assinatura</Text>
+                  <Text style={[st.proCtaSub, { color: '#C0392B', fontWeight: '700' }]}>
+                    {premiumUntilLabel ? `Sua assinatura expirou em ${premiumUntilLabel}` : 'Sua assinatura expirou'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={PINK} />
               </LinearGradient>
             </TouchableOpacity>
           ) : (
@@ -334,6 +358,7 @@ const st = StyleSheet.create({
   proCtaIco: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowOpacity: 0.04 },
   proCtaTitle: { fontSize: 15.5, fontWeight: '700', color: INK },
   proCtaSub: { fontSize: 12, color: INK2, fontWeight: '500' },
+  proCtaRenew: { fontSize: 12.5, color: PINK, fontWeight: '700', marginTop: 3 },
 
   /* section label */
   secLabel: { fontSize: 13, fontWeight: '700', color: INK2, marginTop: 2, marginLeft: 4 },

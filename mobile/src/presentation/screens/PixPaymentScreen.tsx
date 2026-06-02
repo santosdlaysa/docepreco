@@ -28,9 +28,9 @@ type RouteType = RouteProp<RootStackParamList, 'PixPayment'>;
 const PLANS = {
   monthly: {
     label: 'Mensal',
-    price: 'R$ 10,00',
-    priceCents: 1000,
-    pixCopyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540510.005802BR5901N6001C62100506mensal63041609',
+    price: 'R$ 14,90',
+    priceCents: 1490,
+    pixCopyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540514.905802BR5901N6001C62150511mensalidade630450C7',
     qrImage: require('../../../assets/qrcode-pix-monthly.png'),
   },
   annual: {
@@ -167,7 +167,7 @@ export const PixPaymentScreen: React.FC = () => {
                   Mensal
                 </Text>
                 <Text style={[styles.planTabPrice, selectedPlan === 'monthly' && styles.planTabPriceActive]}>
-                  R$ 10,00
+                  R$ 14,90
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
