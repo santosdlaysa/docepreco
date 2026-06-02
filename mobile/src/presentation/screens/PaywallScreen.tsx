@@ -67,7 +67,7 @@ export const PaywallScreen: React.FC = () => {
   const [restoring, setRestoring] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [configured] = useState(isRevenueCatConfigured());
-  const [pixPlan, setPixPlan] = useState<'monthly' | 'annual'>('annual');
+  const [pixPlan, setPixPlan] = useState<'monthly' | 'annual' | null>(null);
 
   const trigger = route.params?.trigger;
 
@@ -76,8 +76,7 @@ export const PaywallScreen: React.FC = () => {
       try {
         const offerings = await fetchOfferings();
         setPackages(offerings);
-        const annual = offerings.find(o => o.identifier.toLowerCase().includes('annual'));
-        setSelected((annual ?? offerings[0])?.identifier ?? null);
+        // Não pré-seleciona nenhum plano — o usuário escolhe ativamente
       } catch { setPackages([]); }
       finally { setLoading(false); }
     })();
@@ -93,6 +92,8 @@ export const PaywallScreen: React.FC = () => {
   };
 
   const selectedPkg = packages?.find(p => p.identifier === selected) ?? null;
+  // Só permite avançar quando há um plano escolhido (cartão se RevenueCat ativo, senão PIX)
+  const canProceed = configured ? !!selectedPkg : !!pixPlan;
 
   const handlePurchase = async () => {
     if (!selected || !selectedPkg) return;
@@ -170,13 +171,13 @@ export const PaywallScreen: React.FC = () => {
                 <Text style={st.planPer}>por mês</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[st.plan, pixPlan === 'annual' && st.planOn]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
-                <View style={st.save}><Text style={st.saveText}>Economize 50%</Text></View>
+                <View style={st.save}><Text style={st.saveText}>Economize 16%</Text></View>
                 <View style={[st.radio, pixPlan === 'annual' && st.radioOn]}>
                   {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
                 </View>
                 <Text style={st.planName}>Anual</Text>
-                <Text style={st.planPrice}>R$ 7<Text style={st.planPriceSm}>,49</Text></Text>
-                <Text style={st.planPer}>R$ 89,90/ano</Text>
+                <Text style={st.planPrice}>R$ 12<Text style={st.planPriceSm}>,49</Text></Text>
+                <Text style={st.planPer}>R$ 149,90/ano</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -214,15 +215,18 @@ export const PaywallScreen: React.FC = () => {
 
           {/* ── CTA ── */}
           <TouchableOpacity
-            onPress={configured && selectedPkg ? handlePurchase : () => navigation.navigate('PixPayment', { plan: pixPlan })}
-            disabled={!!purchasing}
+            onPress={() => {
+              if (configured && selectedPkg) handlePurchase();
+              else if (!configured && pixPlan) navigation.navigate('PixPayment', { plan: pixPlan });
+            }}
+            disabled={!!purchasing || !canProceed}
             activeOpacity={0.85}
           >
-            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.cta}>
+            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.cta, !canProceed && { opacity: 0.5 }]}>
               {purchasing ? <ActivityIndicator color="#fff" /> : (
                 <>
                   <Ionicons name="trophy" size={20} color="#fff" />
-                  <Text style={st.ctaText}>Começar agora</Text>
+                  <Text style={st.ctaText}>{canProceed ? 'Começar agora' : 'Escolha um plano'}</Text>
                 </>
               )}
             </LinearGradient>
@@ -263,10 +267,10 @@ export const PaywallScreen: React.FC = () => {
           </View>
 
           {/* ── Pix CTA ── */}
-          <TouchableOpacity onPress={() => navigation.navigate('PixPayment', { plan: pixPlan })} activeOpacity={0.85}>
-            <View style={st.pixCta}>
+          <TouchableOpacity onPress={() => pixPlan && navigation.navigate('PixPayment', { plan: pixPlan })} disabled={!pixPlan} activeOpacity={0.85}>
+            <View style={[st.pixCta, !pixPlan && { opacity: 0.5 }]}>
               <Ionicons name="qr-code-outline" size={20} color="#fff" />
-              <Text style={st.ctaText}>Pagar com Pix</Text>
+              <Text style={st.ctaText}>{pixPlan ? 'Pagar com Pix' : 'Escolha um plano acima'}</Text>
             </View>
           </TouchableOpacity>
 
