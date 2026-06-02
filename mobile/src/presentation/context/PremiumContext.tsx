@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Platform } from 'react-native';
 import { authApi, AuthUser, PremiumPlatform } from '../../data/api/authApi';
 import { tokenStorage } from '../../data/storage/tokenStorage';
-import { isDemoMode } from '../../data/demo/demoMode';
+import { isDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { getActiveEntitlements, getActiveEntitlementExpiration, isRevenueCatConfigured } from '../../data/premium/revenueCat';
 
 interface PremiumContextData {
@@ -116,13 +116,13 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   useEffect(() => {
-    // Load cached data immediately, then sync with backend
-    loadFromStorage().then(() => {
+    // Carrega o modo demo antes de qualquer chamada à API para evitar
+    // chamar o servidor real com o token demo e disparar force-logout
+    loadDemoMode().then(() => loadFromStorage()).then(() => {
       if (!isDemoMode()) {
         authApi.me().then((fresh) => {
           setUser(fresh);
           void tokenStorage.saveUser(fresh);
-          // After fetching backend state, check if RevenueCat disagrees
           void syncIfNeeded(fresh);
         }).catch(() => {});
       }

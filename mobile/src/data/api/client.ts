@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { tokenStorage } from '../storage/tokenStorage';
+import { isDemoMode } from '../demo/demoMode';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
@@ -35,9 +36,9 @@ apiClient.interceptors.response.use(
     const url = error.config?.url;
     const status = error.response?.status ?? 'ERR';
     // Auto-logout: token inválido ou usuário não existe mais
-    // Ignora 401 de rotas admin/settings (não significa token inválido, apenas falta de permissão)
+    // Ignora 401 de rotas admin/settings e de sessões demo
     const isAdminRoute = url?.includes('/admin/');
-    if ((status === 401 && !isAdminRoute) || (status === 404 && url?.includes('/auth/me'))) {
+    if (!isDemoMode() && ((status === 401 && !isAdminRoute) || (status === 404 && url?.includes('/auth/me')))) {
       tokenStorage.removeToken().then(() => onForceLogout?.()).catch(() => {});
     }
     const rawMessage = error.response?.data?.error || error.message || 'Unknown error';

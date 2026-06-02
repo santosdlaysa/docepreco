@@ -34,4 +34,10 @@ export type RootStackParamList = {
   EditSeason: { seasonId: string };
   BeginnerGuide: undefined;
   SupportChat: undefined;
+  AdminDashboard: undefined;
+  AdminUsers: undefined;
+  AdminUserDetail: { userId: string };
+  AdminPix: undefined;
+  AdminSupport: undefined;
+  AdminSupportChat: { userId: string; companyName: string };
 };
