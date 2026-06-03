@@ -1,8 +1,6 @@
 import { Request, Response } from 'express';
 import { PostgresSaleRepository } from '../../infrastructure/repositories/PostgresSaleRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
-import { notifySale } from '../../infrastructure/services/telegramService';
-import { pool } from '../../infrastructure/database/connection';
 
 const saleRepo = new PostgresSaleRepository();
 
@@ -40,16 +38,6 @@ export class SaleController {
         { recipeId, quantitySold: Number(quantitySold), salePrice: Number(salePrice), saleDate, notes, paymentMethod },
         req.userId!
       );
-
-      // Telegram notification (fire-and-forget)
-      pool.query(
-        `SELECT u.company_name, r.name AS recipe_name FROM users u, recipes r WHERE u.id = $1 AND r.id = $2`,
-        [req.userId!, recipeId]
-      ).then(({ rows }) => {
-        if (rows[0]) {
-          notifySale(rows[0].company_name, rows[0].recipe_name, Number(quantitySold), sale.totalRevenue);
-        }
-      }).catch(() => {});
 
       res.status(201).json({ success: true, data: sale });
     } catch (error) {

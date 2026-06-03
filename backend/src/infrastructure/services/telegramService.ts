@@ -145,9 +145,34 @@ export async function sendDailyUserReport(): Promise<void> {
     FROM users
   `);
   const { total, premium, today } = rows[0];
+
+  // Quantidade de vendas por usuário (hoje) — em vez de notificar cada venda
+  const { rows: salesByUser } = await pool.query(`
+    SELECT u.company_name, COUNT(s.id)::int AS sales_count
+    FROM sales s
+    JOIN users u ON u.id = s.user_id
+    WHERE s.created_at >= NOW() - INTERVAL '1 day'
+    GROUP BY u.id, u.company_name
+    ORDER BY sales_count DESC
+    LIMIT 10
+  `);
+  const totalSalesToday = salesByUser.reduce(
+    (acc: number, u: { sales_count: number }) => acc + u.sales_count,
+    0
+  );
+
   const tpl = await getTemplate('daily_report');
-  const fallback = `📊 Relatório diário\n\n👥 Total de usuários: ${total}\n⭐ Premium: ${premium}\n🆕 Novos hoje: ${today}\n🕐 ${brNow()}`;
-  const text = tpl ? applyTemplate(tpl, { total, premium, today, time: brNow() }) : fallback;
+  const base = tpl
+    ? applyTemplate(tpl, { total, premium, today, salesToday: totalSalesToday, time: brNow() })
+    : `📊 Relatório diário\n\n👥 Total de usuários: ${total}\n⭐ Premium: ${premium}\n🆕 Novos hoje: ${today}\n🧁 Vendas hoje: ${totalSalesToday}\n🕐 ${brNow()}`;
+
+  let text = base;
+  if (salesByUser.length > 0) {
+    text += `\n\n🧁 Vendas por usuário (hoje):`;
+    salesByUser.forEach((u: { company_name: string; sales_count: number }, i: number) => {
+      text += `\n${i + 1}. ${u.company_name} (${u.sales_count} vendas)`;
+    });
+  }
   sendTelegramMessage(text);
 }
 

@@ -50,7 +50,9 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
     }
     throw new ApiError(json.error ?? `HTTP ${res.status}`, res.status, json.code);
   }
-  return (json.data ?? json) as T;
+  // Usa 'data' in json para preservar valores legítimos de null (ex.: caixa fechado → data: null).
+  // Com `json.data ?? json`, um data:null retornaria o objeto inteiro {success,data} por engano.
+  return (json && typeof json === 'object' && 'data' in json ? json.data : json) as T;
 }
 
 /* ── Tipos (espelham mobile/src/domain/entities) ───────────────────────── */

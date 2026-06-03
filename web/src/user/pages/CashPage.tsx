@@ -287,9 +287,24 @@ function CloseCashModal({ session, toast, onClose, onDone }: { session: CashSess
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">Fechar caixa</h3>
+
+        {/* Recebido por forma de pagamento */}
         <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 space-y-1 text-sm">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Recebido nas vendas</p>
+          <Row label="Dinheiro" value={formatBRL(session.byMethod.dinheiro)} />
+          <Row label="Cartão" value={formatBRL(session.byMethod.cartao)} />
+          <Row label="PIX" value={formatBRL(session.byMethod.pix)} />
+          {session.byMethod.outros > 0 && <Row label="Outros" value={formatBRL(session.byMethod.outros)} />}
+          <div className="border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
+            <Row label="Total recebido" value={formatBRL(session.salesTotal)} bold />
+          </div>
+        </div>
+
+        {/* Conferência da gaveta (somente dinheiro) */}
+        <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 space-y-1 text-sm">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Conferência da gaveta (dinheiro)</p>
           <Row label="Troco inicial" value={formatBRL(session.openingAmount)} />
-          <Row label="Vendas em dinheiro" value={formatBRL(session.byMethod.dinheiro)} />
+          <Row label="Vendas em dinheiro" value={`+ ${formatBRL(session.byMethod.dinheiro)}`} />
           <Row label="Suprimentos" value={`+ ${formatBRL(session.suprimentoTotal)}`} />
           <Row label="Sangrias" value={`- ${formatBRL(session.sangriaTotal)}`} />
           <div className="border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
