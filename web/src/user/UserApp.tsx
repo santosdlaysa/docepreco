@@ -17,8 +17,10 @@ import {
   Loader2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { UserAuthProvider, useAuth } from './UserAuthContext';
 import { UserLoginPage } from './UserLoginPage';
+import { slugify } from './format';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import { RecipesPage } from './pages/RecipesPage';
 import { IngredientsPage } from './pages/IngredientsPage';
@@ -64,6 +66,17 @@ function Shell() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const { dark, toggle: toggleDark } = useDarkMode();
+  const routerNavigate = useNavigate();
+
+  // Reflete o nome da confeitaria logada na URL (ex.: /app/doces-da-marina)
+  useEffect(() => {
+    if (user) {
+      const target = `/app/${slugify(user.companyName)}`;
+      if (window.location.pathname !== target) {
+        routerNavigate(target, { replace: true });
+      }
+    }
+  }, [user, routerNavigate]);
 
   if (loading) {
     return (

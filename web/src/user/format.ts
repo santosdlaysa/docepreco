@@ -14,6 +14,15 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Converte um nome em slug de URL (sem acentos, minúsculo, com hífens). */
+export function slugify(s: string): string {
+  return (s || '')
+    .normalize('NFD').replace(/[̀-ͯ]/g, '') // remove acentos
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '') || 'app';
+}
+
 export const UNIT_LABELS: Record<string, string> = {
   g: 'g (gramas)',
   kg: 'kg (quilos)',

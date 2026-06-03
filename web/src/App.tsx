@@ -8,6 +8,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/app" element={<UserApp />} />
+      <Route path="/app/:slug" element={<UserApp />} />
       <Route path="/admin" element={<AdminApp />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
