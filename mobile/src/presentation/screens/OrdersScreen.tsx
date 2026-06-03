@@ -19,7 +19,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Order, OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
-import { orderStorage } from '../../data/storage/orderStorage';
+import { orderApi as orderStorage } from '../../data/api/orderApi';
 import { saleApi } from '../../data/api/saleApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoSaleApi } from '../../data/demo/demoApi';

@@ -21,7 +21,7 @@ import { RootStackParamList } from '../navigation/types';
 import { OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Client } from '../../domain/entities/Client';
-import { orderStorage } from '../../data/storage/orderStorage';
+import { orderApi as orderStorage } from '../../data/api/orderApi';
 import { clientStorage } from '../../data/storage/clientStorage';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';

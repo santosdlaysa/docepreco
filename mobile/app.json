@@ -33,7 +33,7 @@
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.laysadiniz.sweetpricing",
-      "versionCode": 46,
+      "versionCode": 48,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
