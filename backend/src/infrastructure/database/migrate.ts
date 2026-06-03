@@ -495,6 +495,20 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'notification_templates', 'schedule_weekday', 'INTEGER');
     await addColumnIfMissing(client, 'notification_templates', 'schedule_interval_hours', 'INTEGER');
 
+    // Encomendas (orders) — garante colunas em tabelas criadas em versões anteriores
+    await addColumnIfMissing(client, 'orders', 'client_phone', 'VARCHAR(40)');
+    await addColumnIfMissing(client, 'orders', 'recipe_id', 'UUID');
+    await addColumnIfMissing(client, 'orders', 'recipe_name', "VARCHAR(255) NOT NULL DEFAULT ''");
+    await addColumnIfMissing(client, 'orders', 'quantity', 'DECIMAL(10,3) NOT NULL DEFAULT 1');
+    await addColumnIfMissing(client, 'orders', 'unit_price', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+    await addColumnIfMissing(client, 'orders', 'total_price', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+    await addColumnIfMissing(client, 'orders', 'delivery_time', 'VARCHAR(5)');
+    await addColumnIfMissing(client, 'orders', 'status', "VARCHAR(20) NOT NULL DEFAULT 'pending'");
+    await addColumnIfMissing(client, 'orders', 'paid', 'BOOLEAN NOT NULL DEFAULT false');
+    await addColumnIfMissing(client, 'orders', 'paid_amount', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+    await addColumnIfMissing(client, 'orders', 'payments', "JSONB NOT NULL DEFAULT '[]'::jsonb");
+    await addColumnIfMissing(client, 'orders', 'notes', 'TEXT');
+
     // Seed schedule config for existing templates (only if schedule_hour is null)
     await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 48 WHERE slug = 'inactivity_2d' AND schedule_hour IS NULL`);
     await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 120 WHERE slug = 'inactivity_5d' AND schedule_hour IS NULL`);

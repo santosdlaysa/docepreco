@@ -262,6 +262,31 @@ export interface CreateOrderDTO {
   notes?: string;
 }
 
+export interface PixPlanConfig {
+  amountCents: number;
+  priceLabel: string;
+  copyPaste: string;
+  qrImage: string;
+}
+export interface PixConfig {
+  monthly: PixPlanConfig;
+  annual: PixPlanConfig;
+}
+export interface PlanConfigPublic {
+  freeRecipeLimit?: number;
+  premiumPrice?: number;
+  pix?: PixConfig;
+}
+export interface PixRequestStatus {
+  id: string;
+  status: 'pending' | 'approved' | 'rejected';
+  plan_label?: string;
+  amount_cents?: number;
+  created_at: string;
+  reviewed_at: string | null;
+  alreadyExists?: boolean;
+}
+
 /* ── Endpoints ─────────────────────────────────────────────────────────── */
 
 export const userApi = {
@@ -286,6 +311,12 @@ export const userApi = {
     }),
   updateProfile: (data: { instagramHandle?: string | null; phone?: string | null }) =>
     req<AuthUser>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Premium / PIX
+  getPlanConfig: () => req<PlanConfigPublic>('/admin/settings/plans'),
+  createPixRequest: (planLabel: string, amountCents: number) =>
+    req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents }) }),
+  getPixStatus: () => req<PixRequestStatus | null>('/pix/status'),
 
   // Receitas
   listRecipes: () => req<Recipe[]>('/recipes'),

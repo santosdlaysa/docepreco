@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Cake, ChefHat, Calculator, FileText, BarChart3, Users,
   ShoppingBag, Check, Smartphone, Star, Sparkles, Heart,
-  TrendingUp, Shield, Zap, ArrowRight, Play,
+  TrendingUp, Shield, Zap, ArrowRight, Play, LogIn,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
@@ -74,6 +74,11 @@ export function LandingPage() {
           <nav className="flex items-center gap-8">
             <a href="#funcionalidades" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Funcionalidades</a>
             <a href="#planos" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Planos</a>
+            <Link to="/app"
+              className="inline-flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              <LogIn size={14} />
+              Entrar
+            </Link>
             <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm">
               <Smartphone size={14} />
