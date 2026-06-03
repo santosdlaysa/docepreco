@@ -31,13 +31,13 @@ export class SaleController {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { recipeId, quantitySold, salePrice, saleDate, notes } = req.body;
+      const { recipeId, quantitySold, salePrice, saleDate, notes, paymentMethod } = req.body;
       if (!recipeId || !quantitySold || !salePrice || !saleDate) {
         res.status(400).json({ success: false, error: 'recipeId, quantitySold, salePrice e saleDate são obrigatórios' });
         return;
       }
       const sale = await saleRepo.create(
-        { recipeId, quantitySold: Number(quantitySold), salePrice: Number(salePrice), saleDate, notes },
+        { recipeId, quantitySold: Number(quantitySold), salePrice: Number(salePrice), saleDate, notes, paymentMethod },
         req.userId!
       );
 

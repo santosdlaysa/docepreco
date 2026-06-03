@@ -104,6 +104,28 @@ CREATE TABLE IF NOT EXISTS seasons (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS orders (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_name VARCHAR(255) NOT NULL,
+  client_phone VARCHAR(40),
+  recipe_id UUID,
+  recipe_name VARCHAR(255) NOT NULL,
+  quantity DECIMAL(10,3) NOT NULL DEFAULT 1,
+  unit_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  total_price DECIMAL(10,2) NOT NULL DEFAULT 0,
+  delivery_date DATE NOT NULL,
+  delivery_time VARCHAR(5),
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  paid BOOLEAN NOT NULL DEFAULT false,
+  paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+  payments JSONB NOT NULL DEFAULT '[]'::jsonb,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_orders_user ON orders(user_id);
+
 CREATE TABLE IF NOT EXISTS ingredient_price_history (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -763,6 +785,39 @@ export async function runMigrations() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_revenuecat_aliases_user ON revenuecat_aliases (user_id)`);
+
+    // ── Caixa (abertura/fechamento de caixa) ──
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cash_sessions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        opened_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        closed_at TIMESTAMP NULL,
+        opening_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
+        closing_counted DECIMAL(10,2) NULL,
+        status VARCHAR(10) NOT NULL DEFAULT 'open',
+        notes TEXT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_cash_sessions_user ON cash_sessions (user_id, status)`);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS cash_movements (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        session_id UUID NOT NULL REFERENCES cash_sessions(id) ON DELETE CASCADE,
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        type VARCHAR(12) NOT NULL,
+        amount DECIMAL(10,2) NOT NULL,
+        reason TEXT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_cash_movements_session ON cash_movements (session_id)`);
+
+    // Vincula vendas ao caixa e registra a forma de pagamento
+    await addColumnIfMissing(client, 'sales', 'payment_method', 'VARCHAR(20) NULL');
+    await addColumnIfMissing(client, 'sales', 'session_id', 'UUID NULL REFERENCES cash_sessions(id) ON DELETE SET NULL');
 
     await client.query('COMMIT');
     console.log('Migrations applied successfully');

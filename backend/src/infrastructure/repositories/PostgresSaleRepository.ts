@@ -33,11 +33,17 @@ export class PostgresSaleRepository implements ISaleRepository {
 
   async create(data: CreateSaleDTO, userId: string): Promise<Sale> {
     const totalRevenue = data.quantitySold * data.salePrice;
+    // Vincula a venda ao caixa aberto do usuário (se houver)
+    const openSession = await pool.query(
+      `SELECT id FROM cash_sessions WHERE user_id = $1 AND status = 'open' ORDER BY opened_at DESC LIMIT 1`,
+      [userId]
+    );
+    const sessionId = openSession.rows[0]?.id ?? null;
     const result = await pool.query(`
-      INSERT INTO sales (user_id, recipe_id, quantity_sold, sale_price, total_revenue, sale_date, notes)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      INSERT INTO sales (user_id, recipe_id, quantity_sold, sale_price, total_revenue, sale_date, notes, payment_method, session_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
-    `, [userId, data.recipeId, data.quantitySold, data.salePrice, totalRevenue, data.saleDate, data.notes || null]);
+    `, [userId, data.recipeId, data.quantitySold, data.salePrice, totalRevenue, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId]);
     return this.findById(result.rows[0].id, userId) as Promise<Sale>;
   }
 
@@ -59,6 +65,7 @@ export class PostgresSaleRepository implements ISaleRepository {
       totalRevenue: parseFloat(row.total_revenue as string),
       saleDate: (row.sale_date as Date).toISOString().split('T')[0],
       notes: row.notes as string | undefined,
+      paymentMethod: (row.payment_method as Sale['paymentMethod']) ?? null,
       createdAt: (row.created_at as Date).toISOString(),
     };
   }
