@@ -16,6 +16,8 @@ export interface PixPlanConfig {
 export interface PixConfig {
   monthly: PixPlanConfig;
   annual: PixPlanConfig;
+  masterMonthly: PixPlanConfig;
+  masterAnnual: PixPlanConfig;
 }
 
 interface PlanConfig {
@@ -23,7 +25,14 @@ interface PlanConfig {
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
+  masterPrice?: number;
+  masterFeatures?: string[];
   pix?: PixConfig;
+}
+
+export interface MasterInfo {
+  price: number;
+  features: string[];
 }
 
 let cachedLimit: number | null = null;
@@ -52,6 +61,22 @@ export const planConfigApi = {
         { timeout: 10000 },
       );
       return data.data.pix ?? null;
+    } catch {
+      return null;
+    }
+  },
+
+  /** Preço e funcionalidades do plano Master, gerenciados pelo painel web. */
+  async getMasterInfo(): Promise<MasterInfo | null> {
+    try {
+      const { data } = await axios.get<{ success: boolean; data: PlanConfig }>(
+        `${BASE_URL}/admin/settings/plans`,
+        { timeout: 10000 },
+      );
+      return {
+        price: data.data.masterPrice ?? 30,
+        features: data.data.masterFeatures ?? [],
+      };
     } catch {
       return null;
     }

@@ -67,8 +67,9 @@ export function PixRequestsPage({ toast }: Props) {
     setApproving(item.id);
     try {
       const premiumDays = item.planLabel === 'Anual' ? 365 : 30;
-      await api.approvePixRequest(item.id, premiumDays);
-      toast.success(`Premium liberado para ${item.companyName}!`);
+      await api.approvePixRequest(item.id, premiumDays, item.planTier);
+      const tierLabel = item.planTier === 'master' ? 'Master' : 'Premium';
+      toast.success(`${tierLabel} liberado para ${item.companyName}!`);
       load();
     } catch (e: any) {
       toast.error(e.message || 'Erro ao aprovar');
@@ -173,7 +174,14 @@ export function PixRequestsPage({ toast }: Props) {
                   <div className="flex items-center gap-4 text-sm">
                     <div className="text-center">
                       <p className="text-xs text-gray-400">Plano</p>
-                      <p className="font-semibold text-gray-900 dark:text-white">{req.planLabel}</p>
+                      <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 justify-center">
+                        {req.planLabel}
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          req.planTier === 'master' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                          {req.planTier === 'master' ? 'Master' : 'Premium'}
+                        </span>
+                      </p>
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-gray-400">Valor</p>
@@ -223,7 +231,7 @@ export function PixRequestsPage({ toast }: Props) {
       <ConfirmModal
         open={!!confirmApprove}
         title="Aprovar pagamento PIX"
-        message={confirmApprove ? `Confirma a liberação do Premium para ${confirmApprove.companyName} (${confirmApprove.planLabel} - ${fmtMoney(confirmApprove.amountCents)})? O usuário receberá ${confirmApprove.planLabel === 'Anual' ? '365' : '30'} dias de Premium.` : ''}
+        message={confirmApprove ? `Confirma a liberação do ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'} para ${confirmApprove.companyName} (${confirmApprove.planLabel} - ${fmtMoney(confirmApprove.amountCents)})? O usuário receberá ${confirmApprove.planLabel === 'Anual' ? '365' : '30'} dias de ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'}.` : ''}
         confirmLabel="Aprovar"
         confirmColor="primary"
         onConfirm={() => confirmApprove && handleApprove(confirmApprove)}

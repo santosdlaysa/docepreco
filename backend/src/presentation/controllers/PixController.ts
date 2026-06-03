@@ -22,10 +22,12 @@ export class PixController {
       return;
     }
 
-    const { planLabel, amountCents } = req.body as {
+    const { planLabel, amountCents, planTier } = req.body as {
       planLabel?: string;
       amountCents?: number;
+      planTier?: 'premium' | 'master';
     };
+    const tier: 'premium' | 'master' = planTier === 'master' ? 'master' : 'premium';
 
     try {
       // Check if user already has a pending request
@@ -39,10 +41,10 @@ export class PixController {
       }
 
       const result = await pool.query(
-        `INSERT INTO pix_requests (user_id, plan_label, amount_cents)
-         VALUES ($1, $2, $3)
+        `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents)
+         VALUES ($1, $2, $3, $4)
          RETURNING id, status, created_at`,
-        [userId, planLabel ?? 'Mensal', amountCents ?? 0]
+        [userId, planLabel ?? 'Mensal', tier, amountCents ?? 0]
       );
 
       const user = await userRepo.findById(userId);
@@ -103,7 +105,7 @@ export class PixController {
 
     try {
       const result = await pool.query(
-        `SELECT pr.id, pr.user_id, pr.status, pr.plan_label, pr.amount_cents,
+        `SELECT pr.id, pr.user_id, pr.status, pr.plan_label, pr.plan_tier, pr.amount_cents,
                 pr.created_at, pr.reviewed_at, pr.reviewed_by,
                 u.company_name, u.email, u.phone, u.is_premium, u.premium_until
          FROM pix_requests pr
@@ -119,6 +121,7 @@ export class PixController {
         userId: r.user_id,
         status: r.status,
         planLabel: r.plan_label,
+        planTier: r.plan_tier ?? 'premium',
         amountCents: r.amount_cents,
         createdAt: r.created_at,
         reviewedAt: r.reviewed_at,
@@ -144,13 +147,13 @@ export class PixController {
    */
   async approveRequest(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { days } = req.body as { days?: number };
+    const { days, planTier } = req.body as { days?: number; planTier?: 'premium' | 'master' };
     const premiumDays = days ?? 30;
 
     try {
       // Get the request
       const reqResult = await pool.query(
-        `SELECT user_id, status FROM pix_requests WHERE id = $1`,
+        `SELECT user_id, status, plan_tier FROM pix_requests WHERE id = $1`,
         [id]
       );
       if (reqResult.rows.length === 0) {
@@ -163,6 +166,11 @@ export class PixController {
       }
 
       const userId = reqResult.rows[0].user_id;
+      // Tier the user asked for, with an optional admin override in the body.
+      const tier: 'premium' | 'master' =
+        planTier === 'master' || planTier === 'premium'
+          ? planTier
+          : reqResult.rows[0].plan_tier === 'master' ? 'master' : 'premium';
       const premiumUntil = new Date();
       premiumUntil.setDate(premiumUntil.getDate() + premiumDays);
 
@@ -173,14 +181,14 @@ export class PixController {
         [id]
       );
 
-      // Grant premium
-      await userRepo.updatePremiumStatus(userId, true, premiumUntil, 'manual');
+      // Grant the chosen tier (manual platform).
+      await userRepo.updatePlanTier(userId, tier, premiumUntil, 'manual');
 
       // Record premium event
       await pool.query(
-        `INSERT INTO premium_events (user_id, event_type, source, platform, expiration_at, store)
-         VALUES ($1, 'INITIAL_PURCHASE', 'pix', 'manual', $2, 'PIX')`,
-        [userId, premiumUntil]
+        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store)
+         VALUES ($1, 'INITIAL_PURCHASE', 'pix', 'manual', $2, $3, 'PIX')`,
+        [userId, tier === 'master' ? 'pix_master' : 'pix_premium', premiumUntil]
       );
 
       // Send push notification to user

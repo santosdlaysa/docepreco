@@ -2,6 +2,7 @@ import { apiClient } from './client';
 import { tokenStorage } from '../storage/tokenStorage';
 
 export type PremiumPlatform = 'ios' | 'android' | 'manual';
+export type PlanTier = 'free' | 'premium' | 'master';
 
 export interface AuthUser {
   id: string;
@@ -10,6 +11,7 @@ export interface AuthUser {
   phone: string | null;
   instagramHandle: string | null;
   isPremium: boolean;
+  planTier: PlanTier;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
 }
@@ -21,6 +23,8 @@ const normalizeUser = (raw: any): AuthUser => ({
   phone: raw.phone ?? null,
   instagramHandle: raw.instagramHandle ?? null,
   isPremium: Boolean(raw.isPremium),
+  // Backend antigo não envia planTier → deriva de isPremium.
+  planTier: (raw.planTier as PlanTier | undefined) ?? (Boolean(raw.isPremium) ? 'premium' : 'free'),
   premiumUntil: raw.premiumUntil ?? null,
   premiumPlatform: raw.premiumPlatform ?? null,
 });

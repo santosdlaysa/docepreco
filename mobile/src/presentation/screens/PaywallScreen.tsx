@@ -56,6 +56,15 @@ const FEATS = [
   'Histórico de preços de ingredientes',
 ];
 
+// Recursos exclusivos do Master (somados a tudo do Premium).
+const MASTER_EXTRA = [
+  'Gestão financeira completa (DRE)',
+  'Controle de estoque com baixa automática',
+  'Dicas de vendas e precificação',
+];
+
+const PURPLE = '#7C3AED';
+
 export const PaywallScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavProp>();
@@ -70,11 +79,25 @@ export const PaywallScreen: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [configured] = useState(isRevenueCatConfigured());
   const [pixPlan, setPixPlan] = useState<'monthly' | 'annual' | null>(null);
+  // Nível escolhido pelo usuário no paywall (Premium ou Master)
+  const [tier, setTier] = useState<'premium' | 'master'>('premium');
   // Assinante legado: já pagou o mensal de R$ 10,00 — mantém esse preço na renovação
   const [legacyMonthly, setLegacyMonthly] = useState(false);
   // Rótulos de preço PIX gerenciados pelo painel web (fallback nos valores fixos)
   const [pixMonthlyLabel, setPixMonthlyLabel] = useState('R$ 14,90');
   const [pixAnnualLabel, setPixAnnualLabel] = useState('R$ 120,00');
+  const [pixMasterMonthlyLabel, setPixMasterMonthlyLabel] = useState('R$ 30,00');
+  const [pixMasterAnnualLabel, setPixMasterAnnualLabel] = useState('R$ 300,00');
+  const [masterPixAvailable, setMasterPixAvailable] = useState(false);
+  const [masterPrice, setMasterPrice] = useState(30);
+  const [premiumPrice] = useState('R$ 14,90');
+
+  // Troca de nível: limpa as seleções para não carregar um plano de outro tier
+  const switchTier = (next: 'premium' | 'master') => {
+    setTier(next);
+    setSelected(null);
+    setPixPlan(null);
+  };
 
   const trigger = route.params?.trigger;
 
@@ -99,14 +122,21 @@ export const PaywallScreen: React.FC = () => {
     })();
   }, []);
 
-  // Carrega rótulos de preço do PIX gerenciados pelo painel web
+  // Carrega rótulos de preço do PIX e infos do Master gerenciados pelo painel web
   useEffect(() => {
     (async () => {
       const cfg = await planConfigApi.getPixConfig();
       if (cfg) {
         setPixMonthlyLabel(cfg.monthly.priceLabel);
         setPixAnnualLabel(cfg.annual.priceLabel);
+        if (cfg.masterMonthly) setPixMasterMonthlyLabel(cfg.masterMonthly.priceLabel);
+        if (cfg.masterAnnual) setPixMasterAnnualLabel(cfg.masterAnnual.priceLabel);
+        // PIX Master aparece quando o mensal já tem código configurado (o mensal
+        // já vem embutido; o anual o admin configura no painel).
+        setMasterPixAvailable(!!cfg.masterMonthly?.copyPaste);
       }
+      const mi = await planConfigApi.getMasterInfo();
+      if (mi) setMasterPrice(mi.price);
     })();
   }, []);
 
@@ -115,9 +145,19 @@ export const PaywallScreen: React.FC = () => {
     const i = label.indexOf(',');
     return i === -1 ? [label, ''] : [label.slice(0, i), label.slice(i)];
   };
-  const monthlyLabel = legacyMonthly ? 'R$ 10,00' : pixMonthlyLabel;
-  const [monthlyMain, monthlyCents] = splitPrice(monthlyLabel);
-  const [annualMain, annualCents] = splitPrice(pixAnnualLabel);
+  const isMasterTier = tier === 'master';
+  const pixMonthlyShown = isMasterTier ? pixMasterMonthlyLabel : (legacyMonthly ? 'R$ 10,00' : pixMonthlyLabel);
+  const pixAnnualShown = isMasterTier ? pixMasterAnnualLabel : pixAnnualLabel;
+  const [monthlyMain, monthlyCents] = splitPrice(pixMonthlyShown);
+  const [annualMain, annualCents] = splitPrice(pixAnnualShown);
+
+  // Pacotes da loja filtrados pelo nível selecionado
+  const tierPackages = (packages ?? []).filter(p => p.tier === tier);
+  // Lista de benefícios mostrada conforme o nível
+  const feats = isMasterTier ? [...FEATS, ...MASTER_EXTRA] : FEATS;
+  const accent = isMasterTier ? PURPLE : PINK;
+  // PIX disponível para o nível: Premium sempre; Master só após configuração no painel
+  const pixAvailable = isMasterTier ? masterPixAvailable : true;
 
   const syncPremiumWithBackend = async () => {
     try {
@@ -128,9 +168,8 @@ export const PaywallScreen: React.FC = () => {
     await refresh();
   };
 
-  const selectedPkg = packages?.find(p => p.identifier === selected) ?? null;
-  // Só permite avançar quando há um plano escolhido (cartão se RevenueCat ativo, senão PIX)
-  const canProceed = configured ? !!selectedPkg : !!pixPlan;
+  const selectedPkg = tierPackages.find(p => p.identifier === selected) ?? null;
+  const hasStorePlans = configured && tierPackages.length > 0;
 
   const handlePurchase = async () => {
     if (!selected || !selectedPkg) return;
@@ -186,47 +225,42 @@ export const PaywallScreen: React.FC = () => {
           </View>
 
           <Text style={st.heroTitle}>Tudo ilimitado para{'\n'}sua confeitaria</Text>
-          <Text style={st.heroSub}>Desbloqueie 9 recursos PRO e leve seu negócio de doces a sério.</Text>
+          <Text style={st.heroSub}>
+            {isMasterTier
+              ? 'Tudo do Premium + financeiro, estoque e dicas de vendas.'
+              : 'Desbloqueie 9 recursos PRO e leve seu negócio de doces a sério.'}
+          </Text>
         </LinearGradient>
 
         <View style={st.body}>
 
-          {/* ── Plans ── */}
+          {/* ── Tier selector (Premium | Master) ── */}
+          <View style={st.tierTabs}>
+            <TouchableOpacity style={[st.tierTab, !isMasterTier && st.tierTabOn]} onPress={() => switchTier('premium')} activeOpacity={0.85}>
+              <Text style={[st.tierTabName, !isMasterTier && { color: PINK }]}>Premium</Text>
+              <Text style={st.tierTabPrice}>{premiumPrice}/mês</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[st.tierTab, isMasterTier && st.tierTabOnMaster]} onPress={() => switchTier('master')} activeOpacity={0.85}>
+              <View style={st.tierTabBadge}><Text style={st.tierTabBadgeText}>COMPLETO</Text></View>
+              <Text style={[st.tierTabName, isMasterTier && { color: PURPLE }]}>Master</Text>
+              <Text style={st.tierTabPrice}>R$ {masterPrice.toFixed(2).replace('.', ',')}/mês</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Plans (store) ── */}
           {loading ? (
             <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={PINK} />
+              <ActivityIndicator size="large" color={accent} />
             </View>
-          ) : !configured || !packages || packages.length === 0 ? (
-            /* fallback static plans */
+          ) : hasStorePlans ? (
             <View style={st.plans}>
-              <TouchableOpacity style={[st.plan, pixPlan === 'monthly' && st.planOn]} onPress={() => setPixPlan('monthly')} activeOpacity={0.8}>
-                <View style={[st.radio, pixPlan === 'monthly' && st.radioOn]}>
-                  {pixPlan === 'monthly' && <Ionicons name="checkmark" size={12} color="#fff" />}
-                </View>
-                <Text style={st.planName}>Mensal</Text>
-                <Text style={st.planPrice}>R$ 14<Text style={st.planPriceSm}>,90</Text></Text>
-                <Text style={st.planPer}>por mês</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[st.plan, pixPlan === 'annual' && st.planOn]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
-                <View style={st.save}><Text style={st.saveText}>Economize 16%</Text></View>
-                <View style={[st.radio, pixPlan === 'annual' && st.radioOn]}>
-                  {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
-                </View>
-                <Text style={st.planName}>Anual</Text>
-                <Text style={st.planPrice}>R$ 12<Text style={st.planPriceSm}>,49</Text></Text>
-                <Text style={st.planPer}>R$ 149,90/ano</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            /* RevenueCat plans */
-            <View style={st.plans}>
-              {packages.map(pkg => {
+              {tierPackages.map(pkg => {
                 const on = selected === pkg.identifier;
                 return (
-                  <TouchableOpacity key={pkg.identifier} style={[st.plan, on && st.planOn]} onPress={() => setSelected(pkg.identifier)} activeOpacity={0.8}>
-                    {pkg.badge && <View style={st.save}><Text style={st.saveText}>{pkg.badge}</Text></View>}
+                  <TouchableOpacity key={pkg.identifier} style={[st.plan, on && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setSelected(pkg.identifier)} activeOpacity={0.8}>
+                    {pkg.badge && <View style={[st.save, isMasterTier && { backgroundColor: PURPLE, shadowColor: PURPLE }]}><Text style={st.saveText}>{pkg.badge}</Text></View>}
                     {pkg.isTrialEligible && !pkg.badge && !pkg.identifier.toLowerCase().includes('annual') && <View style={[st.save, { backgroundColor: '#2ecc71' }]}><Text style={st.saveText}>{pkg.trialDays} dias grátis</Text></View>}
-                    <View style={[st.radio, on && st.radioOn]}>
+                    <View style={[st.radio, on && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
                       {on && <Ionicons name="checkmark" size={12} color="#fff" />}
                     </View>
                     <Text style={st.planName}>{pkg.title}</Text>
@@ -236,80 +270,86 @@ export const PaywallScreen: React.FC = () => {
                 );
               })}
             </View>
-          )}
+          ) : isMasterTier && !pixAvailable ? (
+            <View style={st.soon}>
+              <Ionicons name="time-outline" size={20} color={PURPLE} />
+              <Text style={st.soonText}>O plano Master chega em breve. Fique de olho!</Text>
+            </View>
+          ) : null}
 
           {/* ── Features ── */}
           <View style={st.featCard}>
-            {FEATS.map((f, i) => (
-              <View key={i} style={[st.feat, i > 0 && { borderTopWidth: 1, borderTopColor: LINE }]}>
-                <View style={st.featCheck}>
-                  <Ionicons name="checkmark" size={16} color={GREEN} />
+            {feats.map((f, i) => {
+              const isExtra = isMasterTier && i >= FEATS.length;
+              return (
+                <View key={i} style={[st.feat, i > 0 && { borderTopWidth: 1, borderTopColor: LINE }]}>
+                  <View style={[st.featCheck, isExtra && { backgroundColor: '#EDE4FB' }]}>
+                    <Ionicons name={isExtra ? 'star' : 'checkmark'} size={16} color={isExtra ? PURPLE : GREEN} />
+                  </View>
+                  <Text style={st.featText}>{f}</Text>
                 </View>
-                <Text style={st.featText}>{f}</Text>
-              </View>
-            ))}
+              );
+            })}
           </View>
 
-          {/* ── CTA ── */}
-          <TouchableOpacity
-            onPress={() => {
-              if (configured && selectedPkg) handlePurchase();
-              else if (!configured && pixPlan) navigation.navigate('PixPayment', { plan: pixPlan });
-            }}
-            disabled={!!purchasing || !canProceed}
-            activeOpacity={0.85}
-          >
-            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.cta, !canProceed && { opacity: 0.5 }]}>
-              {purchasing ? <ActivityIndicator color="#fff" /> : (
-                <>
-                  <Ionicons name="trophy" size={20} color="#fff" />
-                  <Text style={st.ctaText}>{canProceed ? 'Começar agora' : 'Escolha um plano'}</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* ── Store CTA (only when the store sells this tier) ── */}
+          {hasStorePlans && (
+            <>
+              <TouchableOpacity onPress={handlePurchase} disabled={!!purchasing || !selectedPkg} activeOpacity={0.85}>
+                <LinearGradient colors={isMasterTier ? ['#9B6BF0', PURPLE] : ['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.cta, !selectedPkg && { opacity: 0.5 }]}>
+                  {purchasing ? <ActivityIndicator color="#fff" /> : (
+                    <>
+                      <Ionicons name="trophy" size={20} color="#fff" />
+                      <Text style={st.ctaText}>{selectedPkg ? 'Começar agora' : 'Escolha um plano'}</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
 
-          <Text style={st.foot}>
-            {selectedPkg?.isTrialEligible && !selectedPkg.identifier.toLowerCase().includes('annual')
-              ? `${selectedPkg.trialDays} dias grátis · depois ${selectedPkg.priceLabel} · cancele quando quiser`
-              : 'Cancele quando quiser · sem compromisso'}
-          </Text>
+              <Text style={st.foot}>
+                {selectedPkg?.isTrialEligible && !selectedPkg.identifier.toLowerCase().includes('annual')
+                  ? `${selectedPkg.trialDays} dias grátis · depois ${selectedPkg.priceLabel} · cancele quando quiser`
+                  : 'Cancele quando quiser · sem compromisso'}
+              </Text>
+            </>
+          )}
 
-          {/* ── Pix separator ── */}
-          <View style={st.orDivider}>
-            <View style={st.orLine} />
-            <Text style={st.orText}>ou pague com PIX</Text>
-            <View style={st.orLine} />
-          </View>
-
-          {/* ── Pix plans ── */}
-          <View style={st.plans}>
-            <TouchableOpacity style={[st.plan, pixPlan === 'monthly' && st.planOn]} onPress={() => setPixPlan('monthly')} activeOpacity={0.8}>
-              <View style={[st.radio, pixPlan === 'monthly' && st.radioOn]}>
-                {pixPlan === 'monthly' && <Ionicons name="checkmark" size={12} color="#fff" />}
+          {/* ── Pix section (Master only when configured no painel) ── */}
+          {pixAvailable && (
+            <>
+              <View style={st.orDivider}>
+                <View style={st.orLine} />
+                <Text style={st.orText}>{hasStorePlans ? 'ou pague com PIX' : 'pague com PIX'}</Text>
+                <View style={st.orLine} />
               </View>
-              <Text style={st.planName}>Mensal</Text>
-              <Text style={st.planPrice}>{monthlyMain}<Text style={st.planPriceSm}>{monthlyCents}</Text></Text>
-              <Text style={st.planPer}>por mês</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[st.plan, pixPlan === 'annual' && st.planOn]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
-              <View style={[st.save, { backgroundColor: GREEN }]}><Text style={st.saveText}>Economize 33%</Text></View>
-              <View style={[st.radio, pixPlan === 'annual' && st.radioOn]}>
-                {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
-              </View>
-              <Text style={st.planName}>Anual</Text>
-              <Text style={st.planPrice}>{annualMain}<Text style={st.planPriceSm}>{annualCents}</Text></Text>
-              <Text style={st.planPer}>R$ 10,00/mês</Text>
-            </TouchableOpacity>
-          </View>
 
-          {/* ── Pix CTA ── */}
-          <TouchableOpacity onPress={() => pixPlan && navigation.navigate('PixPayment', { plan: pixPlan })} disabled={!pixPlan} activeOpacity={0.85}>
-            <View style={[st.pixCta, !pixPlan && { opacity: 0.5 }]}>
-              <Ionicons name="qr-code-outline" size={20} color="#fff" />
-              <Text style={st.ctaText}>{pixPlan ? 'Pagar com Pix' : 'Escolha um plano acima'}</Text>
-            </View>
-          </TouchableOpacity>
+              <View style={st.plans}>
+                <TouchableOpacity style={[st.plan, pixPlan === 'monthly' && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setPixPlan('monthly')} activeOpacity={0.8}>
+                  <View style={[st.radio, pixPlan === 'monthly' && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
+                    {pixPlan === 'monthly' && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  </View>
+                  <Text style={st.planName}>Mensal</Text>
+                  <Text style={st.planPrice}>{monthlyMain}<Text style={st.planPriceSm}>{monthlyCents}</Text></Text>
+                  <Text style={st.planPer}>por mês</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[st.plan, pixPlan === 'annual' && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
+                  <View style={[st.radio, pixPlan === 'annual' && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
+                    {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
+                  </View>
+                  <Text style={st.planName}>Anual</Text>
+                  <Text style={st.planPrice}>{annualMain}<Text style={st.planPriceSm}>{annualCents}</Text></Text>
+                  <Text style={st.planPer}>{isMasterTier ? 'no ano' : 'R$ 10,00/mês'}</Text>
+                </TouchableOpacity>
+              </View>
+
+              <TouchableOpacity onPress={() => pixPlan && navigation.navigate('PixPayment', { plan: pixPlan, tier })} disabled={!pixPlan} activeOpacity={0.85}>
+                <View style={[st.pixCta, !pixPlan && { opacity: 0.5 }]}>
+                  <Ionicons name="qr-code-outline" size={20} color="#fff" />
+                  <Text style={st.ctaText}>{pixPlan ? 'Pagar com Pix' : 'Escolha um plano acima'}</Text>
+                </View>
+              </TouchableOpacity>
+            </>
+          )}
 
           {/* ── Restore ── */}
           <TouchableOpacity onPress={handleRestore} disabled={restoring} style={{ alignItems: 'center', paddingVertical: 8 }}>
@@ -395,6 +435,47 @@ const st = StyleSheet.create({
 
   body: { paddingHorizontal: 18, paddingTop: 24, gap: 16 },
 
+  /* tier tabs */
+  tierTabs: { flexDirection: 'row', gap: 11 },
+  tierTab: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    borderWidth: 2,
+    borderColor: LINE,
+    alignItems: 'center',
+    position: 'relative',
+    ...SHADOW,
+  },
+  tierTabOn: { borderColor: PINK, backgroundColor: '#FFF1F7' },
+  tierTabOnMaster: { borderColor: PURPLE, backgroundColor: '#F4EEFD' },
+  tierTabName: { fontSize: 15, fontWeight: '800', color: INK },
+  tierTabPrice: { fontSize: 12, fontWeight: '600', color: INK2, marginTop: 2 },
+  tierTabBadge: {
+    position: 'absolute',
+    top: -10,
+    backgroundColor: PURPLE,
+    paddingHorizontal: 9,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  tierTabBadgeText: { fontSize: 9.5, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
+
+  /* "em breve" (Master ainda não vendável) */
+  soon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F4EEFD',
+    borderRadius: 16,
+    paddingVertical: 18,
+    paddingHorizontal: 16,
+  },
+  soonText: { fontSize: 13.5, fontWeight: '700', color: PURPLE, flexShrink: 1, textAlign: 'center' },
+
   /* plans */
   plans: { flexDirection: 'row', gap: 11 },
   plan: {
@@ -409,6 +490,7 @@ const st = StyleSheet.create({
     ...SHADOW,
   },
   planOn: { borderColor: PINK, shadowColor: PINK, shadowOpacity: 0.16, elevation: 5 },
+  planOnMaster: { borderColor: PURPLE, shadowColor: PURPLE, shadowOpacity: 0.16, elevation: 5 },
   planName: { fontSize: 13, fontWeight: '700', color: INK2 },
   planPrice: { fontSize: 26, fontWeight: '800', color: INK, marginTop: 7, lineHeight: 28 },
   planPriceSm: { fontSize: 13, fontWeight: '600', color: INK2 },
@@ -426,6 +508,7 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
   radioOn: { borderColor: PINK, backgroundColor: PINK },
+  radioOnMaster: { borderColor: PURPLE, backgroundColor: PURPLE },
   save: {
     position: 'absolute',
     top: -11,

@@ -16,6 +16,8 @@ interface PixPlanConfig {
 interface PixConfig {
   monthly: PixPlanConfig;
   annual: PixPlanConfig;
+  masterMonthly: PixPlanConfig;
+  masterAnnual: PixPlanConfig;
 }
 
 interface PlanConfig {
@@ -23,6 +25,8 @@ interface PlanConfig {
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
+  masterPrice: number;
+  masterFeatures: string[];
   pix: PixConfig;
 }
 
@@ -39,6 +43,20 @@ const DEFAULT_PIX: PixConfig = {
     copyPaste: '00020126330014BR.GOV.BCB.PIX0111033810532805204000053039865406120.005802BR5901N6001C62090505ANUAL6304F5D2',
     qrImage: DEFAULT_QR_ANNUAL,
   },
+  // Master mensal: código copia-e-cola embutido; QR vem do app (qrcode-pix-master-monthly).
+  masterMonthly: {
+    amountCents: 3000,
+    priceLabel: 'R$ 30,00',
+    copyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540530.005802BR5901N6001C62070503***630448C1',
+    qrImage: '',
+  },
+  // Master anual ainda sem QR/código próprios — o admin preenche no painel.
+  masterAnnual: {
+    amountCents: 30000,
+    priceLabel: 'R$ 300,00',
+    copyPaste: '',
+    qrImage: '',
+  },
 };
 
 const DEFAULTS: PlanConfig = {
@@ -46,6 +64,8 @@ const DEFAULTS: PlanConfig = {
   premiumPrice: 14.90,
   premiumFeatures: ['Receitas ilimitadas', 'Ficha técnica em PDF', 'Relatórios avançados'],
   freeFeatures: ['Até 3 receitas', 'Cálculo de custos', 'Registro de vendas'],
+  masterPrice: 30,
+  masterFeatures: ['Tudo do Premium', 'Gestão financeira (DRE)', 'Controle de estoque', 'Dicas de vendas'],
   pix: DEFAULT_PIX,
 };
 
@@ -69,15 +89,21 @@ export class PlanConfigController {
 
       const storedPixMonthly = settings.plan_pix_monthly ? JSON.parse(settings.plan_pix_monthly) : undefined;
       const storedPixAnnual = settings.plan_pix_annual ? JSON.parse(settings.plan_pix_annual) : undefined;
+      const storedPixMasterMonthly = settings.plan_pix_monthly_master ? JSON.parse(settings.plan_pix_monthly_master) : undefined;
+      const storedPixMasterAnnual = settings.plan_pix_annual_master ? JSON.parse(settings.plan_pix_annual_master) : undefined;
 
       const config: PlanConfig = {
         freeRecipeLimit: settings.plan_free_recipe_limit ? parseInt(settings.plan_free_recipe_limit) : DEFAULTS.freeRecipeLimit,
         premiumPrice: settings.plan_premium_price ? parseFloat(settings.plan_premium_price) : DEFAULTS.premiumPrice,
         premiumFeatures: settings.plan_premium_features ? JSON.parse(settings.plan_premium_features) : DEFAULTS.premiumFeatures,
         freeFeatures: settings.plan_free_features ? JSON.parse(settings.plan_free_features) : DEFAULTS.freeFeatures,
+        masterPrice: settings.plan_master_price ? parseFloat(settings.plan_master_price) : DEFAULTS.masterPrice,
+        masterFeatures: settings.plan_master_features ? JSON.parse(settings.plan_master_features) : DEFAULTS.masterFeatures,
         pix: {
           monthly: mergePixPlan(storedPixMonthly, DEFAULT_PIX.monthly),
           annual: mergePixPlan(storedPixAnnual, DEFAULT_PIX.annual),
+          masterMonthly: mergePixPlan(storedPixMasterMonthly, DEFAULT_PIX.masterMonthly),
+          masterAnnual: mergePixPlan(storedPixMasterAnnual, DEFAULT_PIX.masterAnnual),
         },
       };
       res.json({ success: true, data: config });
@@ -88,18 +114,24 @@ export class PlanConfigController {
 
   async update(req: Request, res: Response): Promise<void> {
     try {
-      const { freeRecipeLimit, premiumPrice, premiumFeatures, freeFeatures, pix } = req.body as Partial<PlanConfig>;
+      const { freeRecipeLimit, premiumPrice, premiumFeatures, freeFeatures, masterPrice, masterFeatures, pix } = req.body as Partial<PlanConfig>;
       const pixConfig: PixConfig = {
         monthly: mergePixPlan(pix?.monthly, DEFAULT_PIX.monthly),
         annual: mergePixPlan(pix?.annual, DEFAULT_PIX.annual),
+        masterMonthly: mergePixPlan(pix?.masterMonthly, DEFAULT_PIX.masterMonthly),
+        masterAnnual: mergePixPlan(pix?.masterAnnual, DEFAULT_PIX.masterAnnual),
       };
       const pairs: [string, string][] = [
         ['plan_free_recipe_limit', String(freeRecipeLimit ?? DEFAULTS.freeRecipeLimit)],
         ['plan_premium_price', String(premiumPrice ?? DEFAULTS.premiumPrice)],
         ['plan_premium_features', JSON.stringify(premiumFeatures ?? DEFAULTS.premiumFeatures)],
         ['plan_free_features', JSON.stringify(freeFeatures ?? DEFAULTS.freeFeatures)],
+        ['plan_master_price', String(masterPrice ?? DEFAULTS.masterPrice)],
+        ['plan_master_features', JSON.stringify(masterFeatures ?? DEFAULTS.masterFeatures)],
         ['plan_pix_monthly', JSON.stringify(pixConfig.monthly)],
         ['plan_pix_annual', JSON.stringify(pixConfig.annual)],
+        ['plan_pix_monthly_master', JSON.stringify(pixConfig.masterMonthly)],
+        ['plan_pix_annual_master', JSON.stringify(pixConfig.masterAnnual)],
       ];
       for (const [key, value] of pairs) {
         await pool.query(
@@ -113,6 +145,8 @@ export class PlanConfigController {
         premiumPrice: premiumPrice ?? DEFAULTS.premiumPrice,
         premiumFeatures: premiumFeatures ?? DEFAULTS.premiumFeatures,
         freeFeatures: freeFeatures ?? DEFAULTS.freeFeatures,
+        masterPrice: masterPrice ?? DEFAULTS.masterPrice,
+        masterFeatures: masterFeatures ?? DEFAULTS.masterFeatures,
         pix: pixConfig,
       };
       res.json({ success: true, data: config });

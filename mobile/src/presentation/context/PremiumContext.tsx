@@ -1,12 +1,16 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { authApi, AuthUser, PremiumPlatform } from '../../data/api/authApi';
+import { authApi, AuthUser, PremiumPlatform, PlanTier } from '../../data/api/authApi';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { isDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { getActiveEntitlements, getActiveEntitlementExpiration, isRevenueCatConfigured } from '../../data/premium/revenueCat';
 
 interface PremiumContextData {
   isPremium: boolean;
+  /** Active tier respecting expiration: 'free' | 'premium' | 'master'. */
+  planTier: PlanTier;
+  /** Convenience flag: the user has an active Master subscription. */
+  isMaster: boolean;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   daysLeft: number | null;
@@ -21,6 +25,8 @@ interface PremiumContextData {
 
 const defaultValue: PremiumContextData = {
   isPremium: false,
+  planTier: 'free',
+  isMaster: false,
   premiumUntil: null,
   premiumPlatform: null,
   daysLeft: null,
@@ -49,6 +55,14 @@ const isActive = (user: Pick<AuthUser, 'isPremium' | 'premiumUntil' | 'email'> |
   if (!user.isPremium) return false;
   if (user.premiumUntil === null) return true;
   return new Date(user.premiumUntil).getTime() > Date.now();
+};
+
+/** Active tier respecting expiration. Returns 'free' once premium_until passes. */
+const activeTier = (user: AuthUser | null): PlanTier => {
+  if (!user) return 'free';
+  if (user.email === ADMIN_EMAIL) return 'master';
+  if (!isActive(user)) return 'free';
+  return user.planTier ?? 'premium';
 };
 
 export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -129,8 +143,11 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, [loadFromStorage, syncIfNeeded]);
 
+  const tier = activeTier(user);
   const value: PremiumContextData = {
     isPremium: isActive(user),
+    planTier: tier,
+    isMaster: tier === 'master',
     premiumUntil: user?.premiumUntil ?? null,
     premiumPlatform: user?.premiumPlatform ?? null,
     daysLeft: computeDaysLeft(user?.premiumUntil ?? null),

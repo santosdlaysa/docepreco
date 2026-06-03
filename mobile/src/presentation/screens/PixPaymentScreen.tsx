@@ -62,6 +62,20 @@ const ANNUAL: PixPlan = {
   qrImage: require('../../../assets/qrcode-pix-annual.png'),
 };
 
+// Master mensal: QR e código próprios embutidos (R$ 30,00). O anual ainda não
+// tem QR/código — vem do painel web quando o admin configurar.
+const MASTER_QR_MONTHLY = require('../../../assets/qrcode-pix-master-monthly.png');
+const MASTER_MONTHLY: PixPlan = {
+  label: 'Mensal',
+  price: 'R$ 30,00',
+  priceCents: 3000,
+  pixCopyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540530.005802BR5901N6001C62070503***630448C1',
+  qrImage: MASTER_QR_MONTHLY,
+};
+const MASTER_ANNUAL: PixPlan = { label: 'Anual', price: 'R$ 300,00', priceCents: 30000, pixCopyPaste: '', qrImage: ANNUAL.qrImage };
+
+const MASTER_PURPLE = '#7C3AED';
+
 // Converte a config vinda do painel web no formato usado pela tela.
 // Mantém o QR embutido quando o admin não enviou uma imagem própria.
 const toPlan = (label: string, cfg: PixPlanConfig, fallbackQr: ImageSourcePropType): PixPlan => ({
@@ -81,6 +95,10 @@ export const PixPaymentScreen: React.FC = () => {
   const { showToast } = useToast();
   const { refresh } = usePremium();
 
+  const tier: 'premium' | 'master' = route.params?.tier === 'master' ? 'master' : 'premium';
+  const isMaster = tier === 'master';
+  const accent = isMaster ? MASTER_PURPLE : colors.primary;
+
   const [selectedPlan, setSelectedPlan] = useState<PlanType>(route.params?.plan === 'annual' ? 'annual' : 'monthly');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -91,9 +109,13 @@ export const PixPaymentScreen: React.FC = () => {
   // Config de PIX vinda do painel web (valor, código e QR). Null → usa embutido.
   const [serverMonthly, setServerMonthly] = useState<PixPlan | null>(null);
   const [serverAnnual, setServerAnnual] = useState<PixPlan | null>(null);
+  const [serverMasterMonthly, setServerMasterMonthly] = useState<PixPlan | null>(null);
+  const [serverMasterAnnual, setServerMasterAnnual] = useState<PixPlan | null>(null);
 
-  const monthlyPlan = legacyMonthly ? MONTHLY_LEGACY : (serverMonthly ?? MONTHLY);
-  const annualPlan = serverAnnual ?? ANNUAL;
+  const monthlyPlan = isMaster
+    ? (serverMasterMonthly ?? MASTER_MONTHLY)
+    : (legacyMonthly ? MONTHLY_LEGACY : (serverMonthly ?? MONTHLY));
+  const annualPlan = isMaster ? (serverMasterAnnual ?? MASTER_ANNUAL) : (serverAnnual ?? ANNUAL);
   const plan = selectedPlan === 'annual' ? annualPlan : monthlyPlan;
 
   // Check if there's already a pending request
@@ -119,6 +141,8 @@ export const PixPaymentScreen: React.FC = () => {
       if (cfg) {
         setServerMonthly(toPlan('Mensal', cfg.monthly, MONTHLY.qrImage));
         setServerAnnual(toPlan('Anual', cfg.annual, ANNUAL.qrImage));
+        if (cfg.masterMonthly) setServerMasterMonthly(toPlan('Mensal', cfg.masterMonthly, MASTER_QR_MONTHLY));
+        if (cfg.masterAnnual) setServerMasterAnnual(toPlan('Anual', cfg.masterAnnual, ANNUAL.qrImage));
       }
     })();
   }, []);
@@ -141,7 +165,7 @@ export const PixPaymentScreen: React.FC = () => {
           onPress: async () => {
             setSending(true);
             try {
-              await pixApi.createRequest(plan.label, plan.priceCents);
+              await pixApi.createRequest(plan.label, plan.priceCents, tier);
               setSent(true);
               showToast(t('pix.requestSent'), 'success');
             } catch (error) {
@@ -209,30 +233,40 @@ export const PixPaymentScreen: React.FC = () => {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {!sent ? (
           <>
+            {/* Tier banner */}
+            {isMaster && (
+              <View style={styles.tierBanner}>
+                <Ionicons name="diamond" size={15} color={MASTER_PURPLE} />
+                <Text style={styles.tierBannerText}>Plano Master</Text>
+              </View>
+            )}
+
             {/* Plan selector */}
             <View style={styles.planSelector}>
               <TouchableOpacity
-                style={[styles.planTab, selectedPlan === 'monthly' && styles.planTabActive]}
+                style={[styles.planTab, selectedPlan === 'monthly' && [styles.planTabActive, { borderColor: accent }]]}
                 onPress={() => setSelectedPlan('monthly')}
               >
                 <Text style={[styles.planTabText, selectedPlan === 'monthly' && styles.planTabTextActive]}>
                   Mensal
                 </Text>
-                <Text style={[styles.planTabPrice, selectedPlan === 'monthly' && styles.planTabPriceActive]}>
+                <Text style={[styles.planTabPrice, selectedPlan === 'monthly' && [styles.planTabPriceActive, { color: accent }]]}>
                   {monthlyPlan.price}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.planTab, selectedPlan === 'annual' && styles.planTabActive]}
+                style={[styles.planTab, selectedPlan === 'annual' && [styles.planTabActive, { borderColor: accent }]]}
                 onPress={() => setSelectedPlan('annual')}
               >
-                <View style={styles.saveBadge}>
-                  <Text style={styles.saveBadgeText}>{t('pix.save33')}</Text>
-                </View>
+                {!isMaster && (
+                  <View style={styles.saveBadge}>
+                    <Text style={styles.saveBadgeText}>{t('pix.save33')}</Text>
+                  </View>
+                )}
                 <Text style={[styles.planTabText, selectedPlan === 'annual' && styles.planTabTextActive]}>
                   Anual
                 </Text>
-                <Text style={[styles.planTabPrice, selectedPlan === 'annual' && styles.planTabPriceActive]}>
+                <Text style={[styles.planTabPrice, selectedPlan === 'annual' && [styles.planTabPriceActive, { color: accent }]]}>
                   {annualPlan.price}
                 </Text>
               </TouchableOpacity>
@@ -240,7 +274,7 @@ export const PixPaymentScreen: React.FC = () => {
 
             {/* QR Code Image */}
             <View style={styles.qrContainer}>
-              <View style={styles.qrBorder}>
+              <View style={[styles.qrBorder, { borderColor: accent, shadowColor: accent }]}>
                 <Image
                   source={plan.qrImage}
                   style={styles.qrImage}
@@ -285,7 +319,7 @@ export const PixPaymentScreen: React.FC = () => {
 
             {/* CTA */}
             <TouchableOpacity
-              style={styles.cta}
+              style={[styles.cta, { backgroundColor: accent, shadowColor: accent }]}
               onPress={handlePixDone}
               disabled={sending}
               activeOpacity={0.85}
@@ -367,6 +401,19 @@ const styles = StyleSheet.create({
   },
   headerTitle: { ...typography.h3, color: colors.text },
   scroll: { padding: 20, paddingBottom: 40 },
+
+  // Tier banner
+  tierBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#F4EEFD',
+    borderRadius: 12,
+    paddingVertical: 8,
+    marginBottom: 16,
+  },
+  tierBannerText: { ...typography.body, color: '#7C3AED', fontWeight: '800' },
 
   // Plan selector
   planSelector: {

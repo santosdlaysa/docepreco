@@ -425,10 +425,10 @@ export const api = {
   // ── PIX Requests ──
   listPixRequests: (status: string = 'pending') =>
     req<PixRequestItem[]>(`/admin/pix-requests?status=${status}`),
-  approvePixRequest: (id: string, days: number = 30) =>
+  approvePixRequest: (id: string, days: number = 30, planTier?: 'premium' | 'master') =>
     req<{ userId: string; premiumUntil: string }>(`/admin/pix-requests/${id}/approve`, {
       method: 'POST',
-      body: JSON.stringify({ days }),
+      body: JSON.stringify({ days, planTier }),
     }),
   rejectPixRequest: (id: string) =>
     req<void>(`/admin/pix-requests/${id}/reject`, { method: 'POST' }),
@@ -584,6 +584,8 @@ export interface PixPlanConfig {
 export interface PixConfig {
   monthly: PixPlanConfig;
   annual: PixPlanConfig;
+  masterMonthly: PixPlanConfig;
+  masterAnnual: PixPlanConfig;
 }
 
 export interface PlanConfig {
@@ -591,6 +593,8 @@ export interface PlanConfig {
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
+  masterPrice: number;
+  masterFeatures: string[];
   pix: PixConfig;
 }
 
@@ -707,6 +711,7 @@ export interface PixRequestItem {
   userId: string;
   status: 'pending' | 'approved' | 'rejected';
   planLabel: string;
+  planTier: 'premium' | 'master';
   amountCents: number;
   createdAt: string;
   reviewedAt: string | null;

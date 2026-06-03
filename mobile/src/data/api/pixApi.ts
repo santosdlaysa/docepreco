@@ -15,8 +15,12 @@ export interface PixRequest {
 export const LEGACY_MONTHLY_CENTS = 1000;
 
 export const pixApi = {
-  createRequest: async (planLabel: string, amountCents: number): Promise<PixRequest> => {
-    const response = await apiClient.post('/pix/request', { planLabel, amountCents });
+  createRequest: async (
+    planLabel: string,
+    amountCents: number,
+    planTier: 'premium' | 'master' = 'premium',
+  ): Promise<PixRequest> => {
+    const response = await apiClient.post('/pix/request', { planLabel, amountCents, planTier });
     return response.data.data;
   },
 

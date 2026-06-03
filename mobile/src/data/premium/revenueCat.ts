@@ -27,6 +27,8 @@ export type PremiumPackage = {
   subtitle?: string;
   priceLabel: string;
   badge?: string;
+  /** Which subscription tier this package unlocks. */
+  tier: 'premium' | 'master';
   /** Underlying RevenueCat package reference (opaque). */
   nativePackage: any;
   /** Whether this product has a free trial configured in the store. */
@@ -129,10 +131,17 @@ function mapPackage(pkg: any): PremiumPackage {
     product?.priceString ?? product?.price_string ?? `${product?.price ?? ''}`;
 
   const id = identifier.toLowerCase();
+  // Master products are `premium_master` / `premium_master_anual` — they contain
+  // "premium" too, so we MUST test "master" first.
+  const isMaster = id.includes('master');
   const isAnnual = id.includes('annual') || id.includes('year') || id.includes('anual');
-  const isMonthly = id.includes('month') || id.includes('mensal');
+  // `premium_master` (monthly master) has no "month" token — anything master that
+  // isn't annual is treated as monthly.
+  const isMonthly = id.includes('month') || id.includes('mensal') || (isMaster && !isAnnual);
 
-  const title = isAnnual
+  const title = isMaster
+    ? (isAnnual ? 'Master Anual' : 'Master Mensal')
+    : isAnnual
     ? 'Plano Anual'
     : isMonthly
     ? 'Plano Mensal'
@@ -151,8 +160,8 @@ function mapPackage(pkg: any): PremiumPackage {
   const hasFreeTrial = trialDays !== null && trialDays > 0;
 
   return {
-    identifier, title, subtitle, priceLabel, badge, nativePackage: pkg,
-    hasFreeTrial, trialDays, isTrialEligible: false,
+    identifier, title, subtitle, priceLabel, badge, tier: isMaster ? 'master' : 'premium',
+    nativePackage: pkg, hasFreeTrial, trialDays, isTrialEligible: false,
   };
 }
 

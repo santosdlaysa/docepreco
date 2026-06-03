@@ -370,6 +370,7 @@ CREATE TABLE IF NOT EXISTS pix_requests (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   plan_label VARCHAR(100) NOT NULL DEFAULT 'Mensal',
+  plan_tier VARCHAR(20) NOT NULL DEFAULT 'premium',
   amount_cents INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP DEFAULT NOW(),
   reviewed_at TIMESTAMP,
@@ -462,6 +463,7 @@ export async function runMigrations() {
     // 'premium' tier once; idempotent thanks to the `plan_tier = 'free'` guard.
     await addColumnIfMissing(client, 'users', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'free'");
     await client.query(`UPDATE users SET plan_tier = 'premium' WHERE is_premium = TRUE AND plan_tier = 'free'`);
+    await addColumnIfMissing(client, 'pix_requests', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'premium'");
 
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
