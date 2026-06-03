@@ -560,6 +560,61 @@ export const CreateRecipeScreen: React.FC = () => {
                 placeholder="Ex: Bolo de Chocolate" placeholderTextColor={INK3} />
             </View>
             {errors.name && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.name}</Text>}
+
+            {/* ── Sugestões de receitas ── */}
+            {!isEditing && (
+              <TouchableOpacity
+                onPress={() => setShowSuggestions(!showSuggestions)}
+                style={styles.suggestionsToggle}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="sparkles" size={16} color={isPremium ? colors.primary : colors.textMuted} />
+                <Text style={[styles.suggestionsToggleText, !isPremium && { color: colors.textMuted }]}>
+                  {t('createRecipe.suggestions')}
+                </Text>
+                {!isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="lock-closed" size={10} color="#fff" />
+                    <Text style={styles.premiumBadgeText}>Premium</Text>
+                  </View>
+                )}
+                <Ionicons
+                  name={showSuggestions ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={isPremium ? colors.primary : colors.textMuted}
+                />
+              </TouchableOpacity>
+            )}
+            {showSuggestions && (
+              <View style={styles.suggestionsContainer}>
+                {applyingSuggestion ? (
+                  <View style={styles.suggestionsLoading}>
+                    <ActivityIndicator size="small" color={colors.primary} />
+                    <Text style={styles.suggestionsLoadingText}>{t('createRecipe.preparingRecipe')}</Text>
+                  </View>
+                ) : (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.suggestionsScroll}
+                  >
+                    {SUGGESTED_RECIPES.map((recipe) => (
+                      <TouchableOpacity
+                        key={recipe.name}
+                        onPress={() => handleSelectSuggestion(recipe)}
+                        style={styles.suggestionChip}
+                        activeOpacity={0.7}
+                      >
+                        <Text style={styles.suggestionChipName}>{recipe.name}</Text>
+                        <Text style={styles.suggestionChipInfo}>
+                          {recipe.ingredients.length} ingr. · {recipe.yield} un
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+              </View>
+            )}
           </View>
           <View style={{ gap: 7 }}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Rendimento</Text>
