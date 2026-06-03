@@ -247,6 +247,18 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           )}
 
+          {/* ── Indique e ganhe ── */}
+          <TouchableOpacity onPress={() => navigation.navigate('Referral')} activeOpacity={0.85}>
+            <LinearGradient colors={['#FFE3EF', '#FFF0F6']} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={st.proCta}>
+              <View style={st.proCtaIco}><Ionicons name="gift" size={24} color={PINK} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.proCtaTitle}>Indique e ganhe</Text>
+                <Text style={st.proCtaSub}>Traga 5 amigos e ganhe 30 dias grátis</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={PINK} />
+            </LinearGradient>
+          </TouchableOpacity>
+
           {/* ── Conta ── */}
           <Text style={st.secLabel}>Conta</Text>
           <View style={st.gcard}>

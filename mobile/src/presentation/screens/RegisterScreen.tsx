@@ -33,6 +33,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
   const [countryCode, setCountryCode] = useState('+55');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -83,7 +84,8 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     setLoading(true);
     try {
       const fullPhone = phone.trim() ? `${countryCode.replace('+', '')}${phone.replace(/\D/g, '')}` : undefined;
-      const user = await authApi.register(companyName.trim(), email.trim(), password, fullPhone);
+      const refCode = referralCode.trim() ? referralCode.trim().toUpperCase() : undefined;
+      const user = await authApi.register(companyName.trim(), email.trim(), password, fullPhone, refCode);
       await identifyRevenueCatUser(user.id);
       void setRevenueCatLocationAttributes();
       onRegister();
@@ -177,6 +179,14 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               onChangeText={(v) => { setConfirmPassword(v); if (errors.confirmPassword) setErrors(prev => ({ ...prev, confirmPassword: '' })); }}
               secureTextEntry={!showPassword}
               error={errors.confirmPassword}
+            />
+            <Input
+              label="Código de indicação (opcional)"
+              placeholder="Quem te indicou?"
+              value={referralCode}
+              onChangeText={(v) => setReferralCode(v.toUpperCase())}
+              autoCapitalize="characters"
+              maxLength={8}
             />
 
             <TouchableOpacity

@@ -433,6 +433,15 @@ export const api = {
   rejectPixRequest: (id: string) =>
     req<void>(`/admin/pix-requests/${id}/reject`, { method: 'POST' }),
 
+  // ── Referrals ──
+  listReferrals: (status: string = 'all') =>
+    req<ReferralItem[]>(`/admin/referrals?status=${status}`),
+  referralStats: () => req<ReferralStats>('/admin/referrals/stats'),
+  invalidateReferral: (id: string) =>
+    req<void>(`/admin/referrals/${id}/invalidate`, { method: 'POST' }),
+  forceValidReferral: (id: string) =>
+    req<void>(`/admin/referrals/${id}/force-valid`, { method: 'POST' }),
+
   // ── Onboarding ──
   listOnboarding: () => req<OnboardingStep[]>('/admin/onboarding'),
   createOnboarding: (data: Omit<OnboardingStep, 'id' | 'createdAt'>) =>
@@ -707,6 +716,30 @@ export interface PixRequestItem {
   phone: string | null;
   isPremium: boolean;
   premiumUntil: string | null;
+}
+
+// ── Referrals ──
+
+export interface ReferralItem {
+  id: string;
+  status: 'pending' | 'valid' | 'rewarded' | 'invalid';
+  referralCode: string;
+  createdAt: string;
+  activatedAt: string | null;
+  rewardedAt: string | null;
+  referrerName: string;
+  referrerEmail: string;
+  referredName: string;
+  referredEmail: string;
+}
+
+export interface ReferralStats {
+  total: number;
+  pending: number;
+  valid: number;
+  rewarded: number;
+  invalid: number;
+  conversionPercent: number;
 }
 
 // ── Onboarding ──

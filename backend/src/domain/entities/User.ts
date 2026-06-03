@@ -1,5 +1,7 @@
 export type PremiumPlatform = 'ios' | 'android' | 'manual';
 
+export type PlanTier = 'free' | 'premium' | 'master';
+
 export interface User {
   id: string;
   companyName: string;
@@ -8,6 +10,7 @@ export interface User {
   instagramHandle: string | null;
   createdAt: string;
   isPremium: boolean;
+  planTier: PlanTier;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   isActive: boolean;

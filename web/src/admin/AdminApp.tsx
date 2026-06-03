@@ -25,6 +25,7 @@ import { TelegramAlertsPage } from '../pages/TelegramAlertsPage';
 import { SupportChatPage } from '../pages/SupportChatPage';
 import { WhatsAppPage } from '../pages/WhatsAppPage';
 import { PixRequestsPage } from '../pages/PixRequestsPage';
+import { ReferralsPage } from '../pages/ReferralsPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -60,11 +61,12 @@ import {
   Moon,
   Sun,
   QrCode,
+  Gift,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals';
 
 interface NavItem {
   id: Page;
@@ -90,6 +92,7 @@ const NAV: NavItem[] = [
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageCircle },
   { id: 'suggestions', label: 'Sugestões', icon: MessagesSquare },
   { id: 'support', label: 'Suporte Chat', icon: Headset },
+  { id: 'referrals', label: 'Indicações', icon: Gift },
 
   { id: 'pix', label: 'PIX', icon: QrCode, section: 'Configuração' },
   { id: 'plans', label: 'Planos', icon: CreditCard },
@@ -437,6 +440,7 @@ export default function AdminApp() {
             {page === 'ingredients' && <GlobalIngredientsPage toast={toast} />}
             {page === 'recipes' && <FeaturedRecipesPage toast={toast} />}
             {page === 'pix' && <PixRequestsPage toast={toast} />}
+            {page === 'referrals' && <ReferralsPage toast={toast} />}
             {page === 'plans' && <PlanConfigPage toast={toast} />}
             {page === 'flags' && <FeatureFlagsPage toast={toast} />}
             {page === 'faq' && <FaqPage toast={toast} />}

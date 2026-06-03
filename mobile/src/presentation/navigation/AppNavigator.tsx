@@ -19,6 +19,7 @@ import { LoginScreen } from '../screens/LoginScreen';
 import { RegisterScreen } from '../screens/RegisterScreen';
 import { ForgotPasswordScreen } from '../screens/ForgotPasswordScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { ReferralScreen } from '../screens/ReferralScreen';
 import { PrivacyPolicyScreen } from '../screens/PrivacyPolicyScreen';
 import { OnboardingScreen, hasSeenOnboarding } from '../screens/OnboardingScreen';
 import { PaywallScreen } from '../screens/PaywallScreen';
@@ -399,6 +400,7 @@ export function AppNavigator() {
           <Stack.Screen name="EditIngredient" component={CreateIngredientScreen} />
           <Stack.Screen name="CreateSale" component={CreateSaleScreen} />
           <Stack.Screen name="Profile" component={ProfileScreen} />
+          <Stack.Screen name="Referral" component={ReferralScreen} />
           <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
           <Stack.Screen name="Orders" component={OrdersScreen} />
           <Stack.Screen name="CreateOrder" component={CreateOrderScreen} />

@@ -13,9 +13,11 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash VARCHAR(255) NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
   is_premium BOOLEAN NOT NULL DEFAULT FALSE,
+  plan_tier VARCHAR(20) NOT NULL DEFAULT 'free',
   premium_until TIMESTAMP NULL,
   premium_platform VARCHAR(20) NULL,
-  last_seen_at TIMESTAMP DEFAULT NOW()
+  last_seen_at TIMESTAMP DEFAULT NOW(),
+  referral_code VARCHAR(8) UNIQUE
 );
 
 CREATE TABLE IF NOT EXISTS ingredients (
@@ -376,6 +378,22 @@ CREATE TABLE IF NOT EXISTS pix_requests (
 
 CREATE INDEX IF NOT EXISTS idx_pix_requests_status ON pix_requests (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pix_requests_user ON pix_requests (user_id);
+
+CREATE TABLE IF NOT EXISTS referrals (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  referrer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  referred_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  referral_code VARCHAR(8) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'valid', 'rewarded', 'invalid')),
+  activated_at TIMESTAMP NULL,
+  rewarded_at TIMESTAMP NULL,
+  reward_event_id UUID NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE (referred_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals (referrer_id, status);
+CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals (referred_id);
 `;
 
 async function addColumnIfMissing(
@@ -440,10 +458,16 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
 
+    // 3 tiers (free/premium/master). Backfill existing premium users to the
+    // 'premium' tier once; idempotent thanks to the `plan_tier = 'free'` guard.
+    await addColumnIfMissing(client, 'users', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'free'");
+    await client.query(`UPDATE users SET plan_tier = 'premium' WHERE is_premium = TRUE AND plan_tier = 'free'`);
+
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'users', 'phone', 'VARCHAR(20) NULL');
     await addColumnIfMissing(client, 'users', 'is_active', 'BOOLEAN NOT NULL DEFAULT TRUE');
+    await addColumnIfMissing(client, 'users', 'referral_code', 'VARCHAR(8) UNIQUE');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
     await addColumnIfMissing(client, 'request_logs', 'body_email', 'VARCHAR(255)');
 

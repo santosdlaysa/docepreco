@@ -1,5 +1,5 @@
 import { pool } from '../database/connection';
-import { User, RegisterDTO, PremiumPlatform } from '../../domain/entities/User';
+import { User, RegisterDTO, PremiumPlatform, PlanTier } from '../../domain/entities/User';
 import bcrypt from 'bcryptjs';
 
 // The `users.id` column is a UUID. RevenueCat webhooks may pass non-UUID

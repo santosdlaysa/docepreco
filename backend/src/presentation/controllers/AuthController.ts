@@ -3,11 +3,14 @@ import jwt from 'jsonwebtoken';
 import { User } from '../../domain/entities/User';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
+import { PostgresReferralRepository } from '../../infrastructure/repositories/PostgresReferralRepository';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
+import { normalizeReferralCode } from '../../domain/services/referral';
 
 const userRepo = new PostgresUserRepository();
 const suggestionRepo = new PostgresSuggestionRepository();
+const referralRepo = new PostgresReferralRepository();
 const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 
 const TYPO_MAP: Record<string, string> = {
@@ -27,7 +30,7 @@ const TYPO_MAP: Record<string, string> = {
 export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { companyName, email, password, phone } = req.body;
+      const { companyName, email, password, phone, referralCode } = req.body;
       if (!companyName || !email || !password) {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
         return;
@@ -60,6 +63,21 @@ export class AuthController {
         return;
       }
       const user = await userRepo.create({ companyName, email, password, phone });
+      // Programa de indicação: registra a indicação como pendente (best-effort,
+      // nunca quebra o cadastro). Vira válida quando o indicado cria a 1ª receita.
+      if (referralCode) {
+        try {
+          const code = normalizeReferralCode(referralCode);
+          if (code) {
+            const referrerId = await referralRepo.findReferrerIdByCode(code);
+            if (referrerId && referrerId !== user.id) {
+              await referralRepo.createPendingReferral(referrerId, user.id, code);
+            }
+          }
+        } catch (e) {
+          console.error('[Referral] Falha ao registrar indicação no cadastro:', e);
+        }
+      }
       notifyNewUser(companyName, email);
       userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });

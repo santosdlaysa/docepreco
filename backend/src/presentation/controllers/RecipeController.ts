@@ -10,6 +10,7 @@ import { PostgresIngredientRepository } from '../../infrastructure/repositories/
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES, getFreeRecipeLimit } from '../../domain/services/premium';
+import { processReferralActivation } from '../../infrastructure/services/referralService';
 
 const recipeRepo = new PostgresRecipeRepository();
 const ingredientRepo = new PostgresIngredientRepository();
@@ -63,6 +64,11 @@ export class RecipeController {
 
       const useCase = new CreateRecipeUseCase(recipeRepo);
       const recipe = await useCase.execute(req.body, req.userId!);
+      // Programa de indicação: a 1ª receita (count era 0 antes de criar) valida
+      // a indicação do usuário, se houver. Fire-and-forget.
+      if (count === 0) {
+        processReferralActivation(req.userId!).catch(() => {});
+      }
       res.status(201).json({ success: true, data: recipe });
     } catch (error) {
       if (error instanceof Error) {

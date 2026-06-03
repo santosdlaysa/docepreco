@@ -17,6 +17,7 @@ export type RootStackParamList = {
   Sales: undefined;
   CreateSale: undefined;
   Profile: undefined;
+  Referral: undefined;
   PrivacyPolicy: undefined;
   Paywall: { trigger?: PaywallTrigger } | undefined;
   PixPayment: { plan?: 'monthly' | 'annual' } | undefined;

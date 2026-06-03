@@ -26,8 +26,8 @@ const normalizeUser = (raw: any): AuthUser => ({
 });
 
 export const authApi = {
-  register: async (companyName: string, email: string, password: string, phone?: string): Promise<AuthUser> => {
-    const response = await apiClient.post('/auth/register', { companyName, email, password, phone });
+  register: async (companyName: string, email: string, password: string, phone?: string, referralCode?: string): Promise<AuthUser> => {
+    const response = await apiClient.post('/auth/register', { companyName, email, password, phone, referralCode });
     const { user, token } = response.data.data;
     const normalized = normalizeUser(user);
     await tokenStorage.saveToken(token);
