@@ -192,6 +192,34 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
   );
 }
 
+// Dados de PIX embutidos (fallback) — iguais aos do app mobile, usados quando
+// o painel web ainda não tem uma config própria de PIX.
+const DEFAULT_PIX: PixConfig = {
+  monthly: {
+    amountCents: 1490,
+    priceLabel: 'R$ 14,90',
+    copyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540514.905802BR5901N6001C62150511mensalidade630450C7',
+    qrImage: '/qrcode-pix-monthly.png',
+  },
+  annual: {
+    amountCents: 12000,
+    priceLabel: 'R$ 120,00',
+    copyPaste: '00020126330014BR.GOV.BCB.PIX0111033810532805204000053039865406120.005802BR5901N6001C62090505ANUAL6304F5D2',
+    qrImage: '/qrcode-pix-annual.png',
+  },
+};
+
+/** Usa os valores do servidor quando existem; senão, o embutido. */
+function mergePlan(server: PixConfig['monthly'] | undefined, fallback: PixConfig['monthly']) {
+  if (!server || !server.copyPaste) return fallback;
+  return {
+    amountCents: server.amountCents || fallback.amountCents,
+    priceLabel: server.priceLabel || fallback.priceLabel,
+    copyPaste: server.copyPaste,
+    qrImage: server.qrImage || fallback.qrImage,
+  };
+}
+
 function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn }) {
   const [config, setConfig] = useState<PixConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -220,7 +248,12 @@ function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn })
     };
   }, []);
 
-  const selected = config ? config[plan] : null;
+  // Sempre há dados: servidor (se houver) ou o embutido
+  const effective: PixConfig = {
+    monthly: mergePlan(config?.monthly, DEFAULT_PIX.monthly),
+    annual: mergePlan(config?.annual, DEFAULT_PIX.annual),
+  };
+  const selected = effective[plan];
 
   const copyCode = async () => {
     if (!selected?.copyPaste) return;
@@ -250,7 +283,7 @@ function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn })
 
   return (
     <ModalOverlay onClose={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4 sm:max-w-md">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4 w-full sm:max-w-md mx-auto">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
           <Sparkles size={18} className="text-primary-500" /> Renovar premium via PIX
         </h3>
@@ -267,16 +300,12 @@ function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn })
               Recebemos sua solicitação. Assim que o PIX for confirmado, seu premium é liberado.
             </p>
           </div>
-        ) : !config || !selected ? (
-          <p className="text-sm text-gray-500 dark:text-gray-400 py-6 text-center">
-            O pagamento por PIX não está disponível no momento. Fale com o suporte.
-          </p>
         ) : (
           <>
             {/* Seleção de plano */}
             <div className="grid grid-cols-2 gap-2">
               {(['monthly', 'annual'] as const).map(p => {
-                const cfg = config[p];
+                const cfg = effective[p];
                 const on = plan === p;
                 return (
                   <button

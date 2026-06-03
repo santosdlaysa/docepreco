@@ -99,12 +99,24 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
+    // Stats e unread são independentes: uma falha não pode zerar a outra
     try {
-      const [s, u] = await Promise.all([adminApi.getStats(), adminApi.getUnreadCount()]);
+      const s = await adminApi.getStats();
       setStats(s);
-      setUnread(u);
+      setError(null);
+    } catch (e: any) {
+      const status = e?.response?.status;
+      if (status === 401 || status === 403) {
+        setError('Acesso negado ao admin (verifique o ADMIN_SECRET).');
+      } else {
+        setError(e?.response?.data?.error || e?.message || 'Falha ao carregar dados do admin.');
+      }
+    }
+    try {
+      setUnread(await adminApi.getUnreadCount());
     } catch {}
   }, []);
 
@@ -151,6 +163,14 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
             </View>
           )}
         </LinearGradient>
+
+        {/* ── Erro ── */}
+        {!loading && error && (
+          <View style={st.errorBanner}>
+            <Ionicons name="alert-circle-outline" size={18} color="#B91C1C" />
+            <Text style={st.errorText}>{error}</Text>
+          </View>
+        )}
 
         {/* ── Mini stats ── */}
         {!loading && (
@@ -272,6 +292,10 @@ const st = StyleSheet.create({
   logoutBtn:   { padding: 6 },
   heroRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 18, paddingVertical: 20, paddingHorizontal: 8 },
   heroDivider: { width: 1, height: 36, backgroundColor: 'rgba(255,255,255,0.25)' },
+
+  // erro
+  errorBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FEE2E2', borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14, marginHorizontal: 16, marginTop: 14 },
+  errorText:   { flex: 1, fontSize: 12.5, color: '#B91C1C', fontWeight: '600' },
 
   // mini stats
   miniRow: { flexDirection: 'row', gap: 10, paddingHorizontal: 16, marginTop: 14, marginBottom: 4 },

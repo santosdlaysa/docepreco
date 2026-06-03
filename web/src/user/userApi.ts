@@ -43,8 +43,9 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   });
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    // Token inválido/expirado em rota autenticada → força logout
-    if (res.status === 401 && token) {
+    // Token inválido/expirado em rota autenticada → força logout.
+    // Ignora rotas /admin/ (ex.: config de planos é lida sem ser dono do token).
+    if (res.status === 401 && token && !path.includes('/admin/')) {
       clearToken();
       onUnauthorized?.();
     }
