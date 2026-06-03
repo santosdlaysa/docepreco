@@ -62,26 +62,78 @@ export class PostgresUserRepository {
     return this.mapRow(result.rows[0]);
   }
 
+  /**
+   * Sets the user's plan tier explicitly. Use this for tier-aware callers
+   * (RevenueCat webhook, referral reward, PIX-by-tier). Granting a paid tier
+   * never regresses premium_until to an earlier date (GREATEST), preventing
+   * out-of-order webhooks from shortening a paid period. tier='free' revokes.
+   */
+  async updatePlanTier(
+    userId: string,
+    tier: PlanTier,
+    until: Date | null,
+    platform: PremiumPlatform | null
+  ): Promise<User | null> {
+    let result;
+    if (tier === 'free') {
+      result = await pool.query(
+        `UPDATE users
+           SET is_premium = FALSE, plan_tier = 'free', premium_until = $2, premium_platform = $3
+           WHERE id = $1
+           RETURNING *`,
+        [userId, until, platform]
+      );
+    } else {
+      const untilExpr = until ? `GREATEST(premium_until, $3)` : `$3`;
+      result = await pool.query(
+        `UPDATE users
+           SET is_premium = TRUE, plan_tier = $2, premium_until = ${untilExpr}, premium_platform = $4
+           WHERE id = $1
+           RETURNING *`,
+        [userId, tier, until, platform]
+      );
+    }
+    if (result.rows.length === 0) return null;
+    return this.mapRow(result.rows[0]);
+  }
+
+  /**
+   * Backward-compatible binary premium toggle. Kept for callers that don't
+   * know about tiers yet (mobile /premium/sync, admin manual toggle, PIX).
+   * Granting premium NEVER downgrades an existing master (CASE guard) — only
+   * the explicit updatePlanTier / a revocation can change a master tier.
+   */
   async updatePremiumStatus(
     userId: string,
     isPremium: boolean,
     premiumUntil: Date | null,
     platform: PremiumPlatform | null
   ): Promise<User | null> {
-    // When granting premium, never regress premium_until to an earlier date.
-    // This prevents race conditions between webhooks and mobile sync where an
-    // older expiration (e.g. trial end) overwrites a newer one (e.g. paid renewal).
-    const premiumUntilExpr = isPremium && premiumUntil
-      ? `GREATEST(premium_until, $3)`
-      : `$3`;
-
-    const result = await pool.query(
-      `UPDATE users
-         SET is_premium = $2, premium_until = ${premiumUntilExpr}, premium_platform = $4
-         WHERE id = $1
-         RETURNING *`,
-      [userId, isPremium, premiumUntil, platform]
-    );
+    let result;
+    if (isPremium) {
+      // When granting premium, never regress premium_until to an earlier date.
+      // This prevents race conditions between webhooks and mobile sync where an
+      // older expiration (e.g. trial end) overwrites a newer one (e.g. paid renewal).
+      const premiumUntilExpr = premiumUntil ? `GREATEST(premium_until, $3)` : `$3`;
+      result = await pool.query(
+        `UPDATE users
+           SET is_premium = $2,
+               plan_tier = CASE WHEN plan_tier = 'master' THEN 'master' ELSE 'premium' END,
+               premium_until = ${premiumUntilExpr},
+               premium_platform = $4
+           WHERE id = $1
+           RETURNING *`,
+        [userId, isPremium, premiumUntil, platform]
+      );
+    } else {
+      result = await pool.query(
+        `UPDATE users
+           SET is_premium = $2, plan_tier = 'free', premium_until = $3, premium_platform = $4
+           WHERE id = $1
+           RETURNING *`,
+        [userId, isPremium, premiumUntil, platform]
+      );
+    }
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
   }
@@ -184,6 +236,7 @@ export class PostgresUserRepository {
       passwordHash: row.password_hash as string,
       createdAt: (row.created_at as Date).toISOString(),
       isPremium: Boolean(row.is_premium),
+      planTier: (row.plan_tier as PlanTier | null) ?? (Boolean(row.is_premium) ? 'premium' : 'free'),
       premiumUntil: premiumUntil ? premiumUntil.toISOString() : null,
       premiumPlatform: (row.premium_platform as PremiumPlatform | null) ?? null,
       isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,

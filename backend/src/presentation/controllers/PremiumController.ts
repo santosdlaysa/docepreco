@@ -46,6 +46,15 @@ const storeToPlatform = (store?: RevenueCatEvent['store']): PremiumPlatform | nu
   return 'manual';
 };
 
+/**
+ * Maps a RevenueCat product_id to a paid tier. The Master products are named
+ * `premium_master` / `premium_master_anual` — they contain BOTH "premium" and
+ * "master", so we MUST test "master" first, otherwise they'd be misclassified
+ * as Premium.
+ */
+const productToTier = (productId?: string): 'premium' | 'master' =>
+  productId?.toLowerCase().includes('master') ? 'master' : 'premium';
+
 export class PremiumController {
   /**
    * Webhook from RevenueCat. Expects `Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>`.
@@ -141,22 +150,22 @@ export class PremiumController {
         case 'UNCANCELLATION':
         case 'PRODUCT_CHANGE':
         case 'NON_RENEWING_PURCHASE':
-          await userRepo.updatePremiumStatus(userId, true, expiresAt, platform);
+          await userRepo.updatePlanTier(userId, productToTier(event.product_id), expiresAt, platform);
           break;
 
         case 'EXPIRATION':
         case 'BILLING_ISSUE':
-          await userRepo.updatePremiumStatus(userId, false, expiresAt, platform);
+          await userRepo.updatePlanTier(userId, 'free', expiresAt, platform);
           break;
 
         case 'CANCELLATION':
           // User cancelled but subscription still active until expiration
-          // Keep premium true, but the client-side can show "cancelled, ends on X"
+          // Keep the tier active; the client-side can show "cancelled, ends on X"
           break;
 
         case 'TRANSFER':
-          // User alias merged — grant premium to the new user
-          await userRepo.updatePremiumStatus(userId, true, expiresAt, platform);
+          // User alias merged — grant the purchased tier to the new user
+          await userRepo.updatePlanTier(userId, productToTier(event.product_id), expiresAt, platform);
           break;
 
         default:

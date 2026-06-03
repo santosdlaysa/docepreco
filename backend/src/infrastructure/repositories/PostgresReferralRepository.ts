@@ -107,8 +107,8 @@ export class PostgresReferralRepository {
    * REFERRALS_PER_REWARD indicações válidas, estende a assinatura em REWARD_DAYS.
    * Transacional com FOR UPDATE para evitar concessão de lote duplo em corrida.
    *
-   * TODO(fundação 3-tier): quando o tier Master existir, trocar o UPDATE de
-   * is_premium/premium_platform='manual' por updatePlanTier(..., 'master', ...).
+   * A recompensa concede o tier Master (degustação do topo) por REWARD_DAYS,
+   * estendendo a partir de max(now, premium_until).
    */
   async grantRewardIfEligible(referrerId: string): Promise<GrantResult> {
     if (!UUID_RE.test(referrerId)) return { rewardsGranted: 0, newPremiumUntil: null };
@@ -140,7 +140,7 @@ export class PostgresReferralRepository {
         until.setDate(until.getDate() + REWARD_DAYS);
 
         await client.query(
-          `UPDATE users SET is_premium = TRUE, premium_until = $2, premium_platform = 'manual' WHERE id = $1`,
+          `UPDATE users SET is_premium = TRUE, plan_tier = 'master', premium_until = $2, premium_platform = 'manual' WHERE id = $1`,
           [referrerId, until]
         );
 

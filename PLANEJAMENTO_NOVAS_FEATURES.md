@@ -55,16 +55,20 @@ uuid`. RevenueCat reentregava, sempre 500, e desistia → `premium_events` com
   ou usar "Send test event" no dashboard e conferir log `[Premium] Webhook ...`.
 - [ ] Reenviar eventos passados no RevenueCat para recuperar renovações perdidas.
 
-### 0b. Migrar binário → 3 tiers
-- **Banco** (`migrate.ts`): `ALTER TABLE users ADD COLUMN plan_tier VARCHAR(20)
-  NOT NULL DEFAULT 'free'`; backfill `UPDATE users SET plan_tier = CASE WHEN
-  is_premium THEN 'premium' ELSE 'free' END`. Manter `is_premium` por
-  compatibilidade (deriva de `plan_tier <> 'free'`).
-- **Entidade** `User.ts`: add `planTier: 'free'|'premium'|'master'`.
-- **`PostgresUserRepository`**: `mapRow` + `updatePlanTier(userId, tier, until, platform)`.
-- **`domain/services/premium.ts`**: trocar `FREE_LIMITS` por `TIER_LIMITS` e
-  `isActivePremium` por `getActiveTier(user)` / `hasTier(user, 'master')`
-  (respeitando expiração). `isActivePremium` continua existindo = `tier!=='free'`.
+### 0b. Migrar binário → 3 tiers  ✅ BACKEND FEITO (2026-06-03)
+- [x] **Banco** (`migrate.ts`): coluna `plan_tier VARCHAR(20) NOT NULL DEFAULT
+  'free'` (no CREATE e via `addColumnIfMissing`) + backfill idempotente
+  `UPDATE users SET plan_tier='premium' WHERE is_premium=TRUE AND plan_tier='free'`.
+  `is_premium` mantido por compatibilidade (sempre em sincronia com o tier).
+- [x] **Entidade** `User.ts`: `PlanTier = 'free'|'premium'|'master'` + `planTier`.
+- [x] **`PostgresUserRepository`**: `mapRow.planTier` + `updatePlanTier(userId,
+  tier, until, platform)`. `updatePremiumStatus` (legado) virou shim **à prova de
+  rebaixar Master** (CASE WHEN plan_tier='master' THEN 'master' ELSE 'premium'),
+  protegendo Master quando sync/PIX/admin concedem premium genérico.
+- [x] **`domain/services/premium.ts`**: add `getActiveTier(user)` e
+  `hasTier(user, tier)` (respeitam expiração). `isActivePremium` mantido.
+- [ ] Pendente: trocar `FREE_LIMITS` por `TIER_LIMITS` (só quando as features
+  Master existirem e precisarem de gating por tier).
 
 ### 0c. RevenueCat multi-produto
 - Produtos reais já criados no dashboard (status em 2026-06-03):
@@ -75,10 +79,12 @@ uuid`. RevenueCat reentregava, sempre 500, e desistia → `premium_events` com
   `product_id` → tier DEVE testar `"master"` **primeiro**:
   `product_id.includes('master') ? 'master' : 'premium'`. Inverter a ordem
   (checar `'premium'` antes) classificaria o Master como Premium.
-- `PremiumController.revenueCatWebhook`: aplicar o mapeamento acima e chamar
-  `updatePlanTier` em vez de `updatePremiumStatus`.
-- Mobile `revenueCat.ts`: reconhecer os pacotes `premium_master`/
-  `premium_master_anual` nas offerings; paywall escolhe.
+- [x] `PremiumController.revenueCatWebhook` ✅ (2026-06-03): helper `productToTier`
+  (testa `"master"` primeiro) + INITIAL_PURCHASE/RENEWAL/UNCANCELLATION/
+  PRODUCT_CHANGE/NON_RENEWING/TRANSFER → `updatePlanTier(tier,...)`;
+  EXPIRATION/BILLING_ISSUE → `updatePlanTier('free',...)`.
+- [ ] Mobile `revenueCat.ts`: reconhecer os pacotes `premium_master`/
+  `premium_master_anual` nas offerings; paywall escolhe. **(0e — pendente)**
 
 ### 0d. PIX por tier
 - `pix_requests.plan_label` já existe; usar para distinguir Premium vs Master.

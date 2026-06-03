@@ -1,5 +1,7 @@
-import { User } from '../entities/User';
+import { User, PlanTier } from '../entities/User';
 import { pool } from '../../infrastructure/database/connection';
+
+const TIER_RANK: Record<PlanTier, number> = { free: 0, premium: 1, master: 2 };
 
 export const FREE_LIMITS = {
   recipes: 3,
@@ -35,6 +37,23 @@ export function isActivePremium(user: Pick<User, 'isPremium' | 'premiumUntil'>):
   if (!user.isPremium) return false;
   if (user.premiumUntil === null) return true; // lifetime / manual
   return new Date(user.premiumUntil).getTime() > Date.now();
+}
+
+/**
+ * The user's currently-active tier, respecting expiration. A paid tier whose
+ * premium_until has passed counts as 'free' (defense in depth for late webhooks).
+ */
+export function getActiveTier(user: Pick<User, 'planTier' | 'premiumUntil'>): PlanTier {
+  if (user.planTier === 'free') return 'free';
+  if (user.premiumUntil !== null && new Date(user.premiumUntil).getTime() <= Date.now()) {
+    return 'free';
+  }
+  return user.planTier;
+}
+
+/** True if the user's active tier is at least `tier` (master ⊇ premium ⊇ free). */
+export function hasTier(user: Pick<User, 'planTier' | 'premiumUntil'>, tier: PlanTier): boolean {
+  return TIER_RANK[getActiveTier(user)] >= TIER_RANK[tier];
 }
 
 /**
