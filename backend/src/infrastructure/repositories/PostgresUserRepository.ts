@@ -2,6 +2,13 @@ import { pool } from '../database/connection';
 import { User, RegisterDTO, PremiumPlatform } from '../../domain/entities/User';
 import bcrypt from 'bcryptjs';
 
+// The `users.id` column is a UUID. RevenueCat webhooks may pass non-UUID
+// identifiers (e.g. "$RCAnonymousID:...") as app_user_id/original_app_user_id/
+// aliases. Querying a UUID column with such a value makes Postgres throw
+// "invalid input syntax for type uuid", which previously turned every such
+// webhook into a 500. Guard lookups so a non-UUID simply returns null.
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export class PostgresUserRepository {
   async findByEmail(email: string): Promise<(User & { passwordHash: string }) | null> {
     const result = await pool.query('SELECT * FROM users WHERE email = $1', [email.toLowerCase()]);
@@ -10,12 +17,14 @@ export class PostgresUserRepository {
   }
 
   async findById(id: string): Promise<User | null> {
+    if (!UUID_RE.test(id)) return null;
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
   }
 
   async findByIdFull(id: string): Promise<(User & { passwordHash: string }) | null> {
+    if (!UUID_RE.test(id)) return null;
     const result = await pool.query('SELECT * FROM users WHERE id = $1', [id]);
     if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
