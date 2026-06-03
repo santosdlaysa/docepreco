@@ -8,6 +8,7 @@ import {
   Image,
   Dimensions,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -227,13 +228,25 @@ export const HomeScreen: React.FC = () => {
         {/* ═══════ NOTIFICATION BANNERS ═══════ */}
         {banners.map(banner => {
           const cfg = BANNER_CONFIG[banner.type];
+          const hasLink = !!(banner.actionUrl && banner.actionUrl.trim());
+          const openLink = () => {
+            if (banner.actionUrl) Linking.openURL(banner.actionUrl).catch(() => {});
+          };
           return (
             <View key={banner.id} style={[s.notifBanner, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
               <Ionicons name={cfg.icon as any} size={22} color={cfg.iconColor} style={{ marginTop: 1 }} />
-              <View style={{ flex: 1 }}>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                activeOpacity={hasLink ? 0.6 : 1}
+                disabled={!hasLink}
+                onPress={openLink}
+              >
                 <Text style={[s.notifTitle, { color: cfg.iconColor }]}>{banner.title}</Text>
                 <Text style={s.notifMsg}>{banner.message}</Text>
-              </View>
+                {hasLink && (
+                  <Text style={[s.notifLink, { color: cfg.iconColor }]}>Ver mais →</Text>
+                )}
+              </TouchableOpacity>
               <TouchableOpacity onPress={() => dismissBanner(banner.id)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="close" size={18} color={INK2} />
               </TouchableOpacity>
@@ -749,6 +762,7 @@ const s = StyleSheet.create({
   },
   notifTitle: { fontSize: 13.5, fontWeight: '700', marginBottom: 2 },
   notifMsg: { fontSize: 12.5, color: INK2, fontWeight: '500', lineHeight: 17 },
+  notifLink: { fontSize: 12.5, fontWeight: '700', marginTop: 6 },
   guideBanner: {
     flexDirection: 'row',
     alignItems: 'center',
