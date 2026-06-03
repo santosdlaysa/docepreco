@@ -239,9 +239,9 @@ export function PlanConfigPage({ toast }: Props) {
             <p className="text-xs text-gray-500 dark:text-gray-400 -mt-3">
               Valor, código copia-e-cola e QR exibidos no app. Assinantes antigos de R$ 10,00 mantêm o preço anterior na renovação.
             </p>
-            {(['monthly', 'annual', 'masterMonthly', 'masterAnnual'] as const).map(plan => {
+            {(['monthly', 'annual', 'masterMonthly'] as const).map(plan => {
               const p = config.pix[plan];
-              const isMaster = plan === 'masterMonthly' || plan === 'masterAnnual';
+              const isMaster = plan === 'masterMonthly';
               return (
                 <div key={plan} className={`border rounded-lg p-4 space-y-3 ${isMaster ? 'border-purple-200 dark:border-purple-900' : 'border-gray-200 dark:border-gray-700'}`}>
                   <h4 className={`text-sm font-bold flex items-center gap-1.5 ${isMaster ? 'text-purple-700 dark:text-purple-300' : 'text-gray-800 dark:text-gray-100'}`}>

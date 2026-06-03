@@ -116,7 +116,9 @@ export const PixPaymentScreen: React.FC = () => {
     ? (serverMasterMonthly ?? MASTER_MONTHLY)
     : (legacyMonthly ? MONTHLY_LEGACY : (serverMonthly ?? MONTHLY));
   const annualPlan = isMaster ? (serverMasterAnnual ?? MASTER_ANNUAL) : (serverAnnual ?? ANNUAL);
-  const plan = selectedPlan === 'annual' ? annualPlan : monthlyPlan;
+  // Master é só mensal — sem aba anual.
+  const showAnnual = !isMaster;
+  const plan = selectedPlan === 'annual' && showAnnual ? annualPlan : monthlyPlan;
 
   // Check if there's already a pending request
   useEffect(() => {
@@ -254,22 +256,22 @@ export const PixPaymentScreen: React.FC = () => {
                   {monthlyPlan.price}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.planTab, selectedPlan === 'annual' && [styles.planTabActive, { borderColor: accent }]]}
-                onPress={() => setSelectedPlan('annual')}
-              >
-                {!isMaster && (
+              {showAnnual && (
+                <TouchableOpacity
+                  style={[styles.planTab, selectedPlan === 'annual' && [styles.planTabActive, { borderColor: accent }]]}
+                  onPress={() => setSelectedPlan('annual')}
+                >
                   <View style={styles.saveBadge}>
                     <Text style={styles.saveBadgeText}>{t('pix.save33')}</Text>
                   </View>
-                )}
-                <Text style={[styles.planTabText, selectedPlan === 'annual' && styles.planTabTextActive]}>
-                  Anual
-                </Text>
-                <Text style={[styles.planTabPrice, selectedPlan === 'annual' && [styles.planTabPriceActive, { color: accent }]]}>
-                  {annualPlan.price}
-                </Text>
-              </TouchableOpacity>
+                  <Text style={[styles.planTabText, selectedPlan === 'annual' && styles.planTabTextActive]}>
+                    Anual
+                  </Text>
+                  <Text style={[styles.planTabPrice, selectedPlan === 'annual' && [styles.planTabPriceActive, { color: accent }]]}>
+                    {annualPlan.price}
+                  </Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {/* QR Code Image */}

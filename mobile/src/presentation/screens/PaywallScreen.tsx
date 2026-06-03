@@ -88,7 +88,8 @@ export const PaywallScreen: React.FC = () => {
   const [pixAnnualLabel, setPixAnnualLabel] = useState('R$ 120,00');
   const [pixMasterMonthlyLabel, setPixMasterMonthlyLabel] = useState('R$ 30,00');
   const [pixMasterAnnualLabel, setPixMasterAnnualLabel] = useState('R$ 300,00');
-  const [masterPixAvailable, setMasterPixAvailable] = useState(false);
+  // PIX Master mensal já vem embutido no app → sempre disponível, sem depender do backend.
+  const masterPixAvailable = true;
   const [masterPrice, setMasterPrice] = useState(30);
   const [premiumPrice] = useState('R$ 14,90');
 
@@ -131,9 +132,6 @@ export const PaywallScreen: React.FC = () => {
         setPixAnnualLabel(cfg.annual.priceLabel);
         if (cfg.masterMonthly) setPixMasterMonthlyLabel(cfg.masterMonthly.priceLabel);
         if (cfg.masterAnnual) setPixMasterAnnualLabel(cfg.masterAnnual.priceLabel);
-        // PIX Master aparece quando o mensal já tem código configurado (o mensal
-        // já vem embutido; o anual o admin configura no painel).
-        setMasterPixAvailable(!!cfg.masterMonthly?.copyPaste);
       }
       const mi = await planConfigApi.getMasterInfo();
       if (mi) setMasterPrice(mi.price);
@@ -151,8 +149,14 @@ export const PaywallScreen: React.FC = () => {
   const [monthlyMain, monthlyCents] = splitPrice(pixMonthlyShown);
   const [annualMain, annualCents] = splitPrice(pixAnnualShown);
 
-  // Pacotes da loja filtrados pelo nível selecionado
-  const tierPackages = (packages ?? []).filter(p => p.tier === tier);
+  // O Master é só mensal — exclui qualquer pacote/PIX anual do Master.
+  const isAnnualId = (id: string) => {
+    const s = id.toLowerCase();
+    return s.includes('anual') || s.includes('annual') || s.includes('year');
+  };
+  const showAnnual = !isMasterTier;
+  // Pacotes da loja filtrados pelo nível (e sem o anual quando for Master)
+  const tierPackages = (packages ?? []).filter(p => p.tier === tier && (showAnnual || !isAnnualId(p.identifier)));
   // Lista de benefícios mostrada conforme o nível
   const feats = isMasterTier ? [...FEATS, ...MASTER_EXTRA] : FEATS;
   const accent = isMasterTier ? PURPLE : PINK;
@@ -332,14 +336,16 @@ export const PaywallScreen: React.FC = () => {
                   <Text style={st.planPrice}>{monthlyMain}<Text style={st.planPriceSm}>{monthlyCents}</Text></Text>
                   <Text style={st.planPer}>por mês</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={[st.plan, pixPlan === 'annual' && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
-                  <View style={[st.radio, pixPlan === 'annual' && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
-                    {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
-                  </View>
-                  <Text style={st.planName}>Anual</Text>
-                  <Text style={st.planPrice}>{annualMain}<Text style={st.planPriceSm}>{annualCents}</Text></Text>
-                  <Text style={st.planPer}>{isMasterTier ? 'no ano' : 'R$ 10,00/mês'}</Text>
-                </TouchableOpacity>
+                {showAnnual && (
+                  <TouchableOpacity style={[st.plan, pixPlan === 'annual' && st.planOn]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
+                    <View style={[st.radio, pixPlan === 'annual' && st.radioOn]}>
+                      {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
+                    </View>
+                    <Text style={st.planName}>Anual</Text>
+                    <Text style={st.planPrice}>{annualMain}<Text style={st.planPriceSm}>{annualCents}</Text></Text>
+                    <Text style={st.planPer}>R$ 10,00/mês</Text>
+                  </TouchableOpacity>
+                )}
               </View>
 
               <TouchableOpacity onPress={() => pixPlan && navigation.navigate('PixPayment', { plan: pixPlan, tier })} disabled={!pixPlan} activeOpacity={0.85}>
