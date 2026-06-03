@@ -1,13 +1,21 @@
 import axios from 'axios';
+import { tokenStorage } from '../storage/tokenStorage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
 
 export const ADMIN_EMAIL = 'santosdlaysa@gmail.com';
 
-function adminHeaders() {
-  return { 'x-admin-secret': ADMIN_SECRET };
-}
+// Cliente admin: envia o JWT do usuário logado (admin é reconhecido pelo e-mail)
+// e, por compatibilidade, o x-admin-secret quando configurado.
+const adminClient = axios.create({ baseURL: BASE_URL });
+adminClient.interceptors.request.use(async (config) => {
+  const token = await tokenStorage.getToken();
+  config.headers = config.headers ?? {};
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  if (ADMIN_SECRET) config.headers['x-admin-secret'] = ADMIN_SECRET;
+  return config;
+});
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,7 +85,7 @@ export interface AdminMessage {
 
 export const adminApi = {
   async getStats(): Promise<AdminStats> {
-    const { data } = await axios.get(`${BASE_URL}/admin/stats`, { headers: adminHeaders() });
+    const { data } = await adminClient.get('/admin/stats');
     return data.data;
   },
 
@@ -85,12 +93,12 @@ export const adminApi = {
   async listUsers(search?: string): Promise<AdminUser[]> {
     const params: Record<string, string> = { limit: '100' };
     if (search) params.search = search;
-    const { data } = await axios.get(`${BASE_URL}/admin/users`, { headers: adminHeaders(), params });
+    const { data } = await adminClient.get('/admin/users', { params });
     return data.data.users ?? [];
   },
 
   async getUser(id: string): Promise<AdminUser> {
-    const { data } = await axios.get(`${BASE_URL}/admin/users/${id}`, { headers: adminHeaders() });
+    const { data } = await adminClient.get(`/admin/users/${id}`);
     return data.data;
   },
 
@@ -102,80 +110,57 @@ export const adminApi = {
       d.setDate(d.getDate() + days);
       premiumUntil = d.toISOString();
     }
-    await axios.post(
-      `${BASE_URL}/admin/users/${userId}/premium`,
-      { isPremium: active, premiumUntil },
-      { headers: adminHeaders() },
-    );
+    await adminClient.post(`/admin/users/${userId}/premium`, { isPremium: active, premiumUntil });
   },
 
   // Backend exige { days, notificationTitle, notificationBody }
   async grantTrial(userId: string, days = 7): Promise<void> {
-    await axios.post(
-      `${BASE_URL}/admin/users/${userId}/grant-trial`,
-      {
-        days,
-        notificationTitle: '🎉 Trial ativado!',
-        notificationBody: `Você ganhou ${days} dias de acesso premium. Aproveite!`,
-      },
-      { headers: adminHeaders() },
-    );
+    await adminClient.post(`/admin/users/${userId}/grant-trial`, {
+      days,
+      notificationTitle: '🎉 Trial ativado!',
+      notificationBody: `Você ganhou ${days} dias de acesso premium. Aproveite!`,
+    });
   },
 
   // Backend espera { isActive: boolean }
   async toggleActive(userId: string, currentIsActive: boolean): Promise<void> {
-    await axios.post(
-      `${BASE_URL}/admin/users/${userId}/toggle-active`,
-      { isActive: !currentIsActive },
-      { headers: adminHeaders() },
-    );
+    await adminClient.post(`/admin/users/${userId}/toggle-active`, { isActive: !currentIsActive });
   },
 
   async listPixRequests(): Promise<PixRequest[]> {
-    const { data } = await axios.get(`${BASE_URL}/admin/pix-requests`, {
-      headers: adminHeaders(),
-      params: { status: 'all' },
-    });
+    const { data } = await adminClient.get('/admin/pix-requests', { params: { status: 'all' } });
     return data.data ?? [];
   },
 
   async approvePixRequest(id: string): Promise<void> {
-    await axios.post(`${BASE_URL}/admin/pix-requests/${id}/approve`, {}, { headers: adminHeaders() });
+    await adminClient.post(`/admin/pix-requests/${id}/approve`, {});
   },
 
   async rejectPixRequest(id: string): Promise<void> {
-    await axios.post(`${BASE_URL}/admin/pix-requests/${id}/reject`, {}, { headers: adminHeaders() });
+    await adminClient.post(`/admin/pix-requests/${id}/reject`, {});
   },
 
   async getConversations(): Promise<AdminConversation[]> {
-    const { data } = await axios.get(`${BASE_URL}/support/admin/conversations`, { headers: adminHeaders() });
+    const { data } = await adminClient.get('/support/admin/conversations');
     return data.data ?? [];
   },
 
   async getConversationMessages(userId: string): Promise<AdminMessage[]> {
-    const { data } = await axios.get(`${BASE_URL}/support/admin/conversations/${userId}`, { headers: adminHeaders() });
+    const { data } = await adminClient.get(`/support/admin/conversations/${userId}`);
     return data.data ?? [];
   },
 
   async sendMessage(userId: string, message: string): Promise<AdminMessage> {
-    const { data } = await axios.post(
-      `${BASE_URL}/support/admin/conversations/${userId}`,
-      { message },
-      { headers: adminHeaders() },
-    );
+    const { data } = await adminClient.post(`/support/admin/conversations/${userId}`, { message });
     return data.data;
   },
 
   async setTyping(userId: string, typing: boolean): Promise<void> {
-    await axios.post(
-      `${BASE_URL}/support/admin/conversations/${userId}/typing`,
-      { typing },
-      { headers: adminHeaders() },
-    );
+    await adminClient.post(`/support/admin/conversations/${userId}/typing`, { typing });
   },
 
   async getUnreadCount(): Promise<number> {
-    const { data } = await axios.get(`${BASE_URL}/support/admin/unread`, { headers: adminHeaders() });
+    const { data } = await adminClient.get('/support/admin/unread');
     return data.data?.unreadCount ?? 0;
   },
 };

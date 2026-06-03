@@ -6,10 +6,14 @@ import { ToastFn, ModalOverlay } from '../../components';
 import { formatDate } from '../format';
 import { Header, FormField, inputClass } from './IngredientsPage';
 
-function daysLeft(iso?: string | null): number | null {
-  if (!iso) return null;
+function remaining(iso: string): { big: string; bigUnit: string; expired: boolean } {
   const ms = new Date(iso).getTime() - Date.now();
-  return Math.ceil(ms / 86400000);
+  if (ms <= 0) return { big: 'Expirado', bigUnit: '', expired: true };
+  const days = Math.floor(ms / 86400000);
+  const hours = Math.floor((ms % 86400000) / 3600000);
+  if (days >= 1) return { big: String(days), bigUnit: days === 1 ? 'dia restante' : 'dias restantes', expired: false };
+  if (hours >= 1) return { big: String(hours), bigUnit: hours === 1 ? 'hora restante' : 'horas restantes', expired: false };
+  return { big: '< 1', bigUnit: 'hora restante', expired: false };
 }
 
 export function ProfilePage({ toast }: { toast: ToastFn }) {
@@ -83,18 +87,23 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
                 <Crown size={16} />
                 <span className="font-semibold">Premium ativo</span>
               </div>
-              {user.premiumUntil && (
-                <p className="text-sm text-amber-700/80 dark:text-amber-300/80 mt-1 flex items-center gap-1.5">
-                  <Clock size={13} />
-                  {(() => {
-                    const d = daysLeft(user.premiumUntil);
-                    if (d === null) return `Válido até ${formatDate(user.premiumUntil)}`;
-                    if (d < 0) return `Expirou em ${formatDate(user.premiumUntil)}`;
-                    if (d === 0) return `Expira hoje (${formatDate(user.premiumUntil)})`;
-                    return `Expira em ${d} dia${d !== 1 ? 's' : ''} · ${formatDate(user.premiumUntil)}`;
-                  })()}
-                </p>
-              )}
+              {user.premiumUntil && (() => {
+                const rem = remaining(user.premiumUntil);
+                return (
+                  <div className="mt-2">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className={`text-3xl font-extrabold leading-none ${rem.expired ? 'text-red-500' : 'text-amber-600 dark:text-amber-300'}`}>
+                        {rem.big}
+                      </span>
+                      <span className="text-sm font-medium text-amber-700/80 dark:text-amber-300/80">{rem.bigUnit}</span>
+                    </div>
+                    <p className="text-xs text-amber-700/70 dark:text-amber-300/70 mt-1 flex items-center gap-1.5">
+                      <Clock size={12} />
+                      {rem.expired ? `Expirou em ${formatDate(user.premiumUntil)}` : `Expira em ${formatDate(user.premiumUntil)}`}
+                    </p>
+                  </div>
+                );
+              })()}
               <button
                 onClick={() => setRenewOpen(true)}
                 className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg px-3 py-2 transition-colors"
@@ -192,6 +201,16 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
   );
 }
 
+// Valor (centavos) do mensal legado de R$ 10,00. Quem já pagou esse valor mantém
+// o preço antigo na renovação (mesma regra do app mobile).
+const LEGACY_MONTHLY_CENTS = 1000;
+const LEGACY_MONTHLY: PixConfig['monthly'] = {
+  amountCents: 1000,
+  priceLabel: 'R$ 10,00',
+  copyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540510.005802BR5901N6001C62100506mensal63041609',
+  qrImage: '/qrcode-pix-monthly-legacy.png',
+};
+
 // Dados de PIX embutidos (fallback) — iguais aos do app mobile, usados quando
 // o painel web ainda não tem uma config própria de PIX.
 const DEFAULT_PIX: PixConfig = {
@@ -227,6 +246,8 @@ function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn })
   const [status, setStatus] = useState<PixRequestStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Assinante legado (já pagou o mensal de R$ 10,00) → mantém esse preço
+  const [legacyMonthly, setLegacyMonthly] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -238,6 +259,7 @@ function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn })
         ]);
         if (!active) return;
         setConfig(cfg?.pix ?? null);
+        if (st?.amount_cents === LEGACY_MONTHLY_CENTS) setLegacyMonthly(true);
         if (st && st.status === 'pending') setStatus(st);
       } finally {
         if (active) setLoading(false);
@@ -248,9 +270,10 @@ function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn })
     };
   }, []);
 
-  // Sempre há dados: servidor (se houver) ou o embutido
+  // Sempre há dados: servidor (se houver) ou o embutido.
+  // Mensal legado (R$ 10,00) tem prioridade para quem já pagava esse valor.
   const effective: PixConfig = {
-    monthly: mergePlan(config?.monthly, DEFAULT_PIX.monthly),
+    monthly: legacyMonthly ? LEGACY_MONTHLY : mergePlan(config?.monthly, DEFAULT_PIX.monthly),
     annual: mergePlan(config?.annual, DEFAULT_PIX.annual),
   };
   const selected = effective[plan];
