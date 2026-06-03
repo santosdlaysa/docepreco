@@ -561,11 +561,28 @@ export interface FeaturedRecipe {
 
 // ── Plan Config ──
 
+export interface PixPlanConfig {
+  /** Valor em centavos (ex.: 1490 = R$ 14,90). */
+  amountCents: number;
+  /** Rótulo exibido no app (ex.: "R$ 14,90"). */
+  priceLabel: string;
+  /** Código PIX copia-e-cola. */
+  copyPaste: string;
+  /** Imagem do QR como data URI base64 (vazio → app usa o QR embutido). */
+  qrImage: string;
+}
+
+export interface PixConfig {
+  monthly: PixPlanConfig;
+  annual: PixPlanConfig;
+}
+
 export interface PlanConfig {
   freeRecipeLimit: number;
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
+  pix: PixConfig;
 }
 
 // ── Feature Flags ──

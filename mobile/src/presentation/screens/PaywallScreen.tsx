@@ -27,6 +27,8 @@ import {
   isRevenueCatConfigured,
 } from '../../data/premium/revenueCat';
 import { authApi } from '../../data/api/authApi';
+import { pixApi, LEGACY_MONTHLY_CENTS } from '../../data/api/pixApi';
+import { planConfigApi } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
@@ -68,6 +70,11 @@ export const PaywallScreen: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [configured] = useState(isRevenueCatConfigured());
   const [pixPlan, setPixPlan] = useState<'monthly' | 'annual' | null>(null);
+  // Assinante legado: já pagou o mensal de R$ 10,00 — mantém esse preço na renovação
+  const [legacyMonthly, setLegacyMonthly] = useState(false);
+  // Rótulos de preço PIX gerenciados pelo painel web (fallback nos valores fixos)
+  const [pixMonthlyLabel, setPixMonthlyLabel] = useState('R$ 14,90');
+  const [pixAnnualLabel, setPixAnnualLabel] = useState('R$ 120,00');
 
   const trigger = route.params?.trigger;
 
@@ -81,6 +88,36 @@ export const PaywallScreen: React.FC = () => {
       finally { setLoading(false); }
     })();
   }, []);
+
+  // Detecta direito ao preço antigo do PIX (última cobrança de R$ 10,00)
+  useEffect(() => {
+    (async () => {
+      try {
+        const status = await pixApi.getStatus();
+        if (status?.amount_cents === LEGACY_MONTHLY_CENTS) setLegacyMonthly(true);
+      } catch {}
+    })();
+  }, []);
+
+  // Carrega rótulos de preço do PIX gerenciados pelo painel web
+  useEffect(() => {
+    (async () => {
+      const cfg = await planConfigApi.getPixConfig();
+      if (cfg) {
+        setPixMonthlyLabel(cfg.monthly.priceLabel);
+        setPixAnnualLabel(cfg.annual.priceLabel);
+      }
+    })();
+  }, []);
+
+  // Quebra "R$ 14,90" em parte inteira + centavos para o layout dos cards
+  const splitPrice = (label: string): [string, string] => {
+    const i = label.indexOf(',');
+    return i === -1 ? [label, ''] : [label.slice(0, i), label.slice(i)];
+  };
+  const monthlyLabel = legacyMonthly ? 'R$ 10,00' : pixMonthlyLabel;
+  const [monthlyMain, monthlyCents] = splitPrice(monthlyLabel);
+  const [annualMain, annualCents] = splitPrice(pixAnnualLabel);
 
   const syncPremiumWithBackend = async () => {
     try {
@@ -252,7 +289,7 @@ export const PaywallScreen: React.FC = () => {
                 {pixPlan === 'monthly' && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
               <Text style={st.planName}>Mensal</Text>
-              <Text style={st.planPrice}>R$ 14<Text style={st.planPriceSm}>,90</Text></Text>
+              <Text style={st.planPrice}>{monthlyMain}<Text style={st.planPriceSm}>{monthlyCents}</Text></Text>
               <Text style={st.planPer}>por mês</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.plan, pixPlan === 'annual' && st.planOn]} onPress={() => setPixPlan('annual')} activeOpacity={0.8}>
@@ -261,7 +298,7 @@ export const PaywallScreen: React.FC = () => {
                 {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
               </View>
               <Text style={st.planName}>Anual</Text>
-              <Text style={st.planPrice}>R$ 120<Text style={st.planPriceSm}>,00</Text></Text>
+              <Text style={st.planPrice}>{annualMain}<Text style={st.planPriceSm}>{annualCents}</Text></Text>
               <Text style={st.planPer}>R$ 10,00/mês</Text>
             </TouchableOpacity>
           </View>

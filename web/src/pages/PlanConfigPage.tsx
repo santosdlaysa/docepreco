@@ -1,11 +1,18 @@
 import { useEffect, useState } from 'react';
-import { api, PlanConfig } from '../lib/api';
+import { api, PlanConfig, PixPlanConfig } from '../lib/api';
 import { ToastFn } from '../components';
-import { Save, Crown, Gift, Plus, X } from 'lucide-react';
+import { Save, Crown, Gift, Plus, X, QrCode, Upload } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
 }
+
+// Default usado quando o backend ainda não retorna a config de PIX (backend antigo).
+// O QR não vem aqui — assim que o backend novo subir, o GET traz o QR embutido em base64.
+const DEFAULT_PIX = {
+  monthly: { amountCents: 1490, priceLabel: 'R$ 14,90', copyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540514.905802BR5901N6001C62150511mensalidade630450C7', qrImage: '' },
+  annual: { amountCents: 12000, priceLabel: 'R$ 120,00', copyPaste: '00020126330014BR.GOV.BCB.PIX0111033810532805204000053039865406120.005802BR5901N6001C62090505ANUAL6304F5D2', qrImage: '' },
+};
 
 export function PlanConfigPage({ toast }: Props) {
   const [config, setConfig] = useState<PlanConfig | null>(null);
@@ -16,7 +23,9 @@ export function PlanConfigPage({ toast }: Props) {
 
   const load = async () => {
     try {
-      setConfig(await api.getPlanConfig());
+      const data = await api.getPlanConfig();
+      // Garante o campo pix mesmo se o backend ainda não o retornar
+      setConfig({ ...data, pix: data.pix ?? DEFAULT_PIX });
     } catch (e) {
       console.error(e);
     } finally {
@@ -59,6 +68,24 @@ export function PlanConfigPage({ toast }: Props) {
   const removePremiumFeature = (index: number) => {
     if (!config) return;
     setConfig({ ...config, premiumFeatures: config.premiumFeatures.filter((_, i) => i !== index) });
+  };
+
+  const updatePix = (plan: 'monthly' | 'annual', patch: Partial<PixPlanConfig>) => {
+    if (!config) return;
+    setConfig({ ...config, pix: { ...config.pix, [plan]: { ...config.pix[plan], ...patch } } });
+  };
+
+  const handleQrUpload = async (plan: 'monthly' | 'annual', file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { toast.error('Selecione um arquivo de imagem.'); return; }
+    if (file.size > 2 * 1024 * 1024) { toast.error('Imagem muito grande (máx. 2 MB).'); return; }
+    const dataUri = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+    updatePix(plan, { qrImage: dataUri });
   };
 
   return (
@@ -143,6 +170,60 @@ export function PlanConfigPage({ toast }: Props) {
                 </div>
               </div>
             </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <QrCode size={18} className="text-emerald-500" /> Pagamento via PIX
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 -mt-3">
+              Valor, código copia-e-cola e QR exibidos no app. Assinantes antigos de R$ 10,00 mantêm o preço anterior na renovação.
+            </p>
+            {(['monthly', 'annual'] as const).map(plan => {
+              const p = config.pix[plan];
+              return (
+                <div key={plan} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 space-y-3">
+                  <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">{plan === 'monthly' ? 'Plano Mensal' : 'Plano Anual'}</h4>
+                  <div className="flex flex-wrap gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Valor (centavos)</label>
+                      <input type="number" min="0" className="w-36 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                        value={p.amountCents} onChange={e => updatePix(plan, { amountCents: parseInt(e.target.value) || 0 })} />
+                      <p className="text-[11px] text-gray-400 mt-1">Ex.: 1490 = R$ 14,90</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Rótulo exibido</label>
+                      <input className="w-36 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:border-primary-400 outline-none"
+                        value={p.priceLabel} onChange={e => updatePix(plan, { priceLabel: e.target.value })} placeholder="R$ 14,90" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Código PIX (copia-e-cola)</label>
+                    <textarea rows={2} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-xs font-mono dark:bg-gray-700 dark:text-white focus:border-primary-400 outline-none"
+                      value={p.copyPaste} onChange={e => updatePix(plan, { copyPaste: e.target.value.trim() })} placeholder="00020126..." />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">QR Code</label>
+                    <div className="flex items-center gap-3">
+                      {p.qrImage ? (
+                        <img src={p.qrImage} alt="QR PIX" className="w-20 h-20 rounded-lg border border-gray-200 dark:border-gray-600 object-contain bg-white" />
+                      ) : (
+                        <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-[10px] text-gray-400 text-center px-1">QR embutido do app</div>
+                      )}
+                      <div className="flex flex-col gap-2">
+                        <label className="inline-flex items-center gap-1.5 text-xs px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 cursor-pointer transition-colors">
+                          <Upload size={13} /> Enviar imagem
+                          <input type="file" accept="image/*" className="hidden" onChange={e => handleQrUpload(plan, e.target.files?.[0] ?? null)} />
+                        </label>
+                        {p.qrImage && (
+                          <button onClick={() => updatePix(plan, { qrImage: '' })} className="text-xs text-red-500 hover:text-red-600 text-left">Remover (usar QR do app)</button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
 
           <button onClick={save} disabled={saving}

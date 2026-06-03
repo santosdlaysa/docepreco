@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  ImageSourcePropType,
 } from 'react-native';
 import * as ClipboardModule from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,30 +20,59 @@ import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
-import { pixApi } from '../../data/api/pixApi';
+import { pixApi, LEGACY_MONTHLY_CENTS } from '../../data/api/pixApi';
+import { planConfigApi, PixPlanConfig } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'PixPayment'>;
 type RouteType = RouteProp<RootStackParamList, 'PixPayment'>;
 
-const PLANS = {
-  monthly: {
-    label: 'Mensal',
-    price: 'R$ 14,90',
-    priceCents: 1490,
-    pixCopyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540514.905802BR5901N6001C62150511mensalidade630450C7',
-    qrImage: require('../../../assets/qrcode-pix-monthly.png'),
-  },
-  annual: {
-    label: 'Anual',
-    price: 'R$ 120,00',
-    priceCents: 12000,
-    pixCopyPaste: '00020126330014BR.GOV.BCB.PIX0111033810532805204000053039865406120.005802BR5901N6001C62090505ANUAL6304F5D2',
-    qrImage: require('../../../assets/qrcode-pix-annual.png'),
-  },
+interface PixPlan {
+  label: string;
+  price: string;
+  priceCents: number;
+  pixCopyPaste: string;
+  qrImage: ImageSourcePropType;
+}
+
+// Plano mensal atual (novos assinantes): R$ 14,90 — usado como fallback se o
+// painel web estiver indisponível
+const MONTHLY: PixPlan = {
+  label: 'Mensal',
+  price: 'R$ 14,90',
+  priceCents: 1490,
+  pixCopyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540514.905802BR5901N6001C62150511mensalidade630450C7',
+  qrImage: require('../../../assets/qrcode-pix-monthly.png'),
 };
 
-type PlanType = keyof typeof PLANS;
+// Plano mensal legado (quem já assinou por R$ 10,00) — mantido na renovação
+const MONTHLY_LEGACY: PixPlan = {
+  label: 'Mensal',
+  price: 'R$ 10,00',
+  priceCents: 1000,
+  pixCopyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540510.005802BR5901N6001C62100506mensal63041609',
+  qrImage: require('../../../assets/qrcode-pix (2).png'),
+};
+
+const ANNUAL: PixPlan = {
+  label: 'Anual',
+  price: 'R$ 120,00',
+  priceCents: 12000,
+  pixCopyPaste: '00020126330014BR.GOV.BCB.PIX0111033810532805204000053039865406120.005802BR5901N6001C62090505ANUAL6304F5D2',
+  qrImage: require('../../../assets/qrcode-pix-annual.png'),
+};
+
+// Converte a config vinda do painel web no formato usado pela tela.
+// Mantém o QR embutido quando o admin não enviou uma imagem própria.
+const toPlan = (label: string, cfg: PixPlanConfig, fallbackQr: ImageSourcePropType): PixPlan => ({
+  label,
+  price: cfg.priceLabel,
+  priceCents: cfg.amountCents,
+  pixCopyPaste: cfg.copyPaste,
+  qrImage: cfg.qrImage ? { uri: cfg.qrImage } : fallbackQr,
+});
+
+type PlanType = 'monthly' | 'annual';
 
 export const PixPaymentScreen: React.FC = () => {
   const { t } = useTranslation();
@@ -56,18 +86,40 @@ export const PixPaymentScreen: React.FC = () => {
   const [sent, setSent] = useState(false);
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Assinante legado: já pagou o mensal de R$ 10,00 — mantém esse preço na renovação
+  const [legacyMonthly, setLegacyMonthly] = useState(false);
+  // Config de PIX vinda do painel web (valor, código e QR). Null → usa embutido.
+  const [serverMonthly, setServerMonthly] = useState<PixPlan | null>(null);
+  const [serverAnnual, setServerAnnual] = useState<PixPlan | null>(null);
 
-  const plan = PLANS[selectedPlan];
+  const monthlyPlan = legacyMonthly ? MONTHLY_LEGACY : (serverMonthly ?? MONTHLY);
+  const annualPlan = serverAnnual ?? ANNUAL;
+  const plan = selectedPlan === 'annual' ? annualPlan : monthlyPlan;
 
   // Check if there's already a pending request
   useEffect(() => {
     (async () => {
       try {
         const status = await pixApi.getStatus();
+        // Última cobrança PIX de R$ 10,00 → usuário tem direito ao preço antigo
+        if (status?.amount_cents === LEGACY_MONTHLY_CENTS) {
+          setLegacyMonthly(true);
+        }
         if (status?.status === 'pending') {
           setSent(true);
         }
       } catch {}
+    })();
+  }, []);
+
+  // Carrega valores/QR gerenciados pelo painel web
+  useEffect(() => {
+    (async () => {
+      const cfg = await planConfigApi.getPixConfig();
+      if (cfg) {
+        setServerMonthly(toPlan('Mensal', cfg.monthly, MONTHLY.qrImage));
+        setServerAnnual(toPlan('Anual', cfg.annual, ANNUAL.qrImage));
+      }
     })();
   }, []);
 
@@ -167,7 +219,7 @@ export const PixPaymentScreen: React.FC = () => {
                   Mensal
                 </Text>
                 <Text style={[styles.planTabPrice, selectedPlan === 'monthly' && styles.planTabPriceActive]}>
-                  R$ 14,90
+                  {monthlyPlan.price}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -181,7 +233,7 @@ export const PixPaymentScreen: React.FC = () => {
                   Anual
                 </Text>
                 <Text style={[styles.planTabPrice, selectedPlan === 'annual' && styles.planTabPriceActive]}>
-                  R$ 120,00
+                  {annualPlan.price}
                 </Text>
               </TouchableOpacity>
             </View>
