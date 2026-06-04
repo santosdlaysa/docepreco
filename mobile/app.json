@@ -15,6 +15,7 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "scheme": "docepreco",
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.laysadiniz.sweetpricing",

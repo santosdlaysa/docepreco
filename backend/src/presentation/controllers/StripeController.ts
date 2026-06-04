@@ -187,13 +187,15 @@ export class StripeController {
   h1{font-size:24px;margin:0 0 8px}
   p{color:#9A7E8C;font-size:16px;margin:0 0 32px}
   .btn{background:#EA4B92;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:16px;font-weight:700;cursor:pointer;text-decoration:none}
+  .tip{background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:14px 20px;font-size:15px;font-weight:600;color:#15803D}
 </style>
 </head>
 <body>
   <div class="icon">🎉</div>
   <h1>Pagamento confirmado!</h1>
-  <p>Sua assinatura está ativa. Volte ao app para aproveitar.</p>
-  <a class="btn" href="docepreco://">Voltar ao app</a>
+  <p>Sua assinatura está ativa.</p>
+  <p style="font-size:14px;color:#9A7E8C;margin-bottom:32px">Feche esta aba e volte ao app — seu acesso será ativado automaticamente.</p>
+  <div class="tip">Feche esta aba do navegador</div>
 </body>
 </html>`);
   }
@@ -215,8 +217,8 @@ export class StripeController {
 <body>
   <div class="icon">😕</div>
   <h1>Pagamento cancelado</h1>
-  <p>Nenhuma cobrança foi feita. Você pode tentar novamente no app.</p>
-  <a class="btn" href="docepreco://">Voltar ao app</a>
+  <p>Nenhuma cobrança foi feita. Feche esta aba e tente novamente no app.</p>
+  <div class="tip">Feche esta aba do navegador</div>
 </body>
 </html>`);
   }
