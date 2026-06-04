@@ -40,6 +40,7 @@ import whatsappRoutes from './presentation/routes/whatsappRoutes';
 import pixRoutes from './presentation/routes/pixRoutes';
 import cashRoutes from './presentation/routes/cashRoutes';
 import referralRoutes from './presentation/routes/referralRoutes';
+import stripeRoutes from './presentation/routes/stripeRoutes';
 import { warmUpEvolutionApi } from './infrastructure/services/whatsappService';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
@@ -56,6 +57,10 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(cors());
+
+// Stripe webhook needs raw body — must be registered BEFORE express.json
+app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+
 // Limite ampliado para acomodar imagens (ex.: QR do PIX) enviadas em base64
 app.use(express.json({ limit: '5mb' }));
 
@@ -107,6 +112,7 @@ app.use('/api/ingredients/:ingredientId/price-history', authMiddleware, priceHis
 app.use('/api', premiumRoutes);
 app.use('/api', pixRoutes);
 app.use('/api', referralRoutes);
+app.use('/api', stripeRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/whatsapp', whatsappRoutes);
 app.use('/api/telegram', telegramRoutes);

@@ -1,5 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  AppState,
+  AppStateStatus,
   View,
   Text,
   ScrollView,
@@ -28,6 +30,7 @@ import {
 } from '../../data/premium/revenueCat';
 import { authApi } from '../../data/api/authApi';
 import { pixApi, LEGACY_MONTHLY_CENTS } from '../../data/api/pixApi';
+import { stripeApi } from '../../data/api/stripeApi';
 import { planConfigApi } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
 
@@ -78,6 +81,8 @@ export const PaywallScreen: React.FC = () => {
   const [restoring, setRestoring] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [configured] = useState(isRevenueCatConfigured());
+  const [cardLoading, setCardLoading] = useState(false);
+  const appState = useRef(AppState.currentState);
   const [pixPlan, setPixPlan] = useState<'monthly' | 'annual' | null>(null);
   // Nível escolhido pelo usuário no paywall (Premium ou Master)
   const [tier, setTier] = useState<'premium' | 'master'>('premium');
@@ -123,6 +128,17 @@ export const PaywallScreen: React.FC = () => {
     })();
   }, []);
 
+  // Quando o app volta ao foco após o usuário pagar no browser, verifica se virou premium
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (next: AppStateStatus) => {
+      if (appState.current.match(/inactive|background/) && next === 'active') {
+        await refresh();
+      }
+      appState.current = next;
+    });
+    return () => sub.remove();
+  }, [refresh]);
+
   // Carrega rótulos de preço do PIX e infos do Master gerenciados pelo painel web
   useEffect(() => {
     (async () => {
@@ -162,6 +178,18 @@ export const PaywallScreen: React.FC = () => {
   const accent = isMasterTier ? PURPLE : PINK;
   // PIX disponível para o nível: Premium sempre; Master só após configuração no painel
   const pixAvailable = isMasterTier ? masterPixAvailable : true;
+
+  const handleCardPayment = async (plan: 'monthly' | 'annual') => {
+    setCardLoading(true);
+    try {
+      const url = await stripeApi.createCheckout(plan, tier);
+      await Linking.openURL(url);
+    } catch {
+      showToast('Erro ao abrir pagamento. Tente novamente.', 'error');
+    } finally {
+      setCardLoading(false);
+    }
+  };
 
   const syncPremiumWithBackend = async () => {
     try {
@@ -356,6 +384,46 @@ export const PaywallScreen: React.FC = () => {
               </TouchableOpacity>
             </>
           )}
+
+          {/* ── Cartão de crédito (Stripe) ── */}
+          <View style={st.orDivider}>
+            <View style={st.orLine} />
+            <Text style={st.orText}>ou pague com cartão</Text>
+            <View style={st.orLine} />
+          </View>
+
+          <View style={st.plans}>
+            <TouchableOpacity
+              style={[st.plan, isMasterTier && { borderColor: PURPLE }]}
+              onPress={() => handleCardPayment('monthly')}
+              activeOpacity={0.8}
+              disabled={cardLoading}
+            >
+              <Ionicons name="card-outline" size={18} color={isMasterTier ? PURPLE : PINK} style={{ marginBottom: 4 }} />
+              <Text style={st.planName}>Mensal</Text>
+              <Text style={st.planPrice}>{isMasterTier ? 'R$ 30' : 'R$ 14'}<Text style={st.planPriceSm}>{isMasterTier ? ',00' : ',90'}</Text></Text>
+              <Text style={st.planPer}>por mês</Text>
+            </TouchableOpacity>
+            {showAnnual && (
+              <TouchableOpacity
+                style={st.plan}
+                onPress={() => handleCardPayment('annual')}
+                activeOpacity={0.8}
+                disabled={cardLoading}
+              >
+                <View style={[st.save, { backgroundColor: '#2563EB' }]}><Text style={st.saveText}>ECONOMIZE</Text></View>
+                <Ionicons name="card-outline" size={18} color={PINK} style={{ marginBottom: 4 }} />
+                <Text style={st.planName}>Anual</Text>
+                <Text style={st.planPrice}>R$ 120<Text style={st.planPriceSm}>,00</Text></Text>
+                <Text style={st.planPer}>R$ 10/mês</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          <View style={[st.cardCtaRow]}>
+            {cardLoading && <ActivityIndicator color={isMasterTier ? PURPLE : PINK} style={{ marginBottom: 8 }} />}
+            <Text style={st.foot}>Pagamento seguro via Stripe · Visa, Master, Amex</Text>
+          </View>
 
           {/* ── Restore ── */}
           <TouchableOpacity onPress={handleRestore} disabled={restoring} style={{ alignItems: 'center', paddingVertical: 8 }}>
@@ -573,6 +641,7 @@ const st = StyleSheet.create({
     shadowColor: '#00A86B', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.3, shadowRadius: 10, elevation: 4,
   },
 
+  cardCtaRow: { alignItems: 'center', gap: 4 },
   link: { fontSize: 13.5, fontWeight: '700', color: '#2BA7DD' },
 
   legal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },

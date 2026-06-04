@@ -24,6 +24,7 @@
     "node-cron": "^4.2.1",
     "pg": "^8.11.3",
     "resend": "^6.10.0",
+    "stripe": "^22.2.0",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^9.0.0"
   },
