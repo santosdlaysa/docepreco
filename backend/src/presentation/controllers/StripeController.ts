@@ -66,7 +66,7 @@ export class StripeController {
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
-        automatic_payment_methods: { enabled: true },
+        automatic_payment_methods: { enabled: true, allow_redirects: 'never' },
         customer_email: user.email,
         line_items: [
           {
@@ -87,9 +87,9 @@ export class StripeController {
       });
 
       res.json({ success: true, data: { url: session.url } });
-    } catch (error) {
-      console.error('[Stripe] createCheckout error:', error);
-      res.status(500).json({ success: false, error: 'Failed to create checkout session' });
+    } catch (error: any) {
+      console.error('[Stripe] createCheckout error:', error?.message ?? error);
+      res.status(500).json({ success: false, error: error?.message ?? 'Failed to create checkout session' });
     }
   }
 
