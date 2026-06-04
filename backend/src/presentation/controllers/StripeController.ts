@@ -66,7 +66,7 @@ export class StripeController {
 
       const session = await stripe.checkout.sessions.create({
         mode: 'payment',
-        payment_method_types: ['card'],
+        automatic_payment_methods: { enabled: true },
         customer_email: user.email,
         line_items: [
           {
