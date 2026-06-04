@@ -522,6 +522,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'notification_templates', 'schedule_interval_hours', 'INTEGER');
 
     // Encomendas (orders) — garante colunas em tabelas criadas em versões anteriores
+    await addColumnIfMissing(client, 'orders', 'client_name', "VARCHAR(255) NOT NULL DEFAULT ''");
     await addColumnIfMissing(client, 'orders', 'client_phone', 'VARCHAR(40)');
     await addColumnIfMissing(client, 'orders', 'recipe_id', 'UUID');
     await addColumnIfMissing(client, 'orders', 'recipe_name', "VARCHAR(255) NOT NULL DEFAULT ''");
