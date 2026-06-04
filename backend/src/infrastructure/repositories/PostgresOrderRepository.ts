@@ -10,6 +10,13 @@ export interface OrderPayment {
   date: string;
 }
 
+export interface OrderItem {
+  recipeId?: string;
+  recipeName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 export interface Order {
   id: string;
   userId: string;
@@ -26,6 +33,7 @@ export interface Order {
   paid: boolean;
   paidAmount: number;
   payments: OrderPayment[];
+  items: OrderItem[];
   notes?: string | null;
   createdAt: string;
 }
@@ -55,8 +63,8 @@ export class PostgresOrderRepository {
     const result = await pool.query(
       `INSERT INTO orders
         (user_id, client_name, client_phone, recipe_id, recipe_name, quantity, unit_price,
-         total_price, delivery_date, delivery_time, status, paid, paid_amount, payments, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         total_price, delivery_date, delivery_time, status, paid, paid_amount, payments, items, notes)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
         userId,
@@ -73,6 +81,7 @@ export class PostgresOrderRepository {
         d.paid ?? false,
         d.paidAmount ?? 0,
         JSON.stringify(d.payments ?? []),
+        JSON.stringify(d.items ?? []),
         d.notes ?? null,
       ]
     );
@@ -95,7 +104,8 @@ export class PostgresOrderRepository {
         paid          = COALESCE($13, paid),
         paid_amount   = COALESCE($14, paid_amount),
         payments      = COALESCE($15, payments),
-        notes         = COALESCE($16, notes)
+        items         = COALESCE($16, items),
+        notes         = COALESCE($17, notes)
        WHERE id = $1 AND user_id = $2
        RETURNING *`,
       [
@@ -114,6 +124,7 @@ export class PostgresOrderRepository {
         typeof d.paid === 'boolean' ? d.paid : null,
         d.paidAmount ?? null,
         d.payments !== undefined ? JSON.stringify(d.payments) : null,
+        d.items !== undefined ? JSON.stringify(d.items) : null,
         d.notes ?? null,
       ]
     );
@@ -144,6 +155,7 @@ export class PostgresOrderRepository {
       paid: row.paid as boolean,
       paidAmount: parseFloat(row.paid_amount as string),
       payments: (row.payments as OrderPayment[]) ?? [],
+      items: (row.items as OrderItem[]) ?? [],
       notes: (row.notes as string) ?? null,
       createdAt: (row.created_at as Date).toISOString(),
     };

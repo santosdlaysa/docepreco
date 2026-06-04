@@ -9,6 +9,13 @@ export interface OrderPayment {
   date: string; // YYYY-MM-DD
 }
 
+export interface OrderItem {
+  recipeId?: string;
+  recipeName: string;
+  quantity: number;
+  unitPrice: number;
+}
+
 export interface Order {
   id: string;
   clientName: string;
@@ -24,6 +31,7 @@ export interface Order {
   paid?: boolean;
   paidAmount?: number;
   payments?: OrderPayment[];
+  items?: OrderItem[];
   notes?: string;
   createdAt: string;
 }

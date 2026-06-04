@@ -177,8 +177,12 @@ export const OrdersScreen: React.FC = () => {
           {/* Top: name + total */}
           <View style={st.cardTop}>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={st.cardRecipe}>{item.recipeName}</Text>
-              <Text style={st.cardClient}>{item.clientName} · {item.quantity} un × {fmtCurrency(item.unitPrice)}</Text>
+              <Text style={st.cardRecipe}>
+                {item.items && item.items.length > 1 ? `${item.items[0].recipeName} +${item.items.length - 1}` : item.recipeName}
+              </Text>
+              <Text style={st.cardClient}>
+                {item.clientName} · {item.items && item.items.length > 1 ? `${item.items.length} produtos` : `${item.quantity} un × ${fmtCurrency(item.unitPrice)}`}
+              </Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={st.cardTotal}>{fmtCurrency(item.totalPrice)}</Text>

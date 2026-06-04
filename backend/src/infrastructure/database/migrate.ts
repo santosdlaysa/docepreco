@@ -534,6 +534,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'orders', 'paid', 'BOOLEAN NOT NULL DEFAULT false');
     await addColumnIfMissing(client, 'orders', 'paid_amount', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
     await addColumnIfMissing(client, 'orders', 'payments', "JSONB NOT NULL DEFAULT '[]'::jsonb");
+    await addColumnIfMissing(client, 'orders', 'items', "JSONB NOT NULL DEFAULT '[]'::jsonb");
     await addColumnIfMissing(client, 'orders', 'notes', 'TEXT');
 
     // Seed schedule config for existing templates (only if schedule_hour is null)

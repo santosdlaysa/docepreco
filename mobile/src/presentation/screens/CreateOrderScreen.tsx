@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
+import { OrderStatus, OrderPayment, OrderItem, PaymentMethodType } from '../../domain/entities/Order';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Client } from '../../domain/entities/Client';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
@@ -78,12 +78,13 @@ export const CreateOrderScreen: React.FC = () => {
   const { showToast } = useToast();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
 
+  interface ItemDraft { id: string; recipeId?: string; recipeName: string; quantity: string; unitPrice: string; }
+  const newItemDraft = (): ItemDraft => ({ id: Math.random().toString(36).slice(2), recipeId: undefined, recipeName: '', quantity: '', unitPrice: '' });
+
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
-  const [recipeName, setRecipeName] = useState('');
-  const [recipeId, setRecipeId] = useState<string | undefined>();
-  const [quantity, setQuantity] = useState('');
-  const [unitPrice, setUnitPrice] = useState('');
+  const [items, setItems] = useState<ItemDraft[]>([newItemDraft()]);
+  const [pickingItemIdx, setPickingItemIdx] = useState<number | null>(null);
   const [deliveryDate, setDeliveryDate] = useState('');
   const [deliveryTime, setDeliveryTime] = useState('');
   const [status, setStatus] = useState<OrderStatus>('pending');
@@ -98,7 +99,6 @@ export const CreateOrderScreen: React.FC = () => {
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [showRecipePicker, setShowRecipePicker] = useState(false);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
 
   const toIso = (d: string) => { const [dd, mm, aaaa] = d.split('-'); return `${aaaa}-${mm}-${dd}`; };
@@ -112,10 +112,10 @@ export const CreateOrderScreen: React.FC = () => {
         if (!order) return;
         setClientName(order.clientName);
         setClientPhone(order.clientPhone || '');
-        setRecipeName(order.recipeName);
-        setRecipeId(order.recipeId);
-        setQuantity(String(order.quantity));
-        setUnitPrice(String(order.unitPrice));
+        const loadedItems = order.items && order.items.length > 0
+          ? order.items.map(i => ({ id: Math.random().toString(36).slice(2), recipeId: i.recipeId, recipeName: i.recipeName, quantity: String(i.quantity), unitPrice: String(i.unitPrice) }))
+          : [{ id: Math.random().toString(36).slice(2), recipeId: order.recipeId, recipeName: order.recipeName, quantity: String(order.quantity), unitPrice: String(order.unitPrice) }];
+        setItems(loadedItems);
         setDeliveryDate(fromIso(order.deliveryDate));
         setDeliveryTime(order.deliveryTime || '');
         setStatus(order.status);
@@ -126,7 +126,7 @@ export const CreateOrderScreen: React.FC = () => {
     }
   }, []);
 
-  const totalPrice = (parseFloat(quantity) || 0) * (parseFloat(unitPrice) || 0);
+  const totalPrice = items.reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unitPrice) || 0), 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(totalPrice - totalPaid, 0);
 
@@ -137,9 +137,9 @@ export const CreateOrderScreen: React.FC = () => {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!clientName.trim()) e.client = 'Obrigatório';
-    if (!recipeName.trim()) e.recipe = 'Obrigatório';
-    if (!quantity || parseFloat(quantity) <= 0) e.qty = 'Obrigatório';
-    if (!unitPrice || parseFloat(unitPrice) <= 0) e.price = 'Obrigatório';
+    if (items.some(i => !i.recipeName.trim())) e.recipe = 'Selecione todos os produtos';
+    if (items.some(i => !i.quantity || parseFloat(i.quantity) <= 0)) e.qty = 'Preencha as quantidades';
+    if (items.some(i => !i.unitPrice || parseFloat(i.unitPrice) <= 0)) e.price = 'Preencha os preços';
     if (!deliveryDate.trim()) e.date = 'Obrigatório';
     if (deliveryDate && !/^\d{2}-\d{2}-\d{4}$/.test(deliveryDate)) e.date = 'Use DD-MM-AAAA';
     setErrors(e);
@@ -150,10 +150,20 @@ export const CreateOrderScreen: React.FC = () => {
     if (!validate()) return;
     setLoading(true);
     try {
+      const orderItems: OrderItem[] = items.map(i => ({
+        recipeId: i.recipeId,
+        recipeName: i.recipeName.trim(),
+        quantity: parseFloat(i.quantity),
+        unitPrice: parseFloat(i.unitPrice),
+      }));
       const data = {
         clientName: clientName.trim(), clientPhone: clientPhone.trim() || undefined,
-        recipeId, recipeName: recipeName.trim(),
-        quantity: parseFloat(quantity), unitPrice: parseFloat(unitPrice), totalPrice,
+        recipeId: orderItems[0]?.recipeId,
+        recipeName: orderItems[0]?.recipeName || '',
+        quantity: orderItems[0]?.quantity || 1,
+        unitPrice: orderItems[0]?.unitPrice || 0,
+        totalPrice,
+        items: orderItems,
         deliveryDate: toIso(deliveryDate.trim()), deliveryTime: deliveryTime.trim() || undefined,
         status, paidAmount: totalPaid, payments, notes: notes.trim() || undefined,
       };
@@ -230,41 +240,74 @@ export const CreateOrderScreen: React.FC = () => {
               keyboardType="phone-pad" maxLength={15} editable={!isLocked} onChangeText={setClientPhone} />
           </View>
 
-          {/* ── Produto ── */}
-          <Text style={st.sec}>Produto</Text>
-          <TouchableOpacity style={[st.input, errors.recipe ? st.inputErr : null]} onPress={() => { if (!isLocked) setShowRecipePicker(true); }} activeOpacity={0.8}>
-            {recipeName ? (
-              <>
-                <LinearGradient colors={['#FF8FB6', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  style={{ width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{recipeName.slice(0, 2).toUpperCase()}</Text>
-                </LinearGradient>
-                <Text style={{ flex: 1, fontSize: 15, color: INK }}>{recipeName}</Text>
-              </>
-            ) : (
-              <Text style={{ flex: 1, fontSize: 15, color: INK3 }}>Selecionar receita</Text>
-            )}
-            <Ionicons name="chevron-forward" size={16} color={INK3} />
-          </TouchableOpacity>
-          {errors.recipe && <Text style={st.err}>{errors.recipe}</Text>}
-
-          <View style={st.two}>
-            <View style={[st.field, { flex: 1 }]}>
-              <Text style={st.label}>Qtd</Text>
-              <View style={[st.input, errors.qty ? st.inputErr : null]}>
-                <TextInput style={st.inputText} value={quantity} placeholder="1" placeholderTextColor={INK3}
-                  keyboardType="number-pad" editable={!isLocked} onChangeText={setQuantity} />
+          {/* ── Produtos ── */}
+          <Text style={st.sec}>Produtos</Text>
+          {items.map((item, idx) => {
+            const itemTotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0);
+            return (
+              <View key={item.id} style={st.itemCard}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <TouchableOpacity
+                    style={[st.input, { flex: 1 }, (!item.recipeName && errors.recipe) ? st.inputErr : null]}
+                    onPress={() => { if (!isLocked) setPickingItemIdx(idx); }}
+                    activeOpacity={0.8}
+                  >
+                    {item.recipeName ? (
+                      <>
+                        <LinearGradient colors={['#FF8FB6', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                          style={{ width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
+                          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.recipeName.slice(0, 2).toUpperCase()}</Text>
+                        </LinearGradient>
+                        <Text style={{ flex: 1, fontSize: 15, color: INK }} numberOfLines={1}>{item.recipeName}</Text>
+                      </>
+                    ) : (
+                      <Text style={{ flex: 1, fontSize: 15, color: INK3 }}>Selecionar receita</Text>
+                    )}
+                    <Ionicons name="chevron-forward" size={16} color={INK3} />
+                  </TouchableOpacity>
+                  {!isLocked && items.length > 1 && (
+                    <TouchableOpacity onPress={() => setItems(prev => prev.filter((_, i) => i !== idx))}>
+                      <Ionicons name="close-circle" size={22} color="#C0392B" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                <View style={st.two}>
+                  <View style={[st.field, { flex: 1 }]}>
+                    <Text style={st.label}>Qtd</Text>
+                    <View style={[st.input, (errors.qty && (!item.quantity || parseFloat(item.quantity) <= 0)) ? st.inputErr : null]}>
+                      <TextInput style={st.inputText} value={item.quantity} placeholder="1" placeholderTextColor={INK3}
+                        keyboardType="number-pad" editable={!isLocked}
+                        onChangeText={v => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: v } : it))} />
+                    </View>
+                  </View>
+                  <View style={[st.field, { flex: 1 }]}>
+                    <Text style={st.label}>Preço un.</Text>
+                    <View style={[st.input, (errors.price && (!item.unitPrice || parseFloat(item.unitPrice) <= 0)) ? st.inputErr : null]}>
+                      <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                      <TextInput style={st.inputText} value={item.unitPrice} placeholder="120,00" placeholderTextColor={INK3}
+                        keyboardType="decimal-pad" editable={!isLocked}
+                        onChangeText={v => setItems(prev => prev.map((it, i) => i === idx ? { ...it, unitPrice: v } : it))} />
+                    </View>
+                  </View>
+                </View>
+                {itemTotal > 0 && items.length > 1 && (
+                  <View style={[st.totalRow, { marginTop: 0 }]}>
+                    <Text style={st.totalLabel}>Subtotal</Text>
+                    <Text style={[st.totalValue, { fontSize: 15 }]}>{fmtCurrency(itemTotal)}</Text>
+                  </View>
+                )}
               </View>
-            </View>
-            <View style={[st.field, { flex: 1 }]}>
-              <Text style={st.label}>Preço un.</Text>
-              <View style={[st.input, errors.price ? st.inputErr : null]}>
-                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
-                <TextInput style={st.inputText} value={unitPrice} placeholder="120,00" placeholderTextColor={INK3}
-                  keyboardType="decimal-pad" editable={!isLocked} onChangeText={setUnitPrice} />
-              </View>
-            </View>
-          </View>
+            );
+          })}
+          {(errors.recipe || errors.qty || errors.price) && (
+            <Text style={st.err}>{errors.recipe || errors.qty || errors.price}</Text>
+          )}
+          {!isLocked && (
+            <TouchableOpacity style={st.addPayBtn} onPress={() => setItems(prev => [...prev, newItemDraft()])} activeOpacity={0.7}>
+              <Ionicons name="add-circle-outline" size={16} color={PINK} />
+              <Text style={st.addPayText}>Adicionar produto</Text>
+            </TouchableOpacity>
+          )}
 
           {totalPrice > 0 && (
             <View style={st.totalRow}>
@@ -403,17 +446,22 @@ export const CreateOrderScreen: React.FC = () => {
       </KeyboardAvoidingView>
 
       {/* ── Recipe picker ── */}
-      <Modal visible={showRecipePicker} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={pickingItemIdx !== null} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={{ flex: 1, backgroundColor: CREAM }}>
           <View style={st.modalHead}>
             <Text style={st.modalTitle}>Escolher receita</Text>
-            <TouchableOpacity onPress={() => setShowRecipePicker(false)}><Ionicons name="close" size={24} color={INK} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => setPickingItemIdx(null)}><Ionicons name="close" size={24} color={INK} /></TouchableOpacity>
           </View>
           <FlatList data={recipes} keyExtractor={item => item.id} contentContainerStyle={{ padding: 18 }}
             renderItem={({ item, index }) => {
               const bg = THUMB_COLORS[index % THUMB_COLORS.length];
               return (
-                <TouchableOpacity onPress={() => { setRecipeName(item.name); setRecipeId(item.id); setShowRecipePicker(false); }} activeOpacity={0.8} style={st.pickerRow}>
+                <TouchableOpacity onPress={() => {
+                  if (pickingItemIdx !== null) {
+                    setItems(prev => prev.map((it, i) => i === pickingItemIdx ? { ...it, recipeName: item.name, recipeId: item.id } : it));
+                    setPickingItemIdx(null);
+                  }
+                }} activeOpacity={0.8} style={st.pickerRow}>
                   <View style={[st.pickerThumb, { backgroundColor: bg }]}><Text style={st.pickerThumbText}>{item.name.slice(0, 2).toUpperCase()}</Text></View>
                   <View style={{ flex: 1 }}><Text style={st.pickerName}>{item.name}</Text><Text style={st.pickerMeta}>{item.yield} un · {item.ingredients.length} ingredientes</Text></View>
                   <Ionicons name="chevron-forward" size={18} color={INK3} />
@@ -470,6 +518,7 @@ const st = StyleSheet.create({
   remainingLabel: { fontSize: 13, fontWeight: '700', color: INK2 },
   remainingValue: { fontSize: 16, fontWeight: '700', color: PINK },
 
+  itemCard: { backgroundColor: '#fff', borderRadius: 18, padding: 14, gap: 10, ...SHADOW },
   addPayBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 14, borderWidth: 1.5, borderColor: PINK, borderStyle: 'dashed' },
   addPayText: { fontSize: 13, color: PINK, fontWeight: '700' },
   addPayForm: { backgroundColor: '#fff', borderRadius: 18, padding: 14, gap: 10, ...SHADOW },
