@@ -155,7 +155,7 @@ function mapPackage(pkg: any): PremiumPackage {
 
   const badge = isAnnual ? 'ECONOMIZE' : undefined;
 
-  const introPrice = product?.introPrice ?? null;
+  const introPrice = product?.introductoryPrice ?? product?.introPrice ?? null;
   const trialDays = computeTrialDays(introPrice);
   const hasFreeTrial = trialDays !== null && trialDays > 0;
 
