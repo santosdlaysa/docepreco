@@ -22,7 +22,7 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "37"
+      "buildNumber": "39"
     },
     "android": {
       "adaptiveIcon": {
@@ -34,7 +34,7 @@
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.laysadiniz.sweetpricing",
-      "versionCode": 52,
+      "versionCode": 54,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
