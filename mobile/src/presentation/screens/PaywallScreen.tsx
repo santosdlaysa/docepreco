@@ -73,7 +73,7 @@ export const PaywallScreen: React.FC = () => {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RouteType>();
   const { showToast } = useToast();
-  const { refresh } = usePremium();
+  const { refresh, isPremium } = usePremium();
 
   const [packages, setPackages] = useState<PremiumPackage[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -82,7 +82,13 @@ export const PaywallScreen: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [configured] = useState(isRevenueCatConfigured());
   const [cardLoading, setCardLoading] = useState(false);
+  // Overlay "verificando pagamento" enquanto consulta o backend após voltar do Stripe
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
   const appState = useRef(AppState.currentState);
+  // Marca que o usuário saiu para pagar no cartão (Stripe) — habilita o polling no retorno
+  const initiatedPayment = useRef(false);
+  // Espelha o isPremium para poder consultá-lo dentro do loop de polling
+  const premiumRef = useRef(isPremium);
   const [pixPlan, setPixPlan] = useState<'monthly' | 'annual' | null>(null);
   // Nível escolhido pelo usuário no paywall (Premium ou Master)
   const [tier, setTier] = useState<'premium' | 'master'>('premium');
@@ -128,11 +134,38 @@ export const PaywallScreen: React.FC = () => {
     })();
   }, []);
 
-  // Quando o app volta ao foco após o usuário pagar no browser, verifica se virou premium
+  // Mantém o premiumRef em dia para o loop de polling poder encerrar cedo
+  useEffect(() => { premiumRef.current = isPremium; }, [isPremium]);
+
+  // Assim que o pagamento (Stripe/PIX) é detectado, fecha o paywall automaticamente
+  useEffect(() => {
+    if (isPremium && initiatedPayment.current) {
+      initiatedPayment.current = false;
+      setVerifyingPayment(false);
+      showToast('Pagamento confirmado! Bem-vinda ao PRO 🎉', 'success');
+      navigation.goBack();
+    }
+  }, [isPremium, navigation, showToast]);
+
+  // Quando o app volta ao foco após o usuário pagar no browser, verifica se virou premium.
+  // Se ele iniciou um pagamento no cartão, faz polling para dar tempo ao webhook do Stripe.
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (next: AppStateStatus) => {
       if (appState.current.match(/inactive|background/) && next === 'active') {
-        await refresh();
+        if (initiatedPayment.current) {
+          setVerifyingPayment(true);
+          // Tenta algumas vezes (webhook pode demorar alguns segundos para confirmar)
+          for (let i = 0; i < 6 && !premiumRef.current; i++) {
+            await refresh();
+            if (premiumRef.current) break;
+            await new Promise((r) => setTimeout(r, 2000));
+          }
+          // Se após o polling ainda não confirmou, encerra o overlay (o watcher acima
+          // fecha o paywall caso o premium chegue durante as tentativas)
+          if (!premiumRef.current) setVerifyingPayment(false);
+        } else {
+          await refresh();
+        }
       }
       appState.current = next;
     });
@@ -183,6 +216,7 @@ export const PaywallScreen: React.FC = () => {
     setCardLoading(true);
     try {
       const url = await stripeApi.createCheckout(plan, tier);
+      initiatedPayment.current = true;
       await Linking.openURL(url);
     } catch {
       showToast('Erro ao abrir pagamento. Tente novamente.', 'error');
@@ -444,6 +478,17 @@ export const PaywallScreen: React.FC = () => {
           <View style={{ height: 44 }} />
         </View>
       </ScrollView>
+
+      {/* ── Overlay: verificando pagamento após retorno do Stripe ── */}
+      {verifyingPayment && (
+        <View style={st.verifyOverlay}>
+          <View style={st.verifyCard}>
+            <ActivityIndicator size="large" color={accent} />
+            <Text style={st.verifyText}>Confirmando seu pagamento…</Text>
+            <Text style={st.verifySub}>Isso pode levar alguns segundos.</Text>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -646,4 +691,24 @@ const st = StyleSheet.create({
 
   legal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   legalLink: { fontSize: 12.5, fontWeight: '600', color: INK2 },
+
+  /* overlay "verificando pagamento" */
+  verifyOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(61,34,51,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  verifyCard: {
+    backgroundColor: '#fff',
+    borderRadius: 22,
+    paddingVertical: 28,
+    paddingHorizontal: 28,
+    alignItems: 'center',
+    gap: 12,
+    ...SHADOW,
+  },
+  verifyText: { fontSize: 16, fontWeight: '700', color: INK, textAlign: 'center' },
+  verifySub: { fontSize: 13, fontWeight: '500', color: INK2, textAlign: 'center' },
 });
