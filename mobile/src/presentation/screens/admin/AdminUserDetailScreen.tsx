@@ -15,6 +15,14 @@ type Route = RouteProp<AdminStackParamList, 'AdminUserDetail'>;
 const fmtDate = (s?: string | null) => s ? new Date(s).toLocaleDateString('pt-BR') : '—';
 const fmtDateTime = (s?: string | null) => s ? new Date(s).toLocaleString('pt-BR') : '—';
 
+// Rótulos amigáveis para a origem do pagamento (premium_platform)
+const PLATFORM_LABELS: Record<string, string> = {
+  ios: 'App Store',
+  android: 'Google Play',
+  manual: 'Manual',
+  card: 'Cartão',
+};
+
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <View style={styles.infoRow}>
@@ -106,7 +114,7 @@ export const AdminUserDetailScreen: React.FC = () => {
             )}
             {user.premiumPlatform && (
               <View style={[styles.tag, { backgroundColor: '#EDE9FE' }]}>
-                <Text style={[styles.tagText, { color: '#7C3AED' }]}>{user.premiumPlatform}</Text>
+                <Text style={[styles.tagText, { color: '#7C3AED' }]}>{PLATFORM_LABELS[user.premiumPlatform] ?? user.premiumPlatform}</Text>
               </View>
             )}
           </View>

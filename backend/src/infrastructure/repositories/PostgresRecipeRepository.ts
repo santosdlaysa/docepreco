@@ -8,12 +8,70 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       'SELECT * FROM recipes WHERE user_id = $1 ORDER BY name ASC',
       [userId]
     );
-    const recipes: Recipe[] = [];
-    for (const row of result.rows) {
-      const recipe = await this.loadRelations(row);
-      recipes.push(recipe);
+    if (result.rows.length === 0) return [];
+
+    const recipeIds = result.rows.map(r => r.id);
+
+    // Carrega todas as relações em lote (3 queries no total, em vez de 3 por receita)
+    const [ingredientsResult, costsResult, subRecipesResult] = await Promise.all([
+      pool.query(
+        `SELECT ri.*, i.name AS ingredient_name
+         FROM recipe_ingredients ri
+         JOIN ingredients i ON i.id = ri.ingredient_id
+         WHERE ri.recipe_id = ANY($1)`,
+        [recipeIds]
+      ),
+      pool.query(
+        'SELECT * FROM recipe_additional_costs WHERE recipe_id = ANY($1)',
+        [recipeIds]
+      ),
+      pool.query(
+        `SELECT sr.*, r.name AS sub_recipe_name
+         FROM recipe_sub_recipes sr
+         JOIN recipes r ON r.id = sr.sub_recipe_id
+         WHERE sr.recipe_id = ANY($1)`,
+        [recipeIds]
+      ),
+    ]);
+
+    // Agrupa as relações por recipe_id
+    const ingredientsByRecipe = new Map<string, RecipeIngredient[]>();
+    for (const r of ingredientsResult.rows) {
+      const list = ingredientsByRecipe.get(r.recipe_id) ?? [];
+      list.push({
+        ingredientId: r.ingredient_id,
+        ingredientName: r.ingredient_name,
+        quantityUsed: parseFloat(r.quantity_used),
+        unit: r.unit,
+      });
+      ingredientsByRecipe.set(r.recipe_id, list);
     }
-    return recipes;
+
+    const costsByRecipe = new Map<string, AdditionalCost[]>();
+    for (const r of costsResult.rows) {
+      const list = costsByRecipe.get(r.recipe_id) ?? [];
+      list.push({ name: r.name, value: parseFloat(r.value) });
+      costsByRecipe.set(r.recipe_id, list);
+    }
+
+    const subRecipesByRecipe = new Map<string, SubRecipe[]>();
+    for (const r of subRecipesResult.rows) {
+      const list = subRecipesByRecipe.get(r.recipe_id) ?? [];
+      list.push({
+        subRecipeId: r.sub_recipe_id,
+        subRecipeName: r.sub_recipe_name,
+        quantityUsed: parseFloat(r.quantity_used),
+        unit: r.unit || 'un',
+      });
+      subRecipesByRecipe.set(r.recipe_id, list);
+    }
+
+    return result.rows.map(row => this.mapRow(
+      row,
+      ingredientsByRecipe.get(row.id) ?? [],
+      costsByRecipe.get(row.id) ?? [],
+      subRecipesByRecipe.get(row.id) ?? [],
+    ));
   }
 
   async findById(id: string, userId: string): Promise<Recipe | null> {
@@ -151,24 +209,26 @@ export class PostgresRecipeRepository implements IRecipeRepository {
   }
 
   private async loadRelations(row: Record<string, unknown>): Promise<Recipe> {
-    const ingredientsResult = await pool.query(
-      `SELECT ri.*, i.name AS ingredient_name
-       FROM recipe_ingredients ri
-       JOIN ingredients i ON i.id = ri.ingredient_id
-       WHERE ri.recipe_id = $1`,
-      [row.id]
-    );
-    const costsResult = await pool.query(
-      'SELECT * FROM recipe_additional_costs WHERE recipe_id = $1',
-      [row.id]
-    );
-    const subRecipesResult = await pool.query(
-      `SELECT sr.*, r.name AS sub_recipe_name
-       FROM recipe_sub_recipes sr
-       JOIN recipes r ON r.id = sr.sub_recipe_id
-       WHERE sr.recipe_id = $1`,
-      [row.id]
-    );
+    const [ingredientsResult, costsResult, subRecipesResult] = await Promise.all([
+      pool.query(
+        `SELECT ri.*, i.name AS ingredient_name
+         FROM recipe_ingredients ri
+         JOIN ingredients i ON i.id = ri.ingredient_id
+         WHERE ri.recipe_id = $1`,
+        [row.id]
+      ),
+      pool.query(
+        'SELECT * FROM recipe_additional_costs WHERE recipe_id = $1',
+        [row.id]
+      ),
+      pool.query(
+        `SELECT sr.*, r.name AS sub_recipe_name
+         FROM recipe_sub_recipes sr
+         JOIN recipes r ON r.id = sr.sub_recipe_id
+         WHERE sr.recipe_id = $1`,
+        [row.id]
+      ),
+    ]);
 
     const ingredients: RecipeIngredient[] = ingredientsResult.rows.map(r => ({
       ingredientId: r.ingredient_id,
@@ -189,6 +249,15 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       unit: r.unit || 'un',
     }));
 
+    return this.mapRow(row, ingredients, additionalCosts, subRecipes);
+  }
+
+  private mapRow(
+    row: Record<string, unknown>,
+    ingredients: RecipeIngredient[],
+    additionalCosts: AdditionalCost[],
+    subRecipes: SubRecipe[],
+  ): Recipe {
     return {
       id: row.id as string,
       name: row.name as string,

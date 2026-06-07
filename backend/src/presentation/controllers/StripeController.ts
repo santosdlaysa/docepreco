@@ -148,11 +148,11 @@ export class StripeController {
       premiumUntil.setDate(premiumUntil.getDate() + days);
       const planTier = tier === 'master' ? 'master' : 'premium';
 
-      await userRepo.updatePlanTier(userId, planTier, premiumUntil, 'manual');
+      await userRepo.updatePlanTier(userId, planTier, premiumUntil, 'card');
 
       await pool.query(
         `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store)
-         VALUES ($1, 'INITIAL_PURCHASE', 'stripe', 'manual', $2, $3, 'STRIPE')`,
+         VALUES ($1, 'INITIAL_PURCHASE', 'stripe', 'card', $2, $3, 'STRIPE')`,
         [userId, `stripe_${planTier}_${plan}`, premiumUntil]
       );
 
@@ -166,7 +166,7 @@ export class StripeController {
         );
       }
 
-      notifyPremiumEvent(user.companyName, 'INITIAL_PURCHASE', 'manual');
+      notifyPremiumEvent(user.companyName, 'INITIAL_PURCHASE', 'card');
       console.log(`[Stripe] Webhook: premium granted to ${userId} (${planTier} ${plan})`);
       res.json({ received: true });
     } catch (error) {

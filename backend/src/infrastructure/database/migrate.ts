@@ -861,6 +861,12 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'sales', 'payment_method', 'VARCHAR(20) NULL');
     await addColumnIfMissing(client, 'sales', 'session_id', 'UUID NULL REFERENCES cash_sessions(id) ON DELETE SET NULL');
 
+    // Índices para acelerar listagem/carregamento de receitas e suas relações
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_recipes_user ON recipes (user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients (recipe_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_additional_costs_recipe ON recipe_additional_costs (recipe_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_sub_recipes_recipe ON recipe_sub_recipes (recipe_id)`);
+
     await client.query('COMMIT');
     console.log('Migrations applied successfully');
   } catch (error) {
