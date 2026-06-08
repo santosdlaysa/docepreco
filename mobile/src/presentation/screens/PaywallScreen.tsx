@@ -243,7 +243,7 @@ export const PaywallScreen: React.FC = () => {
     try {
       const result = await purchasePackage(selectedPkg);
       if (result === 'success') {
-        showToast(selectedPkg.isTrialEligible ? `Bem-vinda ao teste grátis de ${selectedPkg.trialDays} dias! 🎉` : 'Bem-vinda ao PRO! 🎉', 'success');
+        showToast('Bem-vinda ao PRO! 🎉', 'success');
         await syncPremiumWithBackend();
         navigation.goBack();
       } else if (result !== 'cancelled') {
@@ -325,7 +325,6 @@ export const PaywallScreen: React.FC = () => {
                 return (
                   <TouchableOpacity key={pkg.identifier} style={[st.plan, on && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setSelected(pkg.identifier)} activeOpacity={0.8}>
                     {pkg.badge && <View style={[st.save, isMasterTier && { backgroundColor: PURPLE, shadowColor: PURPLE }]}><Text style={st.saveText}>{pkg.badge}</Text></View>}
-                    {pkg.isTrialEligible && !pkg.badge && !pkg.identifier.toLowerCase().includes('annual') && <View style={[st.save, { backgroundColor: '#2ecc71' }]}><Text style={st.saveText}>{pkg.trialDays} dias grátis</Text></View>}
                     <View style={[st.radio, on && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
                       {on && <Ionicons name="checkmark" size={12} color="#fff" />}
                     </View>
@@ -372,11 +371,7 @@ export const PaywallScreen: React.FC = () => {
                 </LinearGradient>
               </TouchableOpacity>
 
-              <Text style={st.foot}>
-                {selectedPkg?.isTrialEligible && !selectedPkg.identifier.toLowerCase().includes('annual')
-                  ? `${selectedPkg.trialDays} dias grátis · depois ${selectedPkg.priceLabel} · cancele quando quiser`
-                  : 'Cancele quando quiser · sem compromisso'}
-              </Text>
+              <Text style={st.foot}>Cancele quando quiser · sem compromisso</Text>
             </>
           )}
 

@@ -455,7 +455,7 @@ export const HomeScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.proCtaTitle}>Desbloqueie tudo no PRO</Text>
-                <Text style={s.proCtaSub}>3 dias grátis · depois R$ 14,90/mês ou R$ 10 no PIX</Text>
+                <Text style={s.proCtaSub}>R$ 14,90/mês ou R$ 10 no PIX</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={PINK} />
             </LinearGradient>

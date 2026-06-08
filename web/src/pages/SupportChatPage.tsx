@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { api, SupportConversation, SupportMessage } from '../lib/api';
-import { TableSkeleton, ToastFn } from '../components';
-import { Headset, Send, MessageCircle, Search } from 'lucide-react';
+import { api, SupportConversation, SupportMessage, AdminUser } from '../lib/api';
+import { TableSkeleton, ModalOverlay, ToastFn } from '../components';
+import { Headset, Send, MessageCircle, Search, PenSquare, X } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -25,12 +25,18 @@ function fmtDate(iso: string) {
 export function SupportChatPage({ toast }: Props) {
   const [conversations, setConversations] = useState<SupportConversation[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedUserInfo, setSelectedUserInfo] = useState<{ userName: string; userEmail: string } | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  // Nova conversa (iniciar suporte proativamente)
+  const [showNewConv, setShowNewConv] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [userResults, setUserResults] = useState<AdminUser[]>([]);
+  const [searchingUsers, setSearchingUsers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesPollRef = useRef<ReturnType<typeof setInterval>>();
@@ -79,13 +85,50 @@ export function SupportChatPage({ toast }: Props) {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  // Busca usuários (debounced) enquanto o modal de nova conversa está aberto
+  useEffect(() => {
+    if (!showNewConv) return;
+    setSearchingUsers(true);
+    const handle = setTimeout(async () => {
+      try {
+        const res = await api.listUsers({ search: userSearch.trim() || undefined, sortBy: 'lastSeenAt' });
+        setUserResults(res.users);
+      } catch {
+        setUserResults([]);
+      } finally {
+        setSearchingUsers(false);
+      }
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [userSearch, showNewConv]);
+
   const handleSelectConversation = async (userId: string) => {
+    const conv = conversations.find(c => c.userId === userId);
+    if (conv) setSelectedUserInfo({ userName: conv.userName, userEmail: conv.userEmail });
     setSelectedUserId(userId);
     setLoadingMessages(true);
     setMessages([]);
     await loadMessages(userId);
     // Update unread in conversation list
     setConversations(prev => prev.map(c => c.userId === userId ? { ...c, unreadCount: 0 } : c));
+  };
+
+  // Inicia (ou reabre) uma conversa com um usuário escolhido no seletor
+  const handleStartConversation = async (user: AdminUser) => {
+    setShowNewConv(false);
+    setUserSearch('');
+    setUserResults([]);
+    const existing = conversations.find(c => c.userId === user.id);
+    if (existing) {
+      await handleSelectConversation(user.id);
+      return;
+    }
+    setSelectedUserInfo({ userName: user.companyName, userEmail: user.email });
+    setSelectedUserId(user.id);
+    setLoadingMessages(true);
+    setMessages([]);
+    await loadMessages(user.id);
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const handleSend = async () => {
@@ -96,12 +139,26 @@ export function SupportChatPage({ toast }: Props) {
       setMessages(prev => [...prev, sent]);
       setNewMessage('');
       textareaRef.current?.focus();
-      // Update conversation list preview
-      setConversations(prev => prev.map(c =>
-        c.userId === selectedUserId
-          ? { ...c, lastMessage: sent.message, lastMessageAt: sent.createdAt, lastSenderType: 'admin' }
-          : c
-      ));
+      // Update conversation list preview — ou cria a entrada se for conversa nova
+      setConversations(prev => {
+        if (prev.some(c => c.userId === selectedUserId)) {
+          return prev.map(c =>
+            c.userId === selectedUserId
+              ? { ...c, lastMessage: sent.message, lastMessageAt: sent.createdAt, lastSenderType: 'admin' }
+              : c
+          );
+        }
+        const fresh: SupportConversation = {
+          userId: selectedUserId,
+          userName: selectedUserInfo?.userName ?? '',
+          userEmail: selectedUserInfo?.userEmail ?? '',
+          lastMessage: sent.message,
+          lastMessageAt: sent.createdAt,
+          lastSenderType: 'admin',
+          unreadCount: 0,
+        };
+        return [fresh, ...prev];
+      });
     } catch {
       toast.error('Erro ao enviar mensagem');
     } finally {
@@ -136,8 +193,6 @@ export function SupportChatPage({ toast }: Props) {
       )
     : conversations;
 
-  const selectedConversation = conversations.find(c => c.userId === selectedUserId);
-
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
   return (
@@ -145,22 +200,36 @@ export function SupportChatPage({ toast }: Props) {
       {/* Header */}
       <div className="flex items-center gap-3 mb-4">
         <Headset className="text-primary-500" size={24} />
-        <div>
+        <div className="flex-1">
           <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">Suporte Chat</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {conversations.length} conversa{conversations.length !== 1 ? 's' : ''}
             {totalUnread > 0 && <span className="ml-2 text-red-500 font-medium">{totalUnread} não lida{totalUnread !== 1 ? 's' : ''}</span>}
           </p>
         </div>
+        <button
+          onClick={() => setShowNewConv(true)}
+          className="flex items-center gap-2 bg-primary-500 text-white text-sm font-medium rounded-xl px-4 py-2 hover:bg-primary-600 transition-colors"
+        >
+          <PenSquare size={16} />
+          Nova conversa
+        </button>
       </div>
 
       {loading ? (
         <TableSkeleton rows={5} cols={3} />
-      ) : conversations.length === 0 ? (
+      ) : conversations.length === 0 && !selectedUserId ? (
         <div className="flex-1 flex items-center justify-center text-gray-400">
           <div className="text-center">
             <MessageCircle size={48} className="mx-auto mb-3 opacity-50" />
             <p>Nenhuma conversa de suporte ainda</p>
+            <button
+              onClick={() => setShowNewConv(true)}
+              className="mt-4 inline-flex items-center gap-2 bg-primary-500 text-white text-sm font-medium rounded-xl px-4 py-2 hover:bg-primary-600 transition-colors"
+            >
+              <PenSquare size={16} />
+              Iniciar conversa
+            </button>
           </div>
         </div>
       ) : (
@@ -233,11 +302,11 @@ export function SupportChatPage({ toast }: Props) {
                 <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm">
-                      {selectedConversation?.userName.charAt(0).toUpperCase()}
+                      {selectedUserInfo?.userName.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-sm text-gray-800 dark:text-gray-100">{selectedConversation?.userName}</p>
-                      <p className="text-xs text-gray-400">{selectedConversation?.userEmail}</p>
+                      <p className="font-medium text-sm text-gray-800 dark:text-gray-100">{selectedUserInfo?.userName || 'Usuário'}</p>
+                      <p className="text-xs text-gray-400">{selectedUserInfo?.userEmail}</p>
                     </div>
                   </div>
                 </div>
@@ -299,6 +368,71 @@ export function SupportChatPage({ toast }: Props) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Modal: nova conversa — selecionar usuário */}
+      {showNewConv && (
+        <ModalOverlay onClose={() => setShowNewConv(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <PenSquare size={18} className="text-primary-500" />
+                <h2 className="font-bold text-gray-800 dark:text-gray-100">Nova conversa</h2>
+              </div>
+              <button onClick={() => setShowNewConv(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="Buscar usuário por nome ou e-mail..."
+                  value={userSearch}
+                  onChange={e => setUserSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:border-primary-400"
+                />
+              </div>
+            </div>
+
+            <div className="max-h-80 overflow-y-auto">
+              {searchingUsers ? (
+                <div className="flex items-center justify-center py-10">
+                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-500 border-t-transparent" />
+                </div>
+              ) : userResults.length === 0 ? (
+                <div className="text-center text-gray-400 py-10 text-sm">Nenhum usuário encontrado</div>
+              ) : (
+                userResults.map(user => {
+                  const hasConv = conversations.some(c => c.userId === user.id);
+                  return (
+                    <button
+                      key={user.id}
+                      onClick={() => handleStartConversation(user)}
+                      className="w-full text-left p-3 flex items-center gap-3 border-b border-gray-50 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-primary-100 text-primary-600 flex items-center justify-center font-bold text-sm flex-shrink-0">
+                        {(user.companyName || user.email).charAt(0).toUpperCase()}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm text-gray-800 dark:text-gray-100 truncate">{user.companyName || 'Sem nome'}</p>
+                        <p className="text-xs text-gray-400 truncate">{user.email}</p>
+                      </div>
+                      {hasConv && (
+                        <span className="text-[10px] font-medium text-primary-600 bg-primary-50 dark:bg-primary-900/30 rounded-full px-2 py-0.5 flex-shrink-0">
+                          conversa existente
+                        </span>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </ModalOverlay>
       )}
     </div>
   );
