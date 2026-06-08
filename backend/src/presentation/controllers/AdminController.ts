@@ -615,7 +615,8 @@ export class AdminController {
     try {
       const result = await pool.query(
         `SELECT id, event_type AS "eventType", source, platform, product_id AS "productId",
-                expiration_at AS "expirationAt", store, created_at AS "createdAt"
+                expiration_at AS "expirationAt", store, amount_cents AS "amountCents", currency,
+                created_at AS "createdAt"
          FROM premium_events
          WHERE user_id = $1
          ORDER BY created_at DESC

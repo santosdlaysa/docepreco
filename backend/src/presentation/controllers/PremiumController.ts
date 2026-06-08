@@ -33,7 +33,19 @@ interface RevenueCatEvent {
   store?: 'APP_STORE' | 'PLAY_STORE' | 'STRIPE' | 'PROMOTIONAL';
   expiration_at_ms?: number;
   event_timestamp_ms?: number;
+  // Preço da transação enviado pelo RevenueCat. `price_in_purchased_currency` é o
+  // valor que o cliente realmente pagou na moeda da loja; `price` é o equivalente.
+  price?: number;
+  price_in_purchased_currency?: number;
+  currency?: string;
 }
+
+/** Converte o preço do webhook do RevenueCat em centavos, ou null se ausente. */
+const eventAmountCents = (event: RevenueCatEvent): number | null => {
+  const value = event.price_in_purchased_currency ?? event.price;
+  if (typeof value !== 'number' || value <= 0) return null;
+  return Math.round(value * 100);
+};
 
 interface RevenueCatWebhookBody {
   api_version?: string;
@@ -172,11 +184,11 @@ export class PremiumController {
           console.log(`[Premium] Unhandled event type: ${event.type}`);
       }
 
-      // Record premium event for history tracking
+      // Record premium event for history tracking (com o valor pago, quando o RC envia)
       await pool.query(
-        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store)
-         VALUES ($1, $2, 'webhook', $3, $4, $5, $6)`,
-        [userId, event.type, platform, event.product_id ?? null, expiresAt, event.store ?? null]
+        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents, currency)
+         VALUES ($1, $2, 'webhook', $3, $4, $5, $6, $7, COALESCE($8, 'BRL'))`,
+        [userId, event.type, platform, event.product_id ?? null, expiresAt, event.store ?? null, eventAmountCents(event), event.currency ?? null]
       );
 
       notifyPremiumEvent(user.companyName, event.type, platform);

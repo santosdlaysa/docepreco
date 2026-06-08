@@ -89,6 +89,8 @@ export interface PremiumEvent {
   productId: string | null;
   expirationAt: string | null;
   store: string | null;
+  amountCents: number | null;
+  currency: string | null;
   createdAt: string;
 }
 

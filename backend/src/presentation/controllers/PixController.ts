@@ -153,7 +153,7 @@ export class PixController {
     try {
       // Get the request
       const reqResult = await pool.query(
-        `SELECT user_id, status, plan_tier FROM pix_requests WHERE id = $1`,
+        `SELECT user_id, status, plan_tier, amount_cents FROM pix_requests WHERE id = $1`,
         [id]
       );
       if (reqResult.rows.length === 0) {
@@ -184,11 +184,12 @@ export class PixController {
       // Grant the chosen tier (manual platform).
       await userRepo.updatePlanTier(userId, tier, premiumUntil, 'manual');
 
-      // Record premium event
+      // Record premium event (com o valor pago, vindo da própria solicitação PIX)
+      const pixAmountCents = reqResult.rows[0].amount_cents ?? null;
       await pool.query(
-        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store)
-         VALUES ($1, 'INITIAL_PURCHASE', 'pix', 'manual', $2, $3, 'PIX')`,
-        [userId, tier === 'master' ? 'pix_master' : 'pix_premium', premiumUntil]
+        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents)
+         VALUES ($1, 'INITIAL_PURCHASE', 'pix', 'manual', $2, $3, 'PIX', $4)`,
+        [userId, tier === 'master' ? 'pix_master' : 'pix_premium', premiumUntil, pixAmountCents]
       );
 
       // Send push notification to user

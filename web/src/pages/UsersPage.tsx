@@ -417,7 +417,12 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                       return (
                         <div key={ev.id} className="flex items-start justify-between text-sm border-b border-gray-100 dark:border-gray-700 pb-2">
                           <div>
-                            <p className={`font-medium ${info.color}`}>{info.label}</p>
+                            <p className={`font-medium ${info.color}`}>
+                              {info.label}
+                              {ev.amountCents != null && ev.amountCents > 0 && (
+                                <span className="ml-2 font-semibold text-green-600">{fmtCurrency(ev.amountCents / 100)}</span>
+                              )}
+                            </p>
                             <p className="text-xs text-gray-400">
                               {sourceLabel}
                               {ev.platform ? ` · ${ev.platform}` : ''}
