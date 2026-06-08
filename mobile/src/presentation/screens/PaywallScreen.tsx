@@ -113,6 +113,11 @@ export const PaywallScreen: React.FC = () => {
 
   const trigger = route.params?.trigger;
 
+  // Recurso exclusivo do Master → já abre o paywall no nível Master.
+  useEffect(() => {
+    if (trigger?.kind === 'master') setTier('master');
+  }, [trigger]);
+
   useEffect(() => {
     (async () => {
       try {

@@ -63,7 +63,7 @@ const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { companyName, companyLogo } = useAuth();
-  const { isPremium } = usePremium();
+  const { isPremium, isMaster } = usePremium();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { requirePremium } = usePaywall();
 
@@ -411,30 +411,37 @@ export const HomeScreen: React.FC = () => {
             { icon: 'people-outline' as const, bg: '#EEF8FD', ic: '#2BA7DD', title: 'Clientes', sub: 'Contatos e aniversários', route: 'Clients' },
             { icon: 'clipboard-outline' as const, bg: '#DCF6E5', ic: GREEN, title: 'Encomendas', sub: 'Entregas e pagamento', route: 'Orders' },
             { icon: 'pricetag-outline' as const, bg: '#FFF1CE', ic: '#C8870B', title: 'Épocas', sub: 'Ajuste sazonal de preços', route: 'Seasons' },
-          ] as const).map(item => (
-            <TouchableOpacity
-              key={item.title}
-              style={s.proTile}
-              onPress={() => navigation.navigate(item.route as never)}
-              activeOpacity={0.8}
-            >
-              {!isPremium && (
-                <View style={s.proLock}>
-                  <Ionicons name="lock-closed" size={10} color="#C8870B" />
+            { icon: 'cash-outline' as const, bg: '#EDE4FB', ic: '#7C3AED', title: 'Financeiro', sub: 'Resultado e DRE', route: 'Finance', master: true },
+            { icon: 'cube-outline' as const, bg: '#E9F6FF', ic: '#2BA7DD', title: 'Estoque', sub: 'Baixa automática', route: 'Stock', master: true },
+            { icon: 'bulb-outline' as const, bg: '#FFF6D6', ic: '#D99A00', title: 'Dicas de vendas', sub: 'Precificação inteligente', route: 'SalesTips', master: true },
+          ] as const).map(item => {
+            const isMasterItem = 'master' in item && item.master;
+            const locked = isMasterItem ? !isMaster : !isPremium;
+            return (
+              <TouchableOpacity
+                key={item.title}
+                style={s.proTile}
+                onPress={() => navigation.navigate(item.route as never)}
+                activeOpacity={0.8}
+              >
+                {locked && (
+                  <View style={[s.proLock, isMasterItem && { backgroundColor: '#EDE4FB' }]}>
+                    <Ionicons name="lock-closed" size={10} color={isMasterItem ? '#7C3AED' : '#C8870B'} />
+                  </View>
+                )}
+                {!locked && (
+                  <View style={s.proUnlocked}>
+                    <Ionicons name="checkmark" size={10} color={GREEN} />
+                  </View>
+                )}
+                <View style={[s.proTileIco, { backgroundColor: item.bg }]}>
+                  <Ionicons name={item.icon} size={22} color={item.ic} />
                 </View>
-              )}
-              {isPremium && (
-                <View style={s.proUnlocked}>
-                  <Ionicons name="checkmark" size={10} color={GREEN} />
-                </View>
-              )}
-              <View style={[s.proTileIco, { backgroundColor: item.bg }]}>
-                <Ionicons name={item.icon} size={22} color={item.ic} />
-              </View>
-              <Text style={s.proTileTitle}>{item.title}</Text>
-              <Text style={s.proTileSub}>{item.sub}</Text>
-            </TouchableOpacity>
-          ))}
+                <Text style={s.proTileTitle}>{item.title}</Text>
+                <Text style={s.proTileSub}>{item.sub}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
         {/* PRO CTA (only free) */}

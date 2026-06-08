@@ -29,6 +29,9 @@ import { CreateOrderScreen } from '../screens/CreateOrderScreen';
 import { ClientsScreen } from '../screens/ClientsScreen';
 import { CreateClientScreen } from '../screens/CreateClientScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
+import { FinanceScreen } from '../screens/FinanceScreen';
+import { StockScreen } from '../screens/StockScreen';
+import { SalesTipsScreen } from '../screens/SalesTipsScreen';
 import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
 import { IngredientPriceHistoryScreen } from '../screens/IngredientPriceHistoryScreen';
 import { SeasonsScreen } from '../screens/SeasonsScreen';
@@ -409,6 +412,9 @@ export function AppNavigator() {
           <Stack.Screen name="CreateClient" component={CreateClientScreen} />
           <Stack.Screen name="EditClient" component={CreateClientScreen} />
           <Stack.Screen name="Reports" component={ReportsScreen} />
+          <Stack.Screen name="Finance" component={FinanceScreen} />
+          <Stack.Screen name="Stock" component={StockScreen} />
+          <Stack.Screen name="SalesTips" component={SalesTipsScreen} />
           <Stack.Screen name="PdfSettings" component={PdfSettingsScreen} />
           <Stack.Screen name="IngredientPriceHistory" component={IngredientPriceHistoryScreen} />
           <Stack.Screen name="Seasons" component={SeasonsScreen} />
