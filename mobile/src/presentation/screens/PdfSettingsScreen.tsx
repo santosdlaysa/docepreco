@@ -25,7 +25,7 @@ import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { shareRecipeQuote } from '../utils/pdfQuote';
 import { useTranslation } from 'react-i18next';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../context/AuthContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;

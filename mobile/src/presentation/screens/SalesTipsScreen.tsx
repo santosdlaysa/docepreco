@@ -9,6 +9,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -173,7 +174,21 @@ export const SalesTipsScreen: React.FC = () => {
                   </View>
                   <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color={INK3} />
                 </View>
-                {open && <Text style={s.tipBody}>{tip.body}</Text>}
+                {open && (
+                  <>
+                    <Text style={s.tipBody}>{tip.body}</Text>
+                    {tip.link && (
+                      <TouchableOpacity
+                        style={s.tipLink}
+                        activeOpacity={0.85}
+                        onPress={() => Linking.openURL(tip.link!.url)}
+                      >
+                        <Ionicons name="open-outline" size={16} color="#fff" />
+                        <Text style={s.tipLinkText}>{tip.link.label}</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
               </TouchableOpacity>
             );
           })}
@@ -321,4 +336,6 @@ const s = StyleSheet.create({
   tipTitle: { fontSize: 14.5, fontWeight: '700', color: INK },
   tipCat: { fontSize: 11.5, fontWeight: '700', marginTop: 2 },
   tipBody: { fontSize: 13.5, color: INK2, lineHeight: 20, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: LINE },
+  tipLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: PURPLE, borderRadius: 12, paddingVertical: 11, marginTop: 12 },
+  tipLinkText: { fontSize: 13.5, fontWeight: '700', color: '#fff' },
 });

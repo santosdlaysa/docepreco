@@ -19,6 +19,8 @@ export interface MarketingTip {
   icon: string;        // Ionicons
   title: string;
   body: string;
+  /** Link opcional exibido como botão no card expandido (ex.: template do Canva). */
+  link?: { url: string; label: string };
 }
 
 export interface CategoryMeta {
@@ -40,6 +42,14 @@ export const MARKETING_CATEGORIES: CategoryMeta[] = [
 ];
 
 export const MARKETING_TIPS: MarketingTip[] = [
+  // ── Destaque: template pronto de Story ──
+  {
+    id: 'ig-template-story', category: 'instagram', icon: 'color-palette-outline',
+    title: 'Template de Story pronto no Canva',
+    body: 'Não sabe como deixar o Story bonito? Use um modelo pronto: é só trocar a foto e o texto pelo seu doce e publicar. Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.',
+    link: { url: 'https://canva.link/0e147tvm3mph6ls', label: 'Abrir template de Story no Canva' },
+  },
+
   // ── Instagram / redes ──
   {
     id: 'ig-constancia', category: 'instagram', icon: 'repeat-outline',

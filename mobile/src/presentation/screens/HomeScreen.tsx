@@ -413,7 +413,7 @@ export const HomeScreen: React.FC = () => {
             { icon: 'pricetag-outline' as const, bg: '#FFF1CE', ic: '#C8870B', title: 'Épocas', sub: 'Ajuste sazonal de preços', route: 'Seasons' },
             { icon: 'cash-outline' as const, bg: '#EDE4FB', ic: '#7C3AED', title: 'Financeiro', sub: 'Resultado e DRE', route: 'Finance', master: true },
             { icon: 'cube-outline' as const, bg: '#E9F6FF', ic: '#2BA7DD', title: 'Estoque', sub: 'Baixa automática', route: 'Stock', master: true },
-            { icon: 'bulb-outline' as const, bg: '#FFF6D6', ic: '#D99A00', title: 'Dicas de vendas', sub: 'Precificação inteligente', route: 'SalesTips', master: true },
+            { icon: 'bulb-outline' as const, bg: '#FFF6D6', ic: '#D99A00', title: 'Dicas de vendas', sub: 'Precificação inteligente e modelos de story para Instagram', route: 'SalesTips', master: true },
           ] as const).map(item => {
             const isMasterItem = 'master' in item && item.master;
             const locked = isMasterItem ? !isMaster : !isPremium;
