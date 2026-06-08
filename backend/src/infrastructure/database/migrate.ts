@@ -895,6 +895,19 @@ export async function runMigrations() {
       WHERE pe.source = 'pix' AND pe.amount_cents IS NULL
     `);
 
+    // RevenueCat: o Premium MENSAL de loja sempre custou R$ 14,90 (confirmado pelo cliente).
+    // Anual e Master de loja não têm preço histórico definido — ficam para preenchimento manual.
+    await client.query(`
+      UPDATE premium_events SET amount_cents = 1490
+      WHERE source = 'webhook' AND amount_cents IS NULL
+        AND event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE')
+        AND product_id IS NOT NULL
+        AND product_id NOT ILIKE '%master%'
+        AND product_id NOT ILIKE '%anual%'
+        AND product_id NOT ILIKE '%annual%'
+        AND product_id NOT ILIKE '%year%'
+    `);
+
     await client.query('COMMIT');
     console.log('Migrations applied successfully');
   } catch (error) {
