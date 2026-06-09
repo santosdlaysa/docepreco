@@ -23,7 +23,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
  */
 export function usePaywall() {
   const navigation = useNavigation<Nav>();
-  const { isPremium } = usePremium();
+  const { isPremium, isMaster } = usePremium();
 
   const openPaywall = (trigger?: PaywallTrigger) => {
     navigation.navigate('Paywall', { trigger });
@@ -67,5 +67,27 @@ export function usePaywall() {
     return false;
   };
 
-  return { isPremium, openPaywall, checkLimit, requirePremium, guardScreen };
+  /**
+   * Inline gate para recursos exclusivos do plano Master.
+   * Abre o paywall já no nível Master se o usuário não for Master.
+   */
+  const requireMaster = (feature?: string): boolean => {
+    if (!PREMIUM_ENABLED) return true;
+    if (isMaster) return true;
+    openPaywall({ kind: 'master', feature });
+    return false;
+  };
+
+  /**
+   * Use no topo de telas exclusivas do Master (em useFocusEffect / useEffect).
+   * Substitui a tela atual pelo Paywall (nível Master) quando não há acesso.
+   */
+  const guardMaster = (feature?: string): boolean => {
+    if (!PREMIUM_ENABLED) return true;
+    if (isMaster) return true;
+    navigation.replace('Paywall', { trigger: { kind: 'master', feature } });
+    return false;
+  };
+
+  return { isPremium, isMaster, openPaywall, checkLimit, requirePremium, guardScreen, requireMaster, guardMaster };
 }

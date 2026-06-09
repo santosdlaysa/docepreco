@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 const KEY = '@sweet_pricing_company_logo';
 const LOGO_FILENAME = 'company_logo.jpg';

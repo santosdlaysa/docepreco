@@ -102,6 +102,15 @@ export function PlanConfigPage({ toast }: Props) {
     setConfig({ ...config, pix: { ...config.pix, [plan]: { ...config.pix[plan], ...patch } } });
   };
 
+  // Formata centavos como rótulo exibido (ex.: 1490 → "R$ 14,90")
+  const centsToLabel = (cents: number) => `R$ ${(cents / 100).toFixed(2).replace('.', ',')}`;
+
+  // Ao mudar o valor cobrado, mantém o rótulo do paywall em sincronia automaticamente.
+  // (o rótulo continua editável manualmente depois, caso queira um texto diferente)
+  const updatePixAmount = (plan: PixKey, cents: number) => {
+    updatePix(plan, { amountCents: cents, priceLabel: centsToLabel(cents) });
+  };
+
   const handleQrUpload = async (plan: PixKey, file: File | null) => {
     if (!file) return;
     if (!file.type.startsWith('image/')) { toast.error('Selecione um arquivo de imagem.'); return; }
@@ -252,8 +261,8 @@ export function PlanConfigPage({ toast }: Props) {
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Valor (centavos)</label>
                       <input type="number" min="0" className="w-36 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
-                        value={p.amountCents} onChange={e => updatePix(plan, { amountCents: parseInt(e.target.value) || 0 })} />
-                      <p className="text-[11px] text-gray-400 mt-1">Ex.: 1490 = R$ 14,90</p>
+                        value={p.amountCents} onChange={e => updatePixAmount(plan, parseInt(e.target.value) || 0)} />
+                      <p className="text-[11px] text-gray-400 mt-1">Ex.: 1490 = R$ 14,90 · atualiza o rótulo automaticamente</p>
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 dark:text-gray-200 mb-1">Rótulo exibido</label>

@@ -867,6 +867,47 @@ export async function runMigrations() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_additional_costs_recipe ON recipe_additional_costs (recipe_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_sub_recipes_recipe ON recipe_sub_recipes (recipe_id)`);
 
+    // Valor pago por evento de assinatura — alimenta o histórico financeiro no admin.
+    await addColumnIfMissing(client, 'premium_events', 'amount_cents', 'INTEGER');
+    await addColumnIfMissing(client, 'premium_events', 'currency', "VARCHAR(3) NOT NULL DEFAULT 'BRL'");
+
+    // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
+    // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.
+    await client.query(`
+      UPDATE premium_events SET amount_cents = CASE product_id
+        WHEN 'stripe_premium_monthly' THEN 1490
+        WHEN 'stripe_premium_annual'  THEN 12000
+        WHEN 'stripe_master_monthly'  THEN 3000
+        WHEN 'stripe_master_annual'   THEN 30000
+      END
+      WHERE source = 'stripe' AND amount_cents IS NULL
+        AND product_id IN ('stripe_premium_monthly','stripe_premium_annual','stripe_master_monthly','stripe_master_annual')
+    `);
+
+    // PIX: o valor exato está em pix_requests, casado por usuário + aprovação mais próxima no tempo.
+    await client.query(`
+      UPDATE premium_events pe SET amount_cents = (
+        SELECT p.amount_cents FROM pix_requests p
+        WHERE p.user_id = pe.user_id AND p.status = 'approved' AND p.amount_cents > 0
+        ORDER BY ABS(EXTRACT(EPOCH FROM (p.reviewed_at - pe.created_at)))
+        LIMIT 1
+      )
+      WHERE pe.source = 'pix' AND pe.amount_cents IS NULL
+    `);
+
+    // RevenueCat: o Premium MENSAL de loja sempre custou R$ 14,90 (confirmado pelo cliente).
+    // Anual e Master de loja não têm preço histórico definido — ficam para preenchimento manual.
+    await client.query(`
+      UPDATE premium_events SET amount_cents = 1490
+      WHERE source = 'webhook' AND amount_cents IS NULL
+        AND event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE')
+        AND product_id IS NOT NULL
+        AND product_id NOT ILIKE '%master%'
+        AND product_id NOT ILIKE '%anual%'
+        AND product_id NOT ILIKE '%annual%'
+        AND product_id NOT ILIKE '%year%'
+    `);
+
     await client.query('COMMIT');
     console.log('Migrations applied successfully');
   } catch (error) {

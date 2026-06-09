@@ -610,12 +610,45 @@ export class AdminController {
     }
   }
 
+  /**
+   * Admin define/edita manualmente o valor pago de um evento de assinatura.
+   * Útil para pagamentos antigos cujo valor o sistema não capturou (ex.: anual
+   * de loja). Aceita amountCents inteiro (>= 0) ou null para limpar.
+   * PATCH /api/admin/premium-events/:id
+   */
+  async updatePremiumEventAmount(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { amountCents } = req.body as { amountCents?: number | null };
+
+    if (amountCents != null && (!Number.isInteger(amountCents) || amountCents < 0)) {
+      res.status(400).json({ success: false, error: 'amountCents deve ser um inteiro >= 0 ou null' });
+      return;
+    }
+
+    try {
+      const result = await pool.query(
+        `UPDATE premium_events SET amount_cents = $2 WHERE id = $1 RETURNING id`,
+        [id, amountCents ?? null]
+      );
+      if (result.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'Evento não encontrado' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[Admin] updatePremiumEventAmount error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async getPremiumHistory(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     try {
       const result = await pool.query(
         `SELECT id, event_type AS "eventType", source, platform, product_id AS "productId",
-                expiration_at AS "expirationAt", store, created_at AS "createdAt"
+                expiration_at AS "expirationAt", store, amount_cents AS "amountCents", currency,
+                created_at AS "createdAt"
          FROM premium_events
          WHERE user_id = $1
          ORDER BY created_at DESC

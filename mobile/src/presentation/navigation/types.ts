@@ -3,6 +3,7 @@ import { PremiumFeature, LimitedFeature } from '../premium/limits';
 export type PaywallTrigger =
   | { kind: 'limit'; feature: LimitedFeature; current: number }
   | { kind: 'feature'; feature: PremiumFeature }
+  | { kind: 'master'; feature?: string }
   | { kind: 'manual' };
 
 export type RootStackParamList = {
@@ -28,6 +29,9 @@ export type RootStackParamList = {
   CreateClient: undefined;
   EditClient: { clientId: string };
   Reports: undefined;
+  Finance: undefined;
+  Stock: undefined;
+  SalesTips: undefined;
   PdfSettings: undefined;
   IngredientPriceHistory: { ingredientId: string; ingredientName: string };
   Seasons: undefined;

@@ -89,6 +89,8 @@ export interface PremiumEvent {
   productId: string | null;
   expirationAt: string | null;
   store: string | null;
+  amountCents: number | null;
+  currency: string | null;
   createdAt: string;
 }
 
@@ -222,6 +224,11 @@ export const api = {
 
   getUser: (id: string) => req<AdminUserDetail>(`/admin/users/${id}`),
   getPremiumHistory: (id: string) => req<PremiumEvent[]>(`/admin/users/${id}/premium-history`),
+  setPremiumEventAmount: (eventId: string, amountCents: number | null) =>
+    req(`/admin/premium-events/${eventId}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ amountCents }),
+    }),
   getUserData: (id: string) => req<UserData>(`/admin/users/${id}/data`),
 
   setPremium: (id: string, isPremium: boolean, premiumUntil?: string | null) =>

@@ -162,6 +162,30 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 
+  // Permite ao admin preencher/editar manualmente o valor pago de um evento de assinatura
+  // (útil para pagamentos antigos cujo valor o sistema não capturou).
+  const editAmount = async (ev: PremiumEvent) => {
+    const current = ev.amountCents != null ? (ev.amountCents / 100).toFixed(2).replace('.', ',') : '';
+    const input = window.prompt('Valor pago em R$ (ex.: 14,90). Deixe vazio para limpar:', current);
+    if (input === null) return;
+    const trimmed = input.trim();
+    let cents: number | null;
+    if (trimmed === '') {
+      cents = null;
+    } else {
+      const reais = parseFloat(trimmed.replace(/[^\d,]/g, '').replace(',', '.'));
+      if (isNaN(reais) || reais < 0) { toast.error('Valor inválido.'); return; }
+      cents = Math.round(reais * 100);
+    }
+    try {
+      await api.setPremiumEventAmount(ev.id, cents);
+      setPremiumHistory(prev => prev.map(e => (e.id === ev.id ? { ...e, amountCents: cents } : e)));
+      toast.success(cents == null ? 'Valor removido.' : 'Valor atualizado!');
+    } catch {
+      toast.error('Erro ao salvar o valor.');
+    }
+  };
+
   return (
     <ModalOverlay onClose={onClose}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -414,10 +438,24 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                       };
                       const info = eventLabels[ev.eventType] ?? { label: ev.eventType, color: 'text-gray-600' };
                       const sourceLabel = ev.source === 'webhook' ? 'RevenueCat' : ev.source === 'app_sync' ? 'App' : ev.source;
+                      const isCharge = ['INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE', 'PRODUCT_CHANGE'].includes(ev.eventType);
                       return (
                         <div key={ev.id} className="flex items-start justify-between text-sm border-b border-gray-100 dark:border-gray-700 pb-2">
                           <div>
-                            <p className={`font-medium ${info.color}`}>{info.label}</p>
+                            <p className={`font-medium ${info.color}`}>
+                              {info.label}
+                              {ev.amountCents != null && ev.amountCents > 0 ? (
+                                <button onClick={() => editAmount(ev)} title="Editar valor"
+                                  className="ml-2 font-semibold text-green-600 hover:underline">
+                                  {fmtCurrency(ev.amountCents / 100)}
+                                </button>
+                              ) : isCharge ? (
+                                <button onClick={() => editAmount(ev)}
+                                  className="ml-2 text-xs text-gray-400 hover:text-primary-600 hover:underline">
+                                  + valor
+                                </button>
+                              ) : null}
+                            </p>
                             <p className="text-xs text-gray-400">
                               {sourceLabel}
                               {ev.platform ? ` · ${ev.platform}` : ''}

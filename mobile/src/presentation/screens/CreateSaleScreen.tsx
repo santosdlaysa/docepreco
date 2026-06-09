@@ -18,9 +18,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { recipeApi } from '../../data/api/recipeApi';
 import { saleApi } from '../../data/api/saleApi';
+import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
+import { demoRecipeApi, demoSaleApi, demoIngredientApi } from '../../data/demo/demoApi';
+import { applySaleDeduction } from '../../data/stock/stockStorage';
 import { Recipe } from '../../domain/entities/Recipe';
+import { Ingredient } from '../../domain/entities/Ingredient';
 import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -52,8 +55,10 @@ export const CreateSaleScreen: React.FC = () => {
   const { showToast } = useToast();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
+  const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [quantity, setQuantity] = useState('');
   const [salePrice, setSalePrice] = useState('');
@@ -63,7 +68,10 @@ export const CreateSaleScreen: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showPicker, setShowPicker] = useState(false);
 
-  useEffect(() => { rApi.getAll().then(setRecipes).catch(() => {}); }, []);
+  useEffect(() => {
+    rApi.getAll().then(setRecipes).catch(() => {});
+    iApi.getAll().then(setIngredients).catch(() => {});
+  }, []);
 
   const handlePriceChange = (text: string) => {
     const cleaned = text.replace(/[^0-9.,]/g, '').replace(',', '.');
@@ -87,14 +95,25 @@ export const CreateSaleScreen: React.FC = () => {
     if (!validate()) return;
     setLoading(true);
     try {
+      const soldQty = parseInt(quantity);
       await sApi.create({
         recipeId: selectedRecipe!.id,
-        quantitySold: parseInt(quantity),
+        quantitySold: soldQty,
         salePrice: parseFloat(salePrice),
         saleDate,
         notes: notes.trim() || undefined,
       });
-      showToast('Venda registrada!', 'success');
+      // Baixa automática de estoque (Master) — só afeta ingredientes controlados.
+      let lowStock: { name: string }[] = [];
+      try {
+        lowStock = await applySaleDeduction(selectedRecipe!, recipes, ingredients, soldQty);
+      } catch { /* baixa de estoque é best-effort, não bloqueia a venda */ }
+      showToast(
+        lowStock.length > 0
+          ? `Venda registrada! Estoque baixo: ${lowStock.map(l => l.name).join(', ')}`
+          : 'Venda registrada!',
+        lowStock.length > 0 ? 'warning' : 'success',
+      );
       navigation.goBack();
     } catch (error) {
       showToast((error as Error).message || 'Erro ao salvar', 'error');

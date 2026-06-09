@@ -150,10 +150,15 @@ export class StripeController {
 
       await userRepo.updatePlanTier(userId, planTier, premiumUntil, 'card');
 
+      // Valor realmente cobrado pela Stripe (em centavos); fallback no preço de tabela.
+      const amountCents = typeof session.amount_total === 'number'
+        ? session.amount_total
+        : (PRICES[planTier]?.[plan] ?? null);
+      const currency = (session.currency ?? 'brl').toUpperCase();
       await pool.query(
-        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store)
-         VALUES ($1, 'INITIAL_PURCHASE', 'stripe', 'card', $2, $3, 'STRIPE')`,
-        [userId, `stripe_${planTier}_${plan}`, premiumUntil]
+        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents, currency)
+         VALUES ($1, 'INITIAL_PURCHASE', 'stripe', 'card', $2, $3, 'STRIPE', $4, $5)`,
+        [userId, `stripe_${planTier}_${plan}`, premiumUntil, amountCents, currency]
       );
 
       const tokens = await pushTokenRepo.findByUserId(userId);

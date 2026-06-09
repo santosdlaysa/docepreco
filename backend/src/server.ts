@@ -113,6 +113,10 @@ app.use('/api', premiumRoutes);
 app.use('/api', pixRoutes);
 app.use('/api', referralRoutes);
 app.use('/api', stripeRoutes);
+// Montado ANTES de adminRoutes: GET /api/admin/settings/plans é público (lido pelo app
+// mobile sem secret de admin). Se ficasse depois, o adminMiddleware de adminRoutes
+// interceptaria a rota e devolveria 401, fazendo o app cair nos valores embutidos.
+app.use('/api/admin/settings/plans', planConfigRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/whatsapp', whatsappRoutes);
 app.use('/api/telegram', telegramRoutes);
@@ -124,7 +128,6 @@ app.use('/api/notification-templates', notificationTemplateRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/admin/global-ingredients', globalIngredientRoutes);
 app.use('/api/admin/featured-recipes', featuredRecipeRoutes);
-app.use('/api/admin/settings/plans', planConfigRoutes);
 app.use('/api/admin/feature-flags', featureFlagRoutes);
 app.use('/api/admin/faq', faqRoutes);
 app.use('/api/admin/coupons', couponRoutes);
