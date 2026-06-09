@@ -52,6 +52,9 @@ const SHADOW = {
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+// Aceita vírgula ou ponto como separador decimal (padrão BR)
+const num = (s: string) => parseFloat(String(s ?? '').replace(',', '.')) || 0;
+
 const STATUS_OPTIONS: { key: OrderStatus; label: string; bg: string; color: string }[] = [
   { key: 'pending', label: 'Pendente', bg: '#FFF1CE', color: '#8A5A00' },
   { key: 'in_progress', label: 'Produção', bg: '#DCF1FB', color: '#1A6F96' },
@@ -113,8 +116,8 @@ export const CreateOrderScreen: React.FC = () => {
         setClientName(order.clientName);
         setClientPhone(order.clientPhone || '');
         const loadedItems = order.items && order.items.length > 0
-          ? order.items.map(i => ({ id: Math.random().toString(36).slice(2), recipeId: i.recipeId, recipeName: i.recipeName, quantity: String(i.quantity), unitPrice: String(i.unitPrice) }))
-          : [{ id: Math.random().toString(36).slice(2), recipeId: order.recipeId, recipeName: order.recipeName, quantity: String(order.quantity), unitPrice: String(order.unitPrice) }];
+          ? order.items.map(i => ({ id: Math.random().toString(36).slice(2), recipeId: i.recipeId, recipeName: i.recipeName, quantity: String(i.quantity), unitPrice: String(i.unitPrice).replace('.', ',') }))
+          : [{ id: Math.random().toString(36).slice(2), recipeId: order.recipeId, recipeName: order.recipeName, quantity: String(order.quantity), unitPrice: String(order.unitPrice).replace('.', ',') }];
         setItems(loadedItems);
         setDeliveryDate(fromIso(order.deliveryDate));
         setDeliveryTime(order.deliveryTime || '');
@@ -126,7 +129,7 @@ export const CreateOrderScreen: React.FC = () => {
     }
   }, []);
 
-  const totalPrice = items.reduce((s, i) => s + (parseFloat(i.quantity) || 0) * (parseFloat(i.unitPrice) || 0), 0);
+  const totalPrice = items.reduce((s, i) => s + num(i.quantity) * num(i.unitPrice), 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(totalPrice - totalPaid, 0);
 
@@ -138,8 +141,8 @@ export const CreateOrderScreen: React.FC = () => {
     const e: Record<string, string> = {};
     if (!clientName.trim()) e.client = 'Obrigatório';
     if (items.some(i => !i.recipeName.trim())) e.recipe = 'Selecione todos os produtos';
-    if (items.some(i => !i.quantity || parseFloat(i.quantity) <= 0)) e.qty = 'Preencha as quantidades';
-    if (items.some(i => !i.unitPrice || parseFloat(i.unitPrice) <= 0)) e.price = 'Preencha os preços';
+    if (items.some(i => !i.quantity || num(i.quantity) <= 0)) e.qty = 'Preencha as quantidades';
+    if (items.some(i => !i.unitPrice || num(i.unitPrice) <= 0)) e.price = 'Preencha os preços';
     if (!deliveryDate.trim()) e.date = 'Obrigatório';
     if (deliveryDate && !/^\d{2}-\d{2}-\d{4}$/.test(deliveryDate)) e.date = 'Use DD-MM-AAAA';
     setErrors(e);
@@ -153,8 +156,8 @@ export const CreateOrderScreen: React.FC = () => {
       const orderItems: OrderItem[] = items.map(i => ({
         recipeId: i.recipeId,
         recipeName: i.recipeName.trim(),
-        quantity: parseFloat(i.quantity),
-        unitPrice: parseFloat(i.unitPrice),
+        quantity: num(i.quantity),
+        unitPrice: num(i.unitPrice),
       }));
       const data = {
         clientName: clientName.trim(), clientPhone: clientPhone.trim() || undefined,
@@ -175,7 +178,7 @@ export const CreateOrderScreen: React.FC = () => {
   };
 
   const handleAddPayment = () => {
-    const amount = parseFloat(newPaymentAmount);
+    const amount = num(newPaymentAmount);
     if (!amount || amount <= 0) return;
     setPayments(prev => [...prev, { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] }]);
     setNewPaymentAmount(''); setNewPaymentMethod('pix'); setShowAddPayment(false);
@@ -243,7 +246,7 @@ export const CreateOrderScreen: React.FC = () => {
           {/* ── Produtos ── */}
           <Text style={st.sec}>Produtos</Text>
           {items.map((item, idx) => {
-            const itemTotal = (parseFloat(item.quantity) || 0) * (parseFloat(item.unitPrice) || 0);
+            const itemTotal = num(item.quantity) * num(item.unitPrice);
             return (
               <View key={item.id} style={st.itemCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -274,7 +277,7 @@ export const CreateOrderScreen: React.FC = () => {
                 <View style={st.two}>
                   <View style={[st.field, { flex: 1 }]}>
                     <Text style={st.label}>Qtd</Text>
-                    <View style={[st.input, (errors.qty && (!item.quantity || parseFloat(item.quantity) <= 0)) ? st.inputErr : null]}>
+                    <View style={[st.input, (errors.qty && (!item.quantity || num(item.quantity) <= 0)) ? st.inputErr : null]}>
                       <TextInput style={st.inputText} value={item.quantity} placeholder="1" placeholderTextColor={INK3}
                         keyboardType="number-pad" editable={!isLocked}
                         onChangeText={v => setItems(prev => prev.map((it, i) => i === idx ? { ...it, quantity: v } : it))} />
@@ -282,7 +285,7 @@ export const CreateOrderScreen: React.FC = () => {
                   </View>
                   <View style={[st.field, { flex: 1 }]}>
                     <Text style={st.label}>Preço un.</Text>
-                    <View style={[st.input, (errors.price && (!item.unitPrice || parseFloat(item.unitPrice) <= 0)) ? st.inputErr : null]}>
+                    <View style={[st.input, (errors.price && (!item.unitPrice || num(item.unitPrice) <= 0)) ? st.inputErr : null]}>
                       <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
                       <TextInput style={st.inputText} value={item.unitPrice} placeholder="120,00" placeholderTextColor={INK3}
                         keyboardType="decimal-pad" editable={!isLocked}

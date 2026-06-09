@@ -114,6 +114,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [profitMargin, setProfitMargin] = useState('30');
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>([]);
+  const [additionalCostInputs, setAdditionalCostInputs] = useState<Record<string, string>>({});
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
   const [showIngredientModal, setShowIngredientModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
@@ -167,6 +168,12 @@ export const CreateRecipeScreen: React.FC = () => {
         setProfitMargin(String(recipe.profitMargin));
         setIngredients(recipe.ingredients);
         setAdditionalCosts(recipe.additionalCosts);
+        setAdditionalCostInputs(
+          recipe.additionalCosts.reduce((acc, c) => {
+            acc[c.name] = c.value ? String(c.value).replace('.', ',') : '';
+            return acc;
+          }, {} as Record<string, string>)
+        );
         setSubRecipes(recipe.subRecipes || []);
         // Restore labor cost fields if present
         const laborCost = recipe.additionalCosts.find(c => c.name === 'Mão de obra (profissional)');
@@ -339,7 +346,11 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const updateAdditionalCost = (name: string, value: string) => {
-    const normalized = value.replace(',', '.');
+    // Mantém apenas dígitos e um separador decimal (vírgula ou ponto)
+    const sanitized = value.replace(/[^0-9.,]/g, '');
+    setAdditionalCostInputs(prev => ({ ...prev, [name]: sanitized }));
+
+    const normalized = sanitized.replace(',', '.');
     const numValue = parseFloat(normalized) || 0;
     if (numValue <= 0) {
       setAdditionalCosts(prev => prev.filter(c => c.name !== name));
@@ -355,8 +366,7 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const getAdditionalCostValue = (name: string) => {
-    const val = additionalCosts.find(c => c.name === name)?.value;
-    return val ? val.toString().replace('.', ',') : '';
+    return additionalCostInputs[name] ?? '';
   };
 
   const laborCostValue = (() => {
