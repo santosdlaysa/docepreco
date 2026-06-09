@@ -114,6 +114,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [profitMargin, setProfitMargin] = useState('30');
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>([]);
+  const [additionalCostInputs, setAdditionalCostInputs] = useState<Record<string, string>>({});
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
   const [showIngredientModal, setShowIngredientModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
@@ -339,6 +340,7 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const updateAdditionalCost = (name: string, value: string) => {
+    setAdditionalCostInputs(prev => ({ ...prev, [name]: value }));
     const normalized = value.replace(',', '.');
     const numValue = parseFloat(normalized) || 0;
     if (numValue <= 0) {
@@ -355,6 +357,7 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const getAdditionalCostValue = (name: string) => {
+    if (name in additionalCostInputs) return additionalCostInputs[name];
     const val = additionalCosts.find(c => c.name === name)?.value;
     return val ? val.toString().replace('.', ',') : '';
   };

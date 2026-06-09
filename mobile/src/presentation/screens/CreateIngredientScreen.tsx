@@ -124,12 +124,12 @@ export const CreateIngredientScreen: React.FC = () => {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Obrigatório';
-    if (!purchaseQuantity || parseFloat(purchaseQuantity) <= 0) e.qty = 'Obrigatório';
+    if (!purchaseQuantity || parseFloat(purchaseQuantity.replace(',', '.')) <= 0) e.qty = 'Obrigatório';
     if (!purchasePrice || parseFloat(purchasePrice.replace(',', '.')) <= 0) e.price = 'Obrigatório';
     if (!unit) e.unit = 'Escolha uma unidade';
     if (useCustomUnit) {
       if (!purchaseUnitLabel.trim()) e.pkgLabel = 'Obrigatório';
-      if (!purchaseUnitWeight || parseFloat(purchaseUnitWeight) <= 0) e.pkgWeight = 'Obrigatório';
+      if (!purchaseUnitWeight || parseFloat(purchaseUnitWeight.replace(',', '.')) <= 0) e.pkgWeight = 'Obrigatório';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -141,11 +141,11 @@ export const CreateIngredientScreen: React.FC = () => {
     try {
       const payload = {
         name: name.trim(),
-        purchaseQuantity: parseFloat(purchaseQuantity),
+        purchaseQuantity: parseFloat(purchaseQuantity.replace(',', '.')),
         purchasePrice: parseFloat(purchasePrice.replace(',', '.')),
         unit,
         purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
-        purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight) : undefined,
+        purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight.replace(',', '.')) : undefined,
       };
       if (isEditing) {
         await api.update(ingredientId!, payload);
@@ -166,9 +166,9 @@ export const CreateIngredientScreen: React.FC = () => {
   };
 
   // Preview
-  const qty = parseFloat(purchaseQuantity || '0');
+  const qty = parseFloat((purchaseQuantity || '0').replace(',', '.'));
   const price = parseFloat((purchasePrice || '0').replace(',', '.'));
-  const weight = parseFloat(purchaseUnitWeight || '0');
+  const weight = parseFloat((purchaseUnitWeight || '0').replace(',', '.'));
   const effectiveQty = useCustomUnit && weight > 0 ? qty * weight : qty;
   const pricePerUnit = effectiveQty > 0 ? price / effectiveQty : 0;
   const pricePerPkg = qty > 0 ? price / qty : 0;
