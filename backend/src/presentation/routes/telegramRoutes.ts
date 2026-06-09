@@ -19,6 +19,24 @@ function sendTelegramReply(text: string): void {
 const router = Router();
 
 router.post('/webhook', async (req: Request, res: Response) => {
+  // Autenticação do webhook: o Telegram envia o secret configurado no setWebhook
+  // no header X-Telegram-Bot-Api-Secret-Token. Se TELEGRAM_WEBHOOK_SECRET estiver
+  // definido, exigimos a correspondência. Caso contrário, fazemos fallback para a
+  // allowlist de chat: só processa mensagens vindas do TELEGRAM_CHAT_ID.
+  // Sem isso, qualquer um poderia POSTar /webhook e disparar comandos (ex.: e-mail em massa).
+  const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (webhookSecret) {
+    if (req.headers['x-telegram-bot-api-secret-token'] !== webhookSecret) {
+      return res.sendStatus(401);
+    }
+  } else {
+    const chatId = req.body?.message?.chat?.id ?? req.body?.message?.from?.id;
+    const allowedChatId = process.env.TELEGRAM_CHAT_ID;
+    if (!allowedChatId || String(chatId) !== String(allowedChatId)) {
+      return res.sendStatus(401);
+    }
+  }
+
   const message = req.body?.message;
   if (!message) return res.sendStatus(200);
 

@@ -1,12 +1,12 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber, RecentUser, PixRequestItem, AdminUserDetail } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
   Trophy, Flame, Mail, Loader2, X, Eye, UserRoundPlus, RefreshCw,
-  ChevronLeft, ChevronRight, QrCode, CheckCircle, XCircle, Clock,
-  ArrowUpRight, Sparkles,
+  ChevronLeft, ChevronRight, ChevronDown, QrCode, CheckCircle, XCircle, Clock,
+  ArrowUpRight, Sparkles, Check,
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, AreaChart, Area } from 'recharts';
 import type { LucideIcon } from 'lucide-react';
@@ -141,6 +141,57 @@ function platformLabel(p: string | null) {
   if (p === 'android') return 'Google Play';
   if (p === 'manual') return 'PIX';
   return '—';
+}
+
+/* ─── Cabeçalho de coluna "Plataforma" com filtro dropdown ─── */
+function FilterOption({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex items-center justify-between w-full text-left px-3 py-1.5 text-xs font-medium transition-colors ${
+        active
+          ? 'text-pink-600 dark:text-pink-400 bg-pink-50 dark:bg-pink-900/20'
+          : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+      }`}
+    >
+      {label}
+      {active && <Check size={13} />}
+    </button>
+  );
+}
+
+function PlatformFilterTh({ value, onChange, options }: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+  options: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">
+      <div className="relative inline-block">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          className="inline-flex items-center gap-1 uppercase tracking-wider hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+        >
+          Plataforma
+          <ChevronDown size={12} className={value ? 'text-pink-500' : 'text-gray-400'} />
+        </button>
+        {open && (
+          <>
+            <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
+            <div className="absolute left-0 mt-1.5 z-20 min-w-[150px] bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 py-1 normal-case tracking-normal">
+              <FilterOption label="Todas" active={value === null} onClick={() => { onChange(null); setOpen(false); }} />
+              {options.map(p => (
+                <FilterOption key={p} label={platformLabel(p)} active={value === p} onClick={() => { onChange(p); setOpen(false); }} />
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </th>
+  );
 }
 
 /* ─── Top Customers (card-style list) ─── */
@@ -343,16 +394,33 @@ function NewUsersCard({ users, newToday }: { users: RecentUser[]; newToday: numb
 /* ─── Subscriber tables ─── */
 function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(subscribers.length / PAGE_SIZE));
-  const paged = subscribers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const [platform, setPlatform] = useState<string | null>(null);
+
+  // Plataformas presentes entre os assinantes (para as opções do filtro)
+  const platforms = useMemo(() => {
+    const set = new Set<string>();
+    subscribers.forEach(s => { if (s.premiumPlatform) set.add(s.premiumPlatform); });
+    return Array.from(set).sort();
+  }, [subscribers]);
+
+  const filtered = useMemo(
+    () => (platform ? subscribers.filter(s => s.premiumPlatform === platform) : subscribers),
+    [subscribers, platform],
+  );
+
+  // Volta para a primeira página ao trocar o filtro
+  useEffect(() => { setPage(1); }, [platform]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
   return (
     <div className={card}>
       <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">Assinantes Ativos</h3>
-        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md">{subscribers.length}</span>
+        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md">{filtered.length}</span>
       </div>
-      {subscribers.length === 0 ? (
+      {filtered.length === 0 ? (
         <p className="text-center text-gray-400 py-8 text-sm">Nenhum assinante</p>
       ) : (
         <>
@@ -360,7 +428,7 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
             <thead>
               <tr className="border-b border-gray-100 dark:border-gray-700/50">
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Nome</th>
-                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Plataforma</th>
+                <PlatformFilterTh value={platform} onChange={setPlatform} options={platforms} />
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Valido ate</th>
                 <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
               </tr>

@@ -1,7 +1,7 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, TextInput, RefreshControl,
+  StyleSheet, ActivityIndicator, TextInput, RefreshControl, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,11 +13,21 @@ import { AdminStackParamList } from './types';
 
 type Nav = NativeStackNavigationProp<AdminStackParamList>;
 
+// Rótulos amigáveis para a origem do pagamento (premium_platform)
+const PLATFORM_LABELS: Record<string, string> = {
+  ios: 'App Store',
+  android: 'Google Play',
+  manual: 'Manual',
+  card: 'Cartão',
+  pix: 'PIX',
+};
+const platformLabel = (p: string) => PLATFORM_LABELS[p] ?? p;
+
 export const AdminUsersScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [filtered, setFiltered] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
+  const [platform, setPlatform] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -25,9 +35,26 @@ export const AdminUsersScreen: React.FC = () => {
     try {
       const data = await adminApi.listUsers(q);
       setUsers(data);
-      setFiltered(data);
     } catch {}
   }, []);
+
+  // Plataformas presentes entre os assinantes carregados (para os chips de filtro)
+  const platforms = useMemo(() => {
+    const set = new Set<string>();
+    users.forEach(u => { if (u.premiumPlatform) set.add(u.premiumPlatform); });
+    return Array.from(set).sort();
+  }, [users]);
+
+  // Lista exibida: aplica o filtro de plataforma sobre os usuários carregados
+  const filtered = useMemo(
+    () => (platform ? users.filter(u => u.premiumPlatform === platform) : users),
+    [users, platform],
+  );
+
+  // Se o filtro ativo deixar de existir nos dados, volta para "Todas"
+  useEffect(() => {
+    if (platform && !platforms.includes(platform)) setPlatform(null);
+  }, [platforms, platform]);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
@@ -66,6 +93,32 @@ export const AdminUsersScreen: React.FC = () => {
           </TouchableOpacity>
         )}
       </View>
+
+      {platforms.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+        >
+          <TouchableOpacity
+            onPress={() => setPlatform(null)}
+            style={[styles.chip, platform === null && styles.chipActive]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.chipText, platform === null && styles.chipTextActive]}>Todas</Text>
+          </TouchableOpacity>
+          {platforms.map(p => (
+            <TouchableOpacity
+              key={p}
+              onPress={() => setPlatform(p)}
+              style={[styles.chip, platform === p && styles.chipActive]}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.chipText, platform === p && styles.chipTextActive]}>{platformLabel(p)}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
 
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
@@ -115,6 +168,11 @@ const styles = StyleSheet.create({
   countText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   searchWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, height: 44, fontSize: 14, color: colors.text },
+  chipsRow: { paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
+  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  chipTextActive: { color: '#fff' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 15, fontWeight: '700', color: colors.primary },
