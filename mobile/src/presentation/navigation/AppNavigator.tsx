@@ -338,10 +338,9 @@ export function AppNavigator() {
     }
     return (
       <LoginScreen
-        onLogin={() => void handleAuthSuccess()}
+        onLogin={() => handleAuthSuccess()}
         onGoToRegister={() => setShowRegister(true)}
         onGoToForgotPassword={() => setShowForgotPassword(true)}
-        onDemoLogin={loginAsDemo}
       />
     );
   }
