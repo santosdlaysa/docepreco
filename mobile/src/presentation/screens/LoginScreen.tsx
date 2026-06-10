@@ -10,6 +10,7 @@ import {
   Animated,
   Image,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -21,7 +22,7 @@ import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
 
 interface Props {
-  onLogin: () => void;
+  onLogin: () => void | Promise<void>;
   onGoToRegister: () => void;
   onGoToForgotPassword?: () => void;
   onDemoLogin?: () => void;
@@ -71,11 +72,10 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
       const user = await authApi.login(email.trim(), password);
       await identifyRevenueCatUser(user.id);
       void setRevenueCatLocationAttributes();
-      onLogin();
+      await onLogin();
     } catch (error) {
       const msg = error instanceof Error ? error.message : t('login.loginError');
       setErrors({ general: msg });
-    } finally {
       setLoading(false);
     }
   };
@@ -152,6 +152,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               disabled={loading}
               activeOpacity={0.85}
             >
+              {loading && <ActivityIndicator size="small" color="#fff" />}
               <Text style={styles.loginBtnText}>{loading ? t('login.loggingIn') : t('login.loginButton')}</Text>
               {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </TouchableOpacity>

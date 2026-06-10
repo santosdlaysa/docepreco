@@ -16,16 +16,11 @@ import {
 } from './src/presentation/utils/review';
 import { initializeNotifications, onAppForeground } from './src/presentation/utils/notifications';
 import { configureRevenueCat } from './src/data/premium/revenueCat';
-import RNUxcam from 'react-native-ux-cam';
+import { initUxCam } from './src/presentation/utils/uxcam';
 
 configureRevenueCat();
 
-RNUxcam.optIntoSchematicRecordings();
-RNUxcam.startWithConfiguration({
-  userAppKey: 'ofgjy4vgtc523yt-us',
-  enableAutomaticScreenNameTagging: false,
-  enableImprovedScreenCapture: true,
-});
+initUxCam();
 
 function App() {
   const [fontsLoaded] = useFonts({
