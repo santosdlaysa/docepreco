@@ -130,7 +130,10 @@ function mapPackage(pkg: any): PremiumPackage {
   const priceLabel: string =
     product?.priceString ?? product?.price_string ?? `${product?.price ?? ''}`;
 
-  const id = identifier.toLowerCase();
+  // Detecta tier/período olhando tanto o identificador do pacote quanto o do
+  // produto. No Android (modelo novo de assinatura) o produto chega como
+  // `premium_master:master`, então o "master" pode estar só no produto.
+  const id = `${pkg?.identifier ?? ''} ${product?.identifier ?? ''}`.toLowerCase();
   // Master products are `premium_master` / `premium_master_anual` — they contain
   // "premium" too, so we MUST test "master" first.
   const isMaster = id.includes('master');

@@ -89,7 +89,7 @@ android {
 
     namespace 'com.laysadiniz.sweetpricing'
     defaultConfig {
-        applicationId 'com.laysadiniz.sweetpricing'
+        applicationId 'com.orgenyx'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 56
