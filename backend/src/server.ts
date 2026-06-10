@@ -50,13 +50,38 @@ import { PostgresPushTokenRepository } from './infrastructure/repositories/Postg
 import { sendPushNotifications } from './infrastructure/services/pushService';
 import { checkManualRenewals } from './infrastructure/services/renewalNotificationService';
 import { setupSwagger } from './swagger';
+import { assertRequiredSecrets } from './config/secrets';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
+// Atrás do proxy do Render: confia no primeiro hop para obter o IP real
+// (x-forwarded-for), necessário para o rate limiting funcionar por IP.
+app.set('trust proxy', 1);
+
+// CORS: se CORS_ORIGINS (lista separada por vírgula) estiver definido, restringe
+// às origens informadas; requisições sem Origin (app mobile, curl, server-to-server)
+// são sempre permitidas. Sem a variável, mantém o comportamento permissivo atual
+// para não quebrar o painel web — defina CORS_ORIGINS em produção para travar.
+const corsOrigins = (process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+if (corsOrigins.length > 0) {
+  app.use(
+    cors({
+      origin: (origin, callback) => {
+        if (!origin || corsOrigins.includes(origin)) return callback(null, true);
+        callback(new Error('Not allowed by CORS'));
+      },
+    })
+  );
+} else {
+  console.warn('[CORS] CORS_ORIGINS não definido — permitindo todas as origens. Defina CORS_ORIGINS em produção.');
+  app.use(cors());
+}
 
 // Stripe webhook needs raw body — must be registered BEFORE express.json
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
@@ -147,6 +172,8 @@ app.get('/health', (req, res) => {
 
 async function bootstrap() {
   try {
+    // Falha-rápido: garante que os segredos obrigatórios existem antes de subir
+    assertRequiredSecrets();
     await connectDatabase();
     await runMigrations();
     app.listen(PORT, () => {

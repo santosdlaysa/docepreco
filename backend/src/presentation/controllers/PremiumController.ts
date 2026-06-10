@@ -4,6 +4,8 @@ import { PremiumPlatform } from '../../domain/entities/User';
 import { notifyPremiumEvent } from '../../infrastructure/services/telegramService';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { pool } from '../../infrastructure/database/connection';
+import { safeEqual } from '../../config/secrets';
+import { fetchRevenueCatEntitlement, isRevenueCatVerificationEnabled } from '../../infrastructure/services/revenueCatService';
 
 const userRepo = new PostgresUserRepository();
 
@@ -80,7 +82,7 @@ export class PremiumController {
     }
 
     const auth = req.headers.authorization;
-    if (auth !== `Bearer ${expected}`) {
+    if (!safeEqual(auth, `Bearer ${expected}`)) {
       console.warn('[Premium] Unauthorized webhook attempt');
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
@@ -240,6 +242,48 @@ export class PremiumController {
         return;
       }
 
+      // SEGURANÇA: não confiar no `active`/`expiresAt` enviados pelo cliente — qualquer
+      // um poderia forjar o body e ganhar premium grátis. Quando REVENUECAT_SECRET_KEY
+      // está configurada, validamos a assinatura direto no RevenueCat (fonte de verdade)
+      // e usamos a data de expiração dele, ignorando o que o cliente mandou.
+      if (isRevenueCatVerificationEnabled()) {
+        let ent;
+        try {
+          ent = await fetchRevenueCatEntitlement(userId);
+        } catch (err) {
+          console.error('[Premium] Falha ao verificar no RevenueCat:', err);
+          res.status(502).json({ success: false, error: 'Não foi possível verificar a assinatura' });
+          return;
+        }
+
+        if (!ent || !ent.active) {
+          // RevenueCat não confirma assinatura ativa → NÃO concede premium
+          console.warn(`[Premium] Sync negado: RevenueCat não confirma assinatura ativa para ${userId}`);
+          res.json({ success: true, data: user });
+          return;
+        }
+
+        const plat: PremiumPlatform = ent.platform ?? (platform === 'android' ? 'android' : 'ios');
+        const updated = await userRepo.updatePlanTier(userId, ent.tier, ent.expiresAt, plat);
+        console.log(`[Premium] Sync verificado (RC): ${userId} → ${ent.tier} via ${plat} | expiresAt=${ent.expiresAt?.toISOString() ?? 'null'}`);
+
+        await pool.query(
+          `INSERT INTO premium_events (user_id, event_type, source, platform, expiration_at)
+           VALUES ($1, $2, 'app_sync', $3, $4)`,
+          [userId, user.isPremium ? 'SYNC' : 'INITIAL_PURCHASE', plat, ent.expiresAt]
+        );
+
+        if (!user.isPremium) {
+          notifyPremiumEvent(user.companyName, 'INITIAL_PURCHASE', plat);
+        }
+
+        res.json({ success: true, data: updated });
+        return;
+      }
+
+      // Fallback legado (REVENUECAT_SECRET_KEY ausente): confia no cliente — INSEGURO.
+      // Configure REVENUECAT_SECRET_KEY para fechar essa brecha (premium grátis forjável).
+      console.warn('[Premium] syncPremium SEM REVENUECAT_SECRET_KEY — confiando no cliente (INSEGURO). Configure a chave para validar no servidor.');
       const until = expiresAt ? new Date(expiresAt) : null;
       const plat: PremiumPlatform = platform === 'android' ? 'android' : 'ios';
       const updated = await userRepo.updatePremiumStatus(userId, true, until, plat);
@@ -278,7 +322,7 @@ export class PremiumController {
     }
 
     const provided = req.headers['x-admin-secret'];
-    if (provided !== expected) {
+    if (typeof provided !== 'string' || !safeEqual(provided, expected)) {
       res.status(401).json({ success: false, error: 'Unauthorized' });
       return;
     }

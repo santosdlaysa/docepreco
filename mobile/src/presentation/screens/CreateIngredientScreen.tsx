@@ -94,7 +94,7 @@ export const CreateIngredientScreen: React.FC = () => {
       .then(ing => {
         setName(ing.name);
         setPurchaseQuantity(String(ing.purchaseQuantity));
-        setPurchasePrice(Number(ing.purchasePrice).toFixed(2));
+        setPurchasePrice(Number(ing.purchasePrice).toFixed(2).replace('.', ','));
         setUnit(ing.unit);
         setOriginalPrice(ing.purchasePrice);
         setOriginalQty(ing.purchaseQuantity);
@@ -114,11 +114,12 @@ export const CreateIngredientScreen: React.FC = () => {
   };
 
   const handlePriceChange = (text: string) => {
-    const cleaned = text.replace(/[^0-9.,]/g, '').replace(',', '.');
-    const parts = cleaned.split('.');
-    const value = parts.length > 2 ? parts[0] + '.' + parts.slice(1).join('') : cleaned;
-    const dotIdx = value.indexOf('.');
-    setPurchasePrice(dotIdx >= 0 && value.length - dotIdx > 3 ? value.slice(0, dotIdx + 3) : value);
+    // Mantém a vírgula como separador decimal (padrão BR); aceita ponto também
+    const cleaned = text.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
+    const parts = cleaned.split(',');
+    const value = parts.length > 2 ? parts[0] + ',' + parts.slice(1).join('') : cleaned;
+    const commaIdx = value.indexOf(',');
+    setPurchasePrice(commaIdx >= 0 && value.length - commaIdx > 3 ? value.slice(0, commaIdx + 3) : value);
   };
 
   const validate = () => {

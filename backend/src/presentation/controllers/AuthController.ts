@@ -7,11 +7,11 @@ import { PostgresReferralRepository } from '../../infrastructure/repositories/Po
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
 import { normalizeReferralCode } from '../../domain/services/referral';
+import { getJwtSecret } from '../../config/secrets';
 
 const userRepo = new PostgresUserRepository();
 const suggestionRepo = new PostgresSuggestionRepository();
 const referralRepo = new PostgresReferralRepository();
-const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 
 const TYPO_MAP: Record<string, string> = {
   'gamil.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmial.com': 'gmail.com',
@@ -80,7 +80,7 @@ export class AuthController {
       }
       notifyNewUser(companyName, email);
       userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+      const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
       res.status(201).json({ success: true, data: { user, token } });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
@@ -119,7 +119,7 @@ export class AuthController {
         return;
       }
       console.log(`[Auth] Login success: ${email} (${user.companyName})`);
-      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '30d' });
+      const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
       const { passwordHash, ...safeUser } = user;
       res.json({ success: true, data: { user: safeUser, token } });
     } catch (error) {

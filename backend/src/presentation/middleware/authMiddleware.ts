@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { pool } from '../../infrastructure/database/connection';
-
-const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
+import { getJwtSecret } from '../../config/secrets';
 
 export interface AuthRequest extends Request {
   userId?: string;
@@ -17,7 +16,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
 
   const token = authHeader.split(' ')[1];
   try {
-    const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
+    const payload = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as { userId: string };
     req.userId = payload.userId;
 
     // Fire-and-forget: update last_seen_at

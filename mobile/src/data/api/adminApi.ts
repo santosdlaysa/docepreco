@@ -2,18 +2,17 @@ import axios from 'axios';
 import { tokenStorage } from '../storage/tokenStorage';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
-const ADMIN_SECRET = process.env.EXPO_PUBLIC_ADMIN_SECRET ?? '';
 
 export const ADMIN_EMAIL = 'santosdlaysa@gmail.com';
 
-// Cliente admin: envia o JWT do usuário logado (admin é reconhecido pelo e-mail)
-// e, por compatibilidade, o x-admin-secret quando configurado.
+// Cliente admin: autentica apenas com o JWT do usuário logado — o backend
+// reconhece o admin pelo e-mail do token. O antigo x-admin-secret foi removido
+// porque qualquer segredo embutido no app é extraível do bundle (vazamento).
 const adminClient = axios.create({ baseURL: BASE_URL });
 adminClient.interceptors.request.use(async (config) => {
   const token = await tokenStorage.getToken();
   config.headers = config.headers ?? {};
   if (token) config.headers.Authorization = `Bearer ${token}`;
-  if (ADMIN_SECRET) config.headers['x-admin-secret'] = ADMIN_SECRET;
   return config;
 });
 

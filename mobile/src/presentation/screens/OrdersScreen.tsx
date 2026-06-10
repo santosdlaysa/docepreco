@@ -152,7 +152,7 @@ export const OrdersScreen: React.FC = () => {
 
   const handleAddPayment = async () => {
     if (!paymentModalOrder) return;
-    const amount = parseFloat(newPaymentAmount);
+    const amount = parseFloat(newPaymentAmount.replace(',', '.'));
     if (!amount || amount <= 0) return;
     const payment: OrderPayment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] };
     const updatedPayments = [...(paymentModalOrder.payments || []), payment];

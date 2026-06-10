@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { pool } from '../../infrastructure/database/connection';
+import { getJwtSecret, safeEqual } from '../../config/secrets';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'santosdlaysa@gmail.com').toLowerCase();
 
 /**
@@ -11,10 +11,10 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'santosdlaysa@gmail.com').toLowe
  *  2) JWT (Authorization: Bearer) de um usuário cujo e-mail é o ADMIN_EMAIL (app mobile).
  */
 export async function adminMiddleware(req: Request, res: Response, next: NextFunction): Promise<void> {
-  // 1) Secret de admin
+  // 1) Secret de admin (comparação em tempo constante)
   const expected = process.env.DOCEPRECO_ADMIN_SECRET;
   const provided = req.headers['x-admin-secret'];
-  if (expected && provided && provided === expected) {
+  if (expected && typeof provided === 'string' && safeEqual(provided, expected)) {
     next();
     return;
   }
@@ -24,7 +24,7 @@ export async function adminMiddleware(req: Request, res: Response, next: NextFun
   if (authHeader?.startsWith('Bearer ')) {
     try {
       const token = authHeader.split(' ')[1];
-      const payload = jwt.verify(token, JWT_SECRET) as { userId: string };
+      const payload = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as { userId: string };
       const result = await pool.query('SELECT email FROM users WHERE id = $1', [payload.userId]);
       const email = (result.rows[0]?.email as string | undefined)?.toLowerCase();
       if (email && email === ADMIN_EMAIL) {
