@@ -62,37 +62,7 @@ export class AuthController {
         res.status(409).json({ success: false, error: 'Email já cadastrado' });
         return;
       }
-      let user = await userRepo.create({ companyName, email, password, phone });
-
-      // Conceder trial automático baseado na configuração do painel
-      try {
-        const { pool } = await import('../../infrastructure/database/connection');
-        const settings = await pool.query(
-          `SELECT key, value FROM app_settings WHERE key IN ($1, $2, $3, $4)`,
-          ['plan_new_user_trial_tier', 'plan_premium_free_days', 'plan_master_free_days', 'plan_master_free_days']
-        );
-        const settingsMap: Record<string, string> = {};
-        for (const row of settings.rows) settingsMap[row.key] = row.value;
-
-        const trialTier = settingsMap['plan_new_user_trial_tier'] || 'master';
-        const masterDays = parseInt(settingsMap['plan_master_free_days'] || '3');
-        const premiumDays = parseInt(settingsMap['plan_premium_free_days'] || '2');
-
-        if (trialTier !== 'free') {
-          const trialDays = trialTier === 'master' ? masterDays : premiumDays;
-          const trialEnd = new Date();
-          trialEnd.setDate(trialEnd.getDate() + trialDays);
-
-          const updatedUser = await userRepo.updatePlanTier(user.id, trialTier as 'premium' | 'master', trialEnd, null);
-          if (updatedUser) {
-            user = updatedUser;
-            await userRepo.markTrialUsed(user.id);
-          }
-        }
-      } catch (e) {
-        console.error('[Auth] Erro ao definir trial:', e);
-      }
-
+      const user = await userRepo.create({ companyName, email, password, phone });
       // Programa de indicação: registra a indicação como pendente (best-effort,
       // nunca quebra o cadastro). Vira válida quando o indicado cria a 1ª receita.
       if (referralCode) {
