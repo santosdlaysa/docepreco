@@ -148,6 +148,9 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const tier = activeTier(user);
   const isInTrial = tier === 'premium' && user?.trial_used_at !== null;
+  if (user && isInTrial) {
+    console.log('[PremiumContext] User in trial:', { tier, trial_used_at: user.trial_used_at, premiumUntil: user.premiumUntil });
+  }
   const value: PremiumContextData = {
     isPremium: isActive(user),
     planTier: tier,

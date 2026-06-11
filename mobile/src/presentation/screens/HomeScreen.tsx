@@ -67,6 +67,11 @@ export const HomeScreen: React.FC = () => {
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { requirePremium } = usePaywall();
 
+  // Debug: log trial status
+  useEffect(() => {
+    console.log('[HomeScreen] Trial debug:', { isInTrial, daysLeft, isPremium, isMaster });
+  }, [isInTrial, daysLeft, isPremium, isMaster]);
+
   const [stats, setStats] = useState<AppStats | null>(null);
   const [allSales, setAllSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
@@ -194,7 +199,7 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* ═══════ TRIAL BANNER ═══════ */}
-        {isInTrial && daysLeft !== null && (
+        {isInTrial && (daysLeft ?? 0) > 0 && (
           <View style={[s.trialBanner, { backgroundColor: '#FFF0F6', borderColor: '#FFD6E9' }]}>
             <Ionicons name="gift-outline" size={24} color={PINK} />
             <View style={{ flex: 1, marginLeft: 12 }}>
