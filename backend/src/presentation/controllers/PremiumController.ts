@@ -333,6 +333,12 @@ export class PremiumController {
         return;
       }
 
+      // Check if user already used trial before
+      if (user && 'trial_used_at' in user && (user as any).trial_used_at) {
+        res.status(400).json({ success: false, error: 'Trial already used' });
+        return;
+      }
+
       // Check if user ever made a real payment (PIX, App Store, Stripe)
       const paymentCheck = await pool.query(
         `SELECT COUNT(*) as count FROM premium_events
@@ -367,6 +373,9 @@ export class PremiumController {
       trialEnd.setDate(trialEnd.getDate() + trialDays);
 
       const updatedUser = await userRepo.updatePlanTier(userId, trialTier as 'premium' | 'master', trialEnd, null);
+
+      // Mark trial as used (only one trial per user)
+      await userRepo.markTrialUsed(userId);
 
       // Record trial event
       await pool.query(

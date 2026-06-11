@@ -225,8 +225,13 @@ export class PostgresUserRepository {
     await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [passwordHash, userId]);
   }
 
+  async markTrialUsed(userId: string): Promise<void> {
+    await pool.query(`UPDATE users SET trial_used_at = NOW() WHERE id = $1`, [userId]);
+  }
+
   private mapRow(row: Record<string, unknown>): User & { passwordHash: string } {
     const premiumUntil = row.premium_until as Date | null;
+    const trialUsedAt = row.trial_used_at as Date | null;
     return {
       id: row.id as string,
       companyName: row.company_name as string,
@@ -240,6 +245,7 @@ export class PostgresUserRepository {
       premiumUntil: premiumUntil ? premiumUntil.toISOString() : null,
       premiumPlatform: (row.premium_platform as PremiumPlatform | null) ?? null,
       isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
+      trial_used_at: trialUsedAt ? trialUsedAt.toISOString() : null,
     };
   }
 }

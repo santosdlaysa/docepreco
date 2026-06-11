@@ -14,6 +14,7 @@ export interface User {
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   isActive: boolean;
+  trial_used_at?: string | null;
 }
 
 export interface RegisterDTO {

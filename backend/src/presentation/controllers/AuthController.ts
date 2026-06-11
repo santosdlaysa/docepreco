@@ -84,7 +84,10 @@ export class AuthController {
           trialEnd.setDate(trialEnd.getDate() + trialDays);
 
           const updatedUser = await userRepo.updatePlanTier(user.id, trialTier as 'premium' | 'master', trialEnd, null);
-          if (updatedUser) user = updatedUser;
+          if (updatedUser) {
+            user = updatedUser;
+            await userRepo.markTrialUsed(user.id);
+          }
         }
       } catch (e) {
         console.error('[Auth] Erro ao definir trial:', e);
