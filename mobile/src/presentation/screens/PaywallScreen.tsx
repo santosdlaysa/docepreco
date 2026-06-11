@@ -32,6 +32,7 @@ import { authApi } from '../../data/api/authApi';
 import { pixApi, LEGACY_MONTHLY_CENTS } from '../../data/api/pixApi';
 import { stripeApi } from '../../data/api/stripeApi';
 import { planConfigApi } from '../../data/api/planConfigApi';
+import { premiumApi } from '../../data/api/premiumApi';
 import { useTranslation } from 'react-i18next';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
@@ -82,6 +83,8 @@ export const PaywallScreen: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [configured] = useState(isRevenueCatConfigured());
   const [cardLoading, setCardLoading] = useState(false);
+  const [trialLoading, setTrialLoading] = useState(false);
+  const [trialDays, setTrialDays] = useState<number | null>(null);
   // Overlay "verificando pagamento" enquanto consulta o backend após voltar do Stripe
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const appState = useRef(AppState.currentState);
@@ -189,8 +192,15 @@ export const PaywallScreen: React.FC = () => {
       }
       const mi = await planConfigApi.getMasterInfo();
       if (mi) setMasterPrice(mi.price);
+
+      // Carrega config de trial
+      const trial = await planConfigApi.getTrialConfig();
+      if (trial) {
+        const days = tier === 'master' ? trial.masterFreeDays : trial.premiumFreeDays;
+        setTrialDays(days);
+      }
     })();
-  }, []);
+  }, [tier]);
 
   // Quebra "R$ 14,90" em parte inteira + centavos para o layout dos cards
   const splitPrice = (label: string): [string, string] => {
@@ -267,6 +277,27 @@ export const PaywallScreen: React.FC = () => {
       else { showToast('Nenhuma assinatura ativa encontrada.', 'info'); }
     } catch (error) { showToast((error as Error).message || 'Erro ao restaurar', 'error'); }
     finally { setRestoring(false); }
+  };
+
+  const handleRequestTrial = async () => {
+    setTrialLoading(true);
+    try {
+      await premiumApi.requestTrial();
+      showToast(`Trial de ${trialDays} dias ativado! 🎉`, 'success');
+      await refresh();
+      navigation.goBack();
+    } catch (error: any) {
+      const msg = error?.message || 'Erro ao ativar trial';
+      if (msg.includes('PAYMENT_METHOD_REQUIRED')) {
+        showToast('Cadastre um cartão de crédito primeiro', 'error');
+      } else if (msg.includes('Trial already used')) {
+        showToast('Você já usou seu período de trial', 'error');
+      } else {
+        showToast(msg, 'error');
+      }
+    } finally {
+      setTrialLoading(false);
+    }
   };
 
   return (
@@ -361,6 +392,29 @@ export const PaywallScreen: React.FC = () => {
               );
             })}
           </View>
+
+          {/* ── Trial Request ── */}
+          {trialDays && (
+            <>
+              <View style={st.trialCard}>
+                <Ionicons name="gift-outline" size={24} color={accent} style={{ marginBottom: 8 }} />
+                <Text style={st.trialTitle}>{trialDays} dias grátis</Text>
+                <Text style={st.trialText}>Teste tudo sem pagar agora. Começamos a cobrar depois.</Text>
+                <TouchableOpacity onPress={handleRequestTrial} disabled={trialLoading} activeOpacity={0.85}>
+                  <LinearGradient colors={isMasterTier ? ['#9B6BF0', PURPLE] : ['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.trialCta}>
+                    {trialLoading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <>
+                        <Ionicons name="sparkles" size={18} color="#fff" />
+                        <Text style={st.ctaText}>Ativar trial grátis</Text>
+                      </>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            </>
+          )}
 
           {/* ── Store CTA (only when the store sells this tier) ── */}
           {hasStorePlans && (
@@ -691,6 +745,34 @@ const st = StyleSheet.create({
 
   legal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   legalLink: { fontSize: 12.5, fontWeight: '600', color: INK2 },
+
+  /* trial */
+  trialCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: LINE,
+    ...SHADOW,
+  },
+  trialTitle: { fontSize: 18, fontWeight: '700', color: INK },
+  trialText: { fontSize: 13, color: INK2, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 16 },
+  trialCta: {
+    width: '100%',
+    height: 54,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: PINK,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
 
   /* overlay "verificando pagamento" */
   verifyOverlay: {

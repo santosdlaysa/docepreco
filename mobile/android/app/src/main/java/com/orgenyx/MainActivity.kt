@@ -1,4 +1,4 @@
-package com.laysadiniz.sweetpricing
+package com.orgenyx
 
 import android.os.Build
 import android.os.Bundle

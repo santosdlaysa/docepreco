@@ -87,7 +87,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.laysadiniz.sweetpricing'
+    namespace 'com.orgenyx'
     defaultConfig {
         applicationId 'com.orgenyx'
         minSdkVersion rootProject.ext.minSdkVersion

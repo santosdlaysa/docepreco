@@ -1,4 +1,4 @@
-package com.laysadiniz.sweetpricing
+package com.orgenyx
 
 import android.app.Application
 import android.content.res.Configuration
