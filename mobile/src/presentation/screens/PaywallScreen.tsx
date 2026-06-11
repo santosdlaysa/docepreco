@@ -32,7 +32,6 @@ import { authApi } from '../../data/api/authApi';
 import { pixApi, LEGACY_MONTHLY_CENTS } from '../../data/api/pixApi';
 import { stripeApi } from '../../data/api/stripeApi';
 import { planConfigApi } from '../../data/api/planConfigApi';
-import { premiumApi } from '../../data/api/premiumApi';
 import { useTranslation } from 'react-i18next';
 
 type NavProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
@@ -83,8 +82,6 @@ export const PaywallScreen: React.FC = () => {
   const [selected, setSelected] = useState<string | null>(null);
   const [configured] = useState(isRevenueCatConfigured());
   const [cardLoading, setCardLoading] = useState(false);
-  const [trialLoading, setTrialLoading] = useState(false);
-  const [trialDays, setTrialDays] = useState<number | null>(null);
   // Overlay "verificando pagamento" enquanto consulta o backend após voltar do Stripe
   const [verifyingPayment, setVerifyingPayment] = useState(false);
   const appState = useRef(AppState.currentState);
@@ -192,13 +189,6 @@ export const PaywallScreen: React.FC = () => {
       }
       const mi = await planConfigApi.getMasterInfo();
       if (mi) setMasterPrice(mi.price);
-
-      // Carrega config de trial
-      const trial = await planConfigApi.getTrialConfig();
-      if (trial) {
-        const days = tier === 'master' ? trial.masterFreeDays : trial.premiumFreeDays;
-        setTrialDays(days);
-      }
     })();
   }, [tier]);
 
@@ -279,26 +269,6 @@ export const PaywallScreen: React.FC = () => {
     finally { setRestoring(false); }
   };
 
-  const handleRequestTrial = async () => {
-    setTrialLoading(true);
-    try {
-      await premiumApi.requestTrial();
-      showToast(`Trial de ${trialDays} dias ativado! 🎉`, 'success');
-      await refresh();
-      navigation.goBack();
-    } catch (error: any) {
-      const msg = error?.message || 'Erro ao ativar trial';
-      if (msg.includes('PAYMENT_METHOD_REQUIRED')) {
-        showToast('Cadastre um cartão de crédito primeiro', 'error');
-      } else if (msg.includes('Trial already used')) {
-        showToast('Você já usou seu período de trial', 'error');
-      } else {
-        showToast(msg, 'error');
-      }
-    } finally {
-      setTrialLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: CREAM }} edges={['bottom']}>
@@ -392,29 +362,6 @@ export const PaywallScreen: React.FC = () => {
               );
             })}
           </View>
-
-          {/* ── Trial Request ── */}
-          {trialDays && (
-            <>
-              <View style={st.trialCard}>
-                <Ionicons name="gift-outline" size={24} color={accent} style={{ marginBottom: 8 }} />
-                <Text style={st.trialTitle}>{trialDays} dias grátis</Text>
-                <Text style={st.trialText}>Teste tudo sem pagar agora. Começamos a cobrar depois.</Text>
-                <TouchableOpacity onPress={handleRequestTrial} disabled={trialLoading} activeOpacity={0.85}>
-                  <LinearGradient colors={isMasterTier ? ['#9B6BF0', PURPLE] : ['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.trialCta}>
-                    {trialLoading ? (
-                      <ActivityIndicator color="#fff" />
-                    ) : (
-                      <>
-                        <Ionicons name="sparkles" size={18} color="#fff" />
-                        <Text style={st.ctaText}>Ativar trial grátis</Text>
-                      </>
-                    )}
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            </>
-          )}
 
           {/* ── Store CTA (only when the store sells this tier) ── */}
           {hasStorePlans && (

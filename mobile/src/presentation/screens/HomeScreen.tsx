@@ -199,7 +199,7 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* ═══════ TRIAL BANNER ═══════ */}
-        {isInTrial && (daysLeft ?? 0) > 0 && (
+        {isInTrial && daysLeft !== null && (
           <View style={[s.trialBanner, { backgroundColor: '#FFF0F6', borderColor: '#FFD6E9' }]}>
             <Ionicons name="gift-outline" size={24} color={PINK} />
             <View style={{ flex: 1, marginLeft: 12 }}>
