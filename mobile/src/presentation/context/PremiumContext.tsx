@@ -14,6 +14,8 @@ interface PremiumContextData {
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   daysLeft: number | null;
+  /** Whether user is in active trial period (premium but not master). */
+  isInTrial: boolean;
   loading: boolean;
   /** Re-fetches the current user from the API and updates storage. */
   refresh: () => Promise<void>;
@@ -30,6 +32,7 @@ const defaultValue: PremiumContextData = {
   premiumUntil: null,
   premiumPlatform: null,
   daysLeft: null,
+  isInTrial: false,
   loading: true,
   refresh: async () => {},
   setPremiumLocal: () => {},
@@ -144,6 +147,7 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [loadFromStorage, syncIfNeeded]);
 
   const tier = activeTier(user);
+  const isInTrial = tier === 'premium' && user?.trial_used_at !== null;
   const value: PremiumContextData = {
     isPremium: isActive(user),
     planTier: tier,
@@ -151,6 +155,7 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     premiumUntil: user?.premiumUntil ?? null,
     premiumPlatform: user?.premiumPlatform ?? null,
     daysLeft: computeDaysLeft(user?.premiumUntil ?? null),
+    isInTrial,
     loading,
     refresh,
     setPremiumLocal,
