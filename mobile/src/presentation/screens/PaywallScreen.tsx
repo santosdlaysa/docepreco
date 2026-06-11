@@ -312,6 +312,11 @@ export const PaywallScreen: React.FC = () => {
               ? 'Tudo do Premium + financeiro, estoque e dicas de vendas.'
               : 'Desbloqueie 9 recursos PRO e leve seu negócio de doces a sério.'}
           </Text>
+          {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+            <Text style={st.heroTrial}>
+              ✨ {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis · depois só pague
+            </Text>
+          )}
         </LinearGradient>
 
         <View style={st.body}>
@@ -579,6 +584,14 @@ const st = StyleSheet.create({
     marginTop: 8,
     paddingHorizontal: 16,
     lineHeight: 20,
+  },
+  heroTrial: {
+    fontSize: 13,
+    color: '#FFE08A',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 12,
+    letterSpacing: 0.3,
   },
 
   body: { paddingHorizontal: 18, paddingTop: 24, gap: 16 },
