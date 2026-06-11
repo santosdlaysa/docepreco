@@ -11,6 +11,9 @@ router.post('/webhooks/revenuecat', (req, res) => controller.revenueCatWebhook(r
 // Sync premium status from mobile after purchase/restore (JWT-authenticated)
 router.post('/premium/sync', authMiddleware, (req, res) => controller.syncPremium(req as any, res));
 
+// Request trial for free users who never paid (JWT-authenticated)
+router.post('/premium/trial', authMiddleware, (req, res) => controller.requestTrial(req as any, res));
+
 // Admin manual toggle (protected by X-Admin-Secret header)
 router.post('/admin/users/:id/premium', (req, res) => controller.setPremiumManually(req, res));
 
