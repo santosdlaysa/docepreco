@@ -154,7 +154,7 @@ export function PlanConfigPage({ toast }: Props) {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Novos usuários recebem acesso grátis ao plano selecionado pelos dias configurados acima.</p>
             </div>
           </div>
-        <>
+
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Gift size={18} className="text-gray-500 dark:text-gray-400" /> Plano Free
