@@ -103,6 +103,9 @@ export const PaywallScreen: React.FC = () => {
   const masterPixAvailable = true;
   const [masterPrice, setMasterPrice] = useState(30);
   const [premiumPrice] = useState('R$ 14,90');
+  // Trial days para cada tier
+  const [premiumTrialDays, setPremiumTrialDays] = useState<number | null>(null);
+  const [masterTrialDays, setMasterTrialDays] = useState<number | null>(null);
 
   // Troca de nível: limpa as seleções para não carregar um plano de outro tier
   const switchTier = (next: 'premium' | 'master') => {
@@ -177,7 +180,7 @@ export const PaywallScreen: React.FC = () => {
     return () => sub.remove();
   }, [refresh]);
 
-  // Carrega rótulos de preço do PIX e infos do Master gerenciados pelo painel web
+  // Carrega rótulos de preço do PIX, infos do Master e trial days gerenciados pelo painel web
   useEffect(() => {
     (async () => {
       const cfg = await planConfigApi.getPixConfig();
@@ -189,8 +192,15 @@ export const PaywallScreen: React.FC = () => {
       }
       const mi = await planConfigApi.getMasterInfo();
       if (mi) setMasterPrice(mi.price);
+
+      // Carrega trial days
+      const trial = await planConfigApi.getTrialConfig();
+      if (trial) {
+        setPremiumTrialDays(trial.premiumFreeDays);
+        setMasterTrialDays(trial.masterFreeDays);
+      }
     })();
-  }, [tier]);
+  }, []);
 
   // Quebra "R$ 14,90" em parte inteira + centavos para o layout dos cards
   const splitPrice = (label: string): [string, string] => {
@@ -335,6 +345,12 @@ export const PaywallScreen: React.FC = () => {
                       {on && <Ionicons name="checkmark" size={12} color="#fff" />}
                     </View>
                     <Text style={st.planName}>{pkg.title}</Text>
+                    {/* Trial info */}
+                    {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+                      <Text style={st.planTrial}>
+                        {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis
+                      </Text>
+                    )}
                     <Text style={st.planPrice}>{pkg.priceLabel}</Text>
                     {pkg.subtitle && <Text style={st.planPer}>{pkg.subtitle}</Text>}
                   </TouchableOpacity>
@@ -436,6 +452,12 @@ export const PaywallScreen: React.FC = () => {
             >
               <Ionicons name="card-outline" size={18} color={isMasterTier ? PURPLE : PINK} style={{ marginBottom: 4 }} />
               <Text style={st.planName}>Mensal</Text>
+              {/* Trial info */}
+              {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+                <Text style={st.planTrial}>
+                  {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis
+                </Text>
+              )}
               <Text style={st.planPrice}>{isMasterTier ? 'R$ 30' : 'R$ 14'}<Text style={st.planPriceSm}>{isMasterTier ? ',00' : ',90'}</Text></Text>
               <Text style={st.planPer}>por mês</Text>
             </TouchableOpacity>
@@ -449,6 +471,12 @@ export const PaywallScreen: React.FC = () => {
                 <View style={[st.save, { backgroundColor: '#2563EB' }]}><Text style={st.saveText}>ECONOMIZE</Text></View>
                 <Ionicons name="card-outline" size={18} color={PINK} style={{ marginBottom: 4 }} />
                 <Text style={st.planName}>Anual</Text>
+                {/* Trial info */}
+                {premiumTrialDays && (
+                  <Text style={st.planTrial}>
+                    {premiumTrialDays} dias grátis
+                  </Text>
+                )}
                 <Text style={st.planPrice}>R$ 120<Text style={st.planPriceSm}>,00</Text></Text>
                 <Text style={st.planPer}>R$ 10/mês</Text>
               </TouchableOpacity>
@@ -612,6 +640,7 @@ const st = StyleSheet.create({
   planOn: { borderColor: PINK, shadowColor: PINK, shadowOpacity: 0.16, elevation: 5 },
   planOnMaster: { borderColor: PURPLE, shadowColor: PURPLE, shadowOpacity: 0.16, elevation: 5 },
   planName: { fontSize: 13, fontWeight: '700', color: INK2 },
+  planTrial: { fontSize: 12, fontWeight: '600', color: PINK, marginTop: 4 },
   planPrice: { fontSize: 26, fontWeight: '800', color: INK, marginTop: 7, lineHeight: 28 },
   planPriceSm: { fontSize: 13, fontWeight: '600', color: INK2 },
   planPer: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 4 },
