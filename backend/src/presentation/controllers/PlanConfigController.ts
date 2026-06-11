@@ -25,8 +25,11 @@ interface PlanConfig {
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
+  premiumFreeDays: number;
   masterPrice: number;
   masterFeatures: string[];
+  masterFreeDays: number;
+  newUserTrialTier: 'free' | 'premium' | 'master';
   pix: PixConfig;
 }
 
@@ -64,8 +67,11 @@ const DEFAULTS: PlanConfig = {
   premiumPrice: 14.90,
   premiumFeatures: ['Receitas ilimitadas', 'Ficha técnica em PDF', 'Relatórios avançados'],
   freeFeatures: ['Até 3 receitas', 'Cálculo de custos', 'Registro de vendas'],
+  premiumFreeDays: 2,
   masterPrice: 30,
   masterFeatures: ['Tudo do Premium', 'Gestão financeira (DRE)', 'Controle de estoque', 'Dicas de vendas'],
+  masterFreeDays: 3,
+  newUserTrialTier: 'master',
   pix: DEFAULT_PIX,
 };
 
@@ -97,8 +103,11 @@ export class PlanConfigController {
         premiumPrice: settings.plan_premium_price ? parseFloat(settings.plan_premium_price) : DEFAULTS.premiumPrice,
         premiumFeatures: settings.plan_premium_features ? JSON.parse(settings.plan_premium_features) : DEFAULTS.premiumFeatures,
         freeFeatures: settings.plan_free_features ? JSON.parse(settings.plan_free_features) : DEFAULTS.freeFeatures,
+        premiumFreeDays: settings.plan_premium_free_days ? parseInt(settings.plan_premium_free_days) : DEFAULTS.premiumFreeDays,
         masterPrice: settings.plan_master_price ? parseFloat(settings.plan_master_price) : DEFAULTS.masterPrice,
         masterFeatures: settings.plan_master_features ? JSON.parse(settings.plan_master_features) : DEFAULTS.masterFeatures,
+        masterFreeDays: settings.plan_master_free_days ? parseInt(settings.plan_master_free_days) : DEFAULTS.masterFreeDays,
+        newUserTrialTier: (settings.plan_new_user_trial_tier as any) || DEFAULTS.newUserTrialTier,
         pix: {
           monthly: mergePixPlan(storedPixMonthly, DEFAULT_PIX.monthly),
           annual: mergePixPlan(storedPixAnnual, DEFAULT_PIX.annual),
@@ -114,7 +123,7 @@ export class PlanConfigController {
 
   async update(req: Request, res: Response): Promise<void> {
     try {
-      const { freeRecipeLimit, premiumPrice, premiumFeatures, freeFeatures, masterPrice, masterFeatures, pix } = req.body as Partial<PlanConfig>;
+      const { freeRecipeLimit, premiumPrice, premiumFeatures, freeFeatures, premiumFreeDays, masterPrice, masterFeatures, masterFreeDays, newUserTrialTier, pix } = req.body as Partial<PlanConfig>;
       const pixConfig: PixConfig = {
         monthly: mergePixPlan(pix?.monthly, DEFAULT_PIX.monthly),
         annual: mergePixPlan(pix?.annual, DEFAULT_PIX.annual),
@@ -126,8 +135,11 @@ export class PlanConfigController {
         ['plan_premium_price', String(premiumPrice ?? DEFAULTS.premiumPrice)],
         ['plan_premium_features', JSON.stringify(premiumFeatures ?? DEFAULTS.premiumFeatures)],
         ['plan_free_features', JSON.stringify(freeFeatures ?? DEFAULTS.freeFeatures)],
+        ['plan_premium_free_days', String(premiumFreeDays ?? DEFAULTS.premiumFreeDays)],
         ['plan_master_price', String(masterPrice ?? DEFAULTS.masterPrice)],
         ['plan_master_features', JSON.stringify(masterFeatures ?? DEFAULTS.masterFeatures)],
+        ['plan_master_free_days', String(masterFreeDays ?? DEFAULTS.masterFreeDays)],
+        ['plan_new_user_trial_tier', newUserTrialTier ?? DEFAULTS.newUserTrialTier],
         ['plan_pix_monthly', JSON.stringify(pixConfig.monthly)],
         ['plan_pix_annual', JSON.stringify(pixConfig.annual)],
         ['plan_pix_monthly_master', JSON.stringify(pixConfig.masterMonthly)],
@@ -145,8 +157,11 @@ export class PlanConfigController {
         premiumPrice: premiumPrice ?? DEFAULTS.premiumPrice,
         premiumFeatures: premiumFeatures ?? DEFAULTS.premiumFeatures,
         freeFeatures: freeFeatures ?? DEFAULTS.freeFeatures,
+        premiumFreeDays: premiumFreeDays ?? DEFAULTS.premiumFreeDays,
         masterPrice: masterPrice ?? DEFAULTS.masterPrice,
         masterFeatures: masterFeatures ?? DEFAULTS.masterFeatures,
+        masterFreeDays: masterFreeDays ?? DEFAULTS.masterFreeDays,
+        newUserTrialTier: newUserTrialTier ?? DEFAULTS.newUserTrialTier,
         pix: pixConfig,
       };
       res.json({ success: true, data: config });
