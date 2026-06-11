@@ -67,11 +67,6 @@ export const HomeScreen: React.FC = () => {
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { requirePremium } = usePaywall();
 
-  // Debug: log trial status
-  useEffect(() => {
-    console.log('[HomeScreen] Trial debug:', { isInTrial, daysLeft, isPremium, isMaster });
-  }, [isInTrial, daysLeft, isPremium, isMaster]);
-
   const [stats, setStats] = useState<AppStats | null>(null);
   const [allSales, setAllSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
