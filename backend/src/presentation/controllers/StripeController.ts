@@ -180,6 +180,55 @@ export class StripeController {
     }
   }
 
+  /**
+   * Check if user has a valid payment method saved in Stripe.
+   * Used to validate if user can activate trial.
+   * GET /api/stripe/has-payment-method
+   */
+  async hasPaymentMethod(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const user = await userRepo.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      const stripe = getStripe();
+
+      // Find or create Stripe customer for this user
+      const customers = await stripe.customers.list({
+        email: user.email,
+        limit: 1,
+      });
+
+      if (customers.data.length === 0) {
+        // No Stripe customer exists yet — no payment method
+        res.json({ success: true, data: { hasPaymentMethod: false } });
+        return;
+      }
+
+      const customerId = customers.data[0].id;
+
+      // Check if customer has saved payment methods
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: customerId,
+        limit: 1,
+      });
+
+      const hasPaymentMethod = paymentMethods.data.length > 0;
+      res.json({ success: true, data: { hasPaymentMethod } });
+    } catch (error: any) {
+      console.error('[Stripe] hasPaymentMethod error:', error?.message ?? error);
+      res.status(500).json({ success: false, error: error?.message ?? 'Failed to check payment method' });
+    }
+  }
+
   /** Simple success page shown after payment in the browser. */
   success(_req: Request, res: Response): void {
     res.send(`<!DOCTYPE html>

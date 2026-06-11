@@ -351,6 +351,19 @@ export class PremiumController {
         return;
       }
 
+      // Require valid payment method before allowing trial
+      // User must have a card registered via Stripe or have made a payment
+      const paymentMethodCheck = await pool.query(
+        `SELECT COUNT(*) as count FROM premium_events
+         WHERE user_id = $1 AND source = 'stripe'`,
+        [userId]
+      );
+      const hasStripePayment = parseInt(paymentMethodCheck.rows[0].count) > 0;
+      if (!hasStripePayment) {
+        res.status(402).json({ success: false, error: 'Payment method required', code: 'PAYMENT_METHOD_REQUIRED' });
+        return;
+      }
+
       // Get trial configuration
       const settings = await pool.query(
         `SELECT key, value FROM app_settings WHERE key IN ($1, $2, $3)`,
