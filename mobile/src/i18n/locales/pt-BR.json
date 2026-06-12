@@ -397,6 +397,8 @@
     "shareQuote": "Compartilhar Orçamento",
     "loadError": "Nao foi possivel carregar a receita",
     "shareError": "Erro ao gerar orçamento",
+    "deleteTitle": "Excluir receita",
+    "deleteMessage": "Tem certeza que deseja excluir \"{{name}}\"? Esta ação não pode ser desfeita.",
     "seasonActive": "{{name}} ativa",
     "seasonPrice": "Preço na temporada:",
     "scaleCalculator": "Calculadora de Escala",

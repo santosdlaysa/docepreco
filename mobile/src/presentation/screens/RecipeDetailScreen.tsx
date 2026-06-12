@@ -78,6 +78,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [pdfSettings, setPdfSettings] = useState<PdfSettings | undefined>();
   const [activeSeason, setActiveSeason] = useState<Season | null>(null);
   const [scaleInput, setScaleInput] = useState('');
@@ -157,6 +158,33 @@ export const RecipeDetailScreen: React.FC = () => {
     }
   };
 
+  const handleDelete = () => {
+    guardAction(() => {
+      Alert.alert(
+        t('recipeDetail.deleteTitle'),
+        t('recipeDetail.deleteMessage', { name: recipe?.name }),
+        [
+          { text: t('common.cancel'), style: 'cancel' },
+          {
+            text: t('common.delete'),
+            style: 'destructive',
+            onPress: async () => {
+              setDeleting(true);
+              try {
+                await api.delete(recipeId);
+                showToast(t('recipes.deleted', { name: recipe?.name }), 'success');
+                navigation.goBack();
+              } catch {
+                showToast(t('recipes.deleteError'), 'error');
+                setDeleting(false);
+              }
+            },
+          },
+        ],
+      );
+    });
+  };
+
   const scaleQty = parseFloat(scaleInput.replace(',', '.'));
   const scaleValid = !isNaN(scaleQty) && scaleQty > 0;
   const scaleFactor = recipe && scaleValid ? scaleQty / recipe.yield : null;
@@ -202,7 +230,7 @@ export const RecipeDetailScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={s.heroActions}>
               <TouchableOpacity onPress={removePhoto} style={s.heroActionBtn} activeOpacity={0.7}>
-                <Ionicons name="trash-outline" size={16} color="#F44336" />
+                <Ionicons name="close-circle-outline" size={17} color={INK} />
               </TouchableOpacity>
               <TouchableOpacity onPress={pickPhoto} style={s.heroActionBtn} activeOpacity={0.7}>
                 <Ionicons name="camera-outline" size={16} color={INK} />
@@ -213,6 +241,18 @@ export const RecipeDetailScreen: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="pencil" size={16} color={INK} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDelete}
+                style={s.heroActionBtn}
+                activeOpacity={0.7}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#F44336" />
+                ) : (
+                  <Ionicons name="trash-outline" size={16} color="#F44336" />
+                )}
               </TouchableOpacity>
             </View>
           </ImageBackground>
@@ -237,6 +277,18 @@ export const RecipeDetailScreen: React.FC = () => {
                 activeOpacity={0.7}
               >
                 <Ionicons name="pencil" size={16} color={INK} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDelete}
+                style={s.heroActionBtn}
+                activeOpacity={0.7}
+                disabled={deleting}
+              >
+                {deleting ? (
+                  <ActivityIndicator size="small" color="#F44336" />
+                ) : (
+                  <Ionicons name="trash-outline" size={16} color="#F44336" />
+                )}
               </TouchableOpacity>
             </View>
           </LinearGradient>
