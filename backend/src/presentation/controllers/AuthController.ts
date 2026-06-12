@@ -30,9 +30,13 @@ const TYPO_MAP: Record<string, string> = {
 export class AuthController {
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { companyName, email, password, phone, referralCode } = req.body;
+      const { companyName, email, password, phone, referralCode, platform } = req.body;
       if (!companyName || !email || !password) {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
+        return;
+      }
+      if (platform && !['ios', 'android'].includes(platform)) {
+        res.status(400).json({ success: false, error: 'Plataforma inválida (ios ou android)' });
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -62,7 +66,7 @@ export class AuthController {
         res.status(409).json({ success: false, error: 'Email já cadastrado' });
         return;
       }
-      const user = await userRepo.create({ companyName, email, password, phone });
+      const user = await userRepo.create({ companyName, email, password, phone, platform });
       // Programa de indicação: registra a indicação como pendente (best-effort,
       // nunca quebra o cadastro). Vira válida quando o indicado cria a 1ª receita.
       if (referralCode) {
@@ -78,7 +82,7 @@ export class AuthController {
           console.error('[Referral] Falha ao registrar indicação no cadastro:', e);
         }
       }
-      notifyNewUser(companyName, email);
+      notifyNewUser(companyName, email, platform);
       userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
       const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
       res.status(201).json({ success: true, data: { user, token } });

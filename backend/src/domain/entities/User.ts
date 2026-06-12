@@ -15,6 +15,7 @@ export interface User {
   premiumPlatform: PremiumPlatform | null;
   isActive: boolean;
   trial_used_at?: string | null;
+  signupPlatform: 'ios' | 'android' | null;
 }
 
 export interface RegisterDTO {
@@ -22,6 +23,7 @@ export interface RegisterDTO {
   email: string;
   password: string;
   phone?: string;
+  platform?: 'ios' | 'android';
 }
 
 export interface LoginDTO {
