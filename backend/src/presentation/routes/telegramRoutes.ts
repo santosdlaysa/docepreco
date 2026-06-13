@@ -1,4 +1,6 @@
 import { Router, Request, Response } from 'express';
+import { spawn } from 'child_process';
+import path from 'path';
 import { sendDailyUserReport, sendWeeklyReport, sendDailyGoalProgress } from '../../infrastructure/services/telegramService';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { fetchDownloadsLastDays } from '../../infrastructure/services/appStoreConnectService';
@@ -41,6 +43,35 @@ router.post('/webhook', async (req: Request, res: Response) => {
   if (!message) return res.sendStatus(200);
 
   const text: string = (message.text || '').split('@')[0];
+
+  // Comando livre: /claude <instrucao>
+  if (text.startsWith('/claude ')) {
+    const prompt = text.slice('/claude '.length).trim();
+    if (!prompt) {
+      sendTelegramReply('Uso: /claude <instrucao>\nEx: /claude adiciona rota GET /ping que retorna ok');
+      return res.sendStatus(200);
+    }
+    sendTelegramReply('Executando...');
+    const projectDir = path.resolve(__dirname, '../../../../');
+    let output = '';
+    const proc = spawn('claude', ['-p', prompt, '--dangerously-skip-permissions'], {
+      cwd: projectDir,
+      shell: true,
+    });
+    proc.stdout.on('data', (d: Buffer) => { output += d.toString(); });
+    proc.stderr.on('data', (d: Buffer) => { output += d.toString(); });
+    proc.on('close', () => {
+      const result = output.trim() || 'Sem resposta.';
+      for (let i = 0; i < result.length; i += 4000) {
+        sendTelegramReply(result.slice(i, i + 4000));
+      }
+    });
+    setTimeout(() => {
+      proc.kill();
+      sendTelegramReply('Timeout: operacao demorou mais de 5 minutos.');
+    }, 5 * 60 * 1000);
+    return res.sendStatus(200);
+  }
 
   try {
   switch (text) {
@@ -322,6 +353,7 @@ router.post('/webhook', async (req: Request, res: Response) => {
         '/lentas — Ultimas 10 rotas lentas (>2s)\n' +
         '/logs — Ultimos 20 requests\n' +
         '/atualizar — Envia email de atualizacao para todos\n' +
+        '/claude <instrucao> — Pede ao Claude para ajustar o codigo\n' +
         '/ajuda — Esta mensagem'
       );
       break;
