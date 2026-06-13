@@ -103,6 +103,9 @@ export const PaywallScreen: React.FC = () => {
   const masterPixAvailable = true;
   const [masterPrice, setMasterPrice] = useState(30);
   const [premiumPrice] = useState('R$ 14,90');
+  // Trial days para cada tier
+  const [premiumTrialDays, setPremiumTrialDays] = useState<number | null>(null);
+  const [masterTrialDays, setMasterTrialDays] = useState<number | null>(null);
 
   // Troca de nível: limpa as seleções para não carregar um plano de outro tier
   const switchTier = (next: 'premium' | 'master') => {
@@ -177,7 +180,7 @@ export const PaywallScreen: React.FC = () => {
     return () => sub.remove();
   }, [refresh]);
 
-  // Carrega rótulos de preço do PIX e infos do Master gerenciados pelo painel web
+  // Carrega rótulos de preço do PIX, infos do Master e trial days gerenciados pelo painel web
   useEffect(() => {
     (async () => {
       const cfg = await planConfigApi.getPixConfig();
@@ -189,6 +192,13 @@ export const PaywallScreen: React.FC = () => {
       }
       const mi = await planConfigApi.getMasterInfo();
       if (mi) setMasterPrice(mi.price);
+
+      // Carrega trial days
+      const trial = await planConfigApi.getTrialConfig();
+      if (trial) {
+        setPremiumTrialDays(trial.premiumFreeDays);
+        setMasterTrialDays(trial.masterFreeDays);
+      }
     })();
   }, []);
 
@@ -269,6 +279,7 @@ export const PaywallScreen: React.FC = () => {
     finally { setRestoring(false); }
   };
 
+
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: CREAM }} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -301,6 +312,11 @@ export const PaywallScreen: React.FC = () => {
               ? 'Tudo do Premium + financeiro, estoque e dicas de vendas.'
               : 'Desbloqueie 9 recursos PRO e leve seu negócio de doces a sério.'}
           </Text>
+          {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+            <Text style={st.heroTrial}>
+              ✨ {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis · depois só pague
+            </Text>
+          )}
         </LinearGradient>
 
         <View style={st.body}>
@@ -334,6 +350,12 @@ export const PaywallScreen: React.FC = () => {
                       {on && <Ionicons name="checkmark" size={12} color="#fff" />}
                     </View>
                     <Text style={st.planName}>{pkg.title}</Text>
+                    {/* Trial info */}
+                    {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+                      <Text style={st.planTrial}>
+                        {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis
+                      </Text>
+                    )}
                     <Text style={st.planPrice}>{pkg.priceLabel}</Text>
                     {pkg.subtitle && <Text style={st.planPer}>{pkg.subtitle}</Text>}
                   </TouchableOpacity>
@@ -435,6 +457,12 @@ export const PaywallScreen: React.FC = () => {
             >
               <Ionicons name="card-outline" size={18} color={isMasterTier ? PURPLE : PINK} style={{ marginBottom: 4 }} />
               <Text style={st.planName}>Mensal</Text>
+              {/* Trial info */}
+              {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+                <Text style={st.planTrial}>
+                  {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis
+                </Text>
+              )}
               <Text style={st.planPrice}>{isMasterTier ? 'R$ 30' : 'R$ 14'}<Text style={st.planPriceSm}>{isMasterTier ? ',00' : ',90'}</Text></Text>
               <Text style={st.planPer}>por mês</Text>
             </TouchableOpacity>
@@ -448,6 +476,12 @@ export const PaywallScreen: React.FC = () => {
                 <View style={[st.save, { backgroundColor: '#2563EB' }]}><Text style={st.saveText}>ECONOMIZE</Text></View>
                 <Ionicons name="card-outline" size={18} color={PINK} style={{ marginBottom: 4 }} />
                 <Text style={st.planName}>Anual</Text>
+                {/* Trial info */}
+                {premiumTrialDays && (
+                  <Text style={st.planTrial}>
+                    {premiumTrialDays} dias grátis
+                  </Text>
+                )}
                 <Text style={st.planPrice}>R$ 120<Text style={st.planPriceSm}>,00</Text></Text>
                 <Text style={st.planPer}>R$ 10/mês</Text>
               </TouchableOpacity>
@@ -551,6 +585,14 @@ const st = StyleSheet.create({
     paddingHorizontal: 16,
     lineHeight: 20,
   },
+  heroTrial: {
+    fontSize: 13,
+    color: '#FFE08A',
+    fontWeight: '600',
+    textAlign: 'center',
+    marginTop: 12,
+    letterSpacing: 0.3,
+  },
 
   body: { paddingHorizontal: 18, paddingTop: 24, gap: 16 },
 
@@ -611,6 +653,7 @@ const st = StyleSheet.create({
   planOn: { borderColor: PINK, shadowColor: PINK, shadowOpacity: 0.16, elevation: 5 },
   planOnMaster: { borderColor: PURPLE, shadowColor: PURPLE, shadowOpacity: 0.16, elevation: 5 },
   planName: { fontSize: 13, fontWeight: '700', color: INK2 },
+  planTrial: { fontSize: 12, fontWeight: '600', color: PINK, marginTop: 4 },
   planPrice: { fontSize: 26, fontWeight: '800', color: INK, marginTop: 7, lineHeight: 28 },
   planPriceSm: { fontSize: 13, fontWeight: '600', color: INK2 },
   planPer: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 4 },
@@ -691,6 +734,34 @@ const st = StyleSheet.create({
 
   legal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   legalLink: { fontSize: 12.5, fontWeight: '600', color: INK2 },
+
+  /* trial */
+  trialCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 18,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: LINE,
+    ...SHADOW,
+  },
+  trialTitle: { fontSize: 18, fontWeight: '700', color: INK },
+  trialText: { fontSize: 13, color: INK2, textAlign: 'center', marginTop: 4, marginBottom: 12, lineHeight: 16 },
+  trialCta: {
+    width: '100%',
+    height: 54,
+    borderRadius: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: PINK,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
 
   /* overlay "verificando pagamento" */
   verifyOverlay: {

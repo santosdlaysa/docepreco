@@ -34,8 +34,8 @@ export class PostgresUserRepository {
     const passwordHash = await bcrypt.hash(data.password, 10);
     const phone = data.phone?.replace(/\D/g, '') || null;
     const result = await pool.query(
-      `INSERT INTO users (company_name, email, password_hash, phone) VALUES ($1, $2, $3, $4) RETURNING *`,
-      [data.companyName, data.email.toLowerCase(), passwordHash, phone]
+      `INSERT INTO users (company_name, email, password_hash, phone, signup_platform) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [data.companyName, data.email.toLowerCase(), passwordHash, phone, data.platform || null]
     );
     return this.mapRow(result.rows[0]);
   }
@@ -225,8 +225,13 @@ export class PostgresUserRepository {
     await pool.query(`UPDATE users SET password_hash = $1 WHERE id = $2`, [passwordHash, userId]);
   }
 
+  async markTrialUsed(userId: string): Promise<void> {
+    await pool.query(`UPDATE users SET trial_used_at = NOW() WHERE id = $1`, [userId]);
+  }
+
   private mapRow(row: Record<string, unknown>): User & { passwordHash: string } {
     const premiumUntil = row.premium_until as Date | null;
+    const trialUsedAt = row.trial_used_at as Date | null;
     return {
       id: row.id as string,
       companyName: row.company_name as string,
@@ -240,6 +245,8 @@ export class PostgresUserRepository {
       premiumUntil: premiumUntil ? premiumUntil.toISOString() : null,
       premiumPlatform: (row.premium_platform as PremiumPlatform | null) ?? null,
       isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
+      trial_used_at: trialUsedAt ? trialUsedAt.toISOString() : null,
+      signupPlatform: (row.signup_platform as 'ios' | 'android' | null) ?? null,
     };
   }
 }

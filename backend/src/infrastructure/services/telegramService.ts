@@ -46,11 +46,12 @@ function brNow(): string {
 
 // ── Alerts ──────────────────────────────────────────────────────────
 
-export async function notifyNewUser(companyName: string, email: string): Promise<void> {
+export async function notifyNewUser(companyName: string, email: string, platform?: string | null): Promise<void> {
   if (!await isAlertEnabled('new_user')) return;
   const tpl = await getTemplate('new_user');
-  const fallback = `🆕 Novo cadastro!\n\n🏪 ${companyName}\n📧 ${email}\n🕐 ${brNow()}`;
-  const text = tpl ? applyTemplate(tpl, { companyName, email, time: brNow() }) : fallback;
+  const platformIcon = platform === 'ios' ? '🍎 iOS' : platform === 'android' ? '🤖 Android' : '📱 Web';
+  const fallback = `🆕 Novo cadastro!\n\n🏪 ${companyName}\n📧 ${email}\n${platformIcon}\n🕐 ${brNow()}`;
+  const text = tpl ? applyTemplate(tpl, { companyName, email, platform: platformIcon, time: brNow() }) : fallback;
   sendTelegramMessage(text);
 }
 

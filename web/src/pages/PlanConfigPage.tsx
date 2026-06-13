@@ -141,6 +141,20 @@ export function PlanConfigPage({ toast }: Props) {
         </div>
       ) : config ? (
         <>
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-blue-200 dark:border-blue-900 p-6 space-y-4">
+            <h3 className="text-base font-bold text-gray-900 dark:text-white">Trial para Novos Usuários</h3>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Plano ofertado como trial</label>
+              <select value={config.newUserTrialTier} onChange={e => setConfig({ ...config, newUserTrialTier: e.target.value as any })}
+                className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none">
+                <option value="free">Nenhum (Free)</option>
+                <option value="premium">Premium ({config.premiumFreeDays} dias)</option>
+                <option value="master">Master ({config.masterFreeDays} dias)</option>
+              </select>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">Novos usuários recebem acesso grátis ao plano selecionado pelos dias configurados acima.</p>
+            </div>
+          </div>
+
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 space-y-5">
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Gift size={18} className="text-gray-500 dark:text-gray-400" /> Plano Free
@@ -179,10 +193,17 @@ export function PlanConfigPage({ toast }: Props) {
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Crown size={18} className="text-amber-500" /> Plano Premium
             </h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço mensal (R$)</label>
-              <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
-                value={config.premiumPrice} onChange={e => setConfig({ ...config, premiumPrice: parseFloat(e.target.value) || 0 })} />
+            <div className="flex gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço mensal (R$)</label>
+                <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  value={config.premiumPrice} onChange={e => setConfig({ ...config, premiumPrice: parseFloat(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Dias grátis de trial</label>
+                <input type="number" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  value={config.premiumFreeDays} onChange={e => setConfig({ ...config, premiumFreeDays: parseInt(e.target.value) || 0 })} />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Funcionalidades do plano Premium</label>
@@ -212,10 +233,17 @@ export function PlanConfigPage({ toast }: Props) {
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Crown size={18} className="text-purple-500" /> Plano Master
             </h3>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço mensal (R$)</label>
-              <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
-                value={config.masterPrice} onChange={e => setConfig({ ...config, masterPrice: parseFloat(e.target.value) || 0 })} />
+            <div className="flex gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço mensal (R$)</label>
+                <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  value={config.masterPrice} onChange={e => setConfig({ ...config, masterPrice: parseFloat(e.target.value) || 0 })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Dias grátis de trial</label>
+                <input type="number" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                  value={config.masterFreeDays} onChange={e => setConfig({ ...config, masterFreeDays: parseInt(e.target.value) || 0 })} />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Funcionalidades exclusivas do Master</label>

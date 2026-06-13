@@ -14,6 +14,7 @@ export interface AuthUser {
   planTier: PlanTier;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
+  trial_used_at: string | null;
 }
 
 const normalizeUser = (raw: any): AuthUser => ({
@@ -27,6 +28,7 @@ const normalizeUser = (raw: any): AuthUser => ({
   planTier: (raw.planTier as PlanTier | undefined) ?? (Boolean(raw.isPremium) ? 'premium' : 'free'),
   premiumUntil: raw.premiumUntil ?? null,
   premiumPlatform: raw.premiumPlatform ?? null,
+  trial_used_at: raw.trial_used_at ?? null,
 });
 
 export const authApi = {

@@ -25,14 +25,22 @@ interface PlanConfig {
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
+  premiumFreeDays?: number;
   masterPrice?: number;
   masterFeatures?: string[];
+  masterFreeDays?: number;
   pix?: PixConfig;
 }
 
 export interface MasterInfo {
   price: number;
   features: string[];
+}
+
+export interface TrialConfig {
+  premiumFreeDays: number;
+  masterFreeDays: number;
+  newUserTrialTier: 'free' | 'premium' | 'master';
 }
 
 let cachedLimit: number | null = null;
@@ -76,6 +84,23 @@ export const planConfigApi = {
       return {
         price: data.data.masterPrice ?? 30,
         features: data.data.masterFeatures ?? [],
+      };
+    } catch {
+      return null;
+    }
+  },
+
+  /** Configuração de dias grátis (trial) para cada plano. */
+  async getTrialConfig(): Promise<TrialConfig | null> {
+    try {
+      const { data } = await axios.get<{ success: boolean; data: PlanConfig }>(
+        `${BASE_URL}/admin/settings/plans`,
+        { timeout: 10000 },
+      );
+      return {
+        premiumFreeDays: data.data.premiumFreeDays ?? 2,
+        masterFreeDays: data.data.masterFreeDays ?? 3,
+        newUserTrialTier: data.data.newUserTrialTier ?? 'master',
       };
     } catch {
       return null;

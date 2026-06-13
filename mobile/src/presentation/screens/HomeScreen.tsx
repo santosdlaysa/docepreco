@@ -63,7 +63,7 @@ const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { companyName, companyLogo } = useAuth();
-  const { isPremium, isMaster } = usePremium();
+  const { isPremium, isMaster, isInTrial, daysLeft } = usePremium();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { requirePremium } = usePaywall();
 
@@ -192,6 +192,19 @@ export const HomeScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* ═══════ TRIAL BANNER ═══════ */}
+        {isInTrial && daysLeft !== null && (
+          <View style={[s.trialBanner, { backgroundColor: '#FFF0F6', borderColor: '#FFD6E9' }]}>
+            <Ionicons name="gift-outline" size={24} color={PINK} />
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={s.trialBannerTitle}>
+                {daysLeft === 1 ? '1 dia grátis restante' : `${daysLeft} dias grátis restantes`}
+              </Text>
+              <Text style={s.trialBannerSub}>Aproveite todos os recursos Premium</Text>
+            </View>
+          </View>
+        )}
 
         {/* ═══════ HERO REVENUE ═══════ */}
         <View style={s.heroWrap}>
@@ -795,4 +808,28 @@ const s = StyleSheet.create({
   },
   guideTitle: { fontSize: 15, fontWeight: '700', color: INK },
   guideSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+
+  /* ── Trial banner ── */
+  trialBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: 18,
+    marginBottom: 14,
+    marginTop: -4,
+    borderRadius: 16,
+    padding: 13,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+  },
+  trialBannerTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: PINK,
+    marginBottom: 2,
+  },
+  trialBannerSub: {
+    fontSize: 12,
+    color: INK2,
+    fontWeight: '500',
+  },
 });

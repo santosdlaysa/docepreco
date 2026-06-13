@@ -18,7 +18,7 @@ function getStripe() {
   return new Stripe(key, { apiVersion: '2026-05-27.dahlia' });
 }
 
-// Preços em centavos (BRL) por plano/tier
+// Preços em centavos (BRL) por plano/tier (para fallback apenas)
 const PRICES: Record<string, Record<string, number>> = {
   premium: { monthly: 1490, annual: 12000 },
   master:  { monthly: 3000, annual: 30000 },
@@ -29,6 +29,18 @@ const PLAN_DAYS: Record<string, number> = { monthly: 30, annual: 365 };
 const PLAN_NAMES: Record<string, Record<string, string>> = {
   premium: { monthly: 'DocePreço Premium Mensal', annual: 'DocePreço Premium Anual' },
   master:  { monthly: 'DocePreço Master Mensal',  annual: 'DocePreço Master Anual' },
+};
+
+// Stripe Price IDs for subscriptions (recurring billing)
+const STRIPE_PRICE_IDS: Record<string, Record<string, string>> = {
+  premium: {
+    monthly: 'price_1SnNyT3CuHnNAoVB5EJMM9Ma',
+    annual: 'price_1Th8Vn3CuHnNAoVBMOJUX7cK',
+  },
+  master: {
+    monthly: 'price_1Th8W13CuHnNAoVBYV0YGwX9',
+    annual: 'price_1Th8WI3CuHnNAoVBWXYBleVj',
+  },
 };
 
 export class StripeController {
@@ -63,26 +75,46 @@ export class StripeController {
     try {
       const stripe = getStripe();
       const baseUrl = process.env.APP_BASE_URL ?? 'https://docepreco.onrender.com';
+      const priceId = STRIPE_PRICE_IDS[tier]?.[plan];
+
+      if (!priceId) {
+        res.status(400).json({ success: false, error: 'Price ID not configured' });
+        return;
+      }
+
+      // Get trial days from plan config
+      let trialDays = 0;
+      try {
+        const settings = await pool.query(
+          `SELECT key, value FROM app_settings WHERE key IN ($1, $2)`,
+          [`plan_${tier}_free_days`, 'plan_new_user_trial_tier']
+        );
+        const settingsMap: Record<string, string> = {};
+        for (const row of settings.rows) settingsMap[row.key] = row.value;
+
+        const masterDays = parseInt(settingsMap['plan_master_free_days'] || '3');
+        const premiumDays = parseInt(settingsMap['plan_premium_free_days'] || '2');
+        trialDays = tier === 'master' ? masterDays : premiumDays;
+      } catch (e) {
+        console.warn('[Stripe] Failed to get trial config:', e);
+      }
 
       const session = await stripe.checkout.sessions.create({
-        mode: 'payment',
+        mode: 'subscription',
         payment_method_types: ['card'],
         customer_email: user.email,
         line_items: [
           {
+            price: priceId,
             quantity: 1,
-            price_data: {
-              currency: 'brl',
-              unit_amount: PRICES[tier][plan],
-              product_data: {
-                name: PLAN_NAMES[tier][plan],
-                description: `Acesso ${plan === 'annual' ? 'anual' : 'mensal'} ao DocePreço ${tier === 'master' ? 'Master' : 'Premium'}`,
-              },
-            },
           },
         ],
+        subscription_data: {
+          metadata: { userId, plan, tier },
+          ...(trialDays > 0 && { trial_period_days: trialDays }),
+        },
         metadata: { userId, plan, tier },
-        success_url: `${baseUrl}/api/stripe/success`,
+        success_url: `${baseUrl}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
         cancel_url: `${baseUrl}/api/stripe/cancel`,
       });
 
@@ -117,25 +149,68 @@ export class StripeController {
       return;
     }
 
-    if (event.type !== 'checkout.session.completed') {
+    // Handle both one-time payment and subscription events
+    const isCheckoutCompleted = event.type === 'checkout.session.completed';
+    const isSubscriptionEvent = ['customer.subscription.created', 'customer.subscription.updated'].includes(event.type);
+
+    if (!isCheckoutCompleted && !isSubscriptionEvent) {
       res.json({ received: true });
       return;
     }
 
-    const session = event.data.object;
-    const { userId, plan, tier } = (session.metadata ?? {}) as {
-      userId?: string;
-      plan?: string;
-      tier?: string;
-    };
-
-    if (!userId || !plan || !tier) {
-      console.warn('[Stripe] Webhook missing metadata:', session.metadata);
-      res.json({ received: true });
-      return;
-    }
+    let userId: string | undefined;
+    let plan: string | undefined;
+    let tier: string | undefined;
+    let premiumUntil: Date | null = null;
+    let amountCents: number | null = null;
+    let currency = 'BRL';
 
     try {
+      if (isCheckoutCompleted) {
+        const session = event.data.object;
+        ({ userId, plan, tier } = (session.metadata ?? {}) as any);
+
+        if (!userId || !plan || !tier) {
+          console.warn('[Stripe] Webhook missing metadata:', session.metadata);
+          res.json({ received: true });
+          return;
+        }
+
+        const days = PLAN_DAYS[plan] ?? 30;
+        premiumUntil = new Date();
+        premiumUntil.setDate(premiumUntil.getDate() + days);
+
+        amountCents = typeof session.amount_total === 'number'
+          ? session.amount_total
+          : (PRICES[tier]?.[plan] ?? null);
+        currency = (session.currency ?? 'brl').toUpperCase();
+
+        console.log(`[Stripe] Checkout completed for ${userId} (${tier} ${plan})`);
+      } else if (isSubscriptionEvent) {
+        // For subscriptions, get metadata from subscription object
+        const subscription = event.data.object;
+        const metadata = subscription.metadata ?? {};
+        ({ userId, plan, tier } = metadata as any);
+
+        if (!userId || !plan || !tier) {
+          console.warn('[Stripe] Subscription webhook missing metadata:', metadata);
+          res.json({ received: true });
+          return;
+        }
+
+        // Calculate premium_until from current_period_end
+        if (subscription.current_period_end) {
+          premiumUntil = new Date(subscription.current_period_end * 1000);
+        }
+
+        console.log(`[Stripe] Subscription event (${event.type}) for ${userId} (${tier} ${plan})`);
+      }
+
+      if (!userId || !plan || !tier) {
+        res.json({ received: true });
+        return;
+      }
+
       const user = await userRepo.findById(userId);
       if (!user) {
         console.warn(`[Stripe] Webhook: user ${userId} not found`);
@@ -143,40 +218,91 @@ export class StripeController {
         return;
       }
 
-      const days = PLAN_DAYS[plan] ?? 30;
-      const premiumUntil = new Date();
-      premiumUntil.setDate(premiumUntil.getDate() + days);
       const planTier = tier === 'master' ? 'master' : 'premium';
+
+      if (!premiumUntil) {
+        const days = PLAN_DAYS[plan] ?? 30;
+        premiumUntil = new Date();
+        premiumUntil.setDate(premiumUntil.getDate() + days);
+      }
 
       await userRepo.updatePlanTier(userId, planTier, premiumUntil, 'card');
 
-      // Valor realmente cobrado pela Stripe (em centavos); fallback no preço de tabela.
-      const amountCents = typeof session.amount_total === 'number'
-        ? session.amount_total
-        : (PRICES[planTier]?.[plan] ?? null);
-      const currency = (session.currency ?? 'brl').toUpperCase();
+      amountCents = amountCents ?? (PRICES[planTier]?.[plan] ?? null);
+
       await pool.query(
         `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents, currency)
-         VALUES ($1, 'INITIAL_PURCHASE', 'stripe', 'card', $2, $3, 'STRIPE', $4, $5)`,
-        [userId, `stripe_${planTier}_${plan}`, premiumUntil, amountCents, currency]
+         VALUES ($1, $2, 'stripe', 'card', $3, $4, 'STRIPE', $5, $6)`,
+        [userId, isCheckoutCompleted ? 'INITIAL_PURCHASE' : 'RENEWAL', `stripe_${planTier}_${plan}`, premiumUntil, amountCents, currency]
       );
 
       const tokens = await pushTokenRepo.findByUserId(userId);
       if (tokens.length > 0) {
         await sendPushNotifications(
           tokens.map((t: any) => t.token),
-          'Pagamento aprovado! 🎉',
-          'Seu pagamento via cartão foi confirmado. Aproveite o DocePreço!',
+          isCheckoutCompleted ? 'Pagamento aprovado! 🎉' : 'Assinatura renovada ✨',
+          isCheckoutCompleted
+            ? 'Seu pagamento via cartão foi confirmado. Aproveite o DocePreço!'
+            : 'Sua assinatura foi renovada automaticamente.',
           { screen: 'Home' }
         );
       }
 
-      notifyPremiumEvent(user.companyName, 'INITIAL_PURCHASE', 'card');
-      console.log(`[Stripe] Webhook: premium granted to ${userId} (${planTier} ${plan})`);
+      notifyPremiumEvent(user.companyName, isCheckoutCompleted ? 'INITIAL_PURCHASE' : 'RENEWAL', 'card');
+      console.log(`[Stripe] Premium granted to ${userId} (${planTier} ${plan}) until ${premiumUntil.toISOString()}`);
       res.json({ received: true });
     } catch (error) {
       console.error('[Stripe] Webhook processing error:', error);
       res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  /**
+   * Check if user has a valid payment method saved in Stripe.
+   * Used to validate if user can activate trial.
+   * GET /api/stripe/has-payment-method
+   */
+  async hasPaymentMethod(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const user = await userRepo.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      const stripe = getStripe();
+
+      // Find or create Stripe customer for this user
+      const customers = await stripe.customers.list({
+        email: user.email,
+        limit: 1,
+      });
+
+      if (customers.data.length === 0) {
+        // No Stripe customer exists yet — no payment method
+        res.json({ success: true, data: { hasPaymentMethod: false } });
+        return;
+      }
+
+      const customerId = customers.data[0].id;
+
+      // Check if customer has saved payment methods
+      const paymentMethods = await stripe.paymentMethods.list({
+        customer: customerId,
+        limit: 1,
+      });
+
+      const hasPaymentMethod = paymentMethods.data.length > 0;
+      res.json({ success: true, data: { hasPaymentMethod } });
+    } catch (error: any) {
+      console.error('[Stripe] hasPaymentMethod error:', error?.message ?? error);
+      res.status(500).json({ success: false, error: error?.message ?? 'Failed to check payment method' });
     }
   }
 

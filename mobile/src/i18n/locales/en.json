@@ -397,6 +397,8 @@
     "shareQuote": "Share Quote",
     "loadError": "Could not load recipe",
     "shareError": "Error generating quote",
+    "deleteTitle": "Delete recipe",
+    "deleteMessage": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone.",
     "seasonActive": "{{name}} active",
     "seasonPrice": "Season price:",
     "scaleCalculator": "Scale Calculator",

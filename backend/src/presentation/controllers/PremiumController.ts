@@ -309,6 +309,103 @@ export class PremiumController {
   }
 
   /**
+   * Authenticated endpoint to activate/request trial for free users who never paid.
+   * Verifies user is free and has no real payment history (PIX, App Store, Stripe).
+   * Returns the trial tier and duration from plan config.
+   */
+  async requestTrial(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const user = await userRepo.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      // Only free users can request trial
+      if (user.isPremium) {
+        res.status(400).json({ success: false, error: 'User already has active premium' });
+        return;
+      }
+
+      // Check if user already used trial before
+      if (user && 'trial_used_at' in user && (user as any).trial_used_at) {
+        res.status(400).json({ success: false, error: 'Trial already used' });
+        return;
+      }
+
+      // Check if user ever made a real payment (PIX, App Store, Stripe)
+      const paymentCheck = await pool.query(
+        `SELECT COUNT(*) as count FROM premium_events
+         WHERE user_id = $1 AND source IN ('webhook', 'pix', 'stripe')`,
+        [userId]
+      );
+      const hasPaidBefore = parseInt(paymentCheck.rows[0].count) > 0;
+      if (hasPaidBefore) {
+        res.status(400).json({ success: false, error: 'User has payment history' });
+        return;
+      }
+
+      // Require valid payment method before allowing trial
+      // User must have a card registered via Stripe or have made a payment
+      const paymentMethodCheck = await pool.query(
+        `SELECT COUNT(*) as count FROM premium_events
+         WHERE user_id = $1 AND source = 'stripe'`,
+        [userId]
+      );
+      const hasStripePayment = parseInt(paymentMethodCheck.rows[0].count) > 0;
+      if (!hasStripePayment) {
+        res.status(402).json({ success: false, error: 'Payment method required', code: 'PAYMENT_METHOD_REQUIRED' });
+        return;
+      }
+
+      // Get trial configuration
+      const settings = await pool.query(
+        `SELECT key, value FROM app_settings WHERE key IN ($1, $2, $3)`,
+        ['plan_new_user_trial_tier', 'plan_premium_free_days', 'plan_master_free_days']
+      );
+      const settingsMap: Record<string, string> = {};
+      for (const row of settings.rows) settingsMap[row.key] = row.value;
+
+      const trialTier = settingsMap['plan_new_user_trial_tier'] || 'master';
+      const masterDays = parseInt(settingsMap['plan_master_free_days'] || '3');
+      const premiumDays = parseInt(settingsMap['plan_premium_free_days'] || '2');
+
+      if (trialTier === 'free') {
+        res.status(400).json({ success: false, error: 'Trial is not enabled' });
+        return;
+      }
+
+      const trialDays = trialTier === 'master' ? masterDays : premiumDays;
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + trialDays);
+
+      const updatedUser = await userRepo.updatePlanTier(userId, trialTier as 'premium' | 'master', trialEnd, null);
+
+      // Mark trial as used (only one trial per user)
+      await userRepo.markTrialUsed(userId);
+
+      // Record trial event
+      await pool.query(
+        `INSERT INTO premium_events (user_id, event_type, source, expiration_at)
+         VALUES ($1, $2, 'trial', $3)`,
+        [userId, 'TRIAL_ACTIVATED', trialEnd]
+      );
+
+      res.json({ success: true, data: { user: updatedUser, trialDays, trialTier } });
+    } catch (error) {
+      console.error('[Premium] Request trial error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
    * Admin-only endpoint to manually toggle premium status.
    * Protected by X-Admin-Secret header. Useful for testing, cortesias, support.
    *

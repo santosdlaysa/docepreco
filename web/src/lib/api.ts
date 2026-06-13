@@ -600,8 +600,11 @@ export interface PlanConfig {
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
+  premiumFreeDays: number;
   masterPrice: number;
   masterFeatures: string[];
+  masterFreeDays: number;
+  newUserTrialTier: 'free' | 'premium' | 'master';
   pix: PixConfig;
 }
 

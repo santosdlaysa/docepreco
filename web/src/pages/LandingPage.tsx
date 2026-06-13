@@ -79,11 +79,18 @@ export function LandingPage() {
               <LogIn size={14} />
               Entrar
             </Link>
-            <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm">
-              <Smartphone size={14} />
-              Baixar app
-            </a>
+            <div className="flex items-center gap-2">
+              <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm">
+                <Smartphone size={14} />
+                iOS
+              </a>
+              <a href="https://play.google.com/store/apps/details?id=com.orgenyx" target="_blank" rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 bg-emerald-600 dark:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-sm">
+                <Smartphone size={14} />
+                Android
+              </a>
+            </div>
           </nav>
         </div>
       </header>
@@ -125,10 +132,12 @@ export function LandingPage() {
                   Baixar na App Store
                   <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
                 </a>
-                <span className="inline-flex items-center gap-2 text-gray-400 text-sm">
-                  <Smartphone size={16} />
-                  Google Play em breve
-                </span>
+                <a href="https://play.google.com/store/apps/details?id=com.orgenyx" target="_blank" rel="noopener noreferrer"
+                  className="group inline-flex items-center gap-3 bg-emerald-600 dark:bg-emerald-500 text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-600/20 hover:shadow-2xl hover:-translate-y-0.5">
+                  <Smartphone size={18} />
+                  Baixar no Google Play
+                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </a>
               </div>
 
               {/* Mini social proof */}
@@ -358,11 +367,17 @@ export function LandingPage() {
           <p className="mt-6 text-lg text-white/80 max-w-lg mx-auto">
             Baixe o DocePreco agora e descubra em minutos quanto realmente cobrar.
           </p>
-          <div className="mt-10">
+          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5">
               <Smartphone size={18} />
-              Baixar na App Store
+              App Store
+              <ArrowRight size={16} />
+            </a>
+            <a href="https://play.google.com/store/apps/details?id=com.orgenyx" target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5">
+              <Smartphone size={18} />
+              Google Play
               <ArrowRight size={16} />
             </a>
           </div>

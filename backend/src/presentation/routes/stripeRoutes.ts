@@ -8,6 +8,9 @@ const controller = new StripeController();
 // Mobile: authenticated user creates a checkout session
 router.post('/stripe/create-checkout', authMiddleware, (req, res) => controller.createCheckout(req as any, res));
 
+// Mobile: check if user has payment method saved (for trial validation)
+router.get('/stripe/has-payment-method', authMiddleware, (req, res) => controller.hasPaymentMethod(req as any, res));
+
 // Stripe calls this after payment — needs raw body (registered before express.json in server.ts)
 router.post('/stripe/webhook', (req, res) => controller.webhook(req, res));
 
