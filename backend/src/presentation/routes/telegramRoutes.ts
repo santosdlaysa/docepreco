@@ -1,6 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { spawn } from 'child_process';
-import path from 'path';
+import Anthropic from '@anthropic-ai/sdk';
 import { sendDailyUserReport, sendWeeklyReport, sendDailyGoalProgress } from '../../infrastructure/services/telegramService';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { fetchDownloadsLastDays } from '../../infrastructure/services/appStoreConnectService';
@@ -44,32 +43,28 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   const text: string = (message.text || '').split('@')[0];
 
-  // Comando livre: /claude <instrucao>
+  // Comando livre: /claude <pergunta ou instrucao>
   if (text.startsWith('/claude ')) {
     const prompt = text.slice('/claude '.length).trim();
     if (!prompt) {
-      sendTelegramReply('Uso: /claude <instrucao>\nEx: /claude adiciona rota GET /ping que retorna ok');
+      sendTelegramReply('Uso: /claude <pergunta>\nEx: /claude como funciona o sistema de alertas?');
       return res.sendStatus(200);
     }
-    sendTelegramReply('Executando...');
-    const projectDir = path.resolve(__dirname, '../../../../');
-    let output = '';
-    const proc = spawn('claude', ['-p', prompt, '--dangerously-skip-permissions'], {
-      cwd: projectDir,
-      shell: true,
-    });
-    proc.stdout.on('data', (d: Buffer) => { output += d.toString(); });
-    proc.stderr.on('data', (d: Buffer) => { output += d.toString(); });
-    proc.on('close', () => {
-      const result = output.trim() || 'Sem resposta.';
+    sendTelegramReply('Pensando...');
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 1024,
+      system: 'Voce e um assistente tecnico do projeto Sweet Pricing, um app de precificacao para confeiteiros. O backend e Node.js/TypeScript com Express e PostgreSQL. Responda de forma direta e objetiva.',
+      messages: [{ role: 'user', content: prompt }],
+    }).then((response) => {
+      const result = response.content[0].type === 'text' ? response.content[0].text : 'Sem resposta.';
       for (let i = 0; i < result.length; i += 4000) {
         sendTelegramReply(result.slice(i, i + 4000));
       }
+    }).catch((err: Error) => {
+      sendTelegramReply(`Erro ao chamar Claude: ${err.message}`);
     });
-    setTimeout(() => {
-      proc.kill();
-      sendTelegramReply('Timeout: operacao demorou mais de 5 minutos.');
-    }, 5 * 60 * 1000);
     return res.sendStatus(200);
   }
 
