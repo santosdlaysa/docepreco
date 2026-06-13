@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, ActivityIndicator, Alert,
@@ -12,6 +12,7 @@ import { expenseApi, EXPENSE_CATEGORIES, CreateExpenseDTO } from '../../data/api
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoExpenseApi } from '../../data/demo/demoApi';
 import { useToast } from '../context/ToastContext';
+import { useDraft } from '../hooks/useDraft';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'CreateExpense'>;
@@ -56,6 +57,51 @@ export const CreateExpenseScreen: React.FC = () => {
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Draft: auto-save form state
+  interface ExpenseDraft {
+    description: string;
+    amount: string;
+    category: string;
+    costType: 'fixed' | 'variable';
+    isRecurring: boolean;
+    recurrenceDay: string;
+    dateInput: string;
+    notes: string;
+  }
+
+  const { draft, isDraftLoading, saveDraft, clearDraft } = useDraft<ExpenseDraft>('draft_new_expense', !isDemoMode());
+
+  // Restore draft on mount (once isDraftLoading is done)
+  useEffect(() => {
+    if (isDraftLoading || !draft) return;
+    Alert.alert(
+      'Rascunho salvo',
+      'Você tem um preenchimento salvo. Deseja restaurar?',
+      [
+        { text: 'Descartar', style: 'destructive', onPress: clearDraft },
+        {
+          text: 'Restaurar',
+          onPress: () => {
+            setDescription(draft.description);
+            setAmount(draft.amount);
+            setCategory(draft.category);
+            setCostType(draft.costType);
+            setIsRecurring(draft.isRecurring);
+            setRecurrenceDay(draft.recurrenceDay);
+            setDateInput(draft.dateInput);
+            setNotes(draft.notes);
+          },
+        },
+      ]
+    );
+  }, [isDraftLoading]);
+
+  // Auto-save whenever form changes
+  useEffect(() => {
+    if (isDraftLoading) return;
+    saveDraft({ description, amount, category, costType, isRecurring, recurrenceDay, dateInput, notes });
+  }, [description, amount, category, costType, isRecurring, recurrenceDay, dateInput, notes]);
+
   const handleSave = async () => {
     if (!description.trim()) { showToast('Informe a descrição', 'error'); return; }
     const amtNum = parseFloat(amount.replace(',', '.'));
@@ -76,6 +122,7 @@ export const CreateExpenseScreen: React.FC = () => {
         notes: notes.trim() || null,
       };
       await api.create(dto);
+      clearDraft();
       showToast('Despesa registrada!', 'success');
       navigation.goBack();
     } catch {

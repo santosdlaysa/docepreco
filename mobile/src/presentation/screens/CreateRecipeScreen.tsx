@@ -37,6 +37,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { usePremium } from '../context/PremiumContext';
 import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggestedRecipes';
 import { useTranslation } from 'react-i18next';
+import { useDraft } from '../hooks/useDraft';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -145,6 +146,25 @@ export const CreateRecipeScreen: React.FC = () => {
     pkgInfo?: string;
     ratio?: string;
   } | null>(null);
+  // ─── Draft auto-save (only for new recipes, not editing) ───
+  interface RecipeDraft {
+    name: string;
+    yieldAmount: string;
+    profitMargin: string;
+    ingredients: RecipeIngredient[];
+    additionalCosts: AdditionalCost[];
+    additionalCostInputs: Record<string, string>;
+    subRecipes: SubRecipe[];
+    hourlyRate: string;
+    prepTimeMinutes: string;
+    laborExpanded: boolean;
+  }
+
+  const { draft: recipeDraft, isDraftLoading, saveDraft, clearDraft } = useDraft<RecipeDraft>(
+    'draft_new_recipe',
+    !isEditing && !isDemoMode()
+  );
+
   const { showToast } = useToast();
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
@@ -184,6 +204,39 @@ export const CreateRecipeScreen: React.FC = () => {
       .catch(() => showToast(t('createRecipe.loadError'), 'error'))
       .finally(() => setLoadingData(false));
   }, [recipeId]);
+
+  // Offer to restore draft on first load
+  useEffect(() => {
+    if (isEditing || isDraftLoading || !recipeDraft) return;
+    Alert.alert(
+      'Rascunho salvo',
+      'Você tem uma receita começada. Deseja restaurar o preenchimento?',
+      [
+        { text: 'Descartar', style: 'destructive', onPress: clearDraft },
+        {
+          text: 'Restaurar',
+          onPress: () => {
+            setName(recipeDraft.name);
+            setYieldAmount(recipeDraft.yieldAmount);
+            setProfitMargin(recipeDraft.profitMargin);
+            setIngredients(recipeDraft.ingredients);
+            setAdditionalCosts(recipeDraft.additionalCosts);
+            setAdditionalCostInputs(recipeDraft.additionalCostInputs);
+            setSubRecipes(recipeDraft.subRecipes);
+            setHourlyRate(recipeDraft.hourlyRate);
+            setPrepTimeMinutes(recipeDraft.prepTimeMinutes);
+            setLaborExpanded(recipeDraft.laborExpanded);
+          },
+        },
+      ]
+    );
+  }, [isDraftLoading]);
+
+  // Auto-save form state whenever it changes
+  useEffect(() => {
+    if (isEditing || isDraftLoading) return;
+    saveDraft({ name, yieldAmount, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded });
+  }, [name, yieldAmount, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -459,6 +512,7 @@ export const CreateRecipeScreen: React.FC = () => {
         navigation.goBack();
       } else {
         const recipe = await rApi.create(payload);
+        clearDraft();
         showToast(t('createRecipe.created'), 'success');
         navigation.replace('RecipeDetail', { recipeId: recipe.id });
       }
