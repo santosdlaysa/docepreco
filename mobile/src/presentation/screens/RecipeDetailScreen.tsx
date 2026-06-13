@@ -123,6 +123,30 @@ export const RecipeDetailScreen: React.FC = () => {
     }
   };
 
+  const handleDeleteRecipe = () => {
+    if (!guardAction()) return;
+    Alert.alert(
+      t('recipes.deleteTitle') || 'Excluir receita',
+      t('recipes.deleteConfirm') || 'Tem certeza que deseja excluir esta receita?',
+      [
+        { text: t('common.cancel') || 'Cancelar', style: 'cancel' },
+        {
+          text: t('common.delete') || 'Excluir',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(recipeId);
+              navigation.goBack();
+              showToast(t('recipes.deleted', { name: recipe?.name ?? '' }), 'success');
+            } catch {
+              showToast(t('recipes.deleteError') || 'Erro ao excluir receita', 'error');
+            }
+          },
+        },
+      ],
+    );
+  };
+
   const loadRecipe = async () => {
     try {
       const data = await api.getById(recipeId);
@@ -232,7 +256,7 @@ export const RecipeDetailScreen: React.FC = () => {
               <TouchableOpacity onPress={removePhoto} style={s.heroActionBtn} activeOpacity={0.7}>
                 <Ionicons name="close-circle-outline" size={17} color={INK} />
               </TouchableOpacity>
-              <TouchableOpacity onPress={pickPhoto} style={s.heroActionBtn} activeOpacity={0.7}>
+              <TouchableOpacity onPress={removePhoto} style={s.heroActionBtn} activeOpacity={0.7}>
                 <Ionicons name="camera-outline" size={16} color={INK} />
               </TouchableOpacity>
               <TouchableOpacity
@@ -271,6 +295,9 @@ export const RecipeDetailScreen: React.FC = () => {
               <Ionicons name="chevron-back" size={20} color={INK} />
             </TouchableOpacity>
             <View style={s.heroActions}>
+              <TouchableOpacity onPress={handleDeleteRecipe} style={s.heroActionBtn} activeOpacity={0.7}>
+                <Ionicons name="trash-outline" size={16} color="#F44336" />
+              </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: recipe.id }))}
                 style={s.heroActionBtn}

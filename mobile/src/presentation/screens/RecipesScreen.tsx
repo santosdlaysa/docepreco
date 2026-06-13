@@ -212,6 +212,7 @@ export const RecipesScreen: React.FC = () => {
     return (
       <TouchableOpacity
         onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
+        onLongPress={() => handleDelete(item)}
         activeOpacity={0.7}
         style={styles.recipeCard}
       >
