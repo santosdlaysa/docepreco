@@ -17,6 +17,30 @@ function sendTelegramReply(text: string): void {
   }).catch(() => {});
 }
 
+const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+type Message = { role: 'user' | 'assistant'; content: string };
+const sessions = new Map<number, Message[]>();
+
+async function askClaude(chatId: number, userMessage: string): Promise<void> {
+  const history = sessions.get(chatId) ?? [];
+  history.push({ role: 'user', content: userMessage });
+
+  const response = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 1024,
+    system: 'Voce e um assistente tecnico do projeto Sweet Pricing, um app de precificacao para confeiteiros. O backend e Node.js/TypeScript com Express e PostgreSQL. Responda de forma direta e objetiva.',
+    messages: history,
+  });
+
+  const reply = response.content[0].type === 'text' ? response.content[0].text : 'Sem resposta.';
+  history.push({ role: 'assistant', content: reply });
+  sessions.set(chatId, history);
+
+  for (let i = 0; i < reply.length; i += 4000) {
+    sendTelegramReply(reply.slice(i, i + 4000));
+  }
+}
+
 const router = Router();
 
 router.post('/webhook', async (req: Request, res: Response) => {
@@ -43,27 +67,30 @@ router.post('/webhook', async (req: Request, res: Response) => {
 
   const text: string = (message.text || '').split('@')[0];
 
-  // Comando livre: /claude <pergunta ou instrucao>
-  if (text.startsWith('/claude ')) {
-    const prompt = text.slice('/claude '.length).trim();
+  const chatId: number = message.chat.id;
+
+  // /fim — encerra a conversa com o Claude
+  if (text === '/fim') {
+    sessions.delete(chatId);
+    sendTelegramReply('Conversa encerrada.');
+    return res.sendStatus(200);
+  }
+
+  // /claude <msg> — inicia ou continua conversa
+  // Mensagem sem / — continua conversa se houver sessao ativa
+  const isClaudeCommand = text.startsWith('/claude');
+  const hasActiveSession = sessions.has(chatId);
+  const isPlainMessage = !text.startsWith('/');
+
+  if (isClaudeCommand || (isPlainMessage && hasActiveSession)) {
+    const prompt = isClaudeCommand ? text.slice('/claude'.length).trim() : text;
     if (!prompt) {
-      sendTelegramReply('Uso: /claude <pergunta>\nEx: /claude como funciona o sistema de alertas?');
+      sendTelegramReply('Uso: /claude <pergunta>\nEx: /claude como funciona o sistema de alertas?\n\nUse /fim para encerrar a conversa.');
       return res.sendStatus(200);
     }
     sendTelegramReply('Pensando...');
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1024,
-      system: 'Voce e um assistente tecnico do projeto Sweet Pricing, um app de precificacao para confeiteiros. O backend e Node.js/TypeScript com Express e PostgreSQL. Responda de forma direta e objetiva.',
-      messages: [{ role: 'user', content: prompt }],
-    }).then((response) => {
-      const result = response.content[0].type === 'text' ? response.content[0].text : 'Sem resposta.';
-      for (let i = 0; i < result.length; i += 4000) {
-        sendTelegramReply(result.slice(i, i + 4000));
-      }
-    }).catch((err: Error) => {
-      sendTelegramReply(`Erro ao chamar Claude: ${err.message}`);
+    askClaude(chatId, prompt).catch((err: Error) => {
+      sendTelegramReply(`Erro: ${err.message}`);
     });
     return res.sendStatus(200);
   }
@@ -348,7 +375,8 @@ router.post('/webhook', async (req: Request, res: Response) => {
         '/lentas — Ultimas 10 rotas lentas (>2s)\n' +
         '/logs — Ultimos 20 requests\n' +
         '/atualizar — Envia email de atualizacao para todos\n' +
-        '/claude <instrucao> — Pede ao Claude para ajustar o codigo\n' +
+        '/claude <pergunta> — Inicia conversa com o Claude\n' +
+        '/fim — Encerra a conversa com o Claude\n' +
         '/ajuda — Esta mensagem'
       );
       break;
