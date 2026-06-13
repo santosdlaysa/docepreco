@@ -177,7 +177,11 @@ async function bootstrap() {
     // Falha-rápido: garante que os segredos obrigatórios existem antes de subir
     assertRequiredSecrets();
     await connectDatabase();
-    await runMigrations();
+    try {
+      await runMigrations();
+    } catch (migrationError) {
+      console.error('[Migration] Falhou (deadlock ou concorrência) — servidor sobe mesmo assim:', (migrationError as Error).message);
+    }
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
