@@ -578,12 +578,15 @@ export async function runMigrations() {
 
     // Seed schedule for existing report alerts
     await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 8 * * *', schedule_description = 'Todo dia às 8h' WHERE key = 'daily_report' AND schedule_cron IS NULL`);
+
+    // Atualiza template new_user para incluir plataforma
+    await client.query(`UPDATE telegram_alerts SET message_template = '🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}\n📱 {{platform}}\n🕐 {{time}}' WHERE key = 'new_user'`);
     await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 9 * * 1', schedule_description = 'Segunda às 9h' WHERE key = 'weekly_report' AND schedule_cron IS NULL`);
     await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 12,15,18,21 * * *', schedule_description = '12h, 15h, 18h e 21h' WHERE key = 'goal_progress' AND schedule_cron IS NULL`);
 
     // Seed message templates for existing telegram alerts (only if message_template is null)
     const templateUpdates: [string, string][] = [
-      ['new_user', '🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}\n🕐 {{time}}'],
+      ['new_user', '🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}\n📱 {{platform}}\n🕐 {{time}}'],
       ['new_sale', '🧁 Nova venda!\n\n🏪 {{companyName}}\n🍰 {{recipeName}} × {{quantity}}\n💰 {{revenue}}\n🕐 {{time}}'],
       ['premium_event', '{{eventLabel}}\n\n🏪 {{companyName}}\n🕐 {{time}}'],
       ['user_milestone', '🎉 Marco atingido!\n\n👥 {{total}} usuários cadastrados!\n🕐 {{time}}'],
@@ -662,7 +665,7 @@ export async function runMigrations() {
         { key: 'goal_progress', label: 'Progresso da meta', description: 'Enviado às 12h, 15h, 18h e 21h com progresso de cadastros', category: 'reports' },
       ];
       const templates: Record<string, string> = {
-        new_user: '🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}\n🕐 {{time}}',
+        new_user: '🆕 Novo cadastro!\n\n🏪 {{companyName}}\n📧 {{email}}\n📱 {{platform}}\n🕐 {{time}}',
         new_sale: '🧁 Nova venda!\n\n🏪 {{companyName}}\n🍰 {{recipeName}} × {{quantity}}\n💰 {{revenue}}\n🕐 {{time}}',
         premium_event: '{{eventLabel}}\n\n🏪 {{companyName}}\n🕐 {{time}}',
         user_milestone: '🎉 Marco atingido!\n\n👥 {{total}} usuários cadastrados!\n🕐 {{time}}',
