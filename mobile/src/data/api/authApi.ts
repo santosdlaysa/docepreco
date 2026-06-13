@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { apiClient } from './client';
 import { tokenStorage } from '../storage/tokenStorage';
 
@@ -33,7 +34,8 @@ const normalizeUser = (raw: any): AuthUser => ({
 
 export const authApi = {
   register: async (companyName: string, email: string, password: string, phone?: string, referralCode?: string): Promise<AuthUser> => {
-    const response = await apiClient.post('/auth/register', { companyName, email, password, phone, referralCode });
+    const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : undefined;
+    const response = await apiClient.post('/auth/register', { companyName, email, password, phone, referralCode, platform });
     const { user, token } = response.data.data;
     const normalized = normalizeUser(user);
     await tokenStorage.saveToken(token);
