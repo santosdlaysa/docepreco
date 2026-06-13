@@ -60,7 +60,7 @@ export const RecipesScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
   const { showToast } = useToast();
-  const { isPremium } = usePremium();
+  const { isPremium, refresh: refreshPremium } = usePremium();
   const { requirePremium, openPaywall } = usePaywall();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { showInterstitial } = useAdInterstitial();
@@ -102,6 +102,7 @@ export const RecipesScreen: React.FC = () => {
     useCallback(() => {
       setLoading(true);
       loadRecipes();
+      if (!isDemoMode()) refreshPremium();
       if (!hasShownAd.current) {
         hasShownAd.current = true;
         showInterstitial();

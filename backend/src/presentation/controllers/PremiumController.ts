@@ -257,10 +257,20 @@ export class PremiumController {
         }
 
         if (!ent || !ent.active) {
-          // RevenueCat não confirma assinatura ativa → NÃO concede premium
-          console.warn(`[Premium] Sync negado: RevenueCat não confirma assinatura ativa para ${userId}`);
-          res.json({ success: true, data: user });
-          return;
+          // RC pode ter delay de propagação — aguarda 2s e tenta mais uma vez
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          try {
+            ent = await fetchRevenueCatEntitlement(userId);
+          } catch (retryErr) {
+            console.error('[Premium] Retry RC entitlement falhou:', retryErr);
+            ent = null;
+          }
+
+          if (!ent || !ent.active) {
+            console.warn(`[Premium] Sync negado: RevenueCat não confirma assinatura ativa para ${userId}`);
+            res.json({ success: true, data: user });
+            return;
+          }
         }
 
         const plat: PremiumPlatform = ent.platform ?? (platform === 'android' ? 'android' : 'ios');

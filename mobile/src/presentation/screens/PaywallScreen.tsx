@@ -241,11 +241,15 @@ export const PaywallScreen: React.FC = () => {
   };
 
   const syncPremiumWithBackend = async () => {
-    try {
-      const expiresAt = await getActiveEntitlementExpiration();
-      const platform = Platform.OS === 'android' ? 'android' : 'ios';
-      await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android');
-    } catch { /* fallback */ }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const expiresAt = await getActiveEntitlementExpiration();
+        const platform = Platform.OS === 'android' ? 'android' : 'ios';
+        const updated = await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android');
+        if (updated.isPremium) break;
+      } catch { /* fallback */ }
+      if (attempt < 2) await new Promise(r => setTimeout(r, 2000));
+    }
     await refresh();
   };
 
