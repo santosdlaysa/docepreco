@@ -16,8 +16,9 @@ import { RootStackParamList } from '../navigation/types';
 import { usePaywall } from '../premium/usePaywall';
 import { recipeApi } from '../../data/api/recipeApi';
 import { saleApi } from '../../data/api/saleApi';
+import { expenseApi, Expense } from '../../data/api/expenseApi';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
+import { demoRecipeApi, demoSaleApi, demoExpenseApi } from '../../data/demo/demoApi';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Sale } from '../../domain/entities/Sale';
 
@@ -63,6 +64,7 @@ export const FinanceScreen: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [costPerUnit, setCostPerUnit] = useState<Record<string, number>>({});
   const [recipeName, setRecipeName] = useState<Record<string, string>>({});
   const [period, setPeriod] = useState<Period>('month');
@@ -71,18 +73,23 @@ export const FinanceScreen: React.FC = () => {
     useCallback(() => {
       if (!guardMaster('finance')) return;
       load();
-    }, []),
+    }, [period]),
   );
 
   const load = async () => {
     const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
     const sApi = isDemoMode() ? demoSaleApi : saleApi;
+    const eApi = isDemoMode() ? demoExpenseApi : expenseApi;
+    const { month, prev } = periodKeys();
+    const expenseMonth = period === 'all' ? undefined : period === 'prev' ? prev : month;
     try {
-      const [allSales, recipes] = await Promise.all([
+      const [allSales, recipes, allExpenses] = await Promise.all([
         sApi.getAll() as Promise<Sale[]>,
         rApi.getAll() as Promise<Recipe[]>,
+        eApi.getAll(expenseMonth) as Promise<Expense[]>,
       ]);
       setSales(allSales);
+      setExpenses(allExpenses);
 
       const names: Record<string, string> = {};
       for (const r of recipes) names[r.id] = r.name;
@@ -118,7 +125,8 @@ export const FinanceScreen: React.FC = () => {
 
   const revenue = filtered.reduce((sum, s) => sum + s.totalRevenue, 0);
   const cost = filtered.reduce((sum, s) => sum + (costPerUnit[s.recipeId] ?? 0) * s.quantitySold, 0);
-  const profit = revenue - cost;
+  const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const profit = revenue - cost - totalExpenses;
   const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
   const units = filtered.reduce((sum, s) => sum + s.quantitySold, 0);
 
@@ -194,8 +202,18 @@ export const FinanceScreen: React.FC = () => {
             <View style={s.card}>
               <DreRow label="Receita bruta" value={fmt(revenue)} color={INK} bar={100} barColor="#E7DAF7" />
               <DreRow label="(–) Custo dos produtos" sub={`${costPct.toFixed(0)}% da receita`} value={`– ${fmt(cost)}`} color={RED} bar={costPct} barColor="#FBD9E2" />
+              {totalExpenses > 0 && (
+                <DreRow
+                  label="(–) Despesas operacionais"
+                  sub={`${revenue > 0 ? ((totalExpenses / revenue) * 100).toFixed(0) : 0}% da receita`}
+                  value={`– ${fmt(totalExpenses)}`}
+                  color={RED}
+                  bar={revenue > 0 ? (totalExpenses / revenue) * 100 : 0}
+                  barColor="#FBD9E2"
+                />
+              )}
               <View style={s.divider} />
-              <DreRow label="(=) Lucro bruto" value={fmt(profit)} color={profit >= 0 ? GREEN : RED} bold bar={Math.max(0, margin)} barColor="#CFEFDB" />
+              <DreRow label="(=) Lucro líquido" value={fmt(profit)} color={profit >= 0 ? GREEN : RED} bold bar={Math.max(0, margin)} barColor="#CFEFDB" />
               <View style={s.marginRow}>
                 <Text style={s.marginLabel}>Margem de lucro</Text>
                 <Text style={[s.marginValue, { color: profit >= 0 ? GREEN : RED }]}>{margin.toFixed(1)}%</Text>
@@ -238,6 +256,10 @@ const Header: React.FC<{ navigation: NavigationProp }> = ({ navigation }) => (
       <Text style={s.headerTitle}>Financeiro</Text>
       <Text style={s.headerSub}>Gestão de resultado (DRE)</Text>
     </View>
+    <TouchableOpacity onPress={() => navigation.navigate('Expenses')} style={s.expensesBtn} activeOpacity={0.8}>
+      <Ionicons name="receipt-outline" size={15} color={PURPLE} />
+      <Text style={s.expensesBtnTxt}>Despesas</Text>
+    </TouchableOpacity>
     <View style={s.masterBadge}><Text style={s.masterBadgeTxt}>MASTER</Text></View>
   </View>
 );
@@ -265,6 +287,8 @@ const s = StyleSheet.create({
   bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
   headerTitle: { fontSize: 22, fontWeight: '700', color: INK },
   headerSub: { fontSize: 12.5, color: INK2, marginTop: 1 },
+  expensesBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#EDE4FB', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginRight: 6 },
+  expensesBtnTxt: { fontSize: 12, fontWeight: '700', color: PURPLE },
   masterBadge: { backgroundColor: '#EDE4FB', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
   masterBadgeTxt: { fontSize: 10, fontWeight: '800', color: PURPLE, letterSpacing: 0.5 },
 

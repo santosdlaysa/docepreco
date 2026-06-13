@@ -380,6 +380,24 @@ CREATE TABLE IF NOT EXISTS pix_requests (
 CREATE INDEX IF NOT EXISTS idx_pix_requests_status ON pix_requests (status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_pix_requests_user ON pix_requests (user_id);
 
+CREATE TABLE IF NOT EXISTS expenses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  description VARCHAR(255) NOT NULL,
+  amount DECIMAL(10,2) NOT NULL,
+  category VARCHAR(50) NOT NULL DEFAULT 'outros',
+  cost_type VARCHAR(10) NOT NULL DEFAULT 'variable' CHECK (cost_type IN ('fixed', 'variable')),
+  is_recurring BOOLEAN NOT NULL DEFAULT FALSE,
+  recurrence_day INTEGER CHECK (recurrence_day BETWEEN 1 AND 31),
+  expense_date DATE NOT NULL,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses (user_id, expense_date DESC);
+CREATE INDEX IF NOT EXISTS idx_expenses_user_category ON expenses (user_id, category);
+
 CREATE TABLE IF NOT EXISTS referrals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   referrer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

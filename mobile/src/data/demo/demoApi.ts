@@ -1,6 +1,7 @@
 import { Recipe, CreateRecipeDTO } from '../../domain/entities/Recipe';
 import { Ingredient, CreateIngredientDTO } from '../../domain/entities/Ingredient';
 import { Sale, CreateSaleDTO } from '../../domain/entities/Sale';
+import { Expense, CreateExpenseDTO } from '../api/expenseApi';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { AppStats } from '../api/statsApi';
 import { Banner } from '../api/bannerApi';
@@ -16,6 +17,14 @@ import {
 let ingredients = [...demoIngredients];
 let recipes = [...demoRecipes];
 let sales = [...demoSales];
+
+const demoExpenses: Expense[] = [
+  { id: 'demo-exp-1', description: 'Aluguel do espaço', amount: 600, category: 'aluguel', costType: 'fixed', isRecurring: true, recurrenceDay: 5, expenseDate: new Date().toISOString().slice(0, 8) + '05', notes: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'demo-exp-2', description: 'Energia elétrica', amount: 150, category: 'energia', costType: 'fixed', isRecurring: true, recurrenceDay: 10, expenseDate: new Date().toISOString().slice(0, 8) + '10', notes: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'demo-exp-3', description: 'Embalagens personalizadas', amount: 85, category: 'embalagem', costType: 'variable', isRecurring: false, recurrenceDay: null, expenseDate: new Date().toISOString().slice(0, 8) + '03', notes: 'Caixas para brigadeiros gourmet', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+  { id: 'demo-exp-4', description: 'Instagram Ads', amount: 120, category: 'marketing', costType: 'variable', isRecurring: false, recurrenceDay: null, expenseDate: new Date().toISOString().slice(0, 8) + '01', notes: null, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+];
+let demoExpensesMutable = [...demoExpenses];
 let nextId = 100;
 
 const genId = () => `demo-gen-${nextId++}`;
@@ -244,5 +253,60 @@ export const demoSaleApi = {
   delete: async (id: string): Promise<void> => {
     await delay();
     sales = sales.filter(s => s.id !== id);
+  },
+};
+
+// ── Expenses ──
+
+export const demoExpenseApi = {
+  getAll: async (month?: string): Promise<Expense[]> => {
+    await delay();
+    if (!month) return [...demoExpensesMutable];
+    return demoExpensesMutable.filter(e => e.expenseDate.slice(0, 7) === month);
+  },
+
+  create: async (data: CreateExpenseDTO): Promise<Expense> => {
+    await delay();
+    const expense: Expense = {
+      id: genId(),
+      description: data.description,
+      amount: data.amount,
+      category: data.category,
+      costType: data.costType,
+      isRecurring: data.isRecurring,
+      recurrenceDay: data.recurrenceDay ?? null,
+      expenseDate: data.expenseDate,
+      notes: data.notes ?? null,
+      createdAt: now(),
+      updatedAt: now(),
+    };
+    demoExpensesMutable.unshift(expense);
+    return { ...expense };
+  },
+
+  update: async (id: string, data: Partial<CreateExpenseDTO>): Promise<Expense> => {
+    await delay();
+    const idx = demoExpensesMutable.findIndex(e => e.id === id);
+    if (idx === -1) throw new Error('Despesa não encontrada');
+    demoExpensesMutable[idx] = { ...demoExpensesMutable[idx], ...data, updatedAt: now() };
+    return { ...demoExpensesMutable[idx] };
+  },
+
+  delete: async (id: string): Promise<void> => {
+    await delay();
+    demoExpensesMutable = demoExpensesMutable.filter(e => e.id !== id);
+  },
+
+  getSummary: async (month: string) => {
+    await delay();
+    const filtered = demoExpensesMutable.filter(e => e.expenseDate.slice(0, 7) === month);
+    const totalExpenses = filtered.reduce((s, e) => s + e.amount, 0);
+    const byCategory = Object.entries(
+      filtered.reduce((acc: Record<string, number>, e) => {
+        acc[e.category] = (acc[e.category] ?? 0) + e.amount;
+        return acc;
+      }, {})
+    ).map(([category, total]) => ({ category, total }));
+    return { totalExpenses, byCategory };
   },
 };

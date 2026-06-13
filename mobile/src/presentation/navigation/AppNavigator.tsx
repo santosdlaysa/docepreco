@@ -30,6 +30,8 @@ import { ClientsScreen } from '../screens/ClientsScreen';
 import { CreateClientScreen } from '../screens/CreateClientScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { FinanceScreen } from '../screens/FinanceScreen';
+import { ExpensesScreen } from '../screens/ExpensesScreen';
+import { CreateExpenseScreen } from '../screens/CreateExpenseScreen';
 import { StockScreen } from '../screens/StockScreen';
 import { SalesTipsScreen } from '../screens/SalesTipsScreen';
 import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
@@ -412,6 +414,8 @@ export function AppNavigator() {
           <Stack.Screen name="EditClient" component={CreateClientScreen} />
           <Stack.Screen name="Reports" component={ReportsScreen} />
           <Stack.Screen name="Finance" component={FinanceScreen} />
+          <Stack.Screen name="Expenses" component={ExpensesScreen} />
+          <Stack.Screen name="CreateExpense" component={CreateExpenseScreen} />
           <Stack.Screen name="Stock" component={StockScreen} />
           <Stack.Screen name="SalesTips" component={SalesTipsScreen} />
           <Stack.Screen name="PdfSettings" component={PdfSettingsScreen} />

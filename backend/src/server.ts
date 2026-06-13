@@ -41,6 +41,7 @@ import pixRoutes from './presentation/routes/pixRoutes';
 import cashRoutes from './presentation/routes/cashRoutes';
 import referralRoutes from './presentation/routes/referralRoutes';
 import stripeRoutes from './presentation/routes/stripeRoutes';
+import expenseRoutes from './presentation/routes/expenseRoutes';
 import { warmUpEvolutionApi } from './infrastructure/services/whatsappService';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
@@ -138,6 +139,7 @@ app.use('/api', premiumRoutes);
 app.use('/api', pixRoutes);
 app.use('/api', referralRoutes);
 app.use('/api', stripeRoutes);
+app.use('/api', expenseRoutes);
 // Montado ANTES de adminRoutes: GET /api/admin/settings/plans é público (lido pelo app
 // mobile sem secret de admin). Se ficasse depois, o adminMiddleware de adminRoutes
 // interceptaria a rota e devolveria 401, fazendo o app cair nos valores embutidos.
