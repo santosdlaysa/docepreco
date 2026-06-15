@@ -42,6 +42,15 @@ function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: s
   );
 }
 
+function SignupPlatformBadge({ platform }: { platform: AdminUser['signupPlatform'] }) {
+  if (!platform) return <span className="text-xs text-gray-400">Não informado</span>;
+  return (
+    <span className="inline-flex text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-0.5 rounded-full">
+      {platform === 'ios' ? 'iOS' : 'Android'}
+    </span>
+  );
+}
+
 function SortIcon({ active }: { active: boolean }) {
   return (
     <ChevronDown size={14} className={`inline ml-0.5 ${active ? 'text-primary-600' : 'text-gray-300'}`} />
@@ -587,6 +596,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [premiumFilter, setPremiumFilter] = useState<boolean | null>(null);
+  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | undefined>();
   const [hasPhone, setHasPhone] = useState<boolean | null>(null);
   const [hasInstagram, setHasInstagram] = useState<boolean | null>(null);
   const [minRecipes, setMinRecipes] = useState<number | undefined>();
@@ -603,6 +613,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
 
   const activeFilterCount = [
     premiumFilter !== null,
+    signupPlatform !== undefined,
     hasPhone !== null,
     hasInstagram !== null,
     minRecipes !== undefined,
@@ -615,6 +626,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
 
   const clearAllFilters = () => {
     setPremiumFilter(null);
+    setSignupPlatform(undefined);
     setHasPhone(null);
     setHasInstagram(null);
     setMinRecipes(undefined);
@@ -642,6 +654,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
       const res = await api.listUsers({
         search, page, sortBy,
         isPremium: premiumFilter ?? undefined,
+        signupPlatform,
         hasPhone: hasPhone ?? undefined,
         hasInstagram: hasInstagram ?? undefined,
         minRecipes, minIngredients, minSales, minRevenue,
@@ -654,7 +667,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [search, page, premiumFilter, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
+  }, [search, page, premiumFilter, signupPlatform, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -748,6 +761,18 @@ export function UsersPage({ toast, onImpersonate }: Props) {
               <option value="">Todos</option>
               <option value="true">Premium</option>
               <option value="false">Gratuito</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Dispositivo de cadastro</label>
+            <select
+              value={signupPlatform ?? ''}
+              onChange={e => { setSignupPlatform((e.target.value || undefined) as 'ios' | 'android' | undefined); setPage(1); }}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              <option value="ios">iOS</option>
+              <option value="android">Android</option>
             </select>
           </div>
           <div>
@@ -855,13 +880,14 @@ export function UsersPage({ toast, onImpersonate }: Props) {
       {/* Tabela */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[1050px]">
+          <table className="w-full text-sm min-w-[1150px]">
             <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Confeitaria</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Email</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Telefone</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Instagram</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">Dispositivo</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Plano</th>
                 <ColHeader label="Receitas"      sortKey="recipeCount" />
                 <ColHeader label="Ingredientes"  sortKey="ingredientCount" />
@@ -884,14 +910,14 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading && (
                 <tr>
-                  <td colSpan={11}>
+                  <td colSpan={12}>
                     <TableSkeleton rows={8} cols={8} />
                   </td>
                 </tr>
               )}
               {!loading && users.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
+                  <td colSpan={12} className="text-center py-8 text-gray-400">Nenhum usuário encontrado</td>
                 </tr>
               )}
               {!loading && users.map((u, i) => (
@@ -934,6 +960,9 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                         @{u.instagramHandle}
                       </a>
                     ) : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <SignupPlatformBadge platform={u.signupPlatform} />
                   </td>
                   <td className="px-4 py-3">
                     <PremiumBadge isPremium={u.isPremium} platform={u.premiumPlatform} />

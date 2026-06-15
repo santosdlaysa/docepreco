@@ -104,6 +104,7 @@ export interface AdminUser {
   isPremium: boolean;
   premiumUntil: string | null;
   premiumPlatform: string | null;
+  signupPlatform: 'ios' | 'android' | null;
   lastSeenAt: string | null;
   isActive: boolean;
   recipeCount: number;
@@ -202,6 +203,7 @@ export const api = {
 
   listUsers: (params: {
     search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;
+    signupPlatform?: 'ios' | 'android';
     hasPhone?: boolean | null; hasInstagram?: boolean | null;
     minRecipes?: number; minIngredients?: number; minSales?: number; minRevenue?: number;
     lastSeenDays?: number; createdDays?: number;
@@ -211,6 +213,7 @@ export const api = {
     if (params.page) q.set('page', String(params.page));
     if (params.isPremium != null) q.set('isPremium', String(params.isPremium));
     if (params.sortBy) q.set('sortBy', params.sortBy);
+    if (params.signupPlatform) q.set('signupPlatform', params.signupPlatform);
     if (params.hasPhone != null) q.set('hasPhone', String(params.hasPhone));
     if (params.hasInstagram != null) q.set('hasInstagram', String(params.hasInstagram));
     if (params.minRecipes) q.set('minRecipes', String(params.minRecipes));

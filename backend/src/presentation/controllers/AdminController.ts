@@ -93,6 +93,7 @@ export class AdminController {
     const page = Math.max(1, parseInt((req.query.page as string) || '1'));
     const limit = Math.min(50, parseInt((req.query.limit as string) || '20'));
     const isPremiumFilter = req.query.isPremium;
+    const signupPlatform = req.query.signupPlatform as string | undefined;
     const hasPhone = req.query.hasPhone as string | undefined;
     const hasInstagram = req.query.hasInstagram as string | undefined;
     const minRecipes = req.query.minRecipes ? parseInt(req.query.minRecipes as string) : undefined;
@@ -125,6 +126,11 @@ export class AdminController {
     }
     if (isPremiumFilter === 'true') conditions.push(`u.is_premium = TRUE`);
     else if (isPremiumFilter === 'false') conditions.push(`u.is_premium = FALSE`);
+    if (signupPlatform === 'ios' || signupPlatform === 'android') {
+      conditions.push(`u.signup_platform = $${idx}`);
+      params.push(signupPlatform);
+      idx++;
+    }
     if (hasPhone === 'true') conditions.push(`u.phone IS NOT NULL AND u.phone != ''`);
     else if (hasPhone === 'false') conditions.push(`(u.phone IS NULL OR u.phone = '')`);
     if (hasInstagram === 'true') conditions.push(`u.instagram_handle IS NOT NULL AND u.instagram_handle != ''`);
@@ -165,6 +171,7 @@ export class AdminController {
             u.is_premium               AS "isPremium",
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
+            u.signup_platform          AS "signupPlatform",
             u.last_seen_at             AS "lastSeenAt",
             u.instagram_handle         AS "instagramHandle",
             COALESCE(u.is_active, TRUE) AS "isActive",
