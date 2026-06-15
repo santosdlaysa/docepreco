@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck, RefreshCw } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -750,7 +750,17 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Usuários</h2>
-        <span className="text-sm text-gray-400">{total} no total</span>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-gray-400">{total} no total</span>
+          <button
+            onClick={load}
+            disabled={loading}
+            className="flex items-center gap-1.5 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            Atualizar
+          </button>
+        </div>
       </div>
 
       {/* Busca + botão filtros */}
