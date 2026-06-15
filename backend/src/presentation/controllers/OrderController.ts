@@ -2,6 +2,12 @@ import { Request, Response } from 'express';
 import { PostgresOrderRepository } from '../../infrastructure/repositories/PostgresOrderRepository';
 
 const repo = new PostgresOrderRepository();
+const ORDER_STATUSES = new Set(['pending', 'in_progress', 'done', 'delivered', 'cancelled']);
+
+function hasInvalidStatus(body: Record<string, unknown>): boolean {
+  return body.status !== undefined &&
+    (typeof body.status !== 'string' || !ORDER_STATUSES.has(body.status));
+}
 
 export class OrderController {
   async getAll(req: Request, res: Response): Promise<void> {
@@ -38,6 +44,10 @@ export class OrderController {
         res.status(400).json({ success: false, message: 'Dados inválidos' });
         return;
       }
+      if (hasInvalidStatus(b)) {
+        res.status(400).json({ success: false, message: 'Status inválido' });
+        return;
+      }
       const order = await repo.create(userId, b);
       res.status(201).json({ success: true, data: order });
     } catch (error) {
@@ -49,7 +59,12 @@ export class OrderController {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId as string;
-      const order = await repo.update(req.params.id, userId, req.body ?? {});
+      const b = req.body ?? {};
+      if (hasInvalidStatus(b)) {
+        res.status(400).json({ success: false, message: 'Status inválido' });
+        return;
+      }
+      const order = await repo.update(req.params.id, userId, b);
       if (!order) {
         res.status(404).json({ success: false, message: 'Encomenda não encontrada' });
         return;

@@ -118,7 +118,8 @@ CREATE TABLE IF NOT EXISTS orders (
   total_price DECIMAL(10,2) NOT NULL DEFAULT 0,
   delivery_date DATE NOT NULL,
   delivery_time VARCHAR(5),
-  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  status VARCHAR(20) NOT NULL DEFAULT 'pending'
+    CHECK (status IN ('pending', 'in_progress', 'done', 'delivered', 'cancelled')),
   paid BOOLEAN NOT NULL DEFAULT false,
   paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   payments JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -556,6 +557,14 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'orders', 'payments', "JSONB NOT NULL DEFAULT '[]'::jsonb");
     await addColumnIfMissing(client, 'orders', 'items', "JSONB NOT NULL DEFAULT '[]'::jsonb");
     await addColumnIfMissing(client, 'orders', 'notes', 'TEXT');
+    // Versões antigas usavam "ready"; o app atual usa "done".
+    await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check`);
+    await client.query(`UPDATE orders SET status = 'done' WHERE status = 'ready'`);
+    await client.query(`
+      ALTER TABLE orders
+      ADD CONSTRAINT orders_status_check
+      CHECK (status IN ('pending', 'in_progress', 'done', 'delivered', 'cancelled'))
+    `);
 
     // Seed schedule config for existing templates (only if schedule_hour is null)
     await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 48 WHERE slug = 'inactivity_2d' AND schedule_hour IS NULL`);

@@ -2,6 +2,8 @@ import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 
+process.env.JWT_SECRET = 'delete-account-e2e-secret';
+
 // ── Mocks ─────────────────────────────────────────────────────────────────
 
 const mockFindById = jest.fn();
@@ -54,7 +56,7 @@ import authRoutes from '../presentation/routes/authRoutes';
 
 // ── App setup ─────────────────────────────────────────────────────────────
 
-const JWT_SECRET = process.env.JWT_SECRET || 'sweet-pricing-secret';
+const JWT_SECRET = process.env.JWT_SECRET;
 
 function createApp() {
   const app = express();

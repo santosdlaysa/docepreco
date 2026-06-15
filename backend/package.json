@@ -9,6 +9,7 @@
     "start": "node dist/server.js",
     "migrate": "ts-node src/infrastructure/database/migrate.ts",
     "test": "jest",
+    "test:e2e": "jest src/e2e --runInBand",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
   },

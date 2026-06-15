@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { PremiumController } from '../controllers/PremiumController';
 import { authMiddleware } from '../middleware/authMiddleware';
+import { adminMiddleware } from '../middleware/adminMiddleware';
 
 const router = Router();
 const controller = new PremiumController();
@@ -15,6 +16,6 @@ router.post('/premium/sync', authMiddleware, (req, res) => controller.syncPremiu
 router.post('/premium/trial', authMiddleware, (req, res) => controller.requestTrial(req as any, res));
 
 // Admin manual toggle (protected by X-Admin-Secret header)
-router.post('/admin/users/:id/premium', (req, res) => controller.setPremiumManually(req, res));
+router.post('/admin/users/:id/premium', adminMiddleware, (req, res) => controller.setPremiumManually(req, res));
 
 export default router;
