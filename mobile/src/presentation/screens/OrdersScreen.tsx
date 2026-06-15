@@ -142,7 +142,7 @@ export const OrdersScreen: React.FC = () => {
     if (newStatus === 'delivered') {
       Alert.alert('Pagamento', `${order.clientName} já pagou?`, [
         { text: 'Ainda não', style: 'cancel', onPress: async () => { await orderStorage.update(order.id, { status: 'delivered', paid: false }); loadOrders(); } },
-        { text: 'Sim, pago!', onPress: async () => { await orderStorage.update(order.id, { status: 'delivered', paid: true }); await registerSale(order); loadOrders(); } },
+        { text: 'Sim, pago!', onPress: async () => { await orderStorage.update(order.id, { status: 'delivered', paid: true, paidAmount: order.totalPrice }); await registerSale(order); loadOrders(); } },
       ]);
       return;
     }

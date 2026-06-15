@@ -54,6 +54,7 @@ const fmtCurrency = (v: number) =>
 
 // Aceita vírgula ou ponto como separador decimal (padrão BR)
 const num = (s: string) => parseFloat(String(s ?? '').replace(',', '.')) || 0;
+const toCents = (value: number) => Math.round(value * 100);
 
 const STATUS_OPTIONS: { key: OrderStatus; label: string; bg: string; color: string }[] = [
   { key: 'pending', label: 'Pendente', bg: '#FFF1CE', color: '#8A5A00' },
@@ -168,7 +169,11 @@ export const CreateOrderScreen: React.FC = () => {
         totalPrice,
         items: orderItems,
         deliveryDate: toIso(deliveryDate.trim()), deliveryTime: deliveryTime.trim() || undefined,
-        status, paidAmount: totalPaid, payments, notes: notes.trim() || undefined,
+        status,
+        paid: totalPrice > 0 && toCents(totalPaid) >= toCents(totalPrice),
+        paidAmount: totalPaid,
+        payments,
+        notes: notes.trim() || undefined,
       };
       if (isEditing) { await orderStorage.update(orderId!, data); showToast('Encomenda atualizada!', 'success'); }
       else { await orderStorage.create(data); showToast('Encomenda criada!', 'success'); }
