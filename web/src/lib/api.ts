@@ -240,6 +240,12 @@ export const api = {
       body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null }),
     }),
 
+  setSignupPlatform: (id: string, signupPlatform: 'ios' | 'android' | null) =>
+    req<{ signupPlatform: 'ios' | 'android' | null }>(`/admin/users/${id}/signup-platform`, {
+      method: 'PATCH',
+      body: JSON.stringify({ signupPlatform }),
+    }),
+
   grantTrial: (id: string, days: number, notificationTitle: string, notificationBody: string) =>
     req<{ premiumUntil: string; notificationSent: boolean; recipientsCount: number }>(`/admin/users/${id}/grant-trial`, {
       method: 'POST',

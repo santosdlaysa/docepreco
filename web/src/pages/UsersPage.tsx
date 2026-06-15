@@ -70,6 +70,8 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   const [premiumHistory, setPremiumHistory] = useState<PremiumEvent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [togglingActive, setTogglingActive] = useState(false);
+  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | ''>('');
+  const [savingSignupPlatform, setSavingSignupPlatform] = useState(false);
 
   const toggleActive = async () => {
     if (!user) return;
@@ -89,10 +91,28 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   };
 
   useEffect(() => {
-    api.getUser(userId).then(setUser).catch(console.error);
+    api.getUser(userId).then(result => {
+      setUser(result);
+      setSignupPlatform(result.signupPlatform ?? '');
+    }).catch(console.error);
     setLoadingHistory(true);
     api.getPremiumHistory(userId).then(setPremiumHistory).catch(console.error).finally(() => setLoadingHistory(false));
   }, [userId]);
+
+  const saveSignupPlatform = async () => {
+    if (!user) return;
+    setSavingSignupPlatform(true);
+    try {
+      const value = signupPlatform || null;
+      const result = await api.setSignupPlatform(user.id, value);
+      setUser({ ...user, signupPlatform: result.signupPlatform });
+      toast.success('Dispositivo de cadastro atualizado.');
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao atualizar dispositivo');
+    } finally {
+      setSavingSignupPlatform(false);
+    }
+  };
 
   const togglePremium = async () => {
     if (!user) return;
@@ -249,6 +269,30 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
               {user.lastSeenAt && (
                 <p className="text-xs text-gray-400">Último acesso: {new Date(user.lastSeenAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })} {new Date(user.lastSeenAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</p>
               )}
+            </div>
+
+            <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-200 block mb-2">
+                Dispositivo de cadastro
+              </label>
+              <div className="flex items-center gap-2">
+                <select
+                  value={signupPlatform}
+                  onChange={e => setSignupPlatform(e.target.value as 'ios' | 'android' | '')}
+                  className="flex-1 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+                >
+                  <option value="">Não informado</option>
+                  <option value="ios">iOS</option>
+                  <option value="android">Android</option>
+                </select>
+                <button
+                  onClick={saveSignupPlatform}
+                  disabled={savingSignupPlatform || signupPlatform === (user.signupPlatform ?? '')}
+                  className="text-sm font-semibold px-4 py-2 rounded-lg bg-primary-500 hover:bg-primary-600 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {savingSignupPlatform ? 'Salvando...' : 'Salvar'}
+                </button>
+              </div>
             </div>
 
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">

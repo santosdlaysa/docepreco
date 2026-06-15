@@ -213,6 +213,37 @@ export class AdminController {
     }
   }
 
+  async setSignupPlatform(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const { signupPlatform } = req.body as { signupPlatform?: 'ios' | 'android' | null };
+
+    if (signupPlatform !== 'ios' && signupPlatform !== 'android' && signupPlatform !== null) {
+      res.status(400).json({ error: 'signupPlatform deve ser ios, android ou null' });
+      return;
+    }
+
+    try {
+      const result = await pool.query(
+        `UPDATE users
+         SET signup_platform = $1
+         WHERE id = $2
+         RETURNING signup_platform AS "signupPlatform"`,
+        [signupPlatform, id]
+      );
+
+      if (result.rows.length === 0) {
+        res.status(404).json({ error: 'Usuário não encontrado' });
+        return;
+      }
+
+      res.json({ success: true, data: result.rows[0] });
+    } catch (error) {
+      console.error('[Admin] setSignupPlatform error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async toggleUserActive(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     const { isActive } = req.body;
@@ -304,6 +335,7 @@ export class AdminController {
             u.is_premium               AS "isPremium",
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
+            u.signup_platform          AS "signupPlatform",
             u.last_seen_at             AS "lastSeenAt",
             u.instagram_handle         AS "instagramHandle",
             COALESCE(u.is_active, TRUE) AS "isActive",
