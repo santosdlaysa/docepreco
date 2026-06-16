@@ -457,6 +457,76 @@ function RecipeForm({
           )}
         </div>
 
+        {/* 📊 Painel de Cálculos em Tempo Real */}
+        {(() => {
+          const yieldNum = Number(yieldValue) || 1;
+          const marginNum = Number(margin) || 0;
+
+          // Calcula custo dos ingredientes
+          let ingredientsCost = 0;
+          rows.forEach(row => {
+            const ing = ingredients.find(i => i.id === row.ingredientId);
+            if (ing) {
+              const qtyUsed = Number(row.quantityUsed) || 0;
+              const pricePerUnit = ing.purchasePrice / ing.purchaseQuantity;
+              ingredientsCost += pricePerUnit * qtyUsed;
+            }
+          });
+
+          // Calcula custos adicionais
+          let additionalCostTotal = 0;
+          Object.values(presetCosts).forEach(v => {
+            additionalCostTotal += parseFloat(v.replace(',', '.')) || 0;
+          });
+          customCosts.forEach(c => {
+            additionalCostTotal += Number(c.value) || 0;
+          });
+          additionalCostTotal += laborCostValue;
+
+          const totalCost = ingredientsCost + additionalCostTotal;
+          const costPerUnit = yieldNum > 0 ? totalCost / yieldNum : 0;
+          const suggestedPrice = costPerUnit * (1 + marginNum / 100);
+          const estimatedProfit = (suggestedPrice - costPerUnit) * yieldNum;
+
+          return totalCost > 0 ? (
+            <div className="grid grid-cols-2 gap-3 bg-gradient-to-br from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-900/10 rounded-xl p-4 border border-primary-200 dark:border-primary-800">
+              <div className="col-span-2 mb-2">
+                <p className="text-xs font-medium text-primary-700 dark:text-primary-300 uppercase tracking-wide">📊 Resumo de Cálculos</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Custo Ingredientes</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRL(ingredientsCost)}</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Custos Adicionais</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRL(additionalCostTotal)}</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-primary-300 dark:border-primary-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Custo Total</p>
+                <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{formatBRL(totalCost)}</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Por Unidade</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRL(costPerUnit)}</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2 border-2 border-emerald-300 dark:border-emerald-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Preço Sugerido ({marginNum}%)</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(suggestedPrice)}</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Lucro Estimado</p>
+                <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatBRL(estimatedProfit)}</p>
+              </div>
+            </div>
+          ) : null;
+        })()}
+
         {/* Ingredientes */}
         <div>
           <div className="flex items-center justify-between mb-1.5">
