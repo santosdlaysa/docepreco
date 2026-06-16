@@ -565,7 +565,7 @@ function EditRecipeModal({
                         setRows(prev => prev.map((r, i) => i === idx ? {
                           ...r,
                           ingredientId: e.target.value,
-                          ingredientName: selected?.name,
+                          ingredientName: selected?.name ?? '',
                           unit: selected ? (selected.purchaseUnitWeight ? 'unit' : selected.unit) : r.unit,
                         } : r));
                       }}
