@@ -25,7 +25,6 @@ import { useToast } from '../context/ToastContext';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
 
-const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'unit', label: 'un' },
   { value: 'g', label: 'g' },
@@ -71,9 +70,6 @@ export const CreateIngredientScreen: React.FC = () => {
   const [purchaseQuantity, setPurchaseQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [unit, setUnit] = useState<Unit>('' as Unit);
-  const [useCustomUnit, setUseCustomUnit] = useState(false);
-  const [purchaseUnitLabel, setPurchaseUnitLabel] = useState('');
-  const [purchaseUnitWeight, setPurchaseUnitWeight] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
   const [originalPrice, setOriginalPrice] = useState<number | null>(null);
@@ -98,11 +94,6 @@ export const CreateIngredientScreen: React.FC = () => {
         setUnit(ing.unit);
         setOriginalPrice(ing.purchasePrice);
         setOriginalQty(ing.purchaseQuantity);
-        if (ing.purchaseUnitLabel) {
-          setUseCustomUnit(true);
-          setPurchaseUnitLabel(ing.purchaseUnitLabel);
-          setPurchaseUnitWeight(String(ing.purchaseUnitWeight ?? ''));
-        }
       })
       .catch(() => showToast(t('createIngredient.loadError'), 'error'))
       .finally(() => setLoadingData(false));
@@ -128,10 +119,6 @@ export const CreateIngredientScreen: React.FC = () => {
     if (!purchaseQuantity || parseFloat(purchaseQuantity.replace(',', '.')) <= 0) e.qty = 'Obrigatório';
     if (!purchasePrice || parseFloat(purchasePrice.replace(',', '.')) <= 0) e.price = 'Obrigatório';
     if (!unit) e.unit = 'Escolha uma unidade';
-    if (useCustomUnit) {
-      if (!purchaseUnitLabel.trim()) e.pkgLabel = 'Obrigatório';
-      if (!purchaseUnitWeight || parseFloat(purchaseUnitWeight.replace(',', '.')) <= 0) e.pkgWeight = 'Obrigatório';
-    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -140,18 +127,29 @@ export const CreateIngredientScreen: React.FC = () => {
     if (!validate()) return;
     setLoading(true);
     try {
+      let finalQty = parseFloat(purchaseQuantity.replace(',', '.'));
+      let finalUnit: Unit = unit;
+
+      // Converte automaticamente kg→g e l→ml para sempre usar g/ml nas receitas
+      if (unit === 'kg') {
+        finalQty = finalQty * 1000;
+        finalUnit = 'g';
+      } else if (unit === 'l') {
+        finalQty = finalQty * 1000;
+        finalUnit = 'ml';
+      }
+
       const payload = {
         name: name.trim(),
-        purchaseQuantity: parseFloat(purchaseQuantity.replace(',', '.')),
+        purchaseQuantity: finalQty,
         purchasePrice: parseFloat(purchasePrice.replace(',', '.')),
-        unit,
-        purchaseUnitLabel: useCustomUnit ? purchaseUnitLabel.trim() : undefined,
-        purchaseUnitWeight: useCustomUnit ? parseFloat(purchaseUnitWeight.replace(',', '.')) : undefined,
+        unit: finalUnit,
       };
+
       if (isEditing) {
         await api.update(ingredientId!, payload);
         if (originalPrice !== null && (payload.purchasePrice !== originalPrice || payload.purchaseQuantity !== originalQty)) {
-          await priceHistoryApi.add(ingredientId!, { price: payload.purchasePrice, purchaseQuantity: payload.purchaseQuantity, unit, purchaseUnitWeight: payload.purchaseUnitWeight }).catch(() => {});
+          await priceHistoryApi.add(ingredientId!, { price: payload.purchasePrice, purchaseQuantity: payload.purchaseQuantity, unit: finalUnit }).catch(() => {});
         }
         showToast(t('createIngredient.updated'), 'success');
       } else {
@@ -169,11 +167,13 @@ export const CreateIngredientScreen: React.FC = () => {
   // Preview
   const qty = parseFloat((purchaseQuantity || '0').replace(',', '.'));
   const price = parseFloat((purchasePrice || '0').replace(',', '.'));
-  const weight = parseFloat((purchaseUnitWeight || '0').replace(',', '.'));
-  const effectiveQty = useCustomUnit && weight > 0 ? qty * weight : qty;
-  const pricePerUnit = effectiveQty > 0 ? price / effectiveQty : 0;
-  const pricePerPkg = qty > 0 ? price / qty : 0;
+  const pricePerUnit = qty > 0 ? price / qty : 0;
   const showPreview = qty > 0 && price > 0;
+
+  // Mostra dica de conversão se user selecionar kg ou l
+  const conversionNote = (unit === 'kg' || unit === 'l')
+    ? `(será convertido para ${unit === 'kg' ? 'gramas' : 'ml'} automaticamente)`
+    : '';
 
   /* ─── Loading state ─── */
   if (loadingData) {
@@ -249,40 +249,20 @@ export const CreateIngredientScreen: React.FC = () => {
             )}
           </View>
 
-          {/* ── Tipo de embalagem ── */}
-          <View style={st.field}>
-            <Text style={st.label}>Tipo de embalagem</Text>
-            <Text style={st.hint}>Selecione se o ingrediente vem em embalagem (lata, pacote, etc.)</Text>
-            <View style={st.ugrid}>
-              {PKG_TYPES.map(pkg => {
-                const on = purchaseUnitLabel === pkg;
-                return (
-                  <TouchableOpacity key={pkg} activeOpacity={0.8}
-                    style={[st.uchip, on && st.uchipOn]}
-                    onPress={() => {
-                      if (on) { setPurchaseUnitLabel(''); setPurchaseUnitWeight(''); setUseCustomUnit(false); }
-                      else { setPurchaseUnitLabel(pkg); setUseCustomUnit(true); }
-                    }}>
-                    <Text style={[st.uchipText, on && st.uchipTextOn]}>{pkg}</Text>
-                  </TouchableOpacity>
-                );
-              })}
+          {/* ── Aviso sobre unidades ── */}
+          <View style={[st.infoBanner, { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}>
+            <Ionicons name="checkmark-circle" size={18} color="#2E7D32" />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={{ fontSize: 13, fontWeight: '600', color: '#2E7D32', marginBottom: 4 }}>
+                💡 Dica: Use gramas ou mililitros
+              </Text>
+              <Text style={{ fontSize: 12, color: '#558B2F', lineHeight: 18 }}>
+                Cadastre sempre em gramas (g) ou mililitros (ml).{'\n'}
+                Exemplo: 1 kg = 1000 g{'\n'}
+                {conversionNote && `${conversionNote}`}
+              </Text>
             </View>
           </View>
-
-          {/* ── Peso por embalagem ── */}
-          {useCustomUnit && (
-            <View style={st.field}>
-              <Text style={st.label}>Peso por embalagem</Text>
-              <View style={[st.input, errors.pkgWeight ? st.inputErr : null]}>
-                <TextInput style={st.inputText} value={purchaseUnitWeight} onChangeText={setPurchaseUnitWeight}
-                  placeholder="330" placeholderTextColor={INK3} keyboardType="decimal-pad" />
-                <Text style={st.suffix}>{unit || 'g'} por {purchaseUnitLabel}</Text>
-              </View>
-              <Text style={st.hint}>Ex: uma lata de leite condensado tem 330g</Text>
-              {errors.pkgWeight && <Text style={st.err}>{errors.pkgWeight}</Text>}
-            </View>
-          )}
 
           {/* ── Quantidade + Preço (dois campos) ── */}
           <View style={st.two}>
