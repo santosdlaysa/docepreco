@@ -23,6 +23,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 import { AdBanner } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
+import { getEffectivePurchaseQuantity, getIngredientUnitPrice } from '../../domain/services/ingredientPricing';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -115,14 +116,6 @@ export const IngredientsScreen: React.FC = () => {
   const formatPrice = (price: number) =>
     price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-  const effectiveQuantity = (ingredient: Ingredient) =>
-    ingredient.purchaseUnitWeight
-      ? ingredient.purchaseQuantity * ingredient.purchaseUnitWeight
-      : ingredient.purchaseQuantity;
-
-  const pricePerUnit = (ingredient: Ingredient) =>
-    ingredient.purchasePrice / effectiveQuantity(ingredient);
-
   // ── Loading skeleton ──
   if (loading) {
     return (
@@ -161,12 +154,12 @@ export const IngredientsScreen: React.FC = () => {
         <Text style={s.rowName}>{item.name}</Text>
         <Text style={s.rowQty}>
           {item.purchaseUnitLabel
-            ? `${item.purchaseQuantity} ${item.purchaseUnitLabel}(s) (${effectiveQuantity(item)}${item.unit}) · ${formatPrice(item.purchasePrice)}`
-            : `${effectiveQuantity(item)} ${item.unit} · ${formatPrice(item.purchasePrice)}`}
+            ? `${item.purchaseQuantity} ${item.purchaseUnitLabel}(s) (${getEffectivePurchaseQuantity(item)}${item.unit}) · ${formatPrice(item.purchasePrice)}`
+            : `${getEffectivePurchaseQuantity(item)} ${item.unit} · ${formatPrice(item.purchasePrice)}`}
         </Text>
       </View>
       <View style={s.rowRight}>
-        <Text style={s.rowPrice}>{formatPrice(pricePerUnit(item))}/{item.unit}</Text>
+        <Text style={s.rowPrice}>{formatPrice(getIngredientUnitPrice(item))}/{item.unit}</Text>
         <View style={s.rowActions}>
           <TouchableOpacity
             onPress={() => guardAction(() => navigation.navigate('EditIngredient', { ingredientId: item.id }))}

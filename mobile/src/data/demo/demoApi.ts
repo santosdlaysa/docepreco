@@ -5,6 +5,7 @@ import { Expense, CreateExpenseDTO } from '../api/expenseApi';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { AppStats } from '../api/statsApi';
 import { Banner } from '../api/bannerApi';
+import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 import {
   demoIngredients,
   demoRecipes,
@@ -107,7 +108,7 @@ function calculateForRecipe(recipe: Recipe): CalculationResult {
   for (const ri of recipe.ingredients) {
     const ing = ingredients.find(i => i.id === ri.ingredientId);
     if (ing) {
-      ingredientsCost += (ri.quantityUsed / ing.purchaseQuantity) * ing.purchasePrice;
+      ingredientsCost += (ri.quantityUsed / getEffectivePurchaseQuantity(ing)) * ing.purchasePrice;
     }
   }
   const additionalCostTotal = recipe.additionalCosts.reduce((s, c) => s + c.value, 0);

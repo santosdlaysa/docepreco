@@ -39,6 +39,7 @@ import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggested
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../hooks/useDraft';
 import { PRICING_TUTORIAL } from '../utils/pricingTutorial';
+import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -308,9 +309,7 @@ export const CreateRecipeScreen: React.FC = () => {
       return;
     }
     // Quantidade efetiva na unidade base (ex: 1 lata de 330g = 330g)
-    const effectivePurchaseQty = selectedIngredient.purchaseUnitWeight
-      ? selectedIngredient.purchaseQuantity * selectedIngredient.purchaseUnitWeight
-      : selectedIngredient.purchaseQuantity;
+    const effectivePurchaseQty = getEffectivePurchaseQuantity(selectedIngredient);
     const qtyInPurchaseUnit =
       unit === 'unit' && selectedIngredient.purchaseUnitWeight
         ? qty * selectedIngredient.purchaseUnitWeight

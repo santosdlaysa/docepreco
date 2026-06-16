@@ -3,6 +3,7 @@ import { Recipe } from '../../domain/entities/Recipe';
 import { Sale } from '../../domain/entities/Sale';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { AppStats } from '../api/statsApi';
+import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 
 const now = new Date().toISOString();
 
@@ -123,7 +124,7 @@ function calcIngredientCost(recipe: Recipe): number {
   for (const ri of recipe.ingredients) {
     const ing = demoIngredients.find(i => i.id === ri.ingredientId);
     if (ing) {
-      total += (ri.quantityUsed / ing.purchaseQuantity) * ing.purchasePrice;
+      total += (ri.quantityUsed / getEffectivePurchaseQuantity(ing)) * ing.purchasePrice;
     }
   }
   return total;

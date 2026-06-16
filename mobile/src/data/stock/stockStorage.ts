@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ingredient, Unit } from '../../domain/entities/Ingredient';
 import { Recipe } from '../../domain/entities/Recipe';
+import { getIngredientUnitPrice } from '../../domain/services/ingredientPricing';
 
 /**
  * Controle de estoque (Master).
@@ -236,10 +237,4 @@ export const applySaleDeduction = async (
 };
 
 /** Custo por unidade base do ingrediente (na unidade do ingrediente). */
-export const unitCost = (ing: Ingredient): number => {
-  const effectiveQty = ing.purchaseUnitWeight
-    ? ing.purchaseQuantity * ing.purchaseUnitWeight
-    : ing.purchaseQuantity;
-  if (!effectiveQty) return 0;
-  return ing.purchasePrice / effectiveQty;
-};
+export const unitCost = (ing: Ingredient): number => getIngredientUnitPrice(ing);
