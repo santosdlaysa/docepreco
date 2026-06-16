@@ -38,7 +38,6 @@ import { usePremium } from '../context/PremiumContext';
 import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggestedRecipes';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../hooks/useDraft';
-import { PRICING_TUTORIAL } from '../utils/pricingTutorial';
 import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -623,7 +622,7 @@ export const CreateRecipeScreen: React.FC = () => {
               <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>Preencha os dados</Text>
               <Text style={{ fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 }}>O preço sugerido é calculado automaticamente.</Text>
               <TouchableOpacity
-                onPress={() => Alert.alert('Tutorial', PRICING_TUTORIAL)}
+                onPress={() => navigation.navigate('RecipeTutorial' as any)}
                 activeOpacity={0.8}
                 style={styles.tutorialButton}
               >

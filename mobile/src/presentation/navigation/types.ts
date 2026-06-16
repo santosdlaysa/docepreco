@@ -48,4 +48,5 @@ export type RootStackParamList = {
   AdminSupport: undefined;
   AdminSupportChat: { userId: string; companyName: string };
   PricingTutorial: undefined;
+  RecipeTutorial: undefined;
 };

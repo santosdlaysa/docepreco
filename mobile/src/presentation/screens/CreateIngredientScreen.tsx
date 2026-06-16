@@ -10,7 +10,6 @@ import {
   Platform,
   ActivityIndicator,
   FlatList,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,7 +24,6 @@ import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
-import { PRICING_TUTORIAL } from '../utils/pricingTutorial';
 
 const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
@@ -222,7 +220,7 @@ export const CreateIngredientScreen: React.FC = () => {
                   : 'Informe a quantidade total comprada e o valor total pago. Não use aqui a quantidade da receita.'}
               </Text>
               <TouchableOpacity
-                onPress={() => Alert.alert('Tutorial', PRICING_TUTORIAL)}
+                onPress={() => navigation.navigate('PricingTutorial' as any)}
                 activeOpacity={0.8}
                 style={st.tutorialBtn}
               >

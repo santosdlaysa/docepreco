@@ -38,6 +38,8 @@ import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
 import { IngredientPriceHistoryScreen } from '../screens/IngredientPriceHistoryScreen';
 import { SeasonsScreen } from '../screens/SeasonsScreen';
 import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
+import { PricingTutorialScreen } from '../screens/PricingTutorialScreen';
+import { RecipeTutorialScreen } from '../screens/RecipeTutorialScreen';
 import { BeginnerGuideScreen, isGuideAvailable, resetGuide } from '../screens/BeginnerGuideScreen';
 import { SupportChatScreen } from '../screens/SupportChatScreen';
 import { PixPaymentScreen } from '../screens/PixPaymentScreen';
@@ -420,6 +422,8 @@ export function AppNavigator() {
           <Stack.Screen name="SalesTips" component={SalesTipsScreen} />
           <Stack.Screen name="PdfSettings" component={PdfSettingsScreen} />
           <Stack.Screen name="IngredientPriceHistory" component={IngredientPriceHistoryScreen} />
+          <Stack.Screen name="PricingTutorial" component={PricingTutorialScreen} />
+          <Stack.Screen name="RecipeTutorial" component={RecipeTutorialScreen} />
           <Stack.Screen name="Seasons" component={SeasonsScreen} />
           <Stack.Screen name="CreateSeason" component={CreateSeasonScreen} />
           <Stack.Screen name="EditSeason" component={CreateSeasonScreen} />
