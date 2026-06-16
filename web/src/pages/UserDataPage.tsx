@@ -1,5 +1,14 @@
 import { useEffect, useState } from 'react';
-import { api, UserData, UserIngredient, UpdateUserIngredientDTO } from '../lib/api';
+import {
+  api,
+  RecipeAdditionalCost,
+  UserData,
+  UserIngredient,
+  UserRecipe,
+  UserSubRecipe,
+  UpdateUserIngredientDTO,
+  UpdateUserRecipeDTO,
+} from '../lib/api';
 import { ModalOverlay, Skeleton, ToastFn } from '../components';
 import {
   ArrowLeft,
@@ -10,6 +19,8 @@ import {
   ChevronDown,
   ChevronUp,
   Pencil,
+  Plus,
+  X,
 } from 'lucide-react';
 
 interface Props {
@@ -40,6 +51,7 @@ const UNIT_OPTIONS = [
 ];
 
 const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
+const SUB_UNITS = ['un', 'g', 'kg', 'ml', 'l'];
 
 export function UserDataPage({ userId, onBack, toast }: Props) {
   const [data, setData] = useState<UserData | null>(null);
@@ -47,6 +59,7 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
   const [tab, setTab] = useState<Tab>('recipes');
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
   const [editingIngredient, setEditingIngredient] = useState<UserIngredient | null>(null);
+  const [editingRecipe, setEditingRecipe] = useState<UserRecipe | null>(null);
 
   const loadData = () => {
     setError(null);
@@ -213,6 +226,17 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                             {fmtCurrency(sellingPrice)}/un
                           </span>
                         )}
+                        <button
+                          type="button"
+                          onClick={e => {
+                            e.stopPropagation();
+                            setEditingRecipe(r);
+                          }}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title="Editar receita"
+                        >
+                          <Pencil size={16} />
+                        </button>
                         {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
                       </div>
                     </button>
@@ -374,7 +398,296 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
           }}
         />
       )}
+
+      {editingRecipe && (
+        <EditRecipeModal
+          userId={userId}
+          recipe={editingRecipe}
+          ingredients={ingredients}
+          recipes={recipes}
+          toast={toast}
+          onClose={() => setEditingRecipe(null)}
+          onSaved={async () => {
+            setEditingRecipe(null);
+            await loadData();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function compatibleUnits(ingredient: Pick<UserIngredient, 'unit' | 'purchaseUnitWeight'>): string[] {
+  const baseUnits =
+    ingredient.unit === 'g' || ingredient.unit === 'kg'
+      ? ['g', 'kg']
+      : ingredient.unit === 'ml' || ingredient.unit === 'l'
+        ? ['ml', 'l']
+        : [ingredient.unit];
+  return ingredient.purchaseUnitWeight ? ['unit', ...baseUnits] : baseUnits;
+}
+
+function EditRecipeModal({
+  userId,
+  recipe,
+  ingredients,
+  recipes,
+  toast,
+  onClose,
+  onSaved,
+}: {
+  userId: string;
+  recipe: UserRecipe;
+  ingredients: UserIngredient[];
+  recipes: UserRecipe[];
+  toast: ToastFn;
+  onClose: () => void;
+  onSaved: () => void | Promise<void>;
+}) {
+  const [name, setName] = useState(recipe.name);
+  const [yieldValue, setYieldValue] = useState(String(recipe.yield));
+  const [margin, setMargin] = useState(String(recipe.profitMargin));
+  const [rows, setRows] = useState(recipe.ingredients.map(i => ({
+    ingredientId: i.ingredientId,
+    ingredientName: i.name,
+    quantityUsed: i.quantityUsed,
+    unit: i.unit,
+  })));
+  const [costs, setCosts] = useState<RecipeAdditionalCost[]>(recipe.additionalCosts ?? []);
+  const [subRows, setSubRows] = useState<UserSubRecipe[]>(recipe.subRecipes ?? []);
+  const [saving, setSaving] = useState(false);
+
+  const availableSubRecipes = recipes.filter(r => r.id !== recipe.id);
+
+  const addIngredient = () => {
+    const first = ingredients[0];
+    if (!first) return toast.error('Usuário não tem ingredientes cadastrados.');
+    setRows(prev => [...prev, {
+      ingredientId: first.id,
+      ingredientName: first.name,
+      quantityUsed: 0,
+      unit: first.purchaseUnitWeight ? 'unit' : first.unit,
+    }]);
+  };
+
+  const addCost = () => setCosts(prev => [...prev, { name: '', value: 0 }]);
+
+  const addSubRecipe = () => {
+    const first = availableSubRecipes[0];
+    if (!first) return toast.error('Não há outra receita para juntar.');
+    setSubRows(prev => [...prev, { subRecipeId: first.id, subRecipeName: first.name, quantityUsed: 0, unit: 'un' }]);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error('Informe o nome da receita.');
+    if ((parseFloat(yieldValue.replace(',', '.')) || 0) <= 0) return toast.error('Informe o rendimento.');
+    if (rows.length === 0 && subRows.length === 0) return toast.error('Adicione ao menos um ingrediente ou receita.');
+
+    for (const row of rows) {
+      const ingredient = ingredients.find(i => i.id === row.ingredientId);
+      if (!ingredient) return toast.error('Ingrediente inválido na receita.');
+      if (!compatibleUnits(ingredient).includes(row.unit)) return toast.error(`Unidade incompatível para ${ingredient.name}.`);
+    }
+
+    const payload: UpdateUserRecipeDTO = {
+      name: name.trim(),
+      yield: parseFloat(yieldValue.replace(',', '.')) || 1,
+      profitMargin: parseFloat(margin.replace(',', '.')) || 0,
+      ingredients: rows.map(row => ({
+        ...row,
+        quantityUsed: Number(row.quantityUsed) || 0,
+      })),
+      additionalCosts: costs
+        .map(c => ({ name: c.name.trim(), value: Number(c.value) || 0 }))
+        .filter(c => c.name && c.value > 0),
+      subRecipes: subRows.map(row => ({
+        ...row,
+        quantityUsed: Number(row.quantityUsed) || 0,
+        unit: row.unit || 'un',
+      })),
+    };
+
+    setSaving(true);
+    try {
+      await api.updateUserRecipe(userId, recipe.id, payload);
+      toast.success('Receita atualizada.');
+      await onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar receita.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-5">
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Editar receita do usuário</h3>
+
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Nome</span>
+          <input value={name} onChange={e => setName(e.target.value)} className={inputClass} autoFocus />
+        </label>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Rendimento</span>
+            <input type="number" step="any" value={yieldValue} onChange={e => setYieldValue(e.target.value)} className={inputClass} />
+          </label>
+          <label className="block">
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Margem de lucro (%)</span>
+            <input type="number" step="any" value={margin} onChange={e => setMargin(e.target.value)} className={inputClass} />
+          </label>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Ingredientes</span>
+            <button type="button" onClick={addIngredient} className="text-xs text-primary-600 font-medium inline-flex items-center gap-1">
+              <Plus size={13} /> Adicionar
+            </button>
+          </div>
+          <div className="space-y-2">
+            {rows.map((row, idx) => {
+              const ingredient = ingredients.find(i => i.id === row.ingredientId);
+              const units = ingredient ? compatibleUnits(ingredient) : [row.unit];
+              return (
+                <div key={idx} className="flex items-start gap-2 bg-gray-50 dark:bg-gray-700/40 rounded-lg p-2">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <select
+                      value={row.ingredientId}
+                      onChange={e => {
+                        const selected = ingredients.find(i => i.id === e.target.value);
+                        setRows(prev => prev.map((r, i) => i === idx ? {
+                          ...r,
+                          ingredientId: e.target.value,
+                          ingredientName: selected?.name,
+                          unit: selected ? (selected.purchaseUnitWeight ? 'unit' : selected.unit) : r.unit,
+                        } : r));
+                      }}
+                      className={inputClass}
+                    >
+                      {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    </select>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        step="any"
+                        value={row.quantityUsed || ''}
+                        onChange={e => setRows(prev => prev.map((r, i) => i === idx ? { ...r, quantityUsed: Number(e.target.value) } : r))}
+                        placeholder="Quantidade"
+                        className={inputClass + ' flex-1 !w-auto min-w-0'}
+                      />
+                      <select
+                        value={row.unit}
+                        onChange={e => setRows(prev => prev.map((r, i) => i === idx ? { ...r, unit: e.target.value } : r))}
+                        className={inputClass + ' !w-24 shrink-0'}
+                      >
+                        {units.map(u => <option key={u} value={u}>{u === 'unit' ? 'un' : u}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                  <button type="button" onClick={() => setRows(prev => prev.filter((_, i) => i !== idx))} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                    <X size={15} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Custos adicionais</span>
+            <button type="button" onClick={addCost} className="text-xs text-primary-600 font-medium inline-flex items-center gap-1">
+              <Plus size={13} /> Adicionar
+            </button>
+          </div>
+          <div className="space-y-2">
+            {costs.map((cost, idx) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input
+                  value={cost.name}
+                  onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))}
+                  placeholder="Nome do custo"
+                  className={inputClass + ' flex-1 !w-auto min-w-0'}
+                />
+                <input
+                  type="number"
+                  step="any"
+                  value={cost.value || ''}
+                  onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, value: Number(e.target.value) } : c))}
+                  placeholder="R$"
+                  className={inputClass + ' !w-28 shrink-0'}
+                />
+                <button type="button" onClick={() => setCosts(prev => prev.filter((_, i) => i !== idx))} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <X size={15} />
+                </button>
+              </div>
+            ))}
+            {costs.length === 0 && <p className="text-xs text-gray-400">Nenhum custo adicional.</p>}
+          </div>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-semibold text-gray-700 dark:text-gray-200">Receitas para juntar</span>
+            <button type="button" onClick={addSubRecipe} className="text-xs text-primary-600 font-medium inline-flex items-center gap-1">
+              <Plus size={13} /> Adicionar
+            </button>
+          </div>
+          <div className="space-y-2">
+            {subRows.map((row, idx) => (
+              <div key={idx} className="flex items-start gap-2 bg-gray-50 dark:bg-gray-700/40 rounded-lg p-2">
+                <div className="flex-1 min-w-0 space-y-2">
+                  <select
+                    value={row.subRecipeId}
+                    onChange={e => {
+                      const selected = availableSubRecipes.find(r => r.id === e.target.value);
+                      setSubRows(prev => prev.map((r, i) => i === idx ? { ...r, subRecipeId: e.target.value, subRecipeName: selected?.name } : r));
+                    }}
+                    className={inputClass}
+                  >
+                    {availableSubRecipes.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                  </select>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      step="any"
+                      value={row.quantityUsed || ''}
+                      onChange={e => setSubRows(prev => prev.map((r, i) => i === idx ? { ...r, quantityUsed: Number(e.target.value) } : r))}
+                      placeholder="Quantidade"
+                      className={inputClass + ' flex-1 !w-auto min-w-0'}
+                    />
+                    <select
+                      value={row.unit}
+                      onChange={e => setSubRows(prev => prev.map((r, i) => i === idx ? { ...r, unit: e.target.value } : r))}
+                      className={inputClass + ' !w-24 shrink-0'}
+                    >
+                      {SUB_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setSubRows(prev => prev.filter((_, i) => i !== idx))} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                  <X size={15} />
+                </button>
+              </div>
+            ))}
+            {subRows.length === 0 && <p className="text-xs text-gray-400">Nenhuma receita combinada.</p>}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button type="button" onClick={onClose} disabled={saving} className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button type="submit" disabled={saving} className="text-sm px-4 py-2 rounded-lg font-medium bg-primary-500 hover:bg-primary-600 text-white transition-colors disabled:opacity-60">
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </ModalOverlay>
   );
 }
 

@@ -47,4 +47,5 @@ export type RootStackParamList = {
   AdminPix: undefined;
   AdminSupport: undefined;
   AdminSupportChat: { userId: string; companyName: string };
+  PricingTutorial: undefined;
 };

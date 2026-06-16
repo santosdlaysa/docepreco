@@ -1,60 +1,71 @@
-export const PRICING_TUTORIAL = `Tutorial de cadastro correto
+export const PRICING_TUTORIAL = `📋 TUTORIAL: Como cadastrar corretamente
 
-No cadastro do ingrediente, preencha sempre a compra real, não a quantidade usada na receita.
+═══ REGRA FUNDAMENTAL ═══
+Sempre cadastre a COMPRA REAL, não a quantidade da receita.
 
-Regra principal:
-Quantidade comprada = total da embalagem/compra
-Valor total pago = preço da embalagem/compra inteira
-Unidade = mesma unidade que você quer usar para calcular
+✓ Quantidade = Total comprado/embalagem
+✓ Preço = Valor pago na embalagem inteira
+✓ Unidade = Unidade que será usada nas receitas
 
-Exemplos:
+═══ EXEMPLOS PRÁTICOS ═══
 
-Farinha comprada 1 kg por R$ 5,89:
-Quantidade comprada: 1000
-Unidade: g
-Valor total pago: 5,89
+📦 FARINHA - Comprada 1 kg
+├ Quantidade: 1000
+├ Unidade: g
+└ Preço: R$ 5,89
 
-Leite comprado 1 litro por R$ 5,99:
-Quantidade comprada: 1000
-Unidade: ml
-Valor total pago: 5,99
+🥛 LEITE - Comprado 1 litro
+├ Quantidade: 1000
+├ Unidade: ml
+└ Preço: R$ 5,99
 
-Óleo comprado 1 litro por R$ 6,57:
-Quantidade comprada: 1000
-Unidade: ml
-Valor total pago: 6,57
+🍶 ÓLEO - Comprado 1 litro
+├ Quantidade: 1000
+├ Unidade: ml
+└ Preço: R$ 6,57
 
-Fermento comprado 100 g por R$ 5,20:
-Quantidade comprada: 100
-Unidade: g
-Valor total pago: 5,20
+⚪ FERMENTO - Comprado 100 g
+├ Quantidade: 100
+├ Unidade: g
+└ Preço: R$ 5,20
 
-Leite condensado, 1 lata de 395 g por R$ 7,50:
-Tipo de embalagem: Lata
-Peso por embalagem: 395
-Unidade base: g
-Quantidade comprada: 1
-Valor total pago: 7,50
+═══ EMBALAGENS COM PESO ═══
 
-Na receita, se usar 4 latas:
-Quantidade usada: 4
-Unidade: un
+Leite condensado (lata 395g) - R$ 7,50:
+├ Tipo: Lata
+├ Peso: 395 g
+├ Quantidade: 1
+└ Preço: R$ 7,50
 
-O que não fazer:
-Não cadastre 1 g com o valor da embalagem inteira, a menos que você realmente tenha comprado 1 grama.
+Na receita (usando 4 latas):
+├ Quantidade: 4
+└ Unidade: un
 
-Não cadastre caixa/bandeja como un se na receita un significa item individual.
+Morango (bandeja 380g) - R$ 12,90:
+├ Tipo: Bandeja
+├ Peso: 380 g
+├ Quantidade: 1
+└ Preço: R$ 12,90
 
-Para morango, prefira peso:
-Tipo de embalagem: Bandeja
-Peso por embalagem: 380
-Unidade base: g
-Quantidade comprada: 1
-Valor total pago: preço da bandeja
+═══ ❌ ERROS COMUNS ═══
 
-Na receita:
-Quantidade usada: peso aproximado dos morangos
-Unidade: g
+✗ Não cadastre "1 g com R$ 5,89" quando comprou 1 kg
 
-Resumo:
-Use g para ingredientes secos, ml para líquidos e un só quando a unidade comprada e usada forem a mesma coisa.`;
+✗ Não use "un" (unidade) se houver conversão de peso/volume
+
+✗ Não cadastre quantidade da receita como comprada
+
+═══ 💡 DICAS ═══
+
+Secos → Gramas (g)
+Líquidos → Mililitros (ml)
+Items → Unidades (un) se compra = uso
+
+Exemplo:
+Ovos em dúzia por R$ 8,00:
+├ Quantidade: 12
+├ Unidade: un
+└ Preço: R$ 8,00
+
+Assim na receita: 3 ovos = 3 un ✓`;
+

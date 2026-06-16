@@ -131,6 +131,7 @@ export interface UsersResponse {
 }
 
 export interface RecipeIngredient {
+  ingredientId: string;
   name: string;
   quantityUsed: number;
   unit: string;
@@ -152,6 +153,14 @@ export interface UserRecipe {
   totalCost: number;
   ingredients: RecipeIngredient[];
   additionalCosts: RecipeAdditionalCost[];
+  subRecipes: UserSubRecipe[];
+}
+
+export interface UserSubRecipe {
+  subRecipeId: string;
+  subRecipeName?: string;
+  quantityUsed: number;
+  unit: string;
 }
 
 export interface UserIngredient {
@@ -176,6 +185,20 @@ export interface UpdateUserIngredientDTO {
   unit: string;
   purchaseUnitLabel?: string | null;
   purchaseUnitWeight?: number | null;
+}
+
+export interface UpdateUserRecipeDTO {
+  name: string;
+  yield: number;
+  profitMargin: number;
+  ingredients: Array<{
+    ingredientId: string;
+    ingredientName?: string;
+    quantityUsed: number;
+    unit: string;
+  }>;
+  additionalCosts: RecipeAdditionalCost[];
+  subRecipes: UserSubRecipe[];
 }
 
 export interface UserSale {
@@ -249,6 +272,11 @@ export const api = {
   getUserData: (id: string) => req<UserData>(`/admin/users/${id}/data`),
   updateUserIngredient: (userId: string, ingredientId: string, data: UpdateUserIngredientDTO) =>
     req<UserIngredient>(`/admin/users/${userId}/ingredients/${ingredientId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  updateUserRecipe: (userId: string, recipeId: string, data: UpdateUserRecipeDTO) =>
+    req<UserRecipe>(`/admin/users/${userId}/recipes/${recipeId}`, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),

@@ -6,6 +6,8 @@ import { PostgresPushTokenRepository } from '../../infrastructure/repositories/P
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { UpdateIngredientUseCase } from '../../application/use-cases/ingredient/UpdateIngredientUseCase';
 import { PostgresIngredientRepository } from '../../infrastructure/repositories/PostgresIngredientRepository';
+import { UpdateRecipeUseCase } from '../../application/use-cases/recipe/UpdateRecipeUseCase';
+import { PostgresRecipeRepository } from '../../infrastructure/repositories/PostgresRecipeRepository';
 
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
@@ -567,10 +569,11 @@ export class AdminController {
       const recipeIds = recipesRes.rows.map((r: any) => r.id);
       let recipeIngredientsMap: Record<string, any[]> = {};
       let recipeAdditionalCostsMap: Record<string, any[]> = {};
+      let recipeSubRecipesMap: Record<string, any[]> = {};
       if (recipeIds.length > 0) {
-        const [riRes, acRes] = await Promise.all([
+        const [riRes, acRes, srRes] = await Promise.all([
           pool.query(
-            `SELECT ri.recipe_id AS "recipeId", i.name, ri.quantity_used::float AS "quantityUsed", ri.unit
+            `SELECT ri.recipe_id AS "recipeId", ri.ingredient_id AS "ingredientId", i.name, ri.quantity_used::float AS "quantityUsed", ri.unit
              FROM recipe_ingredients ri
              JOIN ingredients i ON i.id = ri.ingredient_id
              WHERE ri.recipe_id = ANY($1)
@@ -584,14 +587,32 @@ export class AdminController {
              ORDER BY name ASC`,
             [recipeIds]
           ),
+          pool.query(
+            `SELECT sr.recipe_id AS "recipeId", sr.sub_recipe_id AS "subRecipeId",
+                    r.name AS "subRecipeName", sr.quantity_used::float AS "quantityUsed", sr.unit
+             FROM recipe_sub_recipes sr
+             JOIN recipes r ON r.id = sr.sub_recipe_id
+             WHERE sr.recipe_id = ANY($1)
+             ORDER BY r.name ASC`,
+            [recipeIds]
+          ),
         ]);
         for (const row of riRes.rows) {
           if (!recipeIngredientsMap[row.recipeId]) recipeIngredientsMap[row.recipeId] = [];
-          recipeIngredientsMap[row.recipeId].push({ name: row.name, quantityUsed: row.quantityUsed, unit: row.unit });
+          recipeIngredientsMap[row.recipeId].push({ ingredientId: row.ingredientId, name: row.name, quantityUsed: row.quantityUsed, unit: row.unit });
         }
         for (const row of acRes.rows) {
           if (!recipeAdditionalCostsMap[row.recipeId]) recipeAdditionalCostsMap[row.recipeId] = [];
           recipeAdditionalCostsMap[row.recipeId].push({ name: row.name, value: row.value });
+        }
+        for (const row of srRes.rows) {
+          if (!recipeSubRecipesMap[row.recipeId]) recipeSubRecipesMap[row.recipeId] = [];
+          recipeSubRecipesMap[row.recipeId].push({
+            subRecipeId: row.subRecipeId,
+            subRecipeName: row.subRecipeName,
+            quantityUsed: row.quantityUsed,
+            unit: row.unit || 'un',
+          });
         }
       }
 
@@ -599,6 +620,7 @@ export class AdminController {
         ...r,
         ingredients: recipeIngredientsMap[r.id] ?? [],
         additionalCosts: recipeAdditionalCostsMap[r.id] ?? [],
+        subRecipes: recipeSubRecipesMap[r.id] ?? [],
       }));
 
       res.json({
@@ -651,6 +673,29 @@ export class AdminController {
         return;
       }
       console.error('[Admin] updateUserIngredient error:', error);
+      res.locals.errorMessage = message;
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async updateUserRecipe(req: Request, res: Response): Promise<void> {
+    const { id, recipeId } = req.params;
+    try {
+      const repo = new PostgresRecipeRepository();
+      const useCase = new UpdateRecipeUseCase(repo);
+      const recipe = await useCase.execute(recipeId, req.body, id);
+      res.json({ success: true, data: recipe });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message === 'Recipe not found') {
+        res.status(404).json({ success: false, error: 'Receita não encontrada' });
+        return;
+      }
+      if (message.includes('already exists')) {
+        res.status(400).json({ success: false, error: 'Já existe uma receita com esse nome para este usuário' });
+        return;
+      }
+      console.error('[Admin] updateUserRecipe error:', error);
       res.locals.errorMessage = message;
       res.status(500).json({ error: 'Internal error' });
     }
