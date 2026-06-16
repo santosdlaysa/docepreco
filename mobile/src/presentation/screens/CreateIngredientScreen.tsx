@@ -273,8 +273,7 @@ export const CreateIngredientScreen: React.FC = () => {
               </Text>
               <View style={[st.input, errors.qty ? st.inputErr : null]}>
                 <TextInput style={st.inputText} value={purchaseQuantity} onChangeText={setPurchaseQuantity}
-                  placeholder={useCustomUnit ? '2' : '1000'} placeholderTextColor={INK3} keyboardType="decimal-pad" />
-                {useCustomUnit && purchaseUnitLabel ? <Text style={st.suffix}>{purchaseUnitLabel}s</Text> : null}
+                  placeholder="1000" placeholderTextColor={INK3} keyboardType="decimal-pad" />
               </View>
               {errors.qty && <Text style={st.err}>{errors.qty}</Text>}
             </View>
@@ -315,9 +314,6 @@ export const CreateIngredientScreen: React.FC = () => {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.result}>
               <Text style={st.rl}>Preço por unidade</Text>
               <Text style={st.rprice}>{fmtBRL(pricePerUnit)}<Text style={st.runit}> /{unit || 'un'}</Text></Text>
-              {useCustomUnit && weight > 0 && (
-                <Text style={st.rsub}>Embalagem: {fmtBRL(pricePerPkg)} · {weight}{unit} cada</Text>
-              )}
             </LinearGradient>
           )}
 

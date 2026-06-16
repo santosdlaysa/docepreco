@@ -27,7 +27,7 @@ async function askClaude(chatId: number, userMessage: string): Promise<void> {
 
   const response = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 1024,
+    max_tokens: 8096,
     system: 'Voce e um assistente tecnico do projeto Sweet Pricing, um app de precificacao para confeiteiros. O backend e Node.js/TypeScript com Express e PostgreSQL. Responda de forma direta e objetiva.',
     messages: history,
   });
