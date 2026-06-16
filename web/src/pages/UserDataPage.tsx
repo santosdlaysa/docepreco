@@ -325,7 +325,10 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                         {i.packageAmount} {i.unit}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">
-                        {fmtCurrency(i.packageAmount > 0 ? i.price / i.packageAmount : 0)}/{i.unit}
+                        {(() => {
+                          const effectiveAmount = i.purchaseUnitWeight ? i.packageAmount * i.purchaseUnitWeight : i.packageAmount;
+                          return fmtCurrency(effectiveAmount > 0 ? i.price / effectiveAmount : 0);
+                        })()}/{i.unit}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">
                         {i.usedInRecipes} {i.usedInRecipes === 1 ? 'receita' : 'receitas'}
