@@ -151,7 +151,7 @@ export const CreateIngredientScreen: React.FC = () => {
       if (isEditing) {
         await api.update(ingredientId!, payload);
         if (originalPrice !== null && (payload.purchasePrice !== originalPrice || payload.purchaseQuantity !== originalQty)) {
-          await priceHistoryApi.add(ingredientId!, { price: payload.purchasePrice, purchaseQuantity: payload.purchaseQuantity, unit }).catch(() => {});
+          await priceHistoryApi.add(ingredientId!, { price: payload.purchasePrice, purchaseQuantity: payload.purchaseQuantity, unit, purchaseUnitWeight: payload.purchaseUnitWeight }).catch(() => {});
         }
         showToast(t('createIngredient.updated'), 'success');
       } else {

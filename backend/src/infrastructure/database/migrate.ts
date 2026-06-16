@@ -498,6 +498,9 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'ingredients', 'purchase_unit_label', 'VARCHAR(50)');
     await addColumnIfMissing(client, 'ingredients', 'purchase_unit_weight', 'DECIMAL(10,3)');
 
+    // Price history with unit weight for correct per-unit calculations
+    await addColumnIfMissing(client, 'ingredient_price_history', 'purchase_unit_weight', 'DECIMAL(10,3)');
+
     await addColumnIfMissing(client, 'recipes', 'photo_url', 'TEXT NULL');
 
     // Recreate featured_recipes with correct schema if it has the old columns

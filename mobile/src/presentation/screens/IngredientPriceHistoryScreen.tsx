@@ -39,9 +39,11 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
   );
 
   const renderItem = ({ item, index }: { item: PriceEntry; index: number }) => {
-    const pricePerUnit = item.price / item.purchaseQuantity;
+    const effectiveQty = item.purchaseUnitWeight ? item.purchaseQuantity * item.purchaseUnitWeight : item.purchaseQuantity;
+    const pricePerUnit = effectiveQty > 0 ? item.price / effectiveQty : 0;
     const prev = entries[index + 1];
-    const prevPerUnit = prev ? prev.price / prev.purchaseQuantity : null;
+    const prevEffectiveQty = prev && prev.purchaseUnitWeight ? prev.purchaseQuantity * prev.purchaseUnitWeight : prev?.purchaseQuantity ?? 0;
+    const prevPerUnit = prev && prevEffectiveQty > 0 ? prev.price / prevEffectiveQty : null;
     const diff = prevPerUnit !== null ? pricePerUnit - prevPerUnit : null;
     const pct = prevPerUnit !== null && prevPerUnit > 0
       ? ((diff! / prevPerUnit) * 100)

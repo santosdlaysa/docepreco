@@ -6,6 +6,7 @@ export interface PriceEntry {
   price: number;
   purchaseQuantity: number;
   unit: string;
+  purchaseUnitWeight?: number | null;
   recordedAt: string;
 }
 
@@ -15,7 +16,7 @@ export const priceHistoryApi = {
     return response.data.data;
   },
 
-  add: async (ingredientId: string, entry: { price: number; purchaseQuantity: number; unit: string; recordedAt?: string }): Promise<PriceEntry> => {
+  add: async (ingredientId: string, entry: { price: number; purchaseQuantity: number; unit: string; purchaseUnitWeight?: number; recordedAt?: string }): Promise<PriceEntry> => {
     const response = await apiClient.post(`/ingredients/${ingredientId}/price-history`, entry);
     return response.data.data;
   },
