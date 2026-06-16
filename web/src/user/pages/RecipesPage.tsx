@@ -12,6 +12,7 @@ import {
 } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL } from '../format';
+import { PRICING_TUTORIAL } from '../pricingTutorial';
 import {
   Header,
   EmptyState,
@@ -209,10 +210,14 @@ const COST_PRESETS = ['Embalagem', 'Gás', 'Energia', 'Mão de obra'];
 const LABOR_PRO_NAME = 'Mão de obra (profissional)';
 const SUB_UNITS = ['un', 'g', 'kg', 'ml', 'l'];
 
-function getCompatibleUnits(unit: string): string[] {
-  if (unit === 'g' || unit === 'kg') return ['unit', 'g', 'kg'];
-  if (unit === 'ml' || unit === 'l') return ['unit', 'ml', 'l'];
-  return [unit];
+function getCompatibleUnits(ingredient: Pick<Ingredient, 'unit' | 'purchaseUnitWeight'>): string[] {
+  const baseUnits =
+    ingredient.unit === 'g' || ingredient.unit === 'kg'
+      ? ['g', 'kg']
+      : ingredient.unit === 'ml' || ingredient.unit === 'l'
+        ? ['ml', 'l']
+        : [ingredient.unit];
+  return ingredient.purchaseUnitWeight ? ['unit', ...baseUnits] : baseUnits;
 }
 
 function RecipeForm({
@@ -254,6 +259,7 @@ function RecipeForm({
   const [hourlyRate, setHourlyRate] = useState('');
   const [prepTime, setPrepTime] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const availableSubRecipes = allRecipes.filter(r => r.id !== initial?.id);
 
@@ -302,6 +308,12 @@ function RecipeForm({
     if (!yieldValue || Number(yieldValue) <= 0) return toast.error('Informe o rendimento.');
     if (rows.length === 0 && subRows.length === 0)
       return toast.error('Adicione ao menos um ingrediente ou receita.');
+    for (const row of rows) {
+      const ingredient = ingredients.find(i => i.id === row.ingredientId);
+      if (ingredient && !getCompatibleUnits(ingredient).includes(row.unit)) {
+        return toast.error(`Unidade incompatível para ${ingredient.name}.`);
+      }
+    }
 
     const additionalCosts: AdditionalCost[] = [];
     COST_PRESETS.forEach(n => {
@@ -349,9 +361,18 @@ function RecipeForm({
         {/* Banner informativo */}
         <div className="flex items-center gap-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-900/40 rounded-xl p-3">
           <Info size={18} className="text-sky-500 shrink-0" />
-          <p className="text-xs text-sky-800 dark:text-sky-200">
-            O preço sugerido é calculado automaticamente a partir dos dados abaixo.
-          </p>
+          <div className="flex-1">
+            <p className="text-xs text-sky-800 dark:text-sky-200">
+              O preço sugerido é calculado automaticamente a partir dos dados abaixo.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowTutorial(true)}
+              className="mt-2 text-xs font-semibold text-sky-700 dark:text-sky-200 underline underline-offset-2"
+            >
+              Ver tutorial
+            </button>
+          </div>
         </div>
 
         {/* Dados básicos */}
@@ -448,7 +469,7 @@ function RecipeForm({
           <div className="space-y-2">
             {rows.map((row, idx) => {
               const ing = ingredients.find(i => i.id === row.ingredientId);
-              const units = ing ? getCompatibleUnits(ing.unit) : [row.unit];
+              const units = ing ? getCompatibleUnits(ing) : [row.unit];
               return (
                 <div key={idx} className="flex items-start gap-2 bg-gray-50 dark:bg-gray-700/40 rounded-lg p-2">
                   <div className="flex-1 min-w-0 space-y-2">
@@ -459,7 +480,7 @@ function RecipeForm({
                         updateRow(idx, {
                           ingredientId: e.target.value,
                           ingredientName: sel?.name,
-                          unit: sel?.unit ?? row.unit,
+                          unit: sel ? (sel.purchaseUnitWeight ? 'unit' : sel.unit) : row.unit,
                         });
                       }}
                       className={inputClass + ' w-full'}
@@ -656,8 +677,26 @@ function RecipeForm({
         </div>
 
         <FormActions saving={saving} onClose={onClose} />
+        {showTutorial && (
+          <ModalOverlay onClose={() => setShowTutorial(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Tutorial</h3>
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200 font-sans leading-relaxed">
+                {PRICING_TUTORIAL}
+              </pre>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowTutorial(false)}
+                  className="text-sm px-4 py-2 rounded-lg bg-primary-500 text-white font-medium"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </ModalOverlay>
+        )}
       </form>
     </ModalOverlay>
   );
 }
-

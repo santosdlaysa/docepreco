@@ -10,6 +10,7 @@ import {
   Platform,
   ActivityIndicator,
   FlatList,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -24,6 +25,7 @@ import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
+import { PRICING_TUTORIAL } from '../utils/pricingTutorial';
 
 const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
@@ -217,8 +219,15 @@ export const CreateIngredientScreen: React.FC = () => {
               <Text style={st.infoBannerSub}>
                 {isEditing
                   ? 'Ao alterar o preço, o histórico será atualizado automaticamente.'
-                  : 'O preço por unidade (g, ml, un) é calculado automaticamente a partir da quantidade e do preço pago.'}
+                  : 'Informe a quantidade total comprada e o valor total pago. Não use aqui a quantidade da receita.'}
               </Text>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Tutorial', PRICING_TUTORIAL)}
+                activeOpacity={0.8}
+                style={st.tutorialBtn}
+              >
+                <Text style={st.tutorialBtnText}>Ver tutorial</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -280,7 +289,10 @@ export const CreateIngredientScreen: React.FC = () => {
           {/* ── Quantidade + Preço (dois campos) ── */}
           <View style={st.two}>
             <View style={[st.field, { flex: 1 }]}>
-              <Text style={st.label}>Quantidade</Text>
+              <Text style={st.label}>Quantidade comprada</Text>
+              <Text style={st.hint}>
+                Total da compra/embalagem, não a quantidade usada na receita
+              </Text>
               <View style={[st.input, errors.qty ? st.inputErr : null]}>
                 <TextInput style={st.inputText} value={purchaseQuantity} onChangeText={setPurchaseQuantity}
                   placeholder={useCustomUnit ? '2' : '1000'} placeholderTextColor={INK3} keyboardType="decimal-pad" />
@@ -289,7 +301,8 @@ export const CreateIngredientScreen: React.FC = () => {
               {errors.qty && <Text style={st.err}>{errors.qty}</Text>}
             </View>
             <View style={[st.field, { flex: 1 }]}>
-              <Text style={st.label}>Preço pago</Text>
+              <Text style={st.label}>Valor total pago</Text>
+              <Text style={st.hint}>Valor da compra inteira, não preço por g/ml/un</Text>
               <View style={[st.input, errors.price ? st.inputErr : null]}>
                 <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
                 <TextInput style={st.inputText} value={purchasePrice} onChangeText={handlePriceChange}
@@ -425,6 +438,8 @@ const st = StyleSheet.create({
   },
   infoBannerTitle: { fontSize: 14.5, fontWeight: '700', color: INK },
   infoBannerSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2, lineHeight: 17 },
+  tutorialBtn: { alignSelf: 'flex-start', marginTop: 8, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 9, backgroundColor: '#E9F7FD' },
+  tutorialBtnText: { color: '#1689B5', fontWeight: '700', fontSize: 12 },
 
   /* suggestions */
   sugBox: {

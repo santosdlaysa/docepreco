@@ -16,6 +16,7 @@ router.post('/users/:id/premium', (req, res) => controller.setPremium(req, res))
 router.patch('/users/:id/signup-platform', (req, res) => controller.setSignupPlatform(req, res));
 router.post('/users/:id/grant-trial', (req, res) => controller.grantTrial(req, res));
 router.get('/users/:id/data', (req, res) => controller.getUserData(req, res));
+router.put('/users/:id/ingredients/:ingredientId', (req, res) => controller.updateUserIngredient(req, res));
 router.post('/users/:id/reset-password', (req, res) => controller.resetUserPassword(req, res));
 router.post('/users/:id/toggle-active', (req, res) => controller.toggleUserActive(req, res));
 router.get('/users/:id/premium-history', (req, res) => controller.getPremiumHistory(req, res));

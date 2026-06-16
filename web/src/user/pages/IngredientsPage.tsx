@@ -4,6 +4,7 @@ import type { LucideIcon } from 'lucide-react';
 import { userApi, Ingredient, CreateIngredientDTO, Unit } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL } from '../format';
+import { PRICING_TUTORIAL } from '../pricingTutorial';
 
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'unit', label: 'un' },
@@ -187,6 +188,7 @@ function IngredientForm({
   const [pkgWeight, setPkgWeight] = useState(String(initial?.purchaseUnitWeight ?? ''));
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   const useCustom = !!pkgLabel;
   const suggestions =
@@ -252,9 +254,18 @@ function IngredientForm({
         {/* Banner */}
         <div className="flex items-center gap-3 bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-900/40 rounded-xl p-3">
           <Info size={18} className="text-sky-500 shrink-0" />
-          <p className="text-xs text-sky-800 dark:text-sky-200">
-            O preço por unidade (g, ml, un) é calculado automaticamente a partir da quantidade e do preço pago.
-          </p>
+          <div className="flex-1">
+            <p className="text-xs text-sky-800 dark:text-sky-200">
+              Informe a quantidade total comprada e o valor total pago. Não use aqui a quantidade da receita nem o preço por g/ml/un.
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowTutorial(true)}
+              className="mt-2 text-xs font-semibold text-sky-700 dark:text-sky-200 underline underline-offset-2"
+            >
+              Ver tutorial
+            </button>
+          </div>
         </div>
 
         {/* Nome com autocomplete */}
@@ -345,7 +356,7 @@ function IngredientForm({
 
         {/* Quantidade + Preço */}
         <div className="grid grid-cols-2 gap-3">
-          <FormField label={useCustom ? `Quantidade (${pkgLabel}s)` : 'Quantidade'}>
+          <FormField label={useCustom ? `Quantidade comprada (${pkgLabel}s)` : 'Quantidade comprada'}>
             <input
               type="number"
               step="any"
@@ -354,8 +365,11 @@ function IngredientForm({
               placeholder={useCustom ? '2' : '1000'}
               className={inputClass}
             />
+            <p className="text-xs text-gray-400 mt-1">
+              Total comprado/embalagem. Ex.: pacote de 1kg = 1000 g.
+            </p>
           </FormField>
-          <FormField label="Preço pago (R$)">
+          <FormField label="Valor total pago (R$)">
             <input
               type="number"
               step="any"
@@ -364,6 +378,9 @@ function IngredientForm({
               placeholder="14,00"
               className={inputClass}
             />
+            <p className="text-xs text-gray-400 mt-1">
+              Valor da compra inteira, não preço por g/ml/un.
+            </p>
           </FormField>
         </div>
 
@@ -404,6 +421,25 @@ function IngredientForm({
         )}
 
         <FormActions saving={saving} onClose={onClose} />
+        {showTutorial && (
+          <ModalOverlay onClose={() => setShowTutorial(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Tutorial</h3>
+              <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200 font-sans leading-relaxed">
+                {PRICING_TUTORIAL}
+              </pre>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowTutorial(false)}
+                  className="text-sm px-4 py-2 rounded-lg bg-primary-500 text-white font-medium"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </ModalOverlay>
+        )}
       </form>
     </ModalOverlay>
   );

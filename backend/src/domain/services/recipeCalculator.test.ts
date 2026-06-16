@@ -1,7 +1,7 @@
 import { calculateRecipe, convertUnit, RecipeCalculationInput } from './recipeCalculator';
 import { Ingredient } from '../entities/Ingredient';
 
-type TestIngredient = Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit'>;
+type TestIngredient = Pick<Ingredient, 'id' | 'purchasePrice' | 'purchaseQuantity' | 'unit' | 'purchaseUnitWeight'>;
 
 const makeIngredientMap = (list: TestIngredient[]) =>
   new Map(list.map(i => [i.id, i] as const));
@@ -304,6 +304,11 @@ describe('calculateRecipe', () => {
       expect(convertUnit(0.5, 'l', 'ml')).toBe(500);
       expect(convertUnit(2, 'l', 'ml')).toBe(2000);
     });
+
+    it('lança erro para unidades incompatíveis', () => {
+      expect(() => convertUnit(4, 'unit', 'g')).toThrow(/Cannot convert unit to g/);
+      expect(() => convertUnit(240, 'ml', 'g')).toThrow(/Cannot convert ml to g/);
+    });
   });
 
   describe('cálculo com conversão de unidade', () => {
@@ -373,6 +378,49 @@ describe('calculateRecipe', () => {
         ])
       );
       expect(result.ingredientsCost).toBeCloseTo(10, 5);
+    });
+
+    it('não calcula receita com unidade incompatível entre ingrediente e uso', () => {
+      expect(() =>
+        calculateRecipe(
+          {
+            yield: 9,
+            profitMargin: 50,
+            ingredients: [{ ingredientId: 'leite-condensado', quantityUsed: 4, unit: 'unit' }],
+            additionalCosts: [],
+          },
+          makeIngredientMap([
+            {
+              id: 'leite-condensado',
+              purchasePrice: 7.49,
+              purchaseQuantity: 395,
+              unit: 'g',
+            },
+          ])
+        )
+      ).toThrow(/Cannot convert unit to g/);
+    });
+
+    it('converte unidades de embalagem para o peso do ingrediente', () => {
+      const result = calculateRecipe(
+        {
+          yield: 9,
+          profitMargin: 0,
+          ingredients: [{ ingredientId: 'leite-condensado', quantityUsed: 4, unit: 'unit' }],
+          additionalCosts: [],
+        },
+        makeIngredientMap([
+          {
+            id: 'leite-condensado',
+            purchasePrice: 7.5,
+            purchaseQuantity: 1,
+            purchaseUnitWeight: 395,
+            unit: 'g',
+          },
+        ])
+      );
+
+      expect(result.ingredientsCost).toBeCloseTo(30, 5);
     });
   });
 });

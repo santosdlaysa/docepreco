@@ -21,7 +21,7 @@ export function convertUnit(quantity: number, fromUnit: string, toUnit: string):
   if (fromUnit === 'kg' && toUnit === 'g')  return quantity * 1000;
   if (fromUnit === 'ml' && toUnit === 'l')  return quantity / 1000;
   if (fromUnit === 'l'  && toUnit === 'ml') return quantity * 1000;
-  return quantity;
+  throw new Error(`Cannot convert ${fromUnit} to ${toUnit}`);
 }
 
 /**
@@ -56,7 +56,10 @@ export function calculateRecipe(
       ? ingredient.purchaseQuantity * ingredient.purchaseUnitWeight
       : ingredient.purchaseQuantity;
     const pricePerUnit = ingredient.purchasePrice / effectiveQuantity;
-    const convertedQuantity = convertUnit(ri.quantityUsed, ri.unit, ingredient.unit);
+    const convertedQuantity =
+      ri.unit === 'unit' && ingredient.purchaseUnitWeight
+        ? ri.quantityUsed * ingredient.purchaseUnitWeight
+        : convertUnit(ri.quantityUsed, ri.unit, ingredient.unit);
     ingredientsCost += pricePerUnit * convertedQuantity;
   }
 

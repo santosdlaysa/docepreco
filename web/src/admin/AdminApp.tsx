@@ -430,7 +430,7 @@ export default function AdminApp() {
           <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
-            {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} />}
+            {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} toast={toast} />}
             {page === 'banners' && <BannersPage toast={toast} />}
             {page === 'notifications' && <NotificationsPage toast={toast} />}
             {page === 'tips' && <TipsPage toast={toast} />}

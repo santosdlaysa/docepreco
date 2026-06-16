@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { api, UserData } from '../lib/api';
-import { Skeleton } from '../components';
+import { api, UserData, UserIngredient, UpdateUserIngredientDTO } from '../lib/api';
+import { ModalOverlay, Skeleton, ToastFn } from '../components';
 import {
   ArrowLeft,
   Crown,
@@ -9,11 +9,13 @@ import {
   DollarSign,
   ChevronDown,
   ChevronUp,
+  Pencil,
 } from 'lucide-react';
 
 interface Props {
   userId: string;
   onBack: () => void;
+  toast: ToastFn;
 }
 
 type Tab = 'recipes' | 'ingredients' | 'sales';
@@ -29,17 +31,32 @@ function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: s
   );
 }
 
-export function UserDataPage({ userId, onBack }: Props) {
+const UNIT_OPTIONS = [
+  { value: 'unit', label: 'un' },
+  { value: 'g', label: 'g' },
+  { value: 'kg', label: 'kg' },
+  { value: 'ml', label: 'ml' },
+  { value: 'l', label: 'l' },
+];
+
+const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
+
+export function UserDataPage({ userId, onBack, toast }: Props) {
   const [data, setData] = useState<UserData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>('recipes');
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
+  const [editingIngredient, setEditingIngredient] = useState<UserIngredient | null>(null);
 
-  useEffect(() => {
+  const loadData = () => {
     setError(null);
-    api.getUserData(userId)
+    return api.getUserData(userId)
       .then(setData)
       .catch(e => setError(e instanceof Error ? e.message : 'Erro ao carregar dados'));
+  };
+
+  useEffect(() => {
+    loadData();
   }, [userId]);
 
   const fmtDate = (d: string) =>
@@ -61,7 +78,7 @@ export function UserDataPage({ userId, onBack }: Props) {
           <p className="text-red-600 font-medium">Erro ao carregar dados do usuario</p>
           <p className="text-red-400 text-sm mt-1">{error}</p>
           <button
-            onClick={() => { setError(null); api.getUserData(userId).then(setData).catch(e => setError(e instanceof Error ? e.message : 'Erro')); }}
+            onClick={loadData}
             className="mt-3 text-sm text-red-600 hover:text-red-800 underline"
           >
             Tentar novamente
@@ -272,6 +289,7 @@ export function UserDataPage({ userId, onBack }: Props) {
                     <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Embalagem</th>
                     <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Preco/un</th>
                     <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Usado em</th>
+                    <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -287,6 +305,15 @@ export function UserDataPage({ userId, onBack }: Props) {
                       </td>
                       <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">
                         {i.usedInRecipes} {i.usedInRecipes === 1 ? 'receita' : 'receitas'}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => setEditingIngredient(i)}
+                          className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-gray-400 hover:text-primary-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          title="Editar ingrediente"
+                        >
+                          <Pencil size={16} />
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -329,6 +356,173 @@ export function UserDataPage({ userId, onBack }: Props) {
           )
         )}
       </div>
+
+      {editingIngredient && (
+        <EditIngredientModal
+          userId={userId}
+          ingredient={editingIngredient}
+          toast={toast}
+          onClose={() => setEditingIngredient(null)}
+          onSaved={updated => {
+            setData(prev => prev
+              ? {
+                  ...prev,
+                  ingredients: prev.ingredients.map(i => i.id === updated.id ? { ...i, ...updated } : i),
+                }
+              : prev);
+            setEditingIngredient(null);
+          }}
+        />
+      )}
     </div>
   );
+}
+
+function EditIngredientModal({
+  userId,
+  ingredient,
+  toast,
+  onClose,
+  onSaved,
+}: {
+  userId: string;
+  ingredient: UserIngredient;
+  toast: ToastFn;
+  onClose: () => void;
+  onSaved: (ingredient: UserIngredient) => void;
+}) {
+  const [name, setName] = useState(ingredient.name);
+  const [quantity, setQuantity] = useState(String(ingredient.purchaseQuantity ?? ingredient.packageAmount ?? ''));
+  const [price, setPrice] = useState(String(ingredient.purchasePrice ?? ingredient.price ?? ''));
+  const [unit, setUnit] = useState(ingredient.unit);
+  const [pkgLabel, setPkgLabel] = useState(ingredient.purchaseUnitLabel ?? '');
+  const [pkgWeight, setPkgWeight] = useState(String(ingredient.purchaseUnitWeight ?? ''));
+  const [saving, setSaving] = useState(false);
+
+  const qtyN = parseFloat(quantity.replace(',', '.')) || 0;
+  const priceN = parseFloat(price.replace(',', '.')) || 0;
+  const weightN = parseFloat(pkgWeight.replace(',', '.')) || 0;
+  const useCustom = pkgLabel.trim().length > 0;
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error('Informe o nome do ingrediente.');
+    if (qtyN <= 0) return toast.error('Informe a quantidade comprada.');
+    if (priceN <= 0) return toast.error('Informe o valor pago.');
+    if (!unit) return toast.error('Escolha a unidade.');
+    if (useCustom && weightN <= 0) return toast.error('Informe o peso por embalagem.');
+
+    const payload: UpdateUserIngredientDTO = {
+      name: name.trim(),
+      purchaseQuantity: qtyN,
+      purchasePrice: priceN,
+      unit,
+      purchaseUnitLabel: useCustom ? pkgLabel.trim() : null,
+      purchaseUnitWeight: useCustom ? weightN : null,
+    };
+
+    setSaving(true);
+    try {
+      const updated = await api.updateUserIngredient(userId, ingredient.id, payload);
+      toast.success('Ingrediente atualizado.');
+      onSaved(updated);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erro ao atualizar ingrediente.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Editar ingrediente do usuário</h3>
+
+        <label className="block">
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Nome</span>
+          <input value={name} onChange={e => setName(e.target.value)} className={inputClass} autoFocus />
+        </label>
+
+        <div>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Tipo de embalagem</span>
+          <div className="flex flex-wrap gap-2">
+            {PKG_TYPES.map(pkg => {
+              const on = pkgLabel === pkg;
+              return (
+                <button
+                  key={pkg}
+                  type="button"
+                  onClick={() => {
+                    setPkgLabel(on ? '' : pkg);
+                    if (on) setPkgWeight('');
+                  }}
+                  className={chipClass(on)}
+                >
+                  {pkg}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {useCustom && (
+          <label className="block">
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Peso por embalagem</span>
+            <input type="number" step="any" value={pkgWeight} onChange={e => setPkgWeight(e.target.value)} className={inputClass} />
+          </label>
+        )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <label className="block">
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Quantidade comprada</span>
+            <input type="number" step="any" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} />
+          </label>
+          <label className="block">
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Valor total pago (R$)</span>
+            <input type="number" step="any" value={price} onChange={e => setPrice(e.target.value)} className={inputClass} />
+          </label>
+        </div>
+
+        <div>
+          <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Unidade de medida</span>
+          <div className="flex flex-wrap gap-2">
+            {UNIT_OPTIONS.map(u => (
+              <button key={u.value} type="button" onClick={() => setUnit(u.value)} className={chipClass(unit === u.value)}>
+                {u.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex justify-end gap-3 pt-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            disabled={saving}
+            className="text-sm px-4 py-2 rounded-lg font-medium bg-primary-500 hover:bg-primary-600 text-white transition-colors disabled:opacity-60"
+          >
+            {saving ? 'Salvando...' : 'Salvar'}
+          </button>
+        </div>
+      </form>
+    </ModalOverlay>
+  );
+}
+
+const inputClass =
+  'w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400';
+
+function chipClass(on: boolean): string {
+  return `h-9 px-4 rounded-lg text-sm font-semibold transition-colors ${
+    on
+      ? 'bg-primary-500 text-white'
+      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+  }`;
 }

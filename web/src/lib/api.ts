@@ -157,11 +157,25 @@ export interface UserRecipe {
 export interface UserIngredient {
   id: string;
   name: string;
+  purchaseQuantity: number;
+  purchasePrice: number;
   price: number;
   packageAmount: number;
   unit: string;
+  purchaseUnitLabel: string | null;
+  purchaseUnitWeight: number | null;
   createdAt: string;
+  updatedAt: string;
   usedInRecipes: number;
+}
+
+export interface UpdateUserIngredientDTO {
+  name: string;
+  purchaseQuantity: number;
+  purchasePrice: number;
+  unit: string;
+  purchaseUnitLabel?: string | null;
+  purchaseUnitWeight?: number | null;
 }
 
 export interface UserSale {
@@ -233,6 +247,11 @@ export const api = {
       body: JSON.stringify({ amountCents }),
     }),
   getUserData: (id: string) => req<UserData>(`/admin/users/${id}/data`),
+  updateUserIngredient: (userId: string, ingredientId: string, data: UpdateUserIngredientDTO) =>
+    req<UserIngredient>(`/admin/users/${userId}/ingredients/${ingredientId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 
   setPremium: (id: string, isPremium: boolean, premiumUntil?: string | null) =>
     req(`/admin/users/${id}/premium`, {

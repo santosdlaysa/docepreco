@@ -4,6 +4,8 @@ import { pool } from '../../infrastructure/database/connection';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
+import { UpdateIngredientUseCase } from '../../application/use-cases/ingredient/UpdateIngredientUseCase';
+import { PostgresIngredientRepository } from '../../infrastructure/repositories/PostgresIngredientRepository';
 
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
@@ -528,8 +530,16 @@ export class AdminController {
           [id]
         ),
         pool.query(
-          `SELECT i.id, i.name, i.purchase_price::float AS "price", i.purchase_quantity::float AS "packageAmount",
-                  i.unit, i.created_at AS "createdAt",
+          `SELECT i.id, i.name,
+                  i.purchase_price::float AS "purchasePrice",
+                  i.purchase_quantity::float AS "purchaseQuantity",
+                  i.purchase_price::float AS "price",
+                  i.purchase_quantity::float AS "packageAmount",
+                  i.unit,
+                  i.purchase_unit_label AS "purchaseUnitLabel",
+                  i.purchase_unit_weight::float AS "purchaseUnitWeight",
+                  i.created_at AS "createdAt",
+                  i.updated_at AS "updatedAt",
                   (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.ingredient_id = i.id) AS "usedInRecipes"
            FROM ingredients i WHERE i.user_id = $1
            ORDER BY i.name ASC`,
@@ -603,6 +613,45 @@ export class AdminController {
     } catch (error) {
       console.error('[Admin] getUserData error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async updateUserIngredient(req: Request, res: Response): Promise<void> {
+    const { id, ingredientId } = req.params;
+    try {
+      const repo = new PostgresIngredientRepository();
+      const useCase = new UpdateIngredientUseCase(repo);
+      await useCase.execute(ingredientId, req.body, id);
+      const updated = await pool.query(
+        `SELECT i.id, i.name,
+                i.purchase_price::float AS "purchasePrice",
+                i.purchase_quantity::float AS "purchaseQuantity",
+                i.purchase_price::float AS "price",
+                i.purchase_quantity::float AS "packageAmount",
+                i.unit,
+                i.purchase_unit_label AS "purchaseUnitLabel",
+                i.purchase_unit_weight::float AS "purchaseUnitWeight",
+                i.created_at AS "createdAt",
+                i.updated_at AS "updatedAt",
+                (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.ingredient_id = i.id) AS "usedInRecipes"
+         FROM ingredients i
+         WHERE i.id = $1 AND i.user_id = $2`,
+        [ingredientId, id]
+      );
+      res.json({ success: true, data: updated.rows[0] });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (message === 'Ingredient not found') {
+        res.status(404).json({ success: false, error: 'Ingrediente não encontrado' });
+        return;
+      }
+      if (message.includes('already exists')) {
+        res.status(400).json({ success: false, error: 'Já existe um ingrediente com esse nome para este usuário' });
+        return;
+      }
+      console.error('[Admin] updateUserIngredient error:', error);
+      res.locals.errorMessage = message;
       res.status(500).json({ error: 'Internal error' });
     }
   }

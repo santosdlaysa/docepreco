@@ -38,6 +38,7 @@ import { usePremium } from '../context/PremiumContext';
 import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggestedRecipes';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../hooks/useDraft';
+import { PRICING_TUTORIAL } from '../utils/pricingTutorial';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -248,14 +249,18 @@ export const CreateRecipeScreen: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const getCompatibleUnits = (unit: string): string[] => {
-    if (unit === 'g' || unit === 'kg') return ['unit', 'g', 'kg'];
-    if (unit === 'ml' || unit === 'l') return ['unit', 'ml', 'l'];
-    return [unit];
+  const getCompatibleUnits = (ingredient: Pick<Ingredient, 'unit' | 'purchaseUnitWeight'>): string[] => {
+    const baseUnits =
+      ingredient.unit === 'g' || ingredient.unit === 'kg'
+        ? ['g', 'kg']
+        : ingredient.unit === 'ml' || ingredient.unit === 'l'
+          ? ['ml', 'l']
+          : [ingredient.unit];
+    return ingredient.purchaseUnitWeight ? ['unit', ...baseUnits] : baseUnits;
   };
 
-  const getDefaultUnit = (unit: string): string => {
-    return unit;
+  const getDefaultUnit = (ingredient: Pick<Ingredient, 'unit' | 'purchaseUnitWeight'>): string => {
+    return ingredient.purchaseUnitWeight ? 'unit' : ingredient.unit;
   };
 
   const convertToSameUnit = (qty: number, from: string, to: string): number => {
@@ -298,15 +303,22 @@ export const CreateRecipeScreen: React.FC = () => {
 
     const qty = parseFloat(normalizedQty);
     const unit = ingredientUnit || selectedIngredient.unit;
+    if (!getCompatibleUnits(selectedIngredient).includes(unit)) {
+      showToast('Unidade incompatível com o ingrediente selecionado.', 'error');
+      return;
+    }
     // Quantidade efetiva na unidade base (ex: 1 lata de 330g = 330g)
     const effectivePurchaseQty = selectedIngredient.purchaseUnitWeight
       ? selectedIngredient.purchaseQuantity * selectedIngredient.purchaseUnitWeight
       : selectedIngredient.purchaseQuantity;
-    const qtyInPurchaseUnit = convertToSameUnit(qty, unit, selectedIngredient.unit);
+    const qtyInPurchaseUnit =
+      unit === 'unit' && selectedIngredient.purchaseUnitWeight
+        ? qty * selectedIngredient.purchaseUnitWeight
+        : convertToSameUnit(qty, unit, selectedIngredient.unit);
     const ratio = qtyInPurchaseUnit / effectivePurchaseQty;
 
-    const costPerUnit = selectedIngredient.purchasePrice / convertToSameUnit(effectivePurchaseQty, selectedIngredient.unit, unit);
-    const ingredientCost = qty * costPerUnit;
+    const costPerUnit = selectedIngredient.purchasePrice / effectivePurchaseQty;
+    const ingredientCost = qtyInPurchaseUnit * costPerUnit;
     const pkgInfo = selectedIngredient.purchaseUnitLabel
       ? `${selectedIngredient.purchaseQuantity} ${selectedIngredient.purchaseUnitLabel} (${effectivePurchaseQty} ${selectedIngredient.unit})`
       : `${effectivePurchaseQty} ${selectedIngredient.unit}`;
@@ -611,6 +623,13 @@ export const CreateRecipeScreen: React.FC = () => {
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>Preencha os dados</Text>
               <Text style={{ fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 }}>O preço sugerido é calculado automaticamente.</Text>
+              <TouchableOpacity
+                onPress={() => Alert.alert('Tutorial', PRICING_TUTORIAL)}
+                activeOpacity={0.8}
+                style={styles.tutorialButton}
+              >
+                <Text style={styles.tutorialButtonText}>Ver tutorial</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -828,9 +847,9 @@ export const CreateRecipeScreen: React.FC = () => {
                 keyboardType="decimal-pad"
                 suffix={ingredientUnit || selectedIngredient.unit}
               />
-              {getCompatibleUnits(selectedIngredient.unit).length > 1 && (
+              {getCompatibleUnits(selectedIngredient).length > 1 && (
                 <View style={styles.unitSelector}>
-                  {getCompatibleUnits(selectedIngredient.unit).map(u => (
+                  {getCompatibleUnits(selectedIngredient).map(u => (
                     <TouchableOpacity
                       key={u}
                       onPress={() => setIngredientUnit(u)}
@@ -868,7 +887,7 @@ export const CreateRecipeScreen: React.FC = () => {
               contentContainerStyle={{ padding: 20 }}
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  onPress={() => { setSelectedIngredient(item); setIngredientUnit(getDefaultUnit(item.unit)); }}
+                  onPress={() => { setSelectedIngredient(item); setIngredientUnit(getDefaultUnit(item)); }}
                   activeOpacity={0.8}
                 >
                   <Card style={styles.modalIngCard}>
@@ -1267,6 +1286,19 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     flex: 1,
     lineHeight: 18,
+  },
+  tutorialButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 9,
+    backgroundColor: '#E9F7FD',
+  },
+  tutorialButtonText: {
+    color: '#1689B5',
+    fontWeight: '700',
+    fontSize: 12,
   },
   costInputRow: {
     flexDirection: 'row',
