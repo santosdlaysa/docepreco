@@ -9,7 +9,9 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  KeyboardAvoidingView,
   Modal,
+  Platform,
   ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -49,6 +51,16 @@ const SHADOW = {
 
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+const parseMoney = (value: string) => {
+  const sanitized = String(value ?? '').replace(/[^0-9.,]/g, '');
+  const normalized = sanitized.includes(',')
+    ? sanitized.replace(/\./g, '').replace(',', '.')
+    : sanitized;
+  return parseFloat(normalized) || 0;
+};
+
+const toCents = (value: number) => Math.round(value * 100);
 
 type Section = { title: string; data: Order[] };
 
@@ -152,14 +164,30 @@ export const OrdersScreen: React.FC = () => {
 
   const handleAddPayment = async () => {
     if (!paymentModalOrder) return;
-    const amount = parseFloat(newPaymentAmount.replace(',', '.'));
-    if (!amount || amount <= 0) return;
-    const payment: OrderPayment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] };
-    const updatedPayments = [...(paymentModalOrder.payments || []), payment];
-    const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
-    await orderStorage.update(paymentModalOrder.id, { payments: updatedPayments, paidAmount: newPaidAmount, paid: newPaidAmount >= paymentModalOrder.totalPrice });
-    setPaymentModalOrder(null); setNewPaymentAmount(''); setNewPaymentMethod('pix');
-    loadOrders(); showToast('Pagamento adicionado', 'success');
+    const amount = parseMoney(newPaymentAmount);
+    if (amount <= 0) {
+      showToast('Informe um valor pago válido', 'warning');
+      return;
+    }
+    try {
+      const basePayments = paymentModalOrder.payments && paymentModalOrder.payments.length > 0
+        ? paymentModalOrder.payments
+        : paymentModalOrder.paidAmount && paymentModalOrder.paidAmount > 0
+          ? [{ id: 'migrated', amount: paymentModalOrder.paidAmount, method: 'cash' as PaymentMethodType, date: paymentModalOrder.createdAt.split('T')[0] }]
+          : [];
+      const payment: OrderPayment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] };
+      const updatedPayments = [...basePayments, payment];
+      const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+      await orderStorage.update(paymentModalOrder.id, {
+        payments: updatedPayments,
+        paidAmount: newPaidAmount,
+        paid: toCents(newPaidAmount) >= toCents(paymentModalOrder.totalPrice),
+      });
+      setPaymentModalOrder(null); setNewPaymentAmount(''); setNewPaymentMethod('pix');
+      loadOrders(); showToast('Pagamento adicionado', 'success');
+    } catch {
+      showToast('Erro ao adicionar pagamento', 'error');
+    }
   };
 
   const renderOrder = ({ item }: { item: Order }) => {
@@ -235,8 +263,8 @@ export const OrdersScreen: React.FC = () => {
           </View>
 
           {/* Add payment button */}
-          {isDelivered && remaining > 0 && (
-            <TouchableOpacity style={st.addPayBtn} onPress={() => setPaymentModalOrder(item)} activeOpacity={0.7}>
+          {!isCancelled && remaining > 0 && (
+            <TouchableOpacity style={st.addPayBtn} onPress={(event) => { event.stopPropagation(); setPaymentModalOrder(item); }} activeOpacity={0.7}>
               <Ionicons name="add-circle-outline" size={16} color={PINK} />
               <Text style={st.addPayText}>Adicionar pagamento</Text>
             </TouchableOpacity>
@@ -317,7 +345,7 @@ export const OrdersScreen: React.FC = () => {
 
       {/* ── Payment modal ── */}
       <Modal visible={!!paymentModalOrder} animationType="slide" transparent>
-        <View style={st.modalOverlay}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.modalOverlay}>
           <View style={st.payModal}>
             <View style={st.payModalHead}>
               <Text style={st.payModalTitle}>Adicionar pagamento</Text>
@@ -360,7 +388,7 @@ export const OrdersScreen: React.FC = () => {
               </View>
             )}
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

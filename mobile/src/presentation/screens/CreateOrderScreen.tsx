@@ -52,8 +52,14 @@ const SHADOW = {
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
-// Aceita vírgula ou ponto como separador decimal (padrão BR)
-const num = (s: string) => parseFloat(String(s ?? '').replace(',', '.')) || 0;
+// Aceita vírgula, ponto e ponto de milhar no padrão BR.
+const num = (s: string) => {
+  const sanitized = String(s ?? '').replace(/[^0-9.,]/g, '');
+  const normalized = sanitized.includes(',')
+    ? sanitized.replace(/\./g, '').replace(',', '.')
+    : sanitized;
+  return parseFloat(normalized) || 0;
+};
 const toCents = (value: number) => Math.round(value * 100);
 
 const STATUS_OPTIONS: { key: OrderStatus; label: string; bg: string; color: string }[] = [
@@ -184,7 +190,10 @@ export const CreateOrderScreen: React.FC = () => {
 
   const handleAddPayment = () => {
     const amount = num(newPaymentAmount);
-    if (!amount || amount <= 0) return;
+    if (amount <= 0) {
+      showToast('Informe um valor pago válido', 'warning');
+      return;
+    }
     setPayments(prev => [...prev, { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] }]);
     setNewPaymentAmount(''); setNewPaymentMethod('pix'); setShowAddPayment(false);
   };
