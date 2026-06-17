@@ -523,10 +523,7 @@ export class AdminController {
           `SELECT r.id, r.name, r.yield::int, r.profit_margin::float AS "profitMargin",
                   r.created_at AS "createdAt", r.updated_at AS "updatedAt",
                   (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.recipe_id = r.id) AS "ingredientCount",
-                  (SELECT COALESCE(SUM(ri.quantity_used * i.purchase_price / NULLIF(i.purchase_quantity, 0)), 0)::float
-                   FROM recipe_ingredients ri
-                   JOIN ingredients i ON i.id = ri.ingredient_id
-                   WHERE ri.recipe_id = r.id) AS "totalCost"
+                  0::float AS "totalCost"
            FROM recipes r WHERE r.user_id = $1
            ORDER BY r.updated_at DESC`,
           [id]
@@ -570,10 +567,17 @@ export class AdminController {
       let recipeIngredientsMap: Record<string, any[]> = {};
       let recipeAdditionalCostsMap: Record<string, any[]> = {};
       let recipeSubRecipesMap: Record<string, any[]> = {};
+      let recipeIngredientCostsMap: Record<string, number> = {};
+      let recipeAdditionalCostsTotalMap: Record<string, number> = {};
       if (recipeIds.length > 0) {
         const [riRes, acRes, srRes] = await Promise.all([
           pool.query(
-            `SELECT ri.recipe_id AS "recipeId", ri.ingredient_id AS "ingredientId", i.name, ri.quantity_used::float AS "quantityUsed", ri.unit
+            `SELECT ri.recipe_id AS "recipeId", ri.ingredient_id AS "ingredientId", i.name,
+                    ri.quantity_used::float AS "quantityUsed", ri.unit,
+                    i.purchase_price::float AS "purchasePrice",
+                    i.purchase_quantity::float AS "purchaseQuantity",
+                    i.unit AS "purchaseUnit",
+                    i.purchase_unit_weight::float AS "purchaseUnitWeight"
              FROM recipe_ingredients ri
              JOIN ingredients i ON i.id = ri.ingredient_id
              WHERE ri.recipe_id = ANY($1)
@@ -589,7 +593,8 @@ export class AdminController {
           ),
           pool.query(
             `SELECT sr.recipe_id AS "recipeId", sr.sub_recipe_id AS "subRecipeId",
-                    r.name AS "subRecipeName", sr.quantity_used::float AS "quantityUsed", sr.unit
+                    r.name AS "subRecipeName", r.yield::float AS "yield",
+                    sr.quantity_used::float AS "quantityUsed", sr.unit
              FROM recipe_sub_recipes sr
              JOIN recipes r ON r.id = sr.sub_recipe_id
              WHERE sr.recipe_id = ANY($1)
@@ -600,24 +605,63 @@ export class AdminController {
         for (const row of riRes.rows) {
           if (!recipeIngredientsMap[row.recipeId]) recipeIngredientsMap[row.recipeId] = [];
           recipeIngredientsMap[row.recipeId].push({ ingredientId: row.ingredientId, name: row.name, quantityUsed: row.quantityUsed, unit: row.unit });
+
+          const purchaseQuantity = Number(row.purchaseQuantity) || 0;
+          const purchaseUnitWeight = Number(row.purchaseUnitWeight) || 0;
+          const effectivePurchaseQuantity = purchaseUnitWeight > 0
+            ? purchaseQuantity * purchaseUnitWeight
+            : purchaseQuantity;
+          if (effectivePurchaseQuantity <= 0) continue;
+
+          const usedQuantity = this.convertAdminRecipeQuantity(
+            Number(row.quantityUsed) || 0,
+            row.unit,
+            row.purchaseUnit,
+            purchaseUnitWeight
+          );
+          const ingredientCost = usedQuantity * ((Number(row.purchasePrice) || 0) / effectivePurchaseQuantity);
+          recipeIngredientCostsMap[row.recipeId] = (recipeIngredientCostsMap[row.recipeId] ?? 0) + ingredientCost;
         }
         for (const row of acRes.rows) {
           if (!recipeAdditionalCostsMap[row.recipeId]) recipeAdditionalCostsMap[row.recipeId] = [];
           recipeAdditionalCostsMap[row.recipeId].push({ name: row.name, value: row.value });
+          recipeAdditionalCostsTotalMap[row.recipeId] = (recipeAdditionalCostsTotalMap[row.recipeId] ?? 0) + (Number(row.value) || 0);
         }
         for (const row of srRes.rows) {
           if (!recipeSubRecipesMap[row.recipeId]) recipeSubRecipesMap[row.recipeId] = [];
           recipeSubRecipesMap[row.recipeId].push({
             subRecipeId: row.subRecipeId,
             subRecipeName: row.subRecipeName,
+            yield: row.yield,
             quantityUsed: row.quantityUsed,
             unit: row.unit || 'un',
           });
         }
       }
 
+      const directRecipeTotals = new Map<string, number>();
+      for (const r of recipesRes.rows) {
+        directRecipeTotals.set(
+          r.id,
+          (recipeIngredientCostsMap[r.id] ?? 0) + (recipeAdditionalCostsTotalMap[r.id] ?? 0)
+        );
+      }
+
+      const getRecipeTotal = (recipeId: string, seen = new Set<string>()): number => {
+        if (seen.has(recipeId)) return directRecipeTotals.get(recipeId) ?? 0;
+        seen.add(recipeId);
+
+        const subRecipesCost = (recipeSubRecipesMap[recipeId] ?? []).reduce((sum, sub) => {
+          const subCostPerUnit = getRecipeTotal(sub.subRecipeId, seen) / Math.max(Number(sub.yield) || 1, 1);
+          return sum + subCostPerUnit * (Number(sub.quantityUsed) || 0);
+        }, 0);
+
+        return (directRecipeTotals.get(recipeId) ?? 0) + subRecipesCost;
+      };
+
       const recipesWithIngredients = recipesRes.rows.map((r: any) => ({
         ...r,
+        totalCost: getRecipeTotal(r.id),
         ingredients: recipeIngredientsMap[r.id] ?? [],
         additionalCosts: recipeAdditionalCostsMap[r.id] ?? [],
         subRecipes: recipeSubRecipesMap[r.id] ?? [],
@@ -794,5 +838,15 @@ export class AdminController {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }
+  }
+
+  private convertAdminRecipeQuantity(quantity: number, fromUnit: string, toUnit: string, purchaseUnitWeight: number): number {
+    if (fromUnit === 'unit' && purchaseUnitWeight > 0) return quantity * purchaseUnitWeight;
+    if (fromUnit === toUnit) return quantity;
+    if (fromUnit === 'g' && toUnit === 'kg') return quantity / 1000;
+    if (fromUnit === 'kg' && toUnit === 'g') return quantity * 1000;
+    if (fromUnit === 'ml' && toUnit === 'l') return quantity / 1000;
+    if (fromUnit === 'l' && toUnit === 'ml') return quantity * 1000;
+    return quantity;
   }
 }
