@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { AdBanner } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { getEffectivePurchaseQuantity, getIngredientUnitPrice } from '../../domain/services/ingredientPricing';
-import { formatCurrency, formatCurrencyUnit } from '../utils/currency';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -55,6 +55,7 @@ export const IngredientsScreen: React.FC = () => {
   const { requirePremium } = usePaywall();
   const { t } = useTranslation();
   const { guardAction, DemoGuardModal } = useDemoGuard();
+  const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const loadIngredients = async () => {

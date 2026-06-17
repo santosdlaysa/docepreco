@@ -30,6 +30,7 @@ import { SupportFab } from '../components/SupportFab';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { bannerApi, Banner } from '../../data/api/bannerApi';
 import { bannerStorage } from '../../data/storage/bannerStorage';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -51,12 +52,6 @@ const BANNER_CONFIG: Record<Banner['type'], { bg: string; border: string; icon: 
   update:  { bg: '#DCF6E5', border: '#A8E6C0', icon: 'arrow-up-circle-outline',    iconColor: GREEN },
 };
 
-const formatCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', minimumFractionDigits: 0, maximumFractionDigits: 0 });
-
-const formatCurrencyFull = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
 const THUMB_COLORS = ['#5E3A23', '#EA4B92', '#FFB01F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4', '#FF9F43'];
 const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
@@ -75,6 +70,8 @@ export const HomeScreen: React.FC = () => {
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const stApi = isDemoMode() ? demoStatsApi : statsApi;
+
+  const { formatCurrency } = useCurrencyFormat();
 
   const dismissBanner = async (id: string) => {
     await bannerStorage.dismiss(id);
@@ -216,7 +213,7 @@ export const HomeScreen: React.FC = () => {
             style={s.hero}
           >
             <Text style={s.heroLabel}>Faturamento de hoje</Text>
-            <Text style={s.heroBig}>{formatCurrencyFull(todayRevenue)}</Text>
+            <Text style={s.heroBig}>{formatCurrency(todayRevenue)}</Text>
             <Text style={s.heroSub}>
               {todaySales.length} venda{todaySales.length !== 1 ? 's' : ''} · lucro estimado {formatCurrency(todayProfit)}
             </Text>

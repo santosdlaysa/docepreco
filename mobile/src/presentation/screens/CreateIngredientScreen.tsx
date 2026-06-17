@@ -25,7 +25,7 @@ import { useToast } from '../context/ToastContext';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
-import { formatCurrencyUnit } from '../utils/currency';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'unit', label: 'un' },
@@ -80,6 +80,7 @@ export const CreateIngredientScreen: React.FC = () => {
   const [allNames, setAllNames] = useState<string[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
+  const { formatCurrencyUnit } = useCurrencyFormat();
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   useEffect(() => {

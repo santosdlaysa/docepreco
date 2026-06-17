@@ -23,6 +23,7 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { demoSaleApi, demoRecipeApi } from '../../data/demo/demoApi';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 const INK = '#3D2233';
 const INK2 = '#9A7E8C';
@@ -34,9 +35,6 @@ const GREEN = '#43BE6E';
 const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 12, elevation: 4 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-const formatCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 interface MonthlyData {
   label: string;
@@ -70,6 +68,8 @@ export const ReportsScreen: React.FC = () => {
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
+
+  const { formatCurrency } = useCurrencyFormat();
 
   useFocusEffect(
     useCallback(() => {

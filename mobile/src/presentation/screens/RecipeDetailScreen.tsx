@@ -35,7 +35,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { parseLocaleNumber } from '../utils/number';
-import { formatCurrencyUnit } from '../utils/currency';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -58,9 +58,6 @@ const SHADOW = {
 };
 
 const ING_COLORS = ['#5E3A23', '#E8C98E', '#F2E6D2', '#F4C95D', '#FFD98A', '#90BE6D', '#7B68EE', '#FF9F43'];
-
-const formatCurrency = (value: number) =>
-  value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const formatQuantity = (value: number) => {
   if (value >= 1000) return value.toFixed(0);
@@ -91,6 +88,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const { isPremium } = usePremium();
   const { requirePremium } = usePaywall();
   const { guardAction, DemoGuardModal } = useDemoGuard();
+  const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
 
   useEffect(() => {
     loadRecipe();

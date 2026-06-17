@@ -36,7 +36,7 @@ import { planConfigApi } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
 import { AdBanner, useAdInterstitial } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
-import { formatCurrencyUnit } from '../utils/currency';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -45,10 +45,6 @@ const CATEGORIES = ['Todas', 'Bolos', 'Docinhos', 'Tortas', 'Cupcakes', 'Chocola
 
 function getCardColor(index: number) {
   return CARD_COLORS[index % CARD_COLORS.length];
-}
-
-function formatCurrency(value: number) {
-  return `R$ ${value.toFixed(2).replace('.', ',')}`;
 }
 
 export const RecipesScreen: React.FC = () => {
@@ -69,6 +65,7 @@ export const RecipesScreen: React.FC = () => {
   const [duplicateTarget, setDuplicateTarget] = useState<Recipe | null>(null);
   const [duplicateName, setDuplicateName] = useState('');
   const [freeRecipeLimit, setFreeRecipeLimit] = useState<number>(FREE_LIMITS.recipes);
+  const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
 
   const loadRecipes = async () => {
     try {

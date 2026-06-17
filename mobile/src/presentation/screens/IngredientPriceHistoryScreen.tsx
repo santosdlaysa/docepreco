@@ -11,7 +11,7 @@ import { Card } from '../components/Card';
 import { Skeleton } from '../components/Skeleton';
 import { Header } from '../components/Header';
 import { useTranslation } from 'react-i18next';
-import { formatCurrency, formatCurrencyUnit } from '../utils/currency';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type RouteType = RouteProp<RootStackParamList, 'IngredientPriceHistory'>;
 
@@ -25,6 +25,7 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
   const { ingredientId, ingredientName } = route.params;
   const [entries, setEntries] = useState<PriceEntry[]>([]);
   const [loading, setLoading] = useState(true);
+  const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
 
   useFocusEffect(
     useCallback(() => {
