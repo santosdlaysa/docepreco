@@ -3,7 +3,7 @@ import { Plus, Pencil, Trash2, Package, Info, Search, ChevronLeft, ChevronRight 
 import type { LucideIcon } from 'lucide-react';
 import { userApi, Ingredient, CreateIngredientDTO, Unit } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
-import { formatBRL } from '../format';
+import { formatBRL, formatBRLUnit } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
 
@@ -95,25 +95,33 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
       ) : (
         <>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
-          {pageItems.map(i => (
-            <div key={i.id} className="flex items-center gap-3 px-4 py-3">
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white truncate">{i.name}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {i.purchaseUnitLabel
-                    ? `${i.purchaseQuantity} ${i.purchaseUnitLabel}${i.purchaseUnitWeight ? ` (${i.purchaseQuantity * i.purchaseUnitWeight} ${i.unit})` : ''}`
-                    : `${i.purchaseQuantity} ${i.unit}`}{' '}
-                  · {formatBRL(i.purchasePrice)}
-                </p>
+          {pageItems.map(i => {
+            const effectiveQuantity = i.purchaseUnitLabel && i.purchaseUnitWeight
+              ? i.purchaseQuantity * i.purchaseUnitWeight
+              : i.purchaseQuantity;
+            const unitPrice = effectiveQuantity > 0 ? i.purchasePrice / effectiveQuantity : 0;
+
+            return (
+              <div key={i.id} className="flex items-center gap-3 px-4 py-3">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-gray-900 dark:text-white truncate">{i.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    {i.purchaseUnitLabel
+                      ? `${i.purchaseQuantity} ${i.purchaseUnitLabel}${i.purchaseUnitWeight ? ` (${effectiveQuantity} ${i.unit})` : ''}`
+                      : `${i.purchaseQuantity} ${i.unit}`}{' '}
+                    · {formatBRL(i.purchasePrice)}
+                    {unitPrice > 0 ? ` · ${formatBRLUnit(unitPrice)}/${i.unit}` : ''}
+                  </p>
+                </div>
+                <button onClick={() => setEditing(i)} className={iconBtn}>
+                  <Pencil size={16} />
+                </button>
+                <button onClick={() => setConfirmId(i.id)} className={iconBtnDanger}>
+                  <Trash2 size={16} />
+                </button>
               </div>
-              <button onClick={() => setEditing(i)} className={iconBtn}>
-                <Pencil size={16} />
-              </button>
-              <button onClick={() => setConfirmId(i.id)} className={iconBtnDanger}>
-                <Trash2 size={16} />
-              </button>
-            </div>
-          ))}
+            );
+          })}
         </div>
         {totalPages > 1 && (
           <div className="flex items-center justify-between mt-3">
@@ -410,7 +418,7 @@ function IngredientForm({
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
             <p className="text-xs font-medium text-white/80">Preço por unidade</p>
             <p className="text-2xl font-bold tracking-tight">
-              {formatBRL(pricePerUnit)}
+              {formatBRLUnit(pricePerUnit)}
               <span className="text-sm font-medium"> /{unit || 'un'}</span>
             </p>
             {useCustom && weightN > 0 && (

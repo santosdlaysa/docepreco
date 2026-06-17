@@ -2,6 +2,18 @@ export function formatBRL(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 }
 
+export function formatBRLUnit(value: number): string {
+  const numericValue = Number.isFinite(value) ? value : 0;
+  const fractionDigits = numericValue > 0 && numericValue < 0.01 ? 4 : 2;
+
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(numericValue);
+}
+
 export function formatDate(iso: string): string {
   if (!iso) return '-';
   const d = new Date(iso);
