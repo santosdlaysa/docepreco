@@ -100,11 +100,15 @@ export const IngredientsScreen: React.FC = () => {
         } catch (error: any) {
           restore();
           const serverMsg = error?.message || '';
-          if (
-            serverMsg.includes('em uso') || serverMsg.includes('in use') ||
-            serverMsg.includes('violates foreign key') || serverMsg.includes('restrict') ||
-            error?.status === 409
-          ) {
+          const isInUseError =
+            serverMsg.includes('em uso') ||
+            serverMsg.includes('in use') ||
+            serverMsg.includes('violates foreign key') ||
+            serverMsg.includes('violates RESTRICT') ||
+            serverMsg.includes('restrict') ||
+            error?.status === 409;
+
+          if (isInUseError) {
             showToast(t('ingredients.inUseError'), 'warning');
           } else {
             showToast(`${t('ingredients.deleteError')}: ${serverMsg}`, 'error');

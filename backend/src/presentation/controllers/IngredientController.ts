@@ -70,12 +70,15 @@ export class IngredientController {
       await useCase.execute(req.params.id, req.userId!);
       res.json({ success: true, message: 'Ingredient deleted successfully' });
     } catch (error) {
-      if (error instanceof Error && (error.message.includes('23503') || (error as any).code === '23503')) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      const isForeignKeyError = errorMsg.includes('23503') || errorMsg.includes('foreign key') || errorMsg.includes('RESTRICT') || (error as any).code === '23503';
+
+      if (error instanceof Error && isForeignKeyError) {
         res.status(409).json({ success: false, error: 'Ingrediente em uso em uma ou mais receitas' });
       } else if (error instanceof Error) {
         res.status(400).json({ success: false, error: error.message });
       } else {
-        res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+        res.locals.errorMessage = errorMsg;
         res.status(500).json({ success: false, error: 'Internal server error' });
       }
     }
