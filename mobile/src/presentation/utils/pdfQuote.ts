@@ -3,6 +3,7 @@ import * as Sharing from 'expo-sharing';
 import { Recipe } from '../../domain/entities/Recipe';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { PdfSettings } from '../../data/storage/pdfSettingsStorage';
+import { formatCurrencyUnit } from './currency';
 
 const formatCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -358,7 +359,7 @@ const buildHtml = ({ recipe, calculation, companyName }: QuoteInput, pdfSettings
       }
       <div class="breakdown-row">
         <span class="breakdown-label">Custo por unidade</span>
-        <span class="breakdown-value">${formatCurrency(calculation.costPerUnit)}</span>
+        <span class="breakdown-value">${formatCurrencyUnit(calculation.costPerUnit)}</span>
       </div>
       <div class="breakdown-row total">
         <span class="breakdown-label">Custo total</span>

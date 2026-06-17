@@ -36,6 +36,7 @@ import { planConfigApi } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
 import { AdBanner, useAdInterstitial } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
+import { formatCurrencyUnit } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -235,7 +236,7 @@ export const RecipesScreen: React.FC = () => {
             <View style={styles.priceRow}>
               <View style={styles.priceBlock}>
                 <Text style={styles.priceLabel}>CUSTO/UN</Text>
-                <Text style={styles.priceValue}>{formatCurrency(calc.costPerUnit)}</Text>
+                <Text style={styles.priceValue}>{formatCurrencyUnit(calc.costPerUnit)}</Text>
               </View>
               <View style={styles.priceBlock}>
                 <Text style={styles.priceLabel}>PREÇO</Text>

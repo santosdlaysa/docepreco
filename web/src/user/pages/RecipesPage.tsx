@@ -11,7 +11,7 @@ import {
   CalculationResult,
 } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
-import { formatBRL } from '../format';
+import { formatBRL, formatBRLUnit } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
 import {
@@ -136,7 +136,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                     <div className="text-right shrink-0">
                       <span className="block text-[11px] text-gray-500 dark:text-gray-400">Custo / un</span>
                       <span className="block text-sm font-semibold text-gray-700 dark:text-gray-200">
-                        {c ? formatBRL(c.costPerUnit) : '—'}
+                        {c ? formatBRLUnit(c.costPerUnit) : '—'}
                       </span>
                     </div>
                     <ChevronDown
@@ -154,7 +154,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                         ['Custos adicionais', formatBRL(c.additionalCostTotal)],
                         ['Sub-receitas', formatBRL(c.subRecipesCost)],
                         ['Custo total', formatBRL(c.totalCost)],
-                        ['Custo por unidade', formatBRL(c.costPerUnit)],
+                        ['Custo por unidade', formatBRLUnit(c.costPerUnit)],
                         ['Lucro estimado', formatBRL(c.estimatedProfit)],
                       ] as [string, string][]
                     ).map(([label, value]) => (
@@ -517,7 +517,7 @@ function RecipeForm({
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Por Unidade</p>
-                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRL(costPerUnit)}</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRLUnit(costPerUnit)}</p>
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2 border-2 border-emerald-300 dark:border-emerald-700">

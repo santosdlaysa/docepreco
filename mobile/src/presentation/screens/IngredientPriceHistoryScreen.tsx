@@ -11,11 +11,9 @@ import { Card } from '../components/Card';
 import { Skeleton } from '../components/Skeleton';
 import { Header } from '../components/Header';
 import { useTranslation } from 'react-i18next';
+import { formatCurrency, formatCurrencyUnit } from '../utils/currency';
 
 type RouteType = RouteProp<RootStackParamList, 'IngredientPriceHistory'>;
-
-const formatCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -67,7 +65,7 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.unitCol}>
-            <Text style={styles.unitPrice}>{formatCurrency(pricePerUnit)}/{item.unit}</Text>
+            <Text style={styles.unitPrice}>{formatCurrencyUnit(pricePerUnit)}/{item.unit}</Text>
             {pct !== null && (
               <View style={[styles.diffBadge, { backgroundColor: pct > 0 ? '#FFEBEE' : '#E8F5E9' }]}>
                 <Ionicons

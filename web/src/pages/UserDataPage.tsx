@@ -76,6 +76,17 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
     new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   const fmtCurrency = (n: number) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
+  const fmtUnitCurrency = (n: number) => {
+    const numericValue = Number.isFinite(n) ? n : 0;
+    const fractionDigits = numericValue > 0 && numericValue < 0.01 ? 4 : 2;
+
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL',
+      minimumFractionDigits: fractionDigits,
+      maximumFractionDigits: fractionDigits,
+    }).format(numericValue);
+  };
 
   if (error) {
     return (
@@ -249,7 +260,7 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                           </div>
                           <div>
                             <p className="text-xs text-gray-400">Custo/unidade</p>
-                            <p className="font-semibold text-gray-900 dark:text-white">{fmtCurrency(r.yield > 0 ? r.totalCost / r.yield : 0)}</p>
+                            <p className="font-semibold text-gray-900 dark:text-white">{fmtUnitCurrency(r.yield > 0 ? r.totalCost / r.yield : 0)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-400">Margem</p>
@@ -327,7 +338,7 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                       <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">
                         {(() => {
                           const effectiveAmount = i.purchaseUnitWeight ? i.packageAmount * i.purchaseUnitWeight : i.packageAmount;
-                          return fmtCurrency(effectiveAmount > 0 ? i.price / effectiveAmount : 0);
+                          return fmtUnitCurrency(effectiveAmount > 0 ? i.price / effectiveAmount : 0);
                         })()}/{i.unit}
                       </td>
                       <td className="px-4 py-3 text-right text-gray-500 dark:text-gray-400">

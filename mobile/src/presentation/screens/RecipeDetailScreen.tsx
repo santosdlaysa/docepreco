@@ -35,6 +35,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { parseLocaleNumber } from '../utils/number';
+import { formatCurrencyUnit } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -455,7 +456,7 @@ export const RecipeDetailScreen: React.FC = () => {
                   <Text style={s.resultGridLbl}>por unidade</Text>
                 </View>
                 <View style={s.resultGridItem}>
-                  <Text style={s.resultGridVal}>{formatCurrency(calculation.costPerUnit)}</Text>
+                  <Text style={s.resultGridVal}>{formatCurrencyUnit(calculation.costPerUnit)}</Text>
                   <Text style={s.resultGridLbl}>custo / un</Text>
                 </View>
                 <View style={s.resultGridItem}>

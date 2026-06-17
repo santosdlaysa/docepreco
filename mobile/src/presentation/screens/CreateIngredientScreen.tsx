@@ -25,6 +25,7 @@ import { useToast } from '../context/ToastContext';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
+import { formatCurrencyUnit } from '../utils/currency';
 
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'unit', label: 'un' },
@@ -314,7 +315,7 @@ export const CreateIngredientScreen: React.FC = () => {
             <LinearGradient colors={['#34C97B', GREEN, '#2BA060']} locations={[0, 0.6, 1]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.result}>
               <Text style={st.rl}>Preço por unidade</Text>
-              <Text style={st.rprice}>{fmtBRL(pricePerUnit)}<Text style={st.runit}> /{unit || 'un'}</Text></Text>
+              <Text style={st.rprice}>{formatCurrencyUnit(pricePerUnit)}<Text style={st.runit}> /{unit || 'un'}</Text></Text>
             </LinearGradient>
           )}
 

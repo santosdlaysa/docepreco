@@ -11,6 +11,18 @@ function fmtPrice(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+function fmtUnitPrice(v: number) {
+  const numericValue = Number.isFinite(v) ? v : 0;
+  const fractionDigits = numericValue > 0 && numericValue < 0.01 ? 4 : 2;
+
+  return numericValue.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+}
+
 const EMPTY = {
   name: '',
   price: 0,
@@ -136,7 +148,7 @@ export function GlobalIngredientsPage({ toast }: Props) {
                   <td className="px-3 py-3 text-gray-700 dark:text-gray-200">{fmtPrice(item.price)}</td>
                   <td className="px-3 py-3 text-gray-500 dark:text-gray-400">{item.packageAmount} {item.unit}</td>
                   <td className="px-3 py-3 text-gray-700 dark:text-gray-200 font-medium">
-                    {fmtPrice(item.price / (item.packageAmount || 1))}/{item.unit}
+                    {fmtUnitPrice(item.price / (item.packageAmount || 1))}/{item.unit}
                   </td>
                   <td className="px-3 py-3 text-right space-x-2">
                     <button onClick={() => openEdit(item)} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 transition-colors">
