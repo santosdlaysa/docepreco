@@ -221,6 +221,9 @@ function IngredientForm({
     if (priceN <= 0) return toast.error('Informe o preço pago.');
     if (!unit) return toast.error('Escolha a unidade de medida.');
     if (useCustom && weightN <= 0) return toast.error('Informe o peso por embalagem.');
+    if (useCustom && qtyN > 0 && weightN > 0 && qtyN * weightN > priceN * 1000) {
+      return toast.error('Quantidade × Peso resulta em um valor muito alto. Verifique se preencheu corretamente os campos.');
+    }
 
     setSaving(true);
     const data: CreateIngredientDTO = {
@@ -360,6 +363,9 @@ function IngredientForm({
               </span>
             </div>
             <p className="text-xs text-gray-400 mt-1">Ex.: uma lata de leite condensado tem 330g.</p>
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
+              ⚠️ Use este campo APENAS se comprou embalagens individualizadas (ex: 2 latas por R$ 8). Para quantidade e peso em gramas/ml (ex: 900ml por R$ 8), não use este campo.
+            </p>
           </FormField>
         )}
 
