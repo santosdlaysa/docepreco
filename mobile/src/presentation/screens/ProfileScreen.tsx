@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image, RefreshControl, Modal } from 'react-native';
+import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image, RefreshControl } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,7 +9,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../context/PremiumContext';
-import { useCurrency, CURRENCY_INFO } from '../../context/CurrencyContext';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { colors } from '../theme/colors';
@@ -33,7 +32,6 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
-  const { currency, setCurrency } = useCurrency();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [instagramInput, setInstagramInput] = useState('');
@@ -49,7 +47,6 @@ export const ProfileScreen: React.FC = () => {
   const [suggestionText, setSuggestionText] = useState('');
   const [sendingSuggestion, setSendingSuggestion] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -295,11 +292,6 @@ export const ProfileScreen: React.FC = () => {
               <Switch value={notificationsOn} onValueChange={(v) => { setNotificationsOn(v); void setNotificationsEnabled(v); }}
                 trackColor={{ false: INK3, true: '#DCF6E5' }} thumbColor={notificationsOn ? GREEN : '#f4f3f4'} />
             </View>
-            <TouchableOpacity style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]} onPress={() => setShowCurrencyModal(true)} activeOpacity={0.7}>
-              <View style={[st.gi, { backgroundColor: '#DCF1FB' }]}><Ionicons name="cash-outline" size={18} color="#2BA7DD" /></View>
-              <View style={{ flex: 1 }}><Text style={st.growB}>Moeda</Text><Text style={{ fontSize: 12, color: INK2, marginTop: 2 }}>{currency}</Text></View>
-              <Ionicons name="chevron-forward" size={16} color={INK3} />
-            </TouchableOpacity>
           </View>
 
           {/* ── Ajuda ── */}
@@ -359,45 +351,6 @@ export const ProfileScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
-
-      <Modal
-        visible={showCurrencyModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowCurrencyModal(false)}
-      >
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, gap: 12, paddingBottom: 30 }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>Selecionar moeda</Text>
-              <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
-                <Ionicons name="close" size={24} color={INK2} />
-              </TouchableOpacity>
-            </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-              {Object.entries(CURRENCY_INFO).map(([c, info]) => (
-                <TouchableOpacity
-                  key={c}
-                  onPress={() => {
-                    setCurrency(c as any);
-                    setShowCurrencyModal(false);
-                  }}
-                  style={[
-                    { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 2 },
-                    currency === c
-                      ? { backgroundColor: PINK, borderColor: PINK }
-                      : { backgroundColor: '#F5F5F5', borderColor: '#E0E0E0' }
-                  ]}
-                >
-                  <Text style={[{ fontSize: 13, fontWeight: '600' }, currency === c ? { color: '#fff' } : { color: INK }]}>
-                    {c}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
