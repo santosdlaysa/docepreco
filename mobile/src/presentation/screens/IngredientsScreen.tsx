@@ -99,15 +99,15 @@ export const IngredientsScreen: React.FC = () => {
           await api.delete(ingredient.id);
         } catch (error: any) {
           restore();
-          const serverMsg = error?.response?.data?.error || error?.message || '';
+          const serverMsg = error?.message || '';
           if (
             serverMsg.includes('em uso') || serverMsg.includes('in use') ||
             serverMsg.includes('violates foreign key') || serverMsg.includes('restrict') ||
-            error?.response?.status === 409
+            error?.status === 409
           ) {
             showToast(t('ingredients.inUseError'), 'warning');
           } else {
-            showToast(t('ingredients.deleteError'), 'error');
+            showToast(`${t('ingredients.deleteError')}: ${serverMsg}`, 'error');
           }
         }
       },
