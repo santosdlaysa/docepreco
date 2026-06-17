@@ -9,7 +9,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../context/PremiumContext';
-import { useCurrency, CURRENCY_INFO } from '../../context/CurrencyContext';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
 import { colors } from '../theme/colors';
@@ -33,7 +32,6 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
-  const { currency, setCurrency } = useCurrency();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [instagramInput, setInstagramInput] = useState('');
@@ -293,30 +291,6 @@ export const ProfileScreen: React.FC = () => {
               <View style={{ flex: 1 }}><Text style={st.growB}>Notificações</Text></View>
               <Switch value={notificationsOn} onValueChange={(v) => { setNotificationsOn(v); void setNotificationsEnabled(v); }}
                 trackColor={{ false: INK3, true: '#DCF6E5' }} thumbColor={notificationsOn ? GREEN : '#f4f3f4'} />
-            </View>
-            <View style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE, flexDirection: 'column', alignItems: 'stretch', gap: 10 }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                <View style={[st.gi, { backgroundColor: '#DCF1FB' }]}><Ionicons name="cash-outline" size={18} color="#2BA7DD" /></View>
-                <Text style={st.growB}>Moeda</Text>
-              </View>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {Object.entries(CURRENCY_INFO).map(([c, info]) => (
-                  <TouchableOpacity
-                    key={c}
-                    onPress={() => setCurrency(c as any)}
-                    style={[
-                      { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 2 },
-                      currency === c
-                        ? { backgroundColor: PINK, borderColor: PINK }
-                        : { backgroundColor: '#F5F5F5', borderColor: LINE }
-                    ]}
-                  >
-                    <Text style={[{ fontSize: 12, fontWeight: '600' }, currency === c ? { color: '#fff' } : { color: INK }]}>
-                      {c} {info.symbol}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
             </View>
           </View>
 
