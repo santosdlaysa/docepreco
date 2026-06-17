@@ -14,6 +14,8 @@ import { authApi } from '../../data/api/authApi';
 import { colors } from '../theme/colors';
 import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notifications';
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 const SUPPORT_WHATSAPP = '5595981273912';
 
@@ -32,6 +34,7 @@ export const ProfileScreen: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
+  const { currency } = useCurrency();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [instagramInput, setInstagramInput] = useState('');
@@ -262,14 +265,22 @@ export const ProfileScreen: React.FC = () => {
           {/* ── Conta ── */}
           <Text style={st.secLabel}>Conta</Text>
           <View style={st.gcard}>
+            <TouchableOpacity style={st.grow} onPress={() => navigation.navigate('CurrencySettings')} activeOpacity={0.7}>
+              <View style={[st.gi, { backgroundColor: '#EEF8FD' }]}><Ionicons name="cash-outline" size={18} color="#2BA7DD" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.growB}>Moeda</Text>
+                <Text style={st.growS}>{currency} · {CURRENCY_INFO[currency].name}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={INK3} />
+            </TouchableOpacity>
             {isPremium && (
-              <TouchableOpacity style={st.grow} onPress={() => navigation.navigate('PdfSettings')} activeOpacity={0.7}>
+              <TouchableOpacity style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]} onPress={() => navigation.navigate('PdfSettings')} activeOpacity={0.7}>
                 <View style={[st.gi, { backgroundColor: '#FFF0F6' }]}><Ionicons name="document-text-outline" size={18} color={PINK} /></View>
                 <View style={{ flex: 1 }}><Text style={st.growB}>Personalizar PDF</Text></View>
                 <Ionicons name="chevron-forward" size={16} color={INK3} />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={[st.grow, isPremium && { borderTopWidth: 1, borderTopColor: LINE }]} onPress={() => setShowPasswordSection(!showPasswordSection)} activeOpacity={0.7}>
+            <TouchableOpacity style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]} onPress={() => setShowPasswordSection(!showPasswordSection)} activeOpacity={0.7}>
               <View style={[st.gi, { backgroundColor: '#FCEFE6' }]}><Ionicons name="key-outline" size={18} color={INK2} /></View>
               <View style={{ flex: 1 }}><Text style={st.growB}>Alterar senha</Text></View>
               <Ionicons name={showPasswordSection ? 'chevron-up' : 'chevron-forward'} size={16} color={INK3} />
@@ -391,6 +402,7 @@ const st = StyleSheet.create({
   grow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15 },
   gi: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   growB: { fontSize: 14.5, fontWeight: '600', color: INK },
+  growS: { fontSize: 12, fontWeight: '500', color: INK2, marginTop: 2 },
   inlineInput: { fontSize: 14, color: INK, padding: 0, marginTop: 2 },
   saveSmall: { width: 32, height: 32, borderRadius: 10, backgroundColor: PINK, alignItems: 'center', justifyContent: 'center' },
 

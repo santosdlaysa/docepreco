@@ -35,6 +35,7 @@ import { CreateExpenseScreen } from '../screens/CreateExpenseScreen';
 import { StockScreen } from '../screens/StockScreen';
 import { SalesTipsScreen } from '../screens/SalesTipsScreen';
 import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
+import { CurrencySettingsScreen } from '../screens/CurrencySettingsScreen';
 import { IngredientPriceHistoryScreen } from '../screens/IngredientPriceHistoryScreen';
 import { SeasonsScreen } from '../screens/SeasonsScreen';
 import { CreateSeasonScreen } from '../screens/CreateSeasonScreen';
@@ -421,6 +422,7 @@ export function AppNavigator() {
           <Stack.Screen name="Stock" component={StockScreen} />
           <Stack.Screen name="SalesTips" component={SalesTipsScreen} />
           <Stack.Screen name="PdfSettings" component={PdfSettingsScreen} />
+          <Stack.Screen name="CurrencySettings" component={CurrencySettingsScreen} />
           <Stack.Screen name="IngredientPriceHistory" component={IngredientPriceHistoryScreen} />
           <Stack.Screen name="PricingTutorial" component={PricingTutorialScreen} />
           <Stack.Screen name="RecipeTutorial" component={RecipeTutorialScreen} />

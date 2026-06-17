@@ -1,4 +1,4 @@
-import { Currency } from '../context/CurrencyContext';
+import { Currency } from '../../context/CurrencyContext';
 
 export const CURRENCY_INFO: Record<Currency, { symbol: string; name: string; locale: string }> = {
   BRL: { symbol: 'R$', name: 'Real Brasileiro', locale: 'pt-BR' },
