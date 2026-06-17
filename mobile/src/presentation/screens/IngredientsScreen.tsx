@@ -174,6 +174,12 @@ export const IngredientsScreen: React.FC = () => {
           >
             <Ionicons name="bar-chart-outline" size={15} color={INK2} />
           </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => handleDelete(item)}
+            style={s.iconBtn}
+          >
+            <Ionicons name="trash-outline" size={15} color={INK2} />
+          </TouchableOpacity>
         </View>
       </View>
     </View>
