@@ -300,10 +300,10 @@ export const ProfileScreen: React.FC = () => {
                 <Text style={st.growB}>Moeda</Text>
               </View>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                {(Object.keys(CURRENCY_INFO) as Array<keyof typeof CURRENCY_INFO>).map(c => (
+                {Object.entries(CURRENCY_INFO).map(([c, info]) => (
                   <TouchableOpacity
                     key={c}
-                    onPress={() => setCurrency(c)}
+                    onPress={() => setCurrency(c as any)}
                     style={[
                       { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12, borderWidth: 2 },
                       currency === c
@@ -312,7 +312,7 @@ export const ProfileScreen: React.FC = () => {
                     ]}
                   >
                     <Text style={[{ fontSize: 12, fontWeight: '600' }, currency === c ? { color: '#fff' } : { color: INK }]}>
-                      {c} {CURRENCY_INFO[c].symbol}
+                      {c} {info.symbol}
                     </Text>
                   </TouchableOpacity>
                 ))}
