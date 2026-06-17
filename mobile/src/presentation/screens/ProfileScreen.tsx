@@ -16,6 +16,7 @@ import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notif
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '../../context/CurrencyContext';
 import { CURRENCY_INFO } from '../utils/currency';
+import { UNIT_SYSTEM_INFO, useUnitSystem } from '../../context/UnitSystemContext';
 
 const SUPPORT_WHATSAPP = '5595981273912';
 
@@ -35,6 +36,7 @@ export const ProfileScreen: React.FC = () => {
   const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
   const { currency } = useCurrency();
+  const { unitSystem } = useUnitSystem();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
   const [instagramInput, setInstagramInput] = useState('');
@@ -270,6 +272,14 @@ export const ProfileScreen: React.FC = () => {
               <View style={{ flex: 1 }}>
                 <Text style={st.growB}>Moeda</Text>
                 <Text style={st.growS}>{currency} · {CURRENCY_INFO[currency].name}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={INK3} />
+            </TouchableOpacity>
+            <TouchableOpacity style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]} onPress={() => navigation.navigate('UnitSettings')} activeOpacity={0.7}>
+              <View style={[st.gi, { backgroundColor: '#E8F5E9' }]}><Ionicons name="scale-outline" size={18} color="#2E7D32" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.growB}>Sistema de unidades</Text>
+                <Text style={st.growS}>{UNIT_SYSTEM_INFO[unitSystem].name} · novos ingredientes</Text>
               </View>
               <Ionicons name="chevron-forward" size={16} color={INK3} />
             </TouchableOpacity>

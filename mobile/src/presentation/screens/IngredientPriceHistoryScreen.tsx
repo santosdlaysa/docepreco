@@ -12,6 +12,7 @@ import { Skeleton } from '../components/Skeleton';
 import { Header } from '../components/Header';
 import { useTranslation } from 'react-i18next';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { formatUnitLabel } from '../utils/units';
 
 type RouteType = RouteProp<RootStackParamList, 'IngredientPriceHistory'>;
 
@@ -62,11 +63,11 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
           <View style={styles.priceCol}>
             <Text style={styles.packagePrice}>{formatCurrency(item.price)}</Text>
             <Text style={styles.packageQty}>
-              {item.purchaseQuantity} {item.unit}
+              {item.purchaseQuantity} {formatUnitLabel(item.unit)}
             </Text>
           </View>
           <View style={styles.unitCol}>
-            <Text style={styles.unitPrice}>{formatCurrencyUnit(pricePerUnit)}/{item.unit}</Text>
+            <Text style={styles.unitPrice}>{formatCurrencyUnit(pricePerUnit)}/{formatUnitLabel(item.unit)}</Text>
             {pct !== null && (
               <View style={[styles.diffBadge, { backgroundColor: pct > 0 ? '#FFEBEE' : '#E8F5E9' }]}>
                 <Ionicons

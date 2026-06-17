@@ -28,6 +28,7 @@ import {
   StockState, StockMovement,
 } from '../../data/stock/stockStorage';
 import { parseLocaleNumber } from '../utils/number';
+import { formatUnitLabel } from '../utils/units';
 
 /* ─── Design tokens ─── */
 const INK = '#3D2233';
@@ -152,7 +153,7 @@ export const StockScreen: React.FC = () => {
                   <View style={{ flex: 1 }}>
                     <Text style={s.rowName} numberOfLines={1}>{ing.name}</Text>
                     <Text style={s.rowMeta}>
-                      {tracked ? `Saldo: ${fmtQty(e.qty)} ${ing.unit}${e.min > 0 ? ` · mín ${fmtQty(e.min)} ${ing.unit}` : ''}` : 'Sem controle de estoque'}
+                      {tracked ? `Saldo: ${fmtQty(e.qty)} ${formatUnitLabel(ing.unit)}${e.min > 0 ? ` · mín ${fmtQty(e.min)} ${formatUnitLabel(ing.unit)}` : ''}` : 'Sem controle de estoque'}
                     </Text>
                   </View>
                   {low && !neg && <View style={[s.tag, { backgroundColor: '#FCEFD9' }]}><Text style={[s.tagTxt, { color: AMBER }]}>BAIXO</Text></View>}
@@ -230,7 +231,7 @@ const StockModal: React.FC<{
     setSaving(true);
     try {
       await addEntry(ingredient, q);
-      onSaved(`+${fmtQty(q)} ${ingredient.unit} em estoque`);
+      onSaved(`+${fmtQty(q)} ${formatUnitLabel(ingredient.unit)} em estoque`);
     } finally {
       setSaving(false);
     }
@@ -251,11 +252,11 @@ const StockModal: React.FC<{
 
             {/* Saldo + mínimo */}
             <View>
-              <Text style={s.fieldLabel}>Saldo atual ({ingredient.unit})</Text>
+              <Text style={s.fieldLabel}>Saldo atual ({formatUnitLabel(ingredient.unit)})</Text>
               <View style={s.input}>
                 <TextInput style={s.inputText} value={qty} onChangeText={setQtyVal} keyboardType="decimal-pad"
                   placeholder="0" placeholderTextColor={INK3} />
-                <Text style={s.suffix}>{ingredient.unit}</Text>
+                <Text style={s.suffix}>{formatUnitLabel(ingredient.unit)}</Text>
               </View>
             </View>
             <View>
@@ -263,7 +264,7 @@ const StockModal: React.FC<{
               <View style={s.input}>
                 <TextInput style={s.inputText} value={min} onChangeText={setMin} keyboardType="decimal-pad"
                   placeholder="0" placeholderTextColor={INK3} />
-                <Text style={s.suffix}>{ingredient.unit}</Text>
+                <Text style={s.suffix}>{formatUnitLabel(ingredient.unit)}</Text>
               </View>
             </View>
             <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85}>
@@ -279,7 +280,7 @@ const StockModal: React.FC<{
                 <View style={[s.input, { flex: 1 }]}>
                   <TextInput style={s.inputText} value={entryQty} onChangeText={setEntryQty} keyboardType="decimal-pad"
                     placeholder="Quantidade comprada" placeholderTextColor={INK3} />
-                  <Text style={s.suffix}>{ingredient.unit}</Text>
+                  <Text style={s.suffix}>{formatUnitLabel(ingredient.unit)}</Text>
                 </View>
                 <TouchableOpacity onPress={handleEntry} disabled={saving} style={s.entryBtn} activeOpacity={0.8}>
                   <Ionicons name="add" size={22} color="#fff" />
@@ -300,7 +301,7 @@ const StockModal: React.FC<{
                         <Text style={s.moveDate}>{new Date(m.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</Text>
                       </View>
                       <Text style={[s.moveDelta, { color: m.delta >= 0 ? GREEN : RED }]}>
-                        {m.delta >= 0 ? '+' : ''}{fmtQty(m.delta)} {ingredient.unit}
+                        {m.delta >= 0 ? '+' : ''}{fmtQty(m.delta)} {formatUnitLabel(ingredient.unit)}
                       </Text>
                     </View>
                   ))}

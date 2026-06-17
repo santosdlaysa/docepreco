@@ -10,6 +10,7 @@ import { AppNavigator } from './src/presentation/navigation/AppNavigator';
 import { ToastProvider } from './src/presentation/context/ToastContext';
 import { PremiumProvider } from './src/presentation/context/PremiumContext';
 import { CurrencyProvider } from './src/context/CurrencyContext';
+import { UnitSystemProvider } from './src/context/UnitSystemContext';
 import {
   flushUsage,
   startUsageTracking,
@@ -77,12 +78,14 @@ function App() {
   return (
     <SafeAreaProvider>
       <CurrencyProvider>
-        <PremiumProvider>
-          <ToastProvider>
-            <StatusBar style="dark" backgroundColor="#FFF0F3" />
-            <AppNavigator />
-          </ToastProvider>
-        </PremiumProvider>
+        <UnitSystemProvider>
+          <PremiumProvider>
+            <ToastProvider>
+              <StatusBar style="dark" backgroundColor="#FFF0F3" />
+              <AppNavigator />
+            </ToastProvider>
+          </PremiumProvider>
+        </UnitSystemProvider>
       </CurrencyProvider>
     </SafeAreaProvider>
   );

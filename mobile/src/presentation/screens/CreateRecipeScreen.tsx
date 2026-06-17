@@ -38,6 +38,7 @@ import { usePremium } from '../context/PremiumContext';
 import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggestedRecipes';
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../hooks/useDraft';
+import { formatUnitLabel } from '../utils/units';
 import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 import { parseLocaleNumber } from '../utils/number';
 
@@ -256,7 +257,11 @@ export const CreateRecipeScreen: React.FC = () => {
         ? ['g', 'kg']
         : ingredient.unit === 'ml' || ingredient.unit === 'l'
           ? ['ml', 'l']
-          : [ingredient.unit];
+          : ingredient.unit === 'oz' || ingredient.unit === 'lb'
+            ? ['oz', 'lb']
+            : ['fl_oz', 'cup', 'tbsp', 'tsp'].includes(ingredient.unit)
+              ? ['fl_oz', 'cup', 'tbsp', 'tsp']
+              : [ingredient.unit];
     return ingredient.purchaseUnitWeight ? ['unit', ...baseUnits] : baseUnits;
   };
 
@@ -270,6 +275,20 @@ export const CreateRecipeScreen: React.FC = () => {
     if (from === 'kg' && to === 'g') return qty * 1000;
     if (from === 'ml' && to === 'l') return qty / 1000;
     if (from === 'l' && to === 'ml') return qty * 1000;
+    if (from === 'oz' && to === 'lb') return qty / 16;
+    if (from === 'lb' && to === 'oz') return qty * 16;
+    if (from === 'tsp' && to === 'tbsp') return qty / 3;
+    if (from === 'tbsp' && to === 'tsp') return qty * 3;
+    if (from === 'tbsp' && to === 'fl_oz') return qty / 2;
+    if (from === 'fl_oz' && to === 'tbsp') return qty * 2;
+    if (from === 'fl_oz' && to === 'cup') return qty / 8;
+    if (from === 'cup' && to === 'fl_oz') return qty * 8;
+    if (from === 'tsp' && to === 'fl_oz') return qty / 6;
+    if (from === 'fl_oz' && to === 'tsp') return qty * 6;
+    if (from === 'tsp' && to === 'cup') return qty / 48;
+    if (from === 'cup' && to === 'tsp') return qty * 48;
+    if (from === 'tbsp' && to === 'cup') return qty / 16;
+    if (from === 'cup' && to === 'tbsp') return qty * 16;
     return qty;
   };
 
@@ -318,8 +337,8 @@ export const CreateRecipeScreen: React.FC = () => {
     const costPerUnit = selectedIngredient.purchasePrice / effectivePurchaseQty;
     const ingredientCost = qtyInPurchaseUnit * costPerUnit;
     const pkgInfo = selectedIngredient.purchaseUnitLabel
-      ? `${selectedIngredient.purchaseQuantity} ${selectedIngredient.purchaseUnitLabel} (${effectivePurchaseQty} ${selectedIngredient.unit})`
-      : `${effectivePurchaseQty} ${selectedIngredient.unit}`;
+      ? `${selectedIngredient.purchaseQuantity} ${selectedIngredient.purchaseUnitLabel} (${effectivePurchaseQty} ${formatUnitLabel(selectedIngredient.unit)})`
+      : `${effectivePurchaseQty} ${formatUnitLabel(selectedIngredient.unit)}`;
 
     if (ratio > 3) {
       setShowIngredientModal(false);
@@ -744,7 +763,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: ['#5E3A23','#E8C98E','#F4C95D','#90BE6D','#7B68EE','#FF6B6B'][i % 6], alignItems: 'center', justifyContent: 'center' }} />
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontSize: 14.5, fontWeight: '700', color: INK }}>{ing.ingredientName}</Text>
-                    <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{ing.quantityUsed} {ing.unit}</Text>
+                    <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{ing.quantityUsed} {formatUnitLabel(ing.unit)}</Text>
                   </View>
                   <TouchableOpacity onPress={() => removeIngredient(ing.ingredientId)}>
                     <Ionicons name="close-circle" size={20} color="#C0392B" />
@@ -831,17 +850,17 @@ export const CreateRecipeScreen: React.FC = () => {
                 <Text style={styles.selectedIngInfo}>
                   {selectedIngredient.purchaseUnitLabel
                     ? t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.purchaseUnitLabel, price: selectedIngredient.purchasePrice.toFixed(2) })
-                      + ` (${selectedIngredient.purchaseQuantity * (selectedIngredient.purchaseUnitWeight ?? 0)} ${selectedIngredient.unit})`
-                    : t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.unit, price: selectedIngredient.purchasePrice.toFixed(2) })}
+                      + ` (${selectedIngredient.purchaseQuantity * (selectedIngredient.purchaseUnitWeight ?? 0)} ${formatUnitLabel(selectedIngredient.unit)})`
+                    : t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: formatUnitLabel(selectedIngredient.unit), price: selectedIngredient.purchasePrice.toFixed(2) })}
                 </Text>
               </Card>
               <Input
-                label={t('createRecipe.quantityUsed', { unit: ingredientUnit || selectedIngredient.unit })}
+                label={t('createRecipe.quantityUsed', { unit: formatUnitLabel(ingredientUnit || selectedIngredient.unit) })}
                 placeholder="0"
                 value={ingredientQuantity}
                 onChangeText={setIngredientQuantity}
                 keyboardType="decimal-pad"
-                suffix={ingredientUnit || selectedIngredient.unit}
+                suffix={formatUnitLabel(ingredientUnit || selectedIngredient.unit)}
               />
               {getCompatibleUnits(selectedIngredient).length > 1 && (
                 <View style={styles.unitSelector}>
@@ -857,7 +876,7 @@ export const CreateRecipeScreen: React.FC = () => {
                       <Text style={[
                         styles.unitBtnText,
                         (ingredientUnit || selectedIngredient.unit) === u && styles.unitBtnTextSelected,
-                      ]}>{u}</Text>
+                      ]}>{formatUnitLabel(u)}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -891,8 +910,8 @@ export const CreateRecipeScreen: React.FC = () => {
                       <Text style={styles.modalIngName}>{item.name}</Text>
                       <Text style={styles.modalIngInfo}>
                         {item.purchaseUnitLabel
-                          ? `${item.purchaseQuantity} ${item.purchaseUnitLabel} (${item.purchaseQuantity * (item.purchaseUnitWeight ?? 0)} ${item.unit})`
-                          : `${item.purchaseQuantity} ${item.unit}`} — R$ {item.purchasePrice.toFixed(2)}
+                          ? `${item.purchaseQuantity} ${item.purchaseUnitLabel} (${item.purchaseQuantity * (item.purchaseUnitWeight ?? 0)} ${formatUnitLabel(item.unit)})`
+                          : `${item.purchaseQuantity} ${formatUnitLabel(item.unit)}`} — R$ {item.purchasePrice.toFixed(2)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -1027,7 +1046,7 @@ export const CreateRecipeScreen: React.FC = () => {
                 <View key={idx} style={styles.confirmRow}>
                   <Text style={styles.confirmLabel}>{ing.ingredientName}</Text>
                   <Text style={styles.confirmValueHighlight}>
-                    {ing.quantityUsed} {ing.unit}
+                    {ing.quantityUsed} {formatUnitLabel(ing.unit)}
                   </Text>
                 </View>
               ))}
@@ -1116,7 +1135,7 @@ export const CreateRecipeScreen: React.FC = () => {
               <View style={styles.confirmDivider} />
               <View style={styles.confirmDetailRow}>
                 <Text style={styles.confirmDetailLabel}>{t('createRecipe.quantityLabel')}</Text>
-                <Text style={styles.confirmDetailValue}>{ingredientConfirm?.qty} {ingredientConfirm?.unit}</Text>
+                <Text style={styles.confirmDetailValue}>{ingredientConfirm?.qty} {formatUnitLabel(ingredientConfirm?.unit || '')}</Text>
               </View>
               <View style={styles.confirmDivider} />
               <View style={styles.confirmDetailRow}>

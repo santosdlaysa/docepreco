@@ -8,7 +8,7 @@ import { getIngredientUnitPrice } from '../../domain/services/ingredientPricing'
  *
  * O backend ainda não persiste estoque de ingredientes, então mantemos o saldo
  * localmente (AsyncStorage). O saldo de cada ingrediente é guardado na unidade
- * base do próprio ingrediente (g, kg, ml, l, unit). A baixa automática é
+ * base do próprio ingrediente. A baixa automática é
  * disparada ao registrar uma venda — consome os ingredientes da receita
  * vendida, resolvendo sub-receitas recursivamente.
  */
@@ -48,6 +48,20 @@ export const convertUnit = (qty: number, from: string, to: string): number => {
   if (from === 'kg' && to === 'g') return qty * 1000;
   if (from === 'ml' && to === 'l') return qty / 1000;
   if (from === 'l' && to === 'ml') return qty * 1000;
+  if (from === 'oz' && to === 'lb') return qty / 16;
+  if (from === 'lb' && to === 'oz') return qty * 16;
+  if (from === 'tsp' && to === 'tbsp') return qty / 3;
+  if (from === 'tbsp' && to === 'tsp') return qty * 3;
+  if (from === 'tbsp' && to === 'fl_oz') return qty / 2;
+  if (from === 'fl_oz' && to === 'tbsp') return qty * 2;
+  if (from === 'fl_oz' && to === 'cup') return qty / 8;
+  if (from === 'cup' && to === 'fl_oz') return qty * 8;
+  if (from === 'tsp' && to === 'fl_oz') return qty / 6;
+  if (from === 'fl_oz' && to === 'tsp') return qty * 6;
+  if (from === 'tsp' && to === 'cup') return qty / 48;
+  if (from === 'cup' && to === 'tsp') return qty * 48;
+  if (from === 'tbsp' && to === 'cup') return qty / 16;
+  if (from === 'cup' && to === 'tbsp') return qty * 16;
   return qty; // unidades incompatíveis ou 'unit' → mantém o valor
 };
 

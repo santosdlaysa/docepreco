@@ -15,6 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoIngredientApi } from '../../data/demo/demoApi';
@@ -26,16 +27,11 @@ import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
-
-const UNIT_OPTIONS: { value: Unit; label: string }[] = [
-  { value: 'unit', label: 'un' },
-  { value: 'g', label: 'g' },
-  { value: 'kg', label: 'kg' },
-  { value: 'ml', label: 'ml' },
-  { value: 'l', label: 'l' },
-];
+import { useUnitSystem } from '../../context/UnitSystemContext';
+import { formatUnitLabel, getUnitOptions } from '../utils/units';
 
 type RouteProps = RouteProp<RootStackParamList, 'EditIngredient'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const fmtBRL = (v: number): string => {
   if (!isFinite(v) || isNaN(v)) return 'R$ 0,00';
@@ -62,7 +58,7 @@ const SHADOW = {
 };
 
 export const CreateIngredientScreen: React.FC = () => {
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { t } = useTranslation();
   const ingredientId = (route.params as any)?.ingredientId as string | undefined;
@@ -81,6 +77,11 @@ export const CreateIngredientScreen: React.FC = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const { showToast } = useToast();
   const { formatCurrencyUnit } = useCurrencyFormat();
+  const { unitSystem } = useUnitSystem();
+  const unitOptions = getUnitOptions(unitSystem);
+  const displayedUnitOptions = unit && !unitOptions.some(option => option.value === unit)
+    ? [{ value: unit, label: formatUnitLabel(unit) }, ...unitOptions]
+    : unitOptions;
   const api = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   useEffect(() => {
@@ -133,7 +134,7 @@ export const CreateIngredientScreen: React.FC = () => {
       let finalQty = parseLocaleNumber(purchaseQuantity);
       let finalUnit: Unit = unit;
 
-      // Converte automaticamente kg→g e l→ml para sempre usar g/ml nas receitas
+      // Mantém a regra antiga para o sistema métrico: kg/l viram a unidade base.
       if (unit === 'kg') {
         finalQty = finalQty * 1000;
         finalUnit = 'g';
@@ -223,7 +224,7 @@ export const CreateIngredientScreen: React.FC = () => {
                   : 'Informe a quantidade total comprada e o valor total pago. Não use aqui a quantidade da receita.'}
               </Text>
               <TouchableOpacity
-                onPress={() => navigation.navigate('PricingTutorial' as any)}
+                onPress={() => navigation.navigate('PricingTutorial')}
                 activeOpacity={0.8}
                 style={st.tutorialBtn}
               >
@@ -260,8 +261,10 @@ export const CreateIngredientScreen: React.FC = () => {
                 💡 Dica: Use gramas ou mililitros
               </Text>
               <Text style={{ fontSize: 12, color: '#558B2F', lineHeight: 18 }}>
-                Cadastre sempre em gramas (g) ou mililitros (ml).{'\n'}
-                Exemplo: 1 kg = 1000 g{'\n'}
+                {unitSystem === 'metric'
+                  ? 'Cadastre em gramas (g) ou mililitros (ml) quando possivel.'
+                  : 'As unidades americanas serao mantidas como voce cadastrar.'}{'\n'}
+                {unitSystem === 'metric' ? 'Exemplo: 1 kg = 1000 g' : 'Novos ingredientes podem usar oz, lb, fl oz, cup, tbsp ou tsp.'}{'\n'}
                 {conversionNote && `${conversionNote}`}
               </Text>
             </View>
@@ -297,7 +300,7 @@ export const CreateIngredientScreen: React.FC = () => {
             <Text style={st.label}>Unidade de medida</Text>
             <Text style={st.hint}>Em qual unidade você usa esse ingrediente nas receitas?</Text>
             <View style={st.ugrid}>
-              {UNIT_OPTIONS.map(u => {
+              {displayedUnitOptions.map(u => {
                 const on = unit === u.value;
                 return (
                   <TouchableOpacity key={u.value} activeOpacity={0.8}
@@ -316,7 +319,7 @@ export const CreateIngredientScreen: React.FC = () => {
             <LinearGradient colors={['#34C97B', GREEN, '#2BA060']} locations={[0, 0.6, 1]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.result}>
               <Text style={st.rl}>Preço por unidade</Text>
-              <Text style={st.rprice}>{formatCurrencyUnit(pricePerUnit)}<Text style={st.runit}> /{unit || 'un'}</Text></Text>
+              <Text style={st.rprice}>{formatCurrencyUnit(pricePerUnit)}<Text style={st.runit}> /{unit ? formatUnitLabel(unit) : 'un'}</Text></Text>
             </LinearGradient>
           )}
 

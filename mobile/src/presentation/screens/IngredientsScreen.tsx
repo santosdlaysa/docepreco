@@ -25,6 +25,7 @@ import { AdBanner } from '../ads';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { getEffectivePurchaseQuantity, getIngredientUnitPrice } from '../../domain/services/ingredientPricing';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { formatUnitLabel } from '../utils/units';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -155,12 +156,12 @@ export const IngredientsScreen: React.FC = () => {
         <Text style={s.rowName}>{item.name}</Text>
         <Text style={s.rowQty}>
           {item.purchaseUnitLabel
-            ? `${item.purchaseQuantity} ${item.purchaseUnitLabel}(s) (${getEffectivePurchaseQuantity(item)}${item.unit}) · ${formatCurrency(item.purchasePrice)}`
-            : `${getEffectivePurchaseQuantity(item)} ${item.unit} · ${formatCurrency(item.purchasePrice)}`}
+            ? `${item.purchaseQuantity} ${item.purchaseUnitLabel}(s) (${getEffectivePurchaseQuantity(item)} ${formatUnitLabel(item.unit)}) · ${formatCurrency(item.purchasePrice)}`
+            : `${getEffectivePurchaseQuantity(item)} ${formatUnitLabel(item.unit)} · ${formatCurrency(item.purchasePrice)}`}
         </Text>
       </View>
       <View style={s.rowRight}>
-        <Text style={s.rowPrice}>{formatCurrencyUnit(getIngredientUnitPrice(item))}/{item.unit}</Text>
+        <Text style={s.rowPrice}>{formatCurrencyUnit(getIngredientUnitPrice(item))}/{formatUnitLabel(item.unit)}</Text>
         <View style={s.rowActions}>
           <TouchableOpacity
             onPress={() => guardAction(() => navigation.navigate('EditIngredient', { ingredientId: item.id }))}

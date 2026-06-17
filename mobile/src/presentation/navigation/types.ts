@@ -36,6 +36,7 @@ export type RootStackParamList = {
   SalesTips: undefined;
   PdfSettings: undefined;
   CurrencySettings: undefined;
+  UnitSettings: undefined;
   IngredientPriceHistory: { ingredientId: string; ingredientName: string };
   Seasons: undefined;
   CreateSeason: undefined;
