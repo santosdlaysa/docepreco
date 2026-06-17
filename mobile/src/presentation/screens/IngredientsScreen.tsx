@@ -76,46 +76,44 @@ export const IngredientsScreen: React.FC = () => {
     }, [])
   );
 
-  const handleDelete = (ingredient: Ingredient) => {
+  const handleDelete = async (ingredient: Ingredient) => {
     if (!guardAction()) return;
-    const originalIndex = ingredients.findIndex(i => i.id === ingredient.id);
-    setIngredients(prev => prev.filter(i => i.id !== ingredient.id));
 
-    const restore = () => {
-      setIngredients(prev => {
-        if (prev.some(i => i.id === ingredient.id)) return prev;
-        const next = [...prev];
-        const idx = Math.max(0, Math.min(originalIndex, next.length));
-        next.splice(idx, 0, ingredient);
-        return next;
+    try {
+      await api.delete(ingredient.id);
+      const originalIndex = ingredients.findIndex(i => i.id === ingredient.id);
+      setIngredients(prev => prev.filter(i => i.id !== ingredient.id));
+
+      const restore = () => {
+        setIngredients(prev => {
+          if (prev.some(i => i.id === ingredient.id)) return prev;
+          const next = [...prev];
+          const idx = Math.max(0, Math.min(originalIndex, next.length));
+          next.splice(idx, 0, ingredient);
+          return next;
+        });
+      };
+
+      showToast(t('ingredients.deleteUndo', { name: ingredient.name }), {
+        type: 'success',
+        action: { label: t('ingredients.undo'), onPress: restore },
       });
-    };
+    } catch (error: any) {
+      const serverMsg = error?.message || '';
+      const isInUseError =
+        serverMsg.includes('em uso') ||
+        serverMsg.includes('in use') ||
+        serverMsg.includes('violates foreign key') ||
+        serverMsg.includes('violates RESTRICT') ||
+        serverMsg.includes('restrict') ||
+        error?.status === 409;
 
-    showToast(t('ingredients.deleteUndo', { name: ingredient.name }), {
-      type: 'success',
-      action: { label: t('ingredients.undo'), onPress: restore },
-      onDismiss: async () => {
-        try {
-          await api.delete(ingredient.id);
-        } catch (error: any) {
-          restore();
-          const serverMsg = error?.message || '';
-          const isInUseError =
-            serverMsg.includes('em uso') ||
-            serverMsg.includes('in use') ||
-            serverMsg.includes('violates foreign key') ||
-            serverMsg.includes('violates RESTRICT') ||
-            serverMsg.includes('restrict') ||
-            error?.status === 409;
-
-          if (isInUseError) {
-            showToast(t('ingredients.inUseError'), 'warning');
-          } else {
-            showToast(`${t('ingredients.deleteError')}: ${serverMsg}`, 'error');
-          }
-        }
-      },
-    });
+      if (isInUseError) {
+        showToast(t('ingredients.inUseError'), 'warning');
+      } else {
+        showToast(`${t('ingredients.deleteError')}: ${serverMsg}`, 'error');
+      }
+    }
   };
 
   // ── Loading skeleton ──
