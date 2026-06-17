@@ -316,7 +316,8 @@ export const PaywallScreen: React.FC = () => {
               ? 'Tudo do Premium + financeiro, estoque e dicas de vendas.'
               : 'Desbloqueie 9 recursos PRO e leve seu negócio de doces a sério.'}
           </Text>
-          {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+          {/* Trial no hero: só mostra se algum pacote da loja tem trial e o usuário é elegível */}
+          {tierPackages.some(p => p.isTrialEligible && p.hasFreeTrial) && (
             <Text style={st.heroTrial}>
               ✨ {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis · depois só pague
             </Text>
@@ -354,10 +355,10 @@ export const PaywallScreen: React.FC = () => {
                       {on && <Ionicons name="checkmark" size={12} color="#fff" />}
                     </View>
                     <Text style={st.planName}>{pkg.title}</Text>
-                    {/* Trial info */}
-                    {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
+                    {/* Trial info — só mostra se a Apple confirmou elegibilidade */}
+                    {pkg.isTrialEligible && pkg.hasFreeTrial && pkg.trialDays && (
                       <Text style={st.planTrial}>
-                        {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis
+                        {pkg.trialDays} dias grátis
                       </Text>
                     )}
                     <Text style={st.planPrice}>{pkg.priceLabel}</Text>
@@ -461,12 +462,6 @@ export const PaywallScreen: React.FC = () => {
             >
               <Ionicons name="card-outline" size={18} color={isMasterTier ? PURPLE : PINK} style={{ marginBottom: 4 }} />
               <Text style={st.planName}>Mensal</Text>
-              {/* Trial info */}
-              {((isMasterTier && masterTrialDays) || (!isMasterTier && premiumTrialDays)) && (
-                <Text style={st.planTrial}>
-                  {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis
-                </Text>
-              )}
               <Text style={st.planPrice}>{isMasterTier ? 'R$ 30' : 'R$ 14'}<Text style={st.planPriceSm}>{isMasterTier ? ',00' : ',90'}</Text></Text>
               <Text style={st.planPer}>por mês</Text>
             </TouchableOpacity>
@@ -480,12 +475,6 @@ export const PaywallScreen: React.FC = () => {
                 <View style={[st.save, { backgroundColor: '#2563EB' }]}><Text style={st.saveText}>ECONOMIZE</Text></View>
                 <Ionicons name="card-outline" size={18} color={PINK} style={{ marginBottom: 4 }} />
                 <Text style={st.planName}>Anual</Text>
-                {/* Trial info */}
-                {premiumTrialDays && (
-                  <Text style={st.planTrial}>
-                    {premiumTrialDays} dias grátis
-                  </Text>
-                )}
                 <Text style={st.planPrice}>R$ 120<Text style={st.planPriceSm}>,00</Text></Text>
                 <Text style={st.planPer}>R$ 10/mês</Text>
               </TouchableOpacity>
