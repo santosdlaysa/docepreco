@@ -34,6 +34,7 @@ import { usePremium } from '../context/PremiumContext';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
+import { parseLocaleNumber } from '../utils/number';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -209,7 +210,7 @@ export const RecipeDetailScreen: React.FC = () => {
     });
   };
 
-  const scaleQty = parseFloat(scaleInput.replace(',', '.'));
+  const scaleQty = parseLocaleNumber(scaleInput);
   const scaleValid = !isNaN(scaleQty) && scaleQty > 0;
   const scaleFactor = recipe && scaleValid ? scaleQty / recipe.yield : null;
 

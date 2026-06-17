@@ -8,6 +8,7 @@ import { ToastFn, ModalOverlay } from '../../components';
 import { formatBRL } from '../format';
 import { Header, FormField, FormActions, inputClass } from './IngredientsPage';
 import { SaleForm } from './SalesPage';
+import { parseLocaleNumber } from '../number';
 
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -248,7 +249,7 @@ function OpenCashModal({ toast, onClose, onDone }: { toast: ToastFn; onClose: ()
     e.preventDefault();
     setSaving(true);
     try {
-      await userApi.openCash(Number(amount) || 0, notes.trim() || undefined);
+      await userApi.openCash(parseLocaleNumber(amount), notes.trim() || undefined);
       toast.success('Caixa aberto!');
       onDone();
     } catch (err) { toast.error((err as Error).message); } finally { setSaving(false); }
@@ -258,7 +259,7 @@ function OpenCashModal({ toast, onClose, onDone }: { toast: ToastFn; onClose: ()
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">Abrir caixa</h3>
         <FormField label="Troco inicial (R$)">
-          <input type="number" step="any" min="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} autoFocus />
+          <input type="text" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} autoFocus />
         </FormField>
         <FormField label="Observações (opcional)">
           <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />
@@ -273,12 +274,12 @@ function CloseCashModal({ session, toast, onClose, onDone }: { session: CashSess
   const [counted, setCounted] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
-  const diff = counted === '' ? null : (Number(counted) || 0) - session.expectedCash;
+  const diff = counted === '' ? null : parseLocaleNumber(counted) - session.expectedCash;
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
-      await userApi.closeCash(Number(counted) || 0, notes.trim() || undefined);
+      await userApi.closeCash(parseLocaleNumber(counted), notes.trim() || undefined);
       toast.success('Caixa fechado!');
       onDone();
     } catch (err) { toast.error((err as Error).message); } finally { setSaving(false); }
@@ -312,7 +313,7 @@ function CloseCashModal({ session, toast, onClose, onDone }: { session: CashSess
           </div>
         </div>
         <FormField label="Valor contado em dinheiro (R$)">
-          <input type="number" step="any" min="0" value={counted} onChange={e => setCounted(e.target.value)} className={inputClass} autoFocus placeholder="0,00" />
+          <input type="text" inputMode="decimal" value={counted} onChange={e => setCounted(e.target.value)} className={inputClass} autoFocus placeholder="0,00" />
         </FormField>
         {diff != null && (
           <div className={`text-sm font-medium rounded-lg px-3 py-2 ${
@@ -337,10 +338,11 @@ function MovementModal({ type, toast, onClose, onDone }: { type: 'sangria' | 'su
   const isSangria = type === 'sangria';
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!Number(amount)) return toast.error('Informe um valor.');
+    const amountValue = parseLocaleNumber(amount);
+    if (!amountValue) return toast.error('Informe um valor.');
     setSaving(true);
     try {
-      await userApi.addCashMovement(type, Number(amount), reason.trim() || undefined);
+      await userApi.addCashMovement(type, amountValue, reason.trim() || undefined);
       toast.success(isSangria ? 'Sangria registrada.' : 'Suprimento registrado.');
       onDone();
     } catch (err) { toast.error((err as Error).message); } finally { setSaving(false); }
@@ -353,7 +355,7 @@ function MovementModal({ type, toast, onClose, onDone }: { type: 'sangria' | 'su
           {isSangria ? 'Retirada de dinheiro do caixa.' : 'Reforço/entrada de dinheiro no caixa.'}
         </p>
         <FormField label="Valor (R$)">
-          <input type="number" step="any" min="0" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} autoFocus placeholder="0,00" />
+          <input type="text" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} autoFocus placeholder="0,00" />
         </FormField>
         <FormField label="Motivo (opcional)">
           <input value={reason} onChange={e => setReason(e.target.value)} className={inputClass} placeholder={isSangria ? 'Ex.: pagamento fornecedor' : 'Ex.: reforço de troco'} />

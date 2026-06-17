@@ -4,6 +4,7 @@ import { userApi, Season } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
+import { parseLocaleNumber } from '../number';
 
 export function SeasonsPage({ toast }: { toast: ToastFn }) {
   const [items, setItems] = useState<Season[]>([]);
@@ -127,7 +128,7 @@ function SeasonForm({
       name: name.trim(),
       startDate,
       endDate,
-      multiplier: Number(multiplier) || 1,
+      multiplier: parseLocaleNumber(multiplier) || 1,
     };
     try {
       if (initial) {
@@ -167,8 +168,8 @@ function SeasonForm({
 
         <FormField label="Multiplicador de preço (ex.: 1.2 = +20%)">
           <input
-            type="number"
-            step="any"
+            type="text"
+            inputMode="decimal"
             value={multiplier}
             onChange={e => setMultiplier(e.target.value)}
             className={inputClass}

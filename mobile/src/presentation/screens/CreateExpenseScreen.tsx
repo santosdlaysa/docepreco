@@ -13,6 +13,7 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { demoExpenseApi } from '../../data/demo/demoApi';
 import { useToast } from '../context/ToastContext';
 import { useDraft } from '../hooks/useDraft';
+import { parseLocaleNumber } from '../utils/number';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'CreateExpense'>;
@@ -104,7 +105,7 @@ export const CreateExpenseScreen: React.FC = () => {
 
   const handleSave = async () => {
     if (!description.trim()) { showToast('Informe a descrição', 'error'); return; }
-    const amtNum = parseFloat(amount.replace(',', '.'));
+    const amtNum = parseLocaleNumber(amount);
     if (isNaN(amtNum) || amtNum <= 0) { showToast('Informe um valor válido', 'error'); return; }
     const expenseDate = parseDateInput(dateInput);
     if (!expenseDate) { showToast('Data inválida (use DD/MM/AAAA)', 'error'); return; }

@@ -13,6 +13,7 @@ import {
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
+import { parseLocaleNumber } from '../number';
 import {
   Header,
   EmptyState,
@@ -210,6 +211,10 @@ const COST_PRESETS = ['Embalagem', 'Gás', 'Energia', 'Mão de obra'];
 const LABOR_PRO_NAME = 'Mão de obra (profissional)';
 const SUB_UNITS = ['un', 'g', 'kg', 'ml', 'l'];
 
+type RecipeIngredientForm = Omit<RecipeIngredient, 'quantityUsed'> & { quantityUsed: string | number };
+type SubRecipeForm = Omit<SubRecipe, 'quantityUsed'> & { quantityUsed: string | number };
+type AdditionalCostForm = Omit<AdditionalCost, 'value'> & { value: string | number };
+
 function getCompatibleUnits(ingredient: Pick<Ingredient, 'unit' | 'purchaseUnitWeight'>): string[] {
   const baseUnits =
     ingredient.unit === 'g' || ingredient.unit === 'kg'
@@ -238,7 +243,7 @@ function RecipeForm({
   // Separa os custos existentes em presets x personalizados (mão de obra
   // profissional é recalculada pela calculadora, igual ao app)
   const presetInit: Record<string, string> = {};
-  const customInit: AdditionalCost[] = [];
+  const customInit: AdditionalCostForm[] = [];
   (initial?.additionalCosts ?? []).forEach(c => {
     if (COST_PRESETS.includes(c.name)) presetInit[c.name] = String(c.value);
     else if (c.name !== LABOR_PRO_NAME) customInit.push(c);
@@ -252,10 +257,10 @@ function RecipeForm({
   const [customMargin, setCustomMargin] = useState(
     initial ? !MARGIN_PRESETS.some(p => p.value === initialMargin) : false
   );
-  const [rows, setRows] = useState<RecipeIngredient[]>(initial?.ingredients ?? []);
-  const [subRows, setSubRows] = useState<SubRecipe[]>(initial?.subRecipes ?? []);
+  const [rows, setRows] = useState<RecipeIngredientForm[]>(initial?.ingredients ?? []);
+  const [subRows, setSubRows] = useState<SubRecipeForm[]>(initial?.subRecipes ?? []);
   const [presetCosts, setPresetCosts] = useState<Record<string, string>>(presetInit);
-  const [customCosts, setCustomCosts] = useState<AdditionalCost[]>(customInit);
+  const [customCosts, setCustomCosts] = useState<AdditionalCostForm[]>(customInit);
   const [hourlyRate, setHourlyRate] = useState('');
   const [prepTime, setPrepTime] = useState('');
   const [saving, setSaving] = useState(false);
@@ -272,7 +277,7 @@ function RecipeForm({
       { ingredientId: first.id, ingredientName: first.name, quantityUsed: 0, unit: first.unit },
     ]);
   };
-  const updateRow = (idx: number, patch: Partial<RecipeIngredient>) =>
+  const updateRow = (idx: number, patch: Partial<RecipeIngredientForm>) =>
     setRows(r => r.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
   const removeRow = (idx: number) => setRows(r => r.filter((_, i) => i !== idx));
 
@@ -285,19 +290,19 @@ function RecipeForm({
       { subRecipeId: first.id, subRecipeName: first.name, quantityUsed: 0, unit: 'un' },
     ]);
   };
-  const updateSubRow = (idx: number, patch: Partial<SubRecipe>) =>
+  const updateSubRow = (idx: number, patch: Partial<SubRecipeForm>) =>
     setSubRows(s => s.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
   const removeSubRow = (idx: number) => setSubRows(s => s.filter((_, i) => i !== idx));
 
   // ── Custos personalizados ──
   const addCustomCost = () => setCustomCosts(c => [...c, { name: '', value: 0 }]);
-  const updateCustomCost = (idx: number, patch: Partial<AdditionalCost>) =>
+  const updateCustomCost = (idx: number, patch: Partial<AdditionalCostForm>) =>
     setCustomCosts(c => c.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
   const removeCustomCost = (idx: number) => setCustomCosts(c => c.filter((_, i) => i !== idx));
 
   const laborCostValue = (() => {
-    const rate = parseFloat(hourlyRate.replace(',', '.'));
-    const mins = parseFloat(prepTime.replace(',', '.'));
+    const rate = parseLocaleNumber(hourlyRate);
+    const mins = parseLocaleNumber(prepTime);
     if (rate > 0 && mins > 0) return Math.round((rate / 60) * mins * 100) / 100;
     return 0;
   })();
@@ -305,7 +310,7 @@ function RecipeForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error('Informe o nome da receita.');
-    if (!yieldValue || Number(yieldValue) <= 0) return toast.error('Informe o rendimento.');
+    if (!yieldValue || parseLocaleNumber(yieldValue) <= 0) return toast.error('Informe o rendimento.');
     if (rows.length === 0 && subRows.length === 0)
       return toast.error('Adicione ao menos um ingrediente ou receita.');
     for (const row of rows) {
@@ -317,11 +322,11 @@ function RecipeForm({
 
     const additionalCosts: AdditionalCost[] = [];
     COST_PRESETS.forEach(n => {
-      const v = parseFloat((presetCosts[n] ?? '').replace(',', '.')) || 0;
+      const v = parseLocaleNumber(presetCosts[n] ?? '');
       if (v > 0) additionalCosts.push({ name: n, value: v });
     });
     customCosts.forEach(c => {
-      const v = Number(c.value) || 0;
+      const v = parseLocaleNumber(c.value);
       if (c.name.trim() && v > 0) additionalCosts.push({ name: c.name.trim(), value: v });
     });
     if (laborCostValue > 0) additionalCosts.push({ name: LABOR_PRO_NAME, value: laborCostValue });
@@ -329,11 +334,11 @@ function RecipeForm({
     setSaving(true);
     const data: CreateRecipeDTO = {
       name: name.trim(),
-      yield: Number(yieldValue) || 1,
-      profitMargin: Number(margin) || 30,
-      ingredients: rows.map(r => ({ ...r, quantityUsed: Number(r.quantityUsed) || 0 })),
+      yield: parseLocaleNumber(yieldValue) || 1,
+      profitMargin: parseLocaleNumber(margin) || 30,
+      ingredients: rows.map(r => ({ ...r, quantityUsed: parseLocaleNumber(r.quantityUsed) })),
       additionalCosts,
-      subRecipes: subRows.map(s => ({ ...s, quantityUsed: Number(s.quantityUsed) || 0 })),
+      subRecipes: subRows.map(s => ({ ...s, quantityUsed: parseLocaleNumber(s.quantityUsed) })),
     };
     try {
       if (initial) {
@@ -388,7 +393,8 @@ function RecipeForm({
 
         <FormField label="Rendimento (unidades)">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             step="any"
             value={yieldValue}
             onChange={e => setYieldValue(e.target.value)}
@@ -404,7 +410,7 @@ function RecipeForm({
           </label>
           <div className="grid grid-cols-3 gap-2">
             {MARGIN_PRESETS.map(p => {
-              const selected = !customMargin && Number(margin) === p.value;
+              const selected = !customMargin && parseLocaleNumber(margin) === p.value;
               return (
                 <button
                   key={p.value}
@@ -447,8 +453,8 @@ function RecipeForm({
           </div>
           {customMargin && (
             <input
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={margin}
               onChange={e => setMargin(e.target.value)}
               placeholder="Margem em %"
@@ -459,15 +465,15 @@ function RecipeForm({
 
         {/* 📊 Painel de Cálculos em Tempo Real */}
         {(() => {
-          const yieldNum = Number(yieldValue) || 1;
-          const marginNum = Number(margin) || 0;
+          const yieldNum = parseLocaleNumber(yieldValue) || 1;
+          const marginNum = parseLocaleNumber(margin);
 
           // Calcula custo dos ingredientes
           let ingredientsCost = 0;
           rows.forEach(row => {
             const ing = ingredients.find(i => i.id === row.ingredientId);
             if (ing) {
-              const qtyUsed = Number(row.quantityUsed) || 0;
+              const qtyUsed = parseLocaleNumber(row.quantityUsed);
               const pricePerUnit = ing.purchasePrice / ing.purchaseQuantity;
               ingredientsCost += pricePerUnit * qtyUsed;
             }
@@ -476,10 +482,10 @@ function RecipeForm({
           // Calcula custos adicionais
           let additionalCostTotal = 0;
           Object.values(presetCosts).forEach(v => {
-            additionalCostTotal += parseFloat(v.replace(',', '.')) || 0;
+            additionalCostTotal += parseLocaleNumber(v);
           });
           customCosts.forEach(c => {
-            additionalCostTotal += Number(c.value) || 0;
+            additionalCostTotal += parseLocaleNumber(c.value);
           });
           additionalCostTotal += laborCostValue;
 
@@ -568,10 +574,10 @@ function RecipeForm({
                     )}
                     <div className="flex items-center gap-2">
                       <input
-                        type="number"
-                        step="any"
+                        type="text"
+                        inputMode="decimal"
                         value={row.quantityUsed || ''}
-                        onChange={e => updateRow(idx, { quantityUsed: Number(e.target.value) })}
+                        onChange={e => updateRow(idx, { quantityUsed: e.target.value })}
                         placeholder="Quantidade usada"
                         className={inputClass + ' flex-1 !w-auto min-w-0'}
                       />
@@ -628,10 +634,10 @@ function RecipeForm({
                   </select>
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
-                      step="any"
+                      type="text"
+                      inputMode="decimal"
                       value={row.quantityUsed || ''}
-                      onChange={e => updateSubRow(idx, { quantityUsed: Number(e.target.value) })}
+                      onChange={e => updateSubRow(idx, { quantityUsed: e.target.value })}
                       placeholder="Quantidade"
                       className={inputClass + ' flex-1 !w-auto min-w-0'}
                     />
@@ -668,8 +674,8 @@ function RecipeForm({
                 <div className="relative w-28">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$</span>
                   <input
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
                     value={presetCosts[n] ?? ''}
                     onChange={e => setPresetCosts(p => ({ ...p, [n]: e.target.value }))}
                     placeholder="0,00"
@@ -692,10 +698,10 @@ function RecipeForm({
                     className={inputClass + ' flex-1 !w-auto min-w-0'}
                   />
                   <input
-                    type="number"
-                    step="any"
+                    type="text"
+                    inputMode="decimal"
                     value={c.value || ''}
-                    onChange={e => updateCustomCost(idx, { value: Number(e.target.value) })}
+                    onChange={e => updateCustomCost(idx, { value: e.target.value })}
                     placeholder="R$"
                     className={inputClass + ' !w-24 shrink-0'}
                   />
@@ -719,8 +725,8 @@ function RecipeForm({
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$/h</span>
               <input
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 value={hourlyRate}
                 onChange={e => setHourlyRate(e.target.value)}
                 placeholder="20"
@@ -729,8 +735,8 @@ function RecipeForm({
             </div>
             <div className="relative">
               <input
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 value={prepTime}
                 onChange={e => setPrepTime(e.target.value)}
                 placeholder="Minutos"

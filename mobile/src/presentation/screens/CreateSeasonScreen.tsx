@@ -11,6 +11,7 @@ import { RootStackParamList } from '../navigation/types';
 import { seasonApi } from '../../data/api/seasonApi';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
+import { parseLocaleNumber } from '../utils/number';
 
 // ── Design tokens ──
 const INK = '#3D2233';
@@ -78,8 +79,8 @@ export const CreateSeasonScreen: React.FC = () => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(startDate)) e.startDate = t('createSeason.dateFormat');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(endDate)) e.endDate = t('createSeason.dateFormat');
     if (startDate && endDate && startDate > endDate) e.endDate = t('createSeason.endAfterStart');
-    const pct = parseFloat(percentText);
-    if (isNaN(pct) || pct <= -100) e.percent = t('createSeason.invalidValue');
+    const pct = parseLocaleNumber(percentText);
+    if (!percentText.trim() || pct <= -100) e.percent = t('createSeason.invalidValue');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -88,7 +89,7 @@ export const CreateSeasonScreen: React.FC = () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      const multiplier = 1 + parseFloat(percentText) / 100;
+      const multiplier = 1 + parseLocaleNumber(percentText) / 100;
       const data = { name: name.trim(), startDate, endDate, multiplier };
       if (isEditing) {
         await seasonApi.update(seasonId!, data);
@@ -103,8 +104,8 @@ export const CreateSeasonScreen: React.FC = () => {
     }
   };
 
-  const pct = parseFloat(percentText);
-  const previewMultiplier = !isNaN(pct) ? 1 + pct / 100 : null;
+  const pct = parseLocaleNumber(percentText);
+  const previewMultiplier = percentText.trim() ? 1 + pct / 100 : null;
 
   return (
     <SafeAreaView style={s.safe}>

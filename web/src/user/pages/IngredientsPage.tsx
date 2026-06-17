@@ -5,6 +5,7 @@ import { userApi, Ingredient, CreateIngredientDTO, Unit } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
+import { parseLocaleNumber } from '../number';
 
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'unit', label: 'un' },
@@ -197,9 +198,9 @@ function IngredientForm({
       : [];
 
   // ── Preview do preço por unidade ──
-  const qtyN = parseFloat(quantity.replace(',', '.')) || 0;
-  const priceN = parseFloat(price.replace(',', '.')) || 0;
-  const weightN = parseFloat(pkgWeight.replace(',', '.')) || 0;
+  const qtyN = parseLocaleNumber(quantity);
+  const priceN = parseLocaleNumber(price);
+  const weightN = parseLocaleNumber(pkgWeight);
   const effectiveQty = useCustom && weightN > 0 ? qtyN * weightN : qtyN;
   const pricePerUnit = effectiveQty > 0 ? priceN / effectiveQty : 0;
   const pricePerPkg = qtyN > 0 ? priceN / qtyN : 0;
@@ -339,8 +340,8 @@ function IngredientForm({
           <FormField label="Peso por embalagem">
             <div className="relative">
               <input
-                type="number"
-                step="any"
+                type="text"
+                inputMode="decimal"
                 value={pkgWeight}
                 onChange={e => setPkgWeight(e.target.value)}
                 placeholder="330"
@@ -358,8 +359,8 @@ function IngredientForm({
         <div className="grid grid-cols-2 gap-3">
           <FormField label={useCustom ? `Quantidade comprada (${pkgLabel}s)` : 'Quantidade comprada'}>
             <input
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={quantity}
               onChange={e => setQuantity(e.target.value)}
               placeholder={useCustom ? '2' : '1000'}
@@ -371,8 +372,8 @@ function IngredientForm({
           </FormField>
           <FormField label="Valor total pago (R$)">
             <input
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={price}
               onChange={e => setPrice(e.target.value)}
               placeholder="14,00"

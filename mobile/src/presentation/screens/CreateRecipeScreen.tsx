@@ -39,6 +39,7 @@ import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggested
 import { useTranslation } from 'react-i18next';
 import { useDraft } from '../hooks/useDraft';
 import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
+import { parseLocaleNumber } from '../utils/number';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -274,7 +275,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const confirmAndAddIngredient = () => {
     if (!selectedIngredient) return;
-    const qty = parseFloat(ingredientQuantity.replace(',', '.'));
+    const qty = parseLocaleNumber(ingredientQuantity);
     const unit = ingredientUnit || selectedIngredient.unit;
 
     setIngredients(prev => [
@@ -293,15 +294,14 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const addIngredient = () => {
-    const normalizedQty = ingredientQuantity.replace(',', '.');
-    if (!selectedIngredient || !ingredientQuantity || parseFloat(normalizedQty) <= 0) return;
+    const qty = parseLocaleNumber(ingredientQuantity);
+    if (!selectedIngredient || !ingredientQuantity || qty <= 0) return;
     const existing = ingredients.find(i => i.ingredientId === selectedIngredient.id);
     if (existing) {
       showToast(t('createRecipe.alreadyAdded'), 'warning');
       return;
     }
 
-    const qty = parseFloat(normalizedQty);
     const unit = ingredientUnit || selectedIngredient.unit;
     if (!getCompatibleUnits(selectedIngredient).includes(unit)) {
       showToast('Unidade incompatível com o ingrediente selecionado.', 'error');
@@ -361,8 +361,8 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const addSubRecipe = () => {
-    const normalizedQty = subRecipeQuantity.replace(',', '.');
-    if (!selectedSubRecipe || !subRecipeQuantity || parseFloat(normalizedQty) <= 0) return;
+    const qty = parseLocaleNumber(subRecipeQuantity);
+    if (!selectedSubRecipe || !subRecipeQuantity || qty <= 0) return;
 
     if (selectedSubRecipe.id === recipeId) {
       showToast(t('createRecipe.subRecipeIsSelf'), 'warning');
@@ -375,7 +375,6 @@ export const CreateRecipeScreen: React.FC = () => {
       return;
     }
 
-    const qty = parseFloat(normalizedQty);
     const unit = subRecipeUnit;
     Alert.alert(
       t('createRecipe.confirmSubRecipe'),
@@ -413,8 +412,7 @@ export const CreateRecipeScreen: React.FC = () => {
     const sanitized = value.replace(/[^0-9.,]/g, '');
     setAdditionalCostInputs(prev => ({ ...prev, [name]: sanitized }));
 
-    const normalized = sanitized.replace(',', '.');
-    const numValue = parseFloat(normalized) || 0;
+    const numValue = parseLocaleNumber(sanitized);
     if (numValue <= 0) {
       setAdditionalCosts(prev => prev.filter(c => c.name !== name));
     } else {
@@ -433,8 +431,8 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   const laborCostValue = (() => {
-    const rate = parseFloat(hourlyRate.replace(',', '.'));
-    const mins = parseFloat(prepTimeMinutes);
+    const rate = parseLocaleNumber(hourlyRate);
+    const mins = parseLocaleNumber(prepTimeMinutes);
     if (rate > 0 && mins > 0) return Math.round(((rate / 60) * mins) * 100) / 100;
     return 0;
   })();
@@ -511,7 +509,7 @@ export const CreateRecipeScreen: React.FC = () => {
       const payload = {
         name: name.trim(),
         yield: parseInt(yieldAmount),
-        profitMargin: parseFloat(profitMargin) || 30,
+        profitMargin: parseLocaleNumber(profitMargin) || 30,
         ingredients,
         additionalCosts: getFinalCosts(),
         subRecipes,

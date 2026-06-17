@@ -4,6 +4,7 @@ import { userApi, Order, OrderStatus, CreateOrderDTO, Recipe } from '../userApi'
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL, formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
+import { parseLocaleNumber } from '../number';
 
 const STATUS: { value: OrderStatus; label: string; cls: string }[] = [
   { value: 'pending', label: 'Pendente', cls: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
@@ -213,8 +214,8 @@ function OrderForm({
   const [notes, setNotes] = useState(initial?.notes ?? '');
   const [saving, setSaving] = useState(false);
 
-  const qtyN = parseFloat(quantity.replace(',', '.')) || 0;
-  const priceN = parseFloat(unitPrice.replace(',', '.')) || 0;
+  const qtyN = parseLocaleNumber(quantity);
+  const priceN = parseLocaleNumber(unitPrice);
   const totalPrice = qtyN * priceN;
 
   const submit = async (e: React.FormEvent) => {
@@ -303,10 +304,10 @@ function OrderForm({
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Quantidade">
-            <input type="number" step="any" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} />
+            <input type="text" inputMode="decimal" value={quantity} onChange={e => setQuantity(e.target.value)} className={inputClass} />
           </FormField>
           <FormField label="Preço unitário (R$)">
-            <input type="number" step="any" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className={inputClass} />
+            <input type="text" inputMode="decimal" value={unitPrice} onChange={e => setUnitPrice(e.target.value)} className={inputClass} />
           </FormField>
         </div>
 

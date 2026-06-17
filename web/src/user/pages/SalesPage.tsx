@@ -4,6 +4,7 @@ import { userApi, Sale, Recipe, CreateSaleDTO } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL, formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtnDanger } from './IngredientsPage';
+import { parseLocaleNumber } from '../number';
 
 export function SalesPage({ toast }: { toast: ToastFn }) {
   const [sales, setSales] = useState<Sale[]>([]);
@@ -126,8 +127,8 @@ export function SaleForm({
     setSaving(true);
     const data: CreateSaleDTO = {
       recipeId,
-      quantitySold: Number(quantity) || 1,
-      salePrice: Number(price) || 0,
+      quantitySold: parseLocaleNumber(quantity) || 1,
+      salePrice: parseLocaleNumber(price),
       saleDate: date,
       notes: notes.trim() || undefined,
       paymentMethod,
@@ -165,7 +166,8 @@ export function SaleForm({
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Quantidade">
             <input
-              type="number"
+              type="text"
+              inputMode="numeric"
               step="any"
               value={quantity}
               onChange={e => setQuantity(e.target.value)}
@@ -174,8 +176,8 @@ export function SaleForm({
           </FormField>
           <FormField label="Preço unitário (R$)">
             <input
-              type="number"
-              step="any"
+              type="text"
+              inputMode="decimal"
               value={price}
               onChange={e => setPrice(e.target.value)}
               className={inputClass}

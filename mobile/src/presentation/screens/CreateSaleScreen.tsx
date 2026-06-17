@@ -27,6 +27,7 @@ import { Ingredient } from '../../domain/entities/Ingredient';
 import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
+import { parseLocaleNumber } from '../utils/number';
 
 /* ─── Design tokens ─── */
 const INK = '#3D2233';
@@ -86,7 +87,7 @@ export const CreateSaleScreen: React.FC = () => {
     const e: Record<string, string> = {};
     if (!selectedRecipe) e.recipe = 'Escolha uma receita';
     if (!quantity || parseInt(quantity) <= 0) e.qty = 'Obrigatório';
-    if (!salePrice || parseFloat(salePrice.replace(',', '.')) <= 0) e.price = 'Obrigatório';
+    if (!salePrice || parseLocaleNumber(salePrice) <= 0) e.price = 'Obrigatório';
     if (!saleDate) e.date = 'Obrigatório';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -100,7 +101,7 @@ export const CreateSaleScreen: React.FC = () => {
       await sApi.create({
         recipeId: selectedRecipe!.id,
         quantitySold: soldQty,
-        salePrice: parseFloat(salePrice.replace(',', '.')),
+        salePrice: parseLocaleNumber(salePrice),
         saleDate,
         notes: notes.trim() || undefined,
       });
@@ -124,7 +125,7 @@ export const CreateSaleScreen: React.FC = () => {
   };
 
   const totalRevenue = quantity && salePrice
-    ? parseInt(quantity) * parseFloat(salePrice.replace(',', '.'))
+    ? parseInt(quantity) * parseLocaleNumber(salePrice)
     : null;
   const showTotal = totalRevenue !== null && !isNaN(totalRevenue) && totalRevenue > 0;
 

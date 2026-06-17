@@ -24,6 +24,7 @@ import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
+import { parseLocaleNumber } from '../utils/number';
 
 const UNIT_OPTIONS: { value: Unit; label: string }[] = [
   { value: 'unit', label: 'un' },
@@ -116,8 +117,8 @@ export const CreateIngredientScreen: React.FC = () => {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Obrigatório';
-    if (!purchaseQuantity || parseFloat(purchaseQuantity.replace(',', '.')) <= 0) e.qty = 'Obrigatório';
-    if (!purchasePrice || parseFloat(purchasePrice.replace(',', '.')) <= 0) e.price = 'Obrigatório';
+    if (!purchaseQuantity || parseLocaleNumber(purchaseQuantity) <= 0) e.qty = 'Obrigatório';
+    if (!purchasePrice || parseLocaleNumber(purchasePrice) <= 0) e.price = 'Obrigatório';
     if (!unit) e.unit = 'Escolha uma unidade';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -127,7 +128,7 @@ export const CreateIngredientScreen: React.FC = () => {
     if (!validate()) return;
     setLoading(true);
     try {
-      let finalQty = parseFloat(purchaseQuantity.replace(',', '.'));
+      let finalQty = parseLocaleNumber(purchaseQuantity);
       let finalUnit: Unit = unit;
 
       // Converte automaticamente kg→g e l→ml para sempre usar g/ml nas receitas
@@ -142,7 +143,7 @@ export const CreateIngredientScreen: React.FC = () => {
       const payload = {
         name: name.trim(),
         purchaseQuantity: finalQty,
-        purchasePrice: parseFloat(purchasePrice.replace(',', '.')),
+        purchasePrice: parseLocaleNumber(purchasePrice),
         unit: finalUnit,
       };
 
@@ -165,8 +166,8 @@ export const CreateIngredientScreen: React.FC = () => {
   };
 
   // Preview
-  const qty = parseFloat((purchaseQuantity || '0').replace(',', '.'));
-  const price = parseFloat((purchasePrice || '0').replace(',', '.'));
+  const qty = parseLocaleNumber(purchaseQuantity);
+  const price = parseLocaleNumber(purchasePrice);
   const pricePerUnit = qty > 0 ? price / qty : 0;
   const showPreview = qty > 0 && price > 0;
 

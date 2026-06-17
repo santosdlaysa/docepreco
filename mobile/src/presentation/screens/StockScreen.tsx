@@ -27,6 +27,7 @@ import {
   getStockState, getEntry, setQty, addEntry, getMovements, unitCost,
   StockState, StockMovement,
 } from '../../data/stock/stockStorage';
+import { parseLocaleNumber } from '../utils/number';
 
 /* ─── Design tokens ─── */
 const INK = '#3D2233';
@@ -47,7 +48,7 @@ const fmtQty = (v: number) => {
   const r = Math.round(v * 1000) / 1000;
   return Number.isInteger(r) ? String(r) : r.toFixed(2).replace(/\.?0+$/, '');
 };
-const parseNum = (t: string) => parseFloat(t.replace(',', '.'));
+const parseNum = parseLocaleNumber;
 
 export const StockScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
