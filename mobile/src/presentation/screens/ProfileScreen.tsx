@@ -302,41 +302,6 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {showCurrencyModal && (
-            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', zIndex: 999 }}>
-              <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, gap: 12 }}>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                  <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>Selecionar moeda</Text>
-                  <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
-                    <Ionicons name="close" size={24} color={INK2} />
-                  </TouchableOpacity>
-                </View>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {Object.entries(CURRENCY_INFO).map(([c, info]) => (
-                    <TouchableOpacity
-                      key={c}
-                      onPress={() => {
-                        setCurrency(c as any);
-                        setShowCurrencyModal(false);
-                      }}
-                      style={[
-                        { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 2 },
-                        currency === c
-                          ? { backgroundColor: PINK, borderColor: PINK }
-                          : { backgroundColor: '#F5F5F5', borderColor: '#E0E0E0' }
-                      ]}
-                    >
-                      <Text style={[{ fontSize: 13, fontWeight: '600' }, currency === c ? { color: '#fff' } : { color: INK }]}>
-                        {c}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </View>
-          )}
-        </View>
-
           {/* ── Ajuda ── */}
           <Text style={st.secLabel}>Ajuda</Text>
           <View style={st.gcard}>
@@ -394,6 +359,40 @@ export const ProfileScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
+
+      {showCurrencyModal && (
+        <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 18, gap: 12, paddingBottom: 30 }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>Selecionar moeda</Text>
+              <TouchableOpacity onPress={() => setShowCurrencyModal(false)}>
+                <Ionicons name="close" size={24} color={INK2} />
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {Object.entries(CURRENCY_INFO).map(([c, info]) => (
+                <TouchableOpacity
+                  key={c}
+                  onPress={() => {
+                    setCurrency(c as any);
+                    setShowCurrencyModal(false);
+                  }}
+                  style={[
+                    { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 2 },
+                    currency === c
+                      ? { backgroundColor: PINK, borderColor: PINK }
+                      : { backgroundColor: '#F5F5F5', borderColor: '#E0E0E0' }
+                  ]}
+                >
+                  <Text style={[{ fontSize: 13, fontWeight: '600' }, currency === c ? { color: '#fff' } : { color: INK }]}>
+                    {c}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
