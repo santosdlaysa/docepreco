@@ -31,14 +31,19 @@ const TESTIMONIALS = [
 
 const PLANS = [
   {
-    name: 'Gratuito', price: 'R$ 0', period: '/mes', desc: 'Para quem esta comecando',
+    name: 'Gratuito', price: 'R$ 0', priceAnnual: 'R$ 0', period: '/mes', desc: 'Para quem esta comecando',
     features: ['Ate 10 receitas', 'Ingredientes ilimitados', 'Calculo de custo', 'Geracao de PDF'],
     highlighted: false,
   },
   {
-    name: 'Premium', price: 'R$ 14,90', period: '/mes', desc: 'Para quem quer crescer',
+    name: 'Premium', price: 'R$ 14,90', priceAnnual: 'R$ 120,00', period: '/mes', desc: 'Para quem quer crescer',
     features: ['Receitas ilimitadas', 'Ingredientes ilimitados', 'Dashboard completo', 'Gestao de clientes', 'Relatorios avancados', 'Suporte prioritario'],
     highlighted: true,
+  },
+  {
+    name: 'Master', price: 'R$ 30,00', priceAnnual: 'R$ 200,00', period: '/mes', desc: 'Solucao completa para seu negocio',
+    features: ['Tudo do Premium', 'Controle de estoque avancado', 'Gestao de financeiro', 'DRE completa', 'Dicas personalizadas', 'API para integrações', 'Suporte premium 24/7'],
+    highlighted: false,
   },
 ];
 
@@ -49,6 +54,7 @@ function formatCount(n: number): string {
 
 export function LandingPage() {
   const [apiStats, setApiStats] = useState<{ totalUsers: number; totalRecipes: number } | null>(null);
+  const [isAnnual, setIsAnnual] = useState(false);
 
   useEffect(() => {
     fetch(`${API_BASE}/public/stats`)
@@ -302,11 +308,28 @@ export function LandingPage() {
             <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
               Comece de graca e faca upgrade quando quiser, direto pelo app.
             </p>
+
+            <div className="mt-8 flex items-center justify-center gap-4">
+              <span className={`text-sm font-semibold ${!isAnnual ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Mensal</span>
+              <button
+                onClick={() => setIsAnnual(!isAnnual)}
+                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                  isAnnual ? 'bg-primary-500' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                    isAnnual ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <span className={`text-sm font-semibold ${isAnnual ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Anual</span>
+            </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
+          <div className="grid sm:grid-cols-3 gap-4 max-w-6xl mx-auto">
             {PLANS.map((plan, i) => (
-              <div key={i} className={`rounded-2xl p-8 sm:p-10 transition-all relative ${
+              <div key={i} className={`rounded-2xl p-6 sm:p-7 transition-all relative ${
                 plan.highlighted
                   ? 'bg-gray-950 dark:bg-white/5 text-white ring-1 ring-gray-800 dark:ring-gray-700 shadow-2xl shadow-gray-900/30'
                   : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600'
@@ -316,24 +339,33 @@ export function LandingPage() {
                     Mais popular
                   </div>
                 )}
-                <div className="flex items-center gap-3 mb-2">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${plan.highlighted ? 'bg-white/10' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
-                    {plan.highlighted ? <Sparkles size={18} className="text-primary-400" /> : <Shield size={18} className="text-primary-500" />}
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${plan.highlighted ? 'bg-white/10' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
+                    {plan.highlighted ? <Sparkles size={16} className="text-primary-400" /> : <Shield size={16} className="text-primary-500" />}
                   </div>
-                  <h3 className={`font-bold text-lg ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.name}</h3>
+                  <h3 className={`font-bold text-base ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.name}</h3>
                 </div>
-                <p className={`text-sm mb-6 ${plan.highlighted ? 'text-gray-400' : 'text-gray-500'}`}>{plan.desc}</p>
+                <p className={`text-xs mb-4 ${plan.highlighted ? 'text-gray-400' : 'text-gray-500'}`}>{plan.desc}</p>
 
-                <div className="flex items-baseline gap-1 mb-8">
-                  <span className={`text-5xl font-extrabold tracking-tight ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.price}</span>
-                  <span className="text-sm text-gray-400">{plan.period}</span>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <span className={`text-4xl font-extrabold tracking-tight ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                    {isAnnual ? plan.priceAnnual : plan.price}
+                  </span>
+                  <span className={`text-xs ${plan.highlighted ? 'text-gray-400' : 'text-gray-400'}`}>
+                    {isAnnual ? '/ano' : plan.period}
+                  </span>
                 </div>
+                {plan.highlighted && (
+                  <div className={`text-xs mb-2 ${isAnnual ? 'text-gray-400' : 'text-gray-400'}`}>
+                    {isAnnual ? `ou ${plan.price} por mês` : `ou ${plan.priceAnnual} por ano`}
+                  </div>
+                )}
 
-                <div className={`h-px mb-8 ${plan.highlighted ? 'bg-gray-800' : 'bg-gray-100 dark:bg-gray-700'}`} />
+                <div className={`h-px mb-6 ${plan.highlighted ? 'bg-gray-800' : 'bg-gray-100 dark:bg-gray-700'}`} />
 
-                <ul className="space-y-3.5">
+                <ul className="space-y-2.5">
                   {plan.features.map((feat, j) => (
-                    <li key={j} className={`flex items-center gap-3 text-sm ${plan.highlighted ? 'text-gray-300' : 'text-gray-600 dark:text-gray-300'}`}>
+                    <li key={j} className={`flex items-center gap-2 text-xs ${plan.highlighted ? 'text-gray-300' : 'text-gray-600 dark:text-gray-300'}`}>
                       <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${plan.highlighted ? 'bg-primary-500/20' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
                         <Check size={12} className={plan.highlighted ? 'text-primary-400' : 'text-primary-500'} />
                       </div>
