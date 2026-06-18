@@ -1,0 +1,71 @@
+<svg viewBox="0 0 360 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="360" height="800" fill="#FFF6F0"/>
+
+  <!-- Header -->
+  <rect width="360" height="60" fill="#43BE6E"/>
+  <text x="180" y="40" font-size="20" font-weight="bold" fill="white" text-anchor="middle">Relatórios</text>
+
+  <!-- Período -->
+  <rect x="15" y="75" width="330" height="40" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <text x="30" y="102" font-size="12" fill="#9A7E8C">📅 Agosto 2024</text>
+  <text x="330" y="102" font-size="14" text-anchor="end" fill="#43BE6E">▼</text>
+
+  <!-- KPIs -->
+  <g id="kpis">
+    <!-- Total de Vendas -->
+    <rect x="15" y="130" width="105" height="80" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+    <text x="22" y="150" font-size="10" fill="#9A7E8C">Total Vendido</text>
+    <text x="22" y="170" font-size="16" font-weight="bold" fill="#3D2233">R$ 4.850</text>
+    <text x="22" y="185" font-size="9" fill="#43BE6E">↑ 12% vs mês ant.</text>
+
+    <!-- Número de vendas -->
+    <rect x="127.5" y="130" width="105" height="80" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+    <text x="134.5" y="150" font-size="10" fill="#9A7E8C">Num. Vendas</text>
+    <text x="134.5" y="170" font-size="16" font-weight="bold" fill="#3D2233">24</text>
+    <text x="134.5" y="185" font-size="9" fill="#43BE6E">↑ 8% vs mês ant.</text>
+
+    <!-- Ticket Médio -->
+    <rect x="240" y="130" width="105" height="80" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+    <text x="247" y="150" font-size="10" fill="#9A7E8C">Ticket Médio</text>
+    <text x="247" y="170" font-size="16" font-weight="bold" fill="#3D2233">R$ 202</text>
+    <text x="247" y="185" font-size="9" fill="#43BE6E">↑ 3% vs mês ant.</text>
+  </g>
+
+  <!-- Gráfico de Vendas -->
+  <text x="15" y="240" font-size="13" font-weight="bold" fill="#3D2233">Vendas por dia</text>
+  <rect x="15" y="255" width="330" height="150" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+
+  <!-- Barras do gráfico -->
+  <g id="chart">
+    <rect x="35" y="350" width="15" height="40" fill="#43BE6E" opacity="0.7"/>
+    <rect x="55" y="355" width="15" height="35" fill="#43BE6E" opacity="0.7"/>
+    <rect x="75" y="320" width="15" height="70" fill="#43BE6E" opacity="0.9"/>
+    <rect x="95" y="330" width="15" height="60" fill="#43BE6E" opacity="0.8"/>
+    <rect x="115" y="280" width="15" height="110" fill="#43BE6E"/>
+    <rect x="135" y="310" width="15" height="80" fill="#43BE6E" opacity="0.8"/>
+    <rect x="155" y="340" width="15" height="50" fill="#43BE6E" opacity="0.7"/>
+    <rect x="175" y="300" width="15" height="90" fill="#43BE6E" opacity="0.8"/>
+    <rect x="195" y="320" width="15" height="70" fill="#43BE6E" opacity="0.8"/>
+    <rect x="215" y="350" width="15" height="40" fill="#43BE6E" opacity="0.7"/>
+    <rect x="235" y="310" width="15" height="80" fill="#43BE6E" opacity="0.8"/>
+    <rect x="255" y="290" width="15" height="100" fill="#43BE6E" opacity="0.8"/>
+    <rect x="275" y="330" width="15" height="60" fill="#43BE6E" opacity="0.7"/>
+    <rect x="295" y="310" width="15" height="80" fill="#43BE6E" opacity="0.8"/>
+  </g>
+
+  <!-- Receitas Top -->
+  <text x="15" y="440" font-size="13" font-weight="bold" fill="#3D2233">Receitas Mais Vendidas</text>
+
+  <rect x="15" y="455" width="330" height="55" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <circle cx="40" cy="482" r="12" fill="#F0B6D2"/>
+  <text x="60" y="475" font-size="12" font-weight="bold" fill="#3D2233">Bolo de Chocolate</text>
+  <text x="60" y="490" font-size="10" fill="#9A7E8C">6 vendas • R$ 390</text>
+  <text x="320" y="482" font-size="11" font-weight="bold" fill="#43BE6E" text-anchor="end">25%</text>
+
+  <rect x="15" y="520" width="330" height="55" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <circle cx="40" cy="547" r="12" fill="#FDBF99"/>
+  <text x="60" y="540" font-size="12" font-weight="bold" fill="#3D2233">Brigadeiro Gourmet</text>
+  <text x="60" y="555" font-size="10" fill="#9A7E8C">5 vendas • R$ 125</text>
+  <text x="320" y="547" font-size="11" font-weight="bold" fill="#43BE6E" text-anchor="end">21%</text>
+</svg>

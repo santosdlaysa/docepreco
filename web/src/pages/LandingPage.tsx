@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import {
   Cake, ChefHat, Calculator, FileText, BarChart3, Users,
   ShoppingBag, Check, Smartphone, Star, Sparkles, Heart,
-  TrendingUp, Shield, Zap, ArrowRight, Play, LogIn,
+  TrendingUp, Shield, Zap, ArrowRight, Play, LogIn, Home,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
@@ -52,9 +52,18 @@ function formatCount(n: number): string {
   return `${n}+`;
 }
 
+const DEMO_SCREENS = [
+  { title: 'Home', icon: Home, desc: 'Dashboard com resumo de vendas', image: '/mobile-screen-2.jpg' },
+  { title: 'Receitas', icon: ChefHat, desc: 'Gerencie suas receitas', image: '/mobile-screen-3.jpg' },
+  { title: 'Ingredientes', icon: ShoppingBag, desc: 'Controle de ingredientes', image: '/mobile-screen-4.jpg' },
+  { title: 'Vendas', icon: TrendingUp, desc: 'Registre e acompanhe vendas', image: '/mobile-screen-5.jpg' },
+  { title: 'Relatórios', icon: BarChart3, desc: 'Análise detalhada de dados', image: '/mobile-screen-1.jpg' },
+];
+
 export function LandingPage() {
   const [apiStats, setApiStats] = useState<{ totalUsers: number; totalRecipes: number } | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
+  const [demoScreenIndex, setDemoScreenIndex] = useState(0);
 
   useEffect(() => {
     fetch(`${API_BASE}/public/stats`)
@@ -189,6 +198,97 @@ export function LandingPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{s.label}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── App Demo ── */}
+      <section className="py-24 sm:py-32 relative bg-white dark:bg-gray-950">
+        <div className="absolute top-20 right-0 w-[300px] h-[300px] bg-primary-100/20 dark:bg-primary-500/5 rounded-full blur-[100px]" />
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Demonstração</span>
+            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Veja na prática como funciona
+            </h2>
+            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
+              Explore o aplicativo e conheça todas as funcionalidades.
+            </p>
+          </div>
+
+          <div className="flex flex-col lg:flex-row items-center gap-12 justify-center">
+            {/* Mockup do Celular */}
+            <div className="relative">
+              {/* Glow */}
+              <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-pink-500/20 rounded-[2rem] blur-2xl" />
+
+              {/* Celular */}
+              <div className="relative w-72 bg-black rounded-[3rem] p-3 shadow-2xl" style={{ aspectRatio: '9/19' }}>
+                {/* Notch */}
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-8 bg-black rounded-b-3xl z-10" />
+
+                {/* Tela */}
+                <div className="relative w-full h-full bg-white dark:bg-gray-950 rounded-[2.5rem] overflow-hidden">
+                  {/* Conteúdo da tela */}
+                  <img
+                    src={DEMO_SCREENS[demoScreenIndex].image}
+                    alt={DEMO_SCREENS[demoScreenIndex].title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Controles */}
+            <div className="flex flex-col gap-6">
+              <div>
+                <p className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-4">Explore as funcionalidades:</p>
+                <div className="flex flex-col gap-3">
+                  {DEMO_SCREENS.map((screen, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setDemoScreenIndex(i)}
+                      className={`px-6 py-3 rounded-xl font-semibold transition-all text-left ${
+                        demoScreenIndex === i
+                          ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      <screen.icon size={18} className="inline mr-2" />
+                      {screen.title}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Navegação de telas */}
+              <div className="flex gap-2 justify-center lg:justify-start">
+                <button
+                  onClick={() => setDemoScreenIndex((prev) => (prev === 0 ? DEMO_SCREENS.length - 1 : prev - 1))}
+                  className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                >
+                  ←
+                </button>
+                <div className="flex gap-1 flex-1 items-center justify-center">
+                  {DEMO_SCREENS.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setDemoScreenIndex(i)}
+                      className={`h-2 rounded-full transition-all ${
+                        demoScreenIndex === i ? 'w-6 bg-primary-500' : 'w-2 bg-gray-300 dark:bg-gray-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setDemoScreenIndex((prev) => (prev === DEMO_SCREENS.length - 1 ? 0 : prev + 1))}
+                  className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                >
+                  →
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </section>

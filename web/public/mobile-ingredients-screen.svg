@@ -1,0 +1,57 @@
+<svg viewBox="0 0 360 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="360" height="800" fill="#FFF6F0"/>
+
+  <!-- Header -->
+  <rect width="360" height="60" fill="#2BA7DD"/>
+  <text x="180" y="40" font-size="20" font-weight="bold" fill="white" text-anchor="middle">Ingredientes</text>
+
+  <!-- Search Bar -->
+  <rect x="15" y="75" width="330" height="40" rx="8" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <text x="30" y="102" font-size="13" fill="#C4B0BB">🔍 Buscar ingrediente...</text>
+
+  <!-- Filtro -->
+  <rect x="15" y="125" width="330" height="35" rx="6" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <text x="30" y="151" font-size="12" fill="#9A7E8C">Ordenar por: Mais recentes</text>
+  <text x="330" y="151" font-size="14" text-anchor="end" fill="#2BA7DD">⚙️</text>
+
+  <!-- Ingrediente 1 -->
+  <rect x="15" y="175" width="330" height="75" rx="12" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <circle cx="40" cy="205" r="18" fill="#DAEAF5"/>
+  <text x="40" y="212" font-size="20" text-anchor="middle">🥣</text>
+
+  <text x="70" y="193" font-size="13" font-weight="bold" fill="#3D2233">Farinha de Trigo</text>
+  <text x="70" y="210" font-size="11" fill="#9A7E8C">Preço: R$ 6,50/kg</text>
+  <text x="70" y="225" font-size="10" fill="#C4B0BB">Última atualização: 15 ago</text>
+
+  <!-- Ingrediente 2 -->
+  <rect x="15" y="265" width="330" height="75" rx="12" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <circle cx="40" cy="295" r="18" fill="#FCE4D6"/>
+  <text x="40" y="302" font-size="20" text-anchor="middle">🥚</text>
+
+  <text x="70" y="283" font-size="13" font-weight="bold" fill="#3D2233">Ovos Grandes</text>
+  <text x="70" y="300" font-size="11" fill="#9A7E8C">Preço: R$ 12,00/dúzia</text>
+  <text x="70" y="315" font-size="10" fill="#C4B0BB">Última atualização: 18 ago</text>
+
+  <!-- Ingrediente 3 -->
+  <rect x="15" y="355" width="330" height="75" rx="12" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <circle cx="40" cy="385" r="18" fill="#FFF3CC"/>
+  <text x="40" y="392" font-size="20" text-anchor="middle">🍫</text>
+
+  <text x="70" y="373" font-size="13" font-weight="bold" fill="#3D2233">Chocolate Amargo 70%</text>
+  <text x="70" y="390" font-size="11" fill="#9A7E8C">Preço: R$ 28,50/kg</text>
+  <text x="70" y="405" font-size="10" fill="#C4B0BB">Última atualização: 10 ago</text>
+
+  <!-- Ingrediente 4 -->
+  <rect x="15" y="445" width="330" height="75" rx="12" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+  <circle cx="40" cy="475" r="18" fill="#E8F5D6"/>
+  <text x="40" y="482" font-size="20" text-anchor="middle">🥛</text>
+
+  <text x="70" y="463" font-size="13" font-weight="bold" fill="#3D2233">Leite Integral</text>
+  <text x="70" y="480" font-size="11" fill="#9A7E8C">Preço: R$ 5,50/l</text>
+  <text x="70" y="495" font-size="10" fill="#C4B0BB">Última atualização: 16 ago</text>
+
+  <!-- Botão Adicionar -->
+  <circle cx="330" cy="700" r="28" fill="#2BA7DD" opacity="0.9"/>
+  <text x="330" y="710" font-size="32" text-anchor="middle" fill="white" font-weight="bold">+</text>
+</svg>

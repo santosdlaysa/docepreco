@@ -1,0 +1,60 @@
+<svg viewBox="0 0 360 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="360" height="800" fill="#FFF6F0"/>
+
+  <!-- Header -->
+  <rect width="360" height="60" fill="#EA4B92"/>
+  <text x="180" y="40" font-size="24" font-weight="bold" fill="white" text-anchor="middle">DocePreço</text>
+
+  <!-- Stats Cards -->
+  <g id="stats">
+    <!-- Total vendido -->
+    <rect x="15" y="80" width="160" height="100" rx="12" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+    <text x="30" y="105" font-size="12" fill="#9A7E8C">Total Vendido</text>
+    <text x="30" y="130" font-size="24" font-weight="bold" fill="#3D2233">R$ 1.850</text>
+    <text x="30" y="150" font-size="11" fill="#C4B0BB">Este mês</text>
+
+    <!-- Receitas -->
+    <rect x="185" y="80" width="160" height="100" rx="12" fill="white" stroke="#E0D5DD" stroke-width="1"/>
+    <text x="200" y="105" font-size="12" fill="#9A7E8C">Receitas Criadas</text>
+    <text x="200" y="130" font-size="24" font-weight="bold" fill="#3D2233">8</text>
+    <text x="200" y="150" font-size="11" fill="#C4B0BB">Últimas 30 dias</text>
+  </g>
+
+  <!-- Últimas Vendas -->
+  <text x="20" y="210" font-size="14" font-weight="bold" fill="#3D2233">Últimas Vendas</text>
+
+  <!-- Venda 1 -->
+  <rect x="15" y="225" width="330" height="60" rx="8" fill="#F9F0F4"/>
+  <circle cx="40" cy="255" r="15" fill="#43BE6E"/>
+  <text x="65" y="245" font-size="13" font-weight="bold" fill="#3D2233">Brigadeiro</text>
+  <text x="65" y="262" font-size="11" fill="#9A7E8C">Qty: 10 | R$ 150</text>
+  <text x="320" y="255" font-size="12" font-weight="bold" fill="#43BE6E" text-anchor="end">+R$ 150</text>
+
+  <!-- Venda 2 -->
+  <rect x="15" y="295" width="330" height="60" rx="8" fill="#F9F0F4"/>
+  <circle cx="40" cy="325" r="15" fill="#2BA7DD"/>
+  <text x="65" y="315" font-size="13" font-weight="bold" fill="#3D2233">Bolo de Chocolate</text>
+  <text x="65" y="332" font-size="11" fill="#9A7E8C">Qty: 2 | R$ 850</text>
+  <text x="320" y="325" font-size="12" font-weight="bold" fill="#43BE6E" text-anchor="end">+R$ 850</text>
+
+  <!-- Quick Actions -->
+  <text x="20" y="380" font-size="14" font-weight="bold" fill="#3D2233">Ações Rápidas</text>
+
+  <g id="actions">
+    <!-- Nova Venda -->
+    <rect x="15" y="395" width="105" height="80" rx="12" fill="#EA4B92"/>
+    <text x="67.5" y="435" font-size="28" text-anchor="middle" fill="white">+</text>
+    <text x="67.5" y="460" font-size="11" text-anchor="middle" fill="white" font-weight="bold">Nova Venda</text>
+
+    <!-- Nova Receita -->
+    <rect x="127.5" y="395" width="105" height="80" rx="12" fill="#2BA7DD"/>
+    <text x="180" y="435" font-size="28" text-anchor="middle" fill="white">📖</text>
+    <text x="180" y="460" font-size="11" text-anchor="middle" fill="white" font-weight="bold">Receita</text>
+
+    <!-- Relatórios -->
+    <rect x="240" y="395" width="105" height="80" rx="12" fill="#43BE6E"/>
+    <text x="292.5" y="435" font-size="28" text-anchor="middle" fill="white">📊</text>
+    <text x="292.5" y="460" font-size="11" text-anchor="middle" fill="white" font-weight="bold">Relatórios</text>
+  </g>
+</svg>
