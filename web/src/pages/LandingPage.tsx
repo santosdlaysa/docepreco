@@ -72,6 +72,13 @@ export function LandingPage() {
       .catch(() => {});
   }, []);
 
+  useEffect(() => {
+    DEMO_SCREENS.forEach(({ image }) => {
+      const preload = new Image();
+      preload.src = image;
+    });
+  }, []);
+
   const userCount = apiStats ? formatCount(apiStats.totalUsers) : '100+';
   const recipeCount = apiStats ? formatCount(apiStats.totalRecipes) : '500+';
 
@@ -204,7 +211,7 @@ export function LandingPage() {
 
       {/* ── App Demo ── */}
       <section className="py-24 sm:py-32 relative bg-white dark:bg-gray-950">
-        <div className="absolute top-20 right-0 w-[300px] h-[300px] bg-primary-100/20 dark:bg-primary-500/5 rounded-full blur-[100px]" />
+        <div className="pointer-events-none absolute top-20 right-0 w-[300px] h-[300px] bg-primary-100/20 dark:bg-primary-500/5 rounded-full blur-[100px]" />
 
         <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-16">
@@ -221,7 +228,7 @@ export function LandingPage() {
             {/* Mockup do Celular */}
             <div className="relative">
               {/* Glow */}
-              <div className="absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-pink-500/20 rounded-[2rem] blur-2xl" />
+              <div className="pointer-events-none absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-pink-500/20 rounded-[2rem] blur-2xl" />
 
               {/* Celular */}
               <div className="relative w-72 bg-black rounded-[3rem] p-3 shadow-2xl" style={{ aspectRatio: '9/19' }}>
@@ -231,11 +238,17 @@ export function LandingPage() {
                 {/* Tela */}
                 <div className="relative w-full h-full bg-white dark:bg-gray-950 rounded-[2.5rem] overflow-hidden">
                   {/* Conteúdo da tela */}
-                  <img
-                    src={DEMO_SCREENS[demoScreenIndex].image}
-                    alt={DEMO_SCREENS[demoScreenIndex].title}
-                    className="w-full h-full object-cover"
-                  />
+                  {DEMO_SCREENS.map((screen, index) => (
+                    <img
+                      key={screen.title}
+                      src={screen.image}
+                      alt={`Tela de ${screen.title} do DocePreco`}
+                      aria-hidden={demoScreenIndex !== index}
+                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
+                        demoScreenIndex === index ? 'opacity-100' : 'pointer-events-none opacity-0'
+                      }`}
+                    />
+                  ))}
                 </div>
               </div>
             </div>
@@ -247,8 +260,10 @@ export function LandingPage() {
                 <div className="flex flex-col gap-3">
                   {DEMO_SCREENS.map((screen, i) => (
                     <button
-                      key={i}
+                      key={screen.title}
+                      type="button"
                       onClick={() => setDemoScreenIndex(i)}
+                      aria-pressed={demoScreenIndex === i}
                       className={`px-6 py-3 rounded-xl font-semibold transition-all text-left ${
                         demoScreenIndex === i
                           ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
@@ -265,6 +280,8 @@ export function LandingPage() {
               {/* Navegação de telas */}
               <div className="flex gap-2 justify-center lg:justify-start">
                 <button
+                  type="button"
+                  aria-label="Tela anterior"
                   onClick={() => setDemoScreenIndex((prev) => (prev === 0 ? DEMO_SCREENS.length - 1 : prev - 1))}
                   className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                 >
@@ -274,6 +291,8 @@ export function LandingPage() {
                   {DEMO_SCREENS.map((_, i) => (
                     <button
                       key={i}
+                      type="button"
+                      aria-label={`Abrir tela ${DEMO_SCREENS[i].title}`}
                       onClick={() => setDemoScreenIndex(i)}
                       className={`h-2 rounded-full transition-all ${
                         demoScreenIndex === i ? 'w-6 bg-primary-500' : 'w-2 bg-gray-300 dark:bg-gray-600'
@@ -282,6 +301,8 @@ export function LandingPage() {
                   ))}
                 </div>
                 <button
+                  type="button"
+                  aria-label="Próxima tela"
                   onClick={() => setDemoScreenIndex((prev) => (prev === DEMO_SCREENS.length - 1 ? 0 : prev + 1))}
                   className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
                 >
