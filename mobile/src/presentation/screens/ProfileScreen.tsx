@@ -33,7 +33,7 @@ const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 2 } as cons
 export const ProfileScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  const { logout, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
+  const { logout, deleteAccount, isDemoMode, companyLogo, setCompanyLogo } = useAuth();
   const { isPremium, premiumUntil, daysLeft, refresh } = usePremium();
   const { currency } = useCurrency();
   const { unitSystem } = useUnitSystem();
@@ -125,7 +125,7 @@ export const ProfileScreen: React.FC = () => {
           { text: 'Cancelar', style: 'cancel' },
           { text: 'Sim, excluir', style: 'destructive', onPress: async () => {
             setDeletingAccount(true);
-            try { await authApi.deleteAccount(); Alert.alert('Conta excluída', 'Seus dados foram removidos.', [{ text: 'OK', onPress: logout }]); }
+            try { await deleteAccount(); }
             catch { Alert.alert('Erro', 'Não foi possível excluir.'); }
             finally { setDeletingAccount(false); }
           }},
