@@ -837,20 +837,26 @@ export const CreateRecipeScreen: React.FC = () => {
 
           {/* ── Custos adicionais (.gcard) ── */}
           <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Custos adicionais</Text>
+          <Text style={{ fontSize: 12.5, color: INK3, marginLeft: 2, marginTop: 3, marginBottom: 6, lineHeight: 18 }}>
+            {t('createRecipe.additionalCostsDescription')}
+          </Text>
           <View style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SH }}>
             {localizedAdditionalCosts.map((cost, i) => (
-              <View key={cost.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: LINE2 } : {}) }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14.5, fontWeight: '600', color: INK }}>{cost.name}</Text>
+              <View key={cost.name} style={{ padding: 13, paddingHorizontal: 15, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: LINE2 } : {}) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14.5, fontWeight: '600', color: INK }}>{cost.name}</Text>
+                  </View>
+                  <TextInput
+                    style={{ fontSize: 15, fontWeight: '700', color: INK2, textAlign: 'right', minWidth: 70, padding: 0 }}
+                    value={getAdditionalCostValue(cost.name)}
+                    onChangeText={val => updateAdditionalCost(cost.name, val)}
+                    placeholder="R$ 0,00"
+                    placeholderTextColor={INK3}
+                    keyboardType="decimal-pad"
+                  />
                 </View>
-                <TextInput
-                  style={{ fontSize: 15, fontWeight: '700', color: INK2, textAlign: 'right', minWidth: 70, padding: 0 }}
-                  value={getAdditionalCostValue(cost.name)}
-                  onChangeText={val => updateAdditionalCost(cost.name, val)}
-                  placeholder="R$ 0,00"
-                  placeholderTextColor={INK3}
-                  keyboardType="decimal-pad"
-                />
+                <Text style={{ fontSize: 11.5, color: INK3, marginTop: 4, lineHeight: 16 }}>{cost.hint}</Text>
               </View>
             ))}
           </View>
