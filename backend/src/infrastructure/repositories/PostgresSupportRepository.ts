@@ -5,6 +5,7 @@ export interface SupportMessage {
   userId: string;
   senderType: 'user' | 'admin';
   message: string;
+  imageUrl: string | null;
   readAt: string | null;
   createdAt: string;
 }
@@ -28,10 +29,10 @@ export class PostgresSupportRepository {
     return result.rows.map(this.mapRow);
   }
 
-  async create(data: { userId: string; senderType: 'user' | 'admin'; message: string }): Promise<SupportMessage> {
+  async create(data: { userId: string; senderType: 'user' | 'admin'; message: string; imageUrl?: string | null }): Promise<SupportMessage> {
     const result = await pool.query(
-      `INSERT INTO support_messages (user_id, sender_type, message) VALUES ($1, $2, $3) RETURNING *`,
-      [data.userId, data.senderType, data.message]
+      `INSERT INTO support_messages (user_id, sender_type, message, image_url) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [data.userId, data.senderType, data.message, data.imageUrl ?? null]
     );
     return this.mapRow(result.rows[0]);
   }
@@ -100,6 +101,7 @@ export class PostgresSupportRepository {
       userId: row.user_id as string,
       senderType: row.sender_type as 'user' | 'admin',
       message: row.message as string,
+      imageUrl: (row.image_url as string | null) ?? null,
       readAt: row.read_at ? (row.read_at as Date).toISOString() : null,
       createdAt: (row.created_at as Date).toISOString(),
     };

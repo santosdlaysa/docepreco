@@ -906,6 +906,8 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'premium_events', 'amount_cents', 'INTEGER');
     await addColumnIfMissing(client, 'premium_events', 'currency', "VARCHAR(3) NOT NULL DEFAULT 'BRL'");
 
+    await addColumnIfMissing(client, 'support_messages', 'image_url', 'TEXT NULL');
+
     // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
     // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.
     await client.query(`
