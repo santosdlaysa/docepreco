@@ -468,14 +468,44 @@ export const CreateRecipeScreen: React.FC = () => {
       // Reload current ingredients from API to match by name
       const existing = await iApi.getAll();
       const recipeIngredients: RecipeIngredient[] = [];
+      const normalizeIngredientName = (value: string) => value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
       for (const si of suggestion.ingredients) {
-        const normalizedName = si.name.toLowerCase().trim();
-        let found = existing.find(e => e.name.toLowerCase().trim() === normalizedName);
+        const normalizedName = normalizeIngredientName(si.name);
+        // Reuse an ingredient only when its registered unit is compatible with
+        // the unit used by the suggestion. A name-only match can make pricing
+        // fail (for example, an item registered as "unit" used in grams).
+        let found = existing.find(e =>
+          normalizeIngredientName(e.name) === normalizedName &&
+          getCompatibleUnits(e).includes(si.unit)
+        );
         if (!found) {
+          const suggestionAlias = `${normalizedName} (sugestao)`;
+          found = existing.find(e =>
+            normalizeIngredientName(e.name).startsWith(suggestionAlias) &&
+            getCompatibleUnits(e).includes(si.unit)
+          );
+        }
+        if (!found) {
+          const sameNameWithIncompatibleUnit = existing.some(
+            e => normalizeIngredientName(e.name) === normalizedName
+          );
+          let ingredientName = si.name;
+          if (sameNameWithIncompatibleUnit) {
+            const baseName = `${si.name} (sugestao)`;
+            ingredientName = baseName;
+            let suffix = 2;
+            while (existing.some(e => normalizeIngredientName(e.name) === normalizeIngredientName(ingredientName))) {
+              ingredientName = `${baseName} ${suffix++}`;
+            }
+          }
           // Auto-create the ingredient
           found = await iApi.create({
-            name: si.name,
+            name: ingredientName,
             purchaseQuantity: si.purchaseQuantity,
             purchasePrice: si.purchasePrice,
             unit: si.unit,

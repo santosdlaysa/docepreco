@@ -76,6 +76,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const [calculation, setCalculation] = useState<CalculationResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [calculating, setCalculating] = useState(false);
+  const [calculationError, setCalculationError] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [pdfSettings, setPdfSettings] = useState<PdfSettings | undefined>();
@@ -151,7 +152,10 @@ export const RecipeDetailScreen: React.FC = () => {
     try {
       const data = await api.getById(recipeId);
       setRecipe(data);
-      await handleCalculate(recipeId);
+      // Do not block the whole detail screen while the independent pricing
+      // request is running.
+      setLoading(false);
+      void handleCalculate(recipeId);
     } catch {
       Alert.alert(t('common.error'), t('recipeDetail.loadError'));
     } finally {
@@ -161,10 +165,13 @@ export const RecipeDetailScreen: React.FC = () => {
 
   const handleCalculate = async (id?: string) => {
     setCalculating(true);
+    setCalculationError(false);
     try {
       const result = await api.calculate(id || recipeId);
       setCalculation(result);
-    } catch {} finally {
+    } catch {
+      setCalculationError(true);
+    } finally {
       setCalculating(false);
     }
   };
@@ -426,6 +433,26 @@ export const RecipeDetailScreen: React.FC = () => {
               <Text style={s.marginValue}>{recipe.profitMargin}%</Text>
             </View>
           </View>
+
+          {!calculation && calculating && (
+            <View style={s.calculationStatusCard}>
+              <ActivityIndicator size="small" color={PINK} />
+              <Text style={s.calculationStatusText}>{t('recipeDetail.calculating')}</Text>
+            </View>
+          )}
+
+          {!calculation && calculationError && (
+            <View style={s.calculationStatusCard}>
+              <Ionicons name="alert-circle-outline" size={22} color="#D64545" />
+              <View style={{ flex: 1 }}>
+                <Text style={s.calculationErrorTitle}>{t('recipeDetail.calculationError')}</Text>
+                <Text style={s.calculationStatusText}>{t('recipeDetail.calculationErrorHint')}</Text>
+              </View>
+              <TouchableOpacity style={s.retryButton} onPress={() => handleCalculate()} activeOpacity={0.7}>
+                <Text style={s.retryButtonText}>{t('common.retry')}</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* ═══════ RESULT CARD (green gradient) ═══════ */}
           {calculation && (
@@ -740,6 +767,22 @@ const s = StyleSheet.create({
   },
   marginLabel: { fontSize: 14, fontWeight: '600', color: INK },
   marginValue: { fontSize: 22, fontWeight: '800', color: PINK },
+  calculationStatusCard: {
+    minHeight: 74,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: LINE,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  calculationErrorTitle: { color: INK, fontSize: 14, fontWeight: '700', marginBottom: 2 },
+  calculationStatusText: { color: INK2, fontSize: 13, lineHeight: 18, flexShrink: 1 },
+  retryButton: { backgroundColor: '#FFF0F6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  retryButtonText: { color: PINK, fontSize: 13, fontWeight: '700' },
   slider: {
     height: 10,
     borderRadius: 99,
