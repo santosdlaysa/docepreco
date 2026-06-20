@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
+  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { adminApi, AdminMessage } from '../../../data/api/adminApi';
 import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
@@ -19,7 +20,10 @@ function Bubble({ msg }: { msg: AdminMessage }) {
     <View style={{ alignItems: isAdmin ? 'flex-end' : 'flex-start', marginVertical: 3, paddingHorizontal: 16 }}>
       <View style={[styles.bubble, isAdmin ? styles.bubbleAdmin : styles.bubbleUser]}>
         {isAdmin && <Text style={styles.adminTag}>Admin</Text>}
-        <Text style={[styles.bubbleText, isAdmin && { color: '#fff' }]}>{msg.message}</Text>
+        {msg.imageUrl ? (
+          <Image source={{ uri: msg.imageUrl }} style={styles.msgImage} resizeMode="cover" />
+        ) : null}
+        {msg.message ? <Text style={[styles.bubbleText, isAdmin && { color: '#fff' }]}>{msg.message}</Text> : null}
         <Text style={[styles.bubbleTime, isAdmin && { color: 'rgba(255,255,255,0.65)' }]}>{time}</Text>
       </View>
     </View>
@@ -33,6 +37,7 @@ export const AdminSupportChatScreen: React.FC = () => {
   const [messages, setMessages] = useState<AdminMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const listRef = useRef<FlatList>(null);
 
@@ -48,13 +53,32 @@ export const AdminSupportChatScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [load]);
 
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Permita o acesso à galeria para enviar fotos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.5,
+      base64: true,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0].base64) {
+      setSelectedImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
   const handleSend = async () => {
-    if (!text.trim()) return;
+    if (!text.trim() && !selectedImage) return;
     setSending(true);
+    const imageToSend = selectedImage;
     try {
       await adminApi.setTyping(userId, false);
-      const msg = await adminApi.sendMessage(userId, text.trim());
+      const msg = await adminApi.sendMessage(userId, text.trim(), imageToSend);
       setText('');
+      setSelectedImage(null);
       setMessages(prev => [...prev, msg]);
       setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
     } catch (e: any) {
@@ -111,8 +135,21 @@ export const AdminSupportChatScreen: React.FC = () => {
           />
         )}
 
+        {/* Image preview */}
+        {selectedImage ? (
+          <View style={styles.previewBar}>
+            <Image source={{ uri: selectedImage }} style={styles.previewImage} resizeMode="cover" />
+            <TouchableOpacity onPress={() => setSelectedImage(null)} style={styles.previewRemove}>
+              <Ionicons name="close-circle" size={22} color={colors.primary} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {/* Input */}
         <View style={styles.inputWrap}>
+          <TouchableOpacity onPress={handlePickImage} activeOpacity={0.7} style={styles.imageBtn}>
+            <Ionicons name="image-outline" size={22} color={colors.textMuted} />
+          </TouchableOpacity>
           <TextInput
             value={text}
             onChangeText={handleTyping}
@@ -121,8 +158,8 @@ export const AdminSupportChatScreen: React.FC = () => {
             multiline
             style={styles.input}
           />
-          <TouchableOpacity onPress={handleSend} disabled={!text.trim() || sending} activeOpacity={0.75}>
-            <View style={[styles.sendBtn, { backgroundColor: text.trim() ? colors.primary : colors.border }]}>
+          <TouchableOpacity onPress={handleSend} disabled={(!text.trim() && !selectedImage) || sending} activeOpacity={0.75}>
+            <View style={[styles.sendBtn, { backgroundColor: (text.trim() || selectedImage) ? colors.primary : colors.border }]}>
               {sending ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="send" size={18} color="#fff" />}
             </View>
           </TouchableOpacity>
@@ -146,7 +183,12 @@ const styles = StyleSheet.create({
   adminTag: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.7)', marginBottom: 2 },
   bubbleText: { fontSize: 14, color: colors.text, lineHeight: 20 },
   bubbleTime: { fontSize: 10, color: colors.textMuted, marginTop: 4, textAlign: 'right' },
+  previewBar: { padding: 8, paddingHorizontal: 12, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  previewImage: { width: 90, height: 90, borderRadius: 10 },
+  previewRemove: { position: 'absolute', top: 4, left: 86 },
   inputWrap: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, padding: 12, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surface },
+  imageBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   input: { flex: 1, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: colors.text, maxHeight: 120 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  msgImage: { width: 180, height: 180, borderRadius: 10, marginBottom: 4 },
 });
