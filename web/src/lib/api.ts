@@ -513,6 +513,12 @@ export const api = {
     req<OnboardingStep>(`/admin/onboarding/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteOnboarding: (id: string) =>
     req<void>(`/admin/onboarding/${id}`, { method: 'DELETE' }),
+
+  executeDbQuery: (sql: string) =>
+    req<{ rows: Record<string, unknown>[]; rowCount: number; command: string; fields: string[]; ms: number }>(
+      '/admin/db/query',
+      { method: 'POST', body: JSON.stringify({ sql }) },
+    ),
 };
 
 export interface Tip {

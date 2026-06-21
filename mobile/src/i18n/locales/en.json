@@ -315,6 +315,7 @@
     "noIngredients": "No ingredients added",
     "additionalCosts": "Additional Costs",
     "additionalCostsHint": "Optional — add values if applicable",
+    "additionalCostsDescription": "Enter the total cost of each item for the whole batch. Values are divided by the recipe yield to calculate the cost per unit.",
     "professionalCosts": "Professional Costs",
     "laborDescription": "Calculate your labor cost and include it in the recipe price automatically.",
     "hourlyRate": "Hourly rate",

@@ -315,6 +315,7 @@
     "noIngredients": "Nenhum ingrediente adicionado",
     "additionalCosts": "Custos Adicionais",
     "additionalCostsHint": "Opcional — adicione valores se aplicavel",
+    "additionalCostsDescription": "Informe o custo total de cada item para o lote inteiro. Os valores são divididos pelo rendimento da receita para calcular o custo por unidade.",
     "professionalCosts": "Custos Profissionais",
     "laborDescription": "Calcule o custo da sua mão de obra e inclua no preço da receita automaticamente.",
     "hourlyRate": "Custo por hora",

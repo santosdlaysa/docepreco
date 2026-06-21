@@ -26,4 +26,6 @@ router.post('/send-update-email', (req, res) => controller.sendUpdateEmail(req, 
 router.get('/settings/daily-registration-goal', (req, res) => controller.getDailyRegistrationGoal(req, res));
 router.put('/settings/daily-registration-goal', (req, res) => controller.setDailyRegistrationGoal(req, res));
 
+router.post('/db/query', (req, res) => controller.executeQuery(req, res));
+
 export default router;

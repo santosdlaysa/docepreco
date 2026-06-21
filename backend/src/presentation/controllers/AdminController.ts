@@ -840,6 +840,38 @@ export class AdminController {
     }
   }
 
+  async executeQuery(req: Request, res: Response): Promise<void> {
+    const { sql } = req.body;
+    if (!sql || typeof sql !== 'string' || !sql.trim()) {
+      res.status(400).json({ error: 'Campo "sql" é obrigatório' });
+      return;
+    }
+    const start = Date.now();
+    try {
+      console.log(`[Admin DB] query: ${sql.slice(0, 200)}`);
+      const result = await pool.query(sql);
+      const ms = Date.now() - start;
+      res.json({
+        success: true,
+        data: {
+          rows: result.rows,
+          rowCount: result.rowCount ?? 0,
+          command: result.command,
+          fields: result.fields?.map(f => f.name) ?? [],
+          ms,
+        },
+      });
+    } catch (error: any) {
+      const ms = Date.now() - start;
+      console.error('[Admin DB] query error:', error?.message);
+      res.status(400).json({
+        success: false,
+        error: error?.message ?? 'Erro ao executar query',
+        ms,
+      });
+    }
+  }
+
   private convertAdminRecipeQuantity(quantity: number, fromUnit: string, toUnit: string, purchaseUnitWeight: number): number {
     if (fromUnit === 'unit' && purchaseUnitWeight > 0) return quantity * purchaseUnitWeight;
     if (fromUnit === toUnit) return quantity;
