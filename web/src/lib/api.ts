@@ -451,8 +451,11 @@ export const api = {
   // ── Support Chat ──
   listSupportConversations: () => req<SupportConversation[]>('/support/admin/conversations'),
   getSupportMessages: (userId: string) => req<SupportMessage[]>(`/support/admin/conversations/${userId}`),
-  sendSupportMessage: (userId: string, message: string) =>
-    req<SupportMessage>(`/support/admin/conversations/${userId}`, { method: 'POST', body: JSON.stringify({ message }) }),
+  sendSupportMessage: (userId: string, message: string, imageUrl?: string | null) =>
+    req<SupportMessage>(`/support/admin/conversations/${userId}`, {
+      method: 'POST',
+      body: JSON.stringify({ message, imageUrl }),
+    }),
   getSupportUnreadCount: () => req<{ unreadCount: number }>('/support/admin/unread'),
   sendSupportTyping: (userId: string) =>
     req<void>(`/support/admin/conversations/${userId}/typing`, { method: 'POST' }),
@@ -750,6 +753,7 @@ export interface SupportMessage {
   userId: string;
   senderType: 'user' | 'admin';
   message: string;
+  imageUrl: string | null;
   readAt: string | null;
   createdAt: string;
 }
