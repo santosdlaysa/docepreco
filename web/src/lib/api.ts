@@ -81,6 +81,54 @@ export interface Stats {
   recentUsers: RecentUser[];
 }
 
+export interface SubscriptionOverview {
+  activeSubscribers: number;
+  expiredSubscribers: number;
+  totalReceivedBRL: number;
+  monthlyReceivedBRL: number;
+  lastMonthBRL: number;
+  avgValueBRL: number;
+  mrr: number;
+  arr: number;
+  momGrowth: number;
+}
+
+export interface SubscriptionByPlatform {
+  platform: string;
+  subscriberCount: number;
+  eventCount: number;
+  totalBRL: number;
+  avgBRL: number;
+}
+
+export interface SubscriptionEvent {
+  id: string;
+  userId: string;
+  companyName: string;
+  email: string;
+  platform: string | null;
+  store: string | null;
+  productId: string | null;
+  amountBRL: number;
+  expirationAt: string | null;
+  eventType: string;
+  createdAt: string;
+}
+
+export interface SubscriptionTimeseriesPoint {
+  date: string;
+  totalBRL: number;
+  eventCount: number;
+  uniqueUsers: number;
+}
+
+export interface SubscriptionDashboard {
+  overview: SubscriptionOverview;
+  byPlatform: SubscriptionByPlatform[];
+  recentEvents: SubscriptionEvent[];
+  timeseries: SubscriptionTimeseriesPoint[];
+}
+
 export interface PremiumEvent {
   id: string;
   eventType: string;
@@ -237,6 +285,8 @@ export const api = {
     }).then(r => r.ok).catch(() => false),
 
   getStats: () => req<Stats>('/admin/stats'),
+
+  getSubscriptionDashboard: () => req<SubscriptionDashboard>('/admin/subscriptions'),
 
   listUsers: (params: {
     search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;

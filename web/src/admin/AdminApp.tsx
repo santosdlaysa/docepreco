@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, createContext, useContext } f
 import { loadSecret, clearSecret, api, LogEntry } from '../lib/api';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
+import { SubscriptionsPage } from '../pages/SubscriptionsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { LogsPage } from '../pages/LogsPage';
 import { RequestLogsPage } from '../pages/RequestLogsPage';
@@ -29,6 +30,7 @@ import { ReferralsPage } from '../pages/ReferralsPage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
+  TrendingUp,
   Users,
   Megaphone,
   Bell,
@@ -65,7 +67,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-type Page = 'dashboard' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
+type Page = 'dashboard' | 'subscriptions' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
   | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals';
 
 interface NavItem {
@@ -77,6 +79,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { id: 'subscriptions', label: 'Assinaturas', icon: TrendingUp },
   { id: 'users', label: 'Usuários', icon: Users },
 
   { id: 'ingredients', label: 'Ingredientes', icon: Package, section: 'Conteúdo' },
@@ -429,6 +432,7 @@ export default function AdminApp() {
         <div className="p-4 md:px-6 md:pb-6 md:pt-2">
           <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
+            {page === 'subscriptions' && <SubscriptionsPage toast={toast} />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
             {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} toast={toast} />}
             {page === 'banners' && <BannersPage toast={toast} />}

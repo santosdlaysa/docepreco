@@ -840,6 +840,126 @@ export class AdminController {
     }
   }
 
+  async getSubscriptionDashboard(req: Request, res: Response): Promise<void> {
+    try {
+      const [overviewRes, byPlatformRes, eventsRes, timeseriesRes] = await Promise.all([
+        pool.query(`
+          SELECT
+            (SELECT COUNT(DISTINCT user_id)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND (expiration_at IS NULL OR expiration_at > NOW())) AS "activeSubscribers",
+            (SELECT COUNT(*)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND (expiration_at IS NULL OR expiration_at > NOW())) AS "totalActiveEvents",
+            (SELECT COUNT(DISTINCT user_id)::int FROM premium_events WHERE expiration_at IS NOT NULL AND expiration_at <= NOW()) AS "expiredSubscribers",
+            (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL')) AS "totalReceivedCents",
+            (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyReceivedCents",
+            (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month') AND created_at < DATE_TRUNC('month', NOW())) AS "lastMonthCents",
+            (SELECT COALESCE(AVG(amount_cents), 0)::float FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND amount_cents > 0) AS "avgValue"
+        `),
+        pool.query(`
+          SELECT
+            COALESCE(platform, 'unknown') AS platform,
+            COUNT(DISTINCT user_id)::int AS "subscriberCount",
+            COUNT(*)::int AS "eventCount",
+            COALESCE(SUM(amount_cents), 0)::bigint AS "totalCents",
+            COALESCE(AVG(amount_cents), 0)::float AS "avgCents"
+          FROM premium_events
+          WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND (expiration_at IS NULL OR expiration_at > NOW())
+          GROUP BY platform
+          ORDER BY "totalCents" DESC
+        `),
+        pool.query(`
+          SELECT
+            pe.id,
+            pe.user_id AS "userId",
+            u.company_name AS "companyName",
+            u.email,
+            pe.platform,
+            pe.store,
+            pe.product_id AS "productId",
+            pe.amount_cents AS "amountCents",
+            pe.expiration_at AS "expirationAt",
+            pe.event_type AS "eventType",
+            pe.created_at AS "createdAt"
+          FROM premium_events pe
+          JOIN users u ON u.id = pe.user_id
+          WHERE pe.event_type IN ('INITIAL_PURCHASE', 'RENEWAL')
+          ORDER BY pe.created_at DESC
+          LIMIT 200
+        `),
+        pool.query(`
+          SELECT
+            DATE_TRUNC('day', created_at)::date AS "date",
+            COALESCE(SUM(amount_cents), 0)::bigint AS "totalCents",
+            COUNT(*)::int AS "eventCount",
+            COUNT(DISTINCT user_id)::int AS "uniqueUsers"
+          FROM premium_events
+          WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= NOW() - INTERVAL '90 days'
+          GROUP BY DATE_TRUNC('day', created_at)
+          ORDER BY "date" ASC
+        `)
+      ]);
+
+      const overview = overviewRes.rows[0];
+      const byPlatform = byPlatformRes.rows;
+      const events = eventsRes.rows;
+      const timeseries = timeseriesRes.rows;
+
+      const activeSubscribers = parseInt(overview.activeSubscribers || '0');
+      const totalReceivedCents = parseInt(overview.totalReceivedCents || '0');
+      const monthlyReceivedCents = parseInt(overview.monthlyReceivedCents || '0');
+      const lastMonthCents = parseInt(overview.lastMonthCents || '0');
+
+      const mrr = activeSubscribers > 0 ? monthlyReceivedCents / activeSubscribers / 100 : 0;
+      const arr = activeSubscribers > 0 ? (monthlyReceivedCents * 12) / activeSubscribers / 100 : 0;
+      const momGrowth = lastMonthCents > 0 ? ((monthlyReceivedCents - lastMonthCents) / lastMonthCents) * 100 : 0;
+
+      res.json({
+        success: true,
+        data: {
+          overview: {
+            activeSubscribers,
+            expiredSubscribers: parseInt(overview.expiredSubscribers || '0'),
+            totalReceivedBRL: totalReceivedCents / 100,
+            monthlyReceivedBRL: monthlyReceivedCents / 100,
+            lastMonthBRL: lastMonthCents / 100,
+            avgValueBRL: overview.avgValue || 0,
+            mrr,
+            arr,
+            momGrowth
+          },
+          byPlatform: byPlatform.map(row => ({
+            platform: row.platform,
+            subscriberCount: parseInt(row.subscriberCount),
+            eventCount: parseInt(row.eventCount),
+            totalBRL: parseInt(row.totalCents) / 100,
+            avgBRL: row.avgCents / 100
+          })),
+          recentEvents: events.map(row => ({
+            id: row.id,
+            userId: row.userId,
+            companyName: row.companyName,
+            email: row.email,
+            platform: row.platform,
+            store: row.store,
+            productId: row.productId,
+            amountBRL: (parseInt(row.amountCents) || 0) / 100,
+            expirationAt: row.expirationAt,
+            eventType: row.eventType,
+            createdAt: row.createdAt
+          })),
+          timeseries: timeseries.map(row => ({
+            date: row.date,
+            totalBRL: parseInt(row.totalCents) / 100,
+            eventCount: parseInt(row.eventCount),
+            uniqueUsers: parseInt(row.uniqueUsers)
+          }))
+        }
+      });
+    } catch (error) {
+      console.error('[Admin] getSubscriptionDashboard error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   private convertAdminRecipeQuantity(quantity: number, fromUnit: string, toUnit: string, purchaseUnitWeight: number): number {
     if (fromUnit === 'unit' && purchaseUnitWeight > 0) return quantity * purchaseUnitWeight;
     if (fromUnit === toUnit) return quantity;
