@@ -851,7 +851,8 @@ export class AdminController {
             (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL')) AS "totalReceivedCents",
             (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyReceivedCents",
             (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month') AND created_at < DATE_TRUNC('month', NOW())) AS "lastMonthCents",
-            (SELECT COALESCE(AVG(amount_cents), 0)::float FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND amount_cents > 0) AS "avgValue"
+            (SELECT COALESCE(AVG(amount_cents), 0)::float FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND amount_cents > 0) AS "avgValue",
+            (SELECT COUNT(DISTINCT user_id)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL')) AS "totalSubscribers"
         `),
         pool.query(`
           SELECT
@@ -917,6 +918,7 @@ export class AdminController {
           overview: {
             activeSubscribers,
             expiredSubscribers: parseInt(overview.expiredSubscribers || '0'),
+            totalSubscribers: parseInt(overview.totalSubscribers || '0'),
             totalReceivedBRL: totalReceivedCents / 100,
             monthlyReceivedBRL: monthlyReceivedCents / 100,
             lastMonthBRL: lastMonthCents / 100,

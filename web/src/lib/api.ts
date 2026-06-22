@@ -84,6 +84,7 @@ export interface Stats {
 export interface SubscriptionOverview {
   activeSubscribers: number;
   expiredSubscribers: number;
+  totalSubscribers: number;
   totalReceivedBRL: number;
   monthlyReceivedBRL: number;
   lastMonthBRL: number;
