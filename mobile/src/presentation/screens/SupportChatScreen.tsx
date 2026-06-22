@@ -10,12 +10,15 @@ import {
   Platform,
   ActivityIndicator,
   Animated,
+  Image,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Skeleton } from '../components/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { supportApi, SupportMessage } from '../../data/api/supportApi';
 import { useTranslation } from 'react-i18next';
 
@@ -75,6 +78,7 @@ export const SupportChatScreen: React.FC = () => {
   const navigation = useNavigation();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [adminTyping, setAdminTyping] = useState(false);
@@ -108,17 +112,37 @@ export const SupportChatScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [checkAdminTyping]);
 
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permissão necessária', 'Permita o acesso à galeria para enviar fotos.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.5,
+      base64: true,
+      allowsEditing: false,
+    });
+    if (!result.canceled && result.assets[0].base64) {
+      setSelectedImage(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
+
   const handleSend = async () => {
     const text = newMessage.trim();
-    if (!text || sending) return;
+    if ((!text && !selectedImage) || sending) return;
     setSending(true);
+    const imageToSend = selectedImage;
     setNewMessage('');
+    setSelectedImage(null);
     try {
-      const sent = await supportApi.sendMessage(text);
+      const sent = await supportApi.sendMessage(text, imageToSend);
       setMessages(prev => [...prev, sent]);
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
       setNewMessage(text);
+      setSelectedImage(imageToSend);
     } finally {
       setSending(false);
     }
@@ -140,11 +164,17 @@ export const SupportChatScreen: React.FC = () => {
             end={{ x: 1, y: 1 }}
             style={[s.bubble, s.bubbleUser]}
           >
-            <Text style={s.bubbleTextUser}>{item.message}</Text>
+            {item.imageUrl ? (
+              <Image source={{ uri: item.imageUrl }} style={s.msgImage} resizeMode="cover" />
+            ) : null}
+            {item.message ? <Text style={s.bubbleTextUser}>{item.message}</Text> : null}
           </LinearGradient>
         ) : (
           <View style={[s.bubble, s.bubbleAdmin]}>
-            <Text style={s.bubbleTextAdmin}>{item.message}</Text>
+            {item.imageUrl ? (
+              <Image source={{ uri: item.imageUrl }} style={s.msgImage} resizeMode="cover" />
+            ) : null}
+            {item.message ? <Text style={s.bubbleTextAdmin}>{item.message}</Text> : null}
           </View>
         )}
         <Text style={[s.bubbleTime, isUser ? s.timeRight : s.timeLeft]}>
@@ -219,8 +249,21 @@ export const SupportChatScreen: React.FC = () => {
 
         {adminTyping && !sending && <TypingDots />}
 
+        {/* ── Image preview ── */}
+        {selectedImage ? (
+          <View style={s.previewBar}>
+            <Image source={{ uri: selectedImage }} style={s.previewImage} resizeMode="cover" />
+            <TouchableOpacity onPress={() => setSelectedImage(null)} style={s.previewRemove} activeOpacity={0.8}>
+              <Ionicons name="close-circle" size={22} color={PINK} />
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         {/* ── Input bar ── */}
         <View style={s.inputBar}>
+          <TouchableOpacity onPress={handlePickImage} activeOpacity={0.7} style={s.imageBtn}>
+            <Ionicons name="image-outline" size={22} color={INK2} />
+          </TouchableOpacity>
           <TextInput
             style={s.input}
             placeholder="Escreva uma mensagem…"
@@ -233,14 +276,14 @@ export const SupportChatScreen: React.FC = () => {
           />
           <TouchableOpacity
             onPress={handleSend}
-            disabled={!newMessage.trim() || sending}
+            disabled={(!newMessage.trim() && !selectedImage) || sending}
             activeOpacity={0.8}
           >
             <LinearGradient
               colors={['#FF6AAE', PINK]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
-              style={[s.sendBtn, (!newMessage.trim() || sending) && s.sendBtnDisabled]}
+              style={[s.sendBtn, ((!newMessage.trim() && !selectedImage) || sending) && s.sendBtnDisabled]}
             >
               {sending ? (
                 <ActivityIndicator size="small" color="#fff" />
@@ -348,6 +391,25 @@ const s = StyleSheet.create({
   },
   typingDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: INK3 },
 
+  /* ── Image preview ── */
+  previewBar: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderTopWidth: 1,
+    borderTopColor: LINE,
+  },
+  previewImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+  },
+  previewRemove: {
+    position: 'absolute',
+    top: 4,
+    left: 104,
+  },
+
   /* ── Input bar ── */
   inputBar: {
     flexDirection: 'row',
@@ -359,6 +421,12 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.9)',
     borderTopWidth: 1,
     borderTopColor: LINE,
+  },
+  imageBtn: {
+    width: 38,
+    height: 38,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   input: {
     flex: 1,
@@ -379,6 +447,14 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
+
+  /* ── Image in bubble ── */
+  msgImage: {
+    width: 200,
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 4,
+  },
 
   /* ── Empty state ── */
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },

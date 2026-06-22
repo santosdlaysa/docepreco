@@ -468,14 +468,44 @@ export const CreateRecipeScreen: React.FC = () => {
       // Reload current ingredients from API to match by name
       const existing = await iApi.getAll();
       const recipeIngredients: RecipeIngredient[] = [];
+      const normalizeIngredientName = (value: string) => value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
 
       for (const si of suggestion.ingredients) {
-        const normalizedName = si.name.toLowerCase().trim();
-        let found = existing.find(e => e.name.toLowerCase().trim() === normalizedName);
+        const normalizedName = normalizeIngredientName(si.name);
+        // Reuse an ingredient only when its registered unit is compatible with
+        // the unit used by the suggestion. A name-only match can make pricing
+        // fail (for example, an item registered as "unit" used in grams).
+        let found = existing.find(e =>
+          normalizeIngredientName(e.name) === normalizedName &&
+          getCompatibleUnits(e).includes(si.unit)
+        );
         if (!found) {
+          const suggestionAlias = `${normalizedName} (sugestao)`;
+          found = existing.find(e =>
+            normalizeIngredientName(e.name).startsWith(suggestionAlias) &&
+            getCompatibleUnits(e).includes(si.unit)
+          );
+        }
+        if (!found) {
+          const sameNameWithIncompatibleUnit = existing.some(
+            e => normalizeIngredientName(e.name) === normalizedName
+          );
+          let ingredientName = si.name;
+          if (sameNameWithIncompatibleUnit) {
+            const baseName = `${si.name} (sugestao)`;
+            ingredientName = baseName;
+            let suffix = 2;
+            while (existing.some(e => normalizeIngredientName(e.name) === normalizeIngredientName(ingredientName))) {
+              ingredientName = `${baseName} ${suffix++}`;
+            }
+          }
           // Auto-create the ingredient
           found = await iApi.create({
-            name: si.name,
+            name: ingredientName,
             purchaseQuantity: si.purchaseQuantity,
             purchasePrice: si.purchasePrice,
             unit: si.unit,
@@ -807,20 +837,26 @@ export const CreateRecipeScreen: React.FC = () => {
 
           {/* ── Custos adicionais (.gcard) ── */}
           <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Custos adicionais</Text>
+          <Text style={{ fontSize: 12.5, color: INK3, marginLeft: 2, marginTop: 3, marginBottom: 6, lineHeight: 18 }}>
+            {t('createRecipe.additionalCostsDescription')}
+          </Text>
           <View style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SH }}>
             {localizedAdditionalCosts.map((cost, i) => (
-              <View key={cost.name} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 13, paddingHorizontal: 15, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: LINE2 } : {}) }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 14.5, fontWeight: '600', color: INK }}>{cost.name}</Text>
+              <View key={cost.name} style={{ padding: 13, paddingHorizontal: 15, ...(i > 0 ? { borderTopWidth: 1, borderTopColor: LINE2 } : {}) }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: 14.5, fontWeight: '600', color: INK }}>{cost.name}</Text>
+                  </View>
+                  <TextInput
+                    style={{ fontSize: 15, fontWeight: '700', color: INK2, textAlign: 'right', minWidth: 70, padding: 0 }}
+                    value={getAdditionalCostValue(cost.name)}
+                    onChangeText={val => updateAdditionalCost(cost.name, val)}
+                    placeholder="R$ 0,00"
+                    placeholderTextColor={INK3}
+                    keyboardType="decimal-pad"
+                  />
                 </View>
-                <TextInput
-                  style={{ fontSize: 15, fontWeight: '700', color: INK2, textAlign: 'right', minWidth: 70, padding: 0 }}
-                  value={getAdditionalCostValue(cost.name)}
-                  onChangeText={val => updateAdditionalCost(cost.name, val)}
-                  placeholder="R$ 0,00"
-                  placeholderTextColor={INK3}
-                  keyboardType="decimal-pad"
-                />
+                <Text style={{ fontSize: 11.5, color: INK3, marginTop: 4, lineHeight: 16 }}>{cost.hint}</Text>
               </View>
             ))}
           </View>

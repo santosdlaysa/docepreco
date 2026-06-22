@@ -27,19 +27,20 @@ export class SupportController {
 
   async sendMessage(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { message } = req.body;
-      if (!message?.trim()) {
-        res.status(400).json({ success: false, error: 'message é obrigatório' });
+      const { message, imageUrl } = req.body;
+      const trimmed = (message ?? '').trim();
+      if (!trimmed && !imageUrl) {
+        res.status(400).json({ success: false, error: 'message ou imageUrl é obrigatório' });
         return;
       }
-      const trimmed = message.trim();
-      const item = await repo.create({ userId: req.userId!, senderType: 'user', message: trimmed });
+      const item = await repo.create({ userId: req.userId!, senderType: 'user', message: trimmed, imageUrl: imageUrl ?? null });
 
       // Telegram notification (fire-and-forget)
       pool.query('SELECT company_name, email FROM users WHERE id = $1', [req.userId!])
         .then(({ rows }) => {
           if (rows.length > 0) {
-            notifySupportMessage(rows[0].company_name ?? 'Sem nome', rows[0].email, trimmed);
+            const preview = trimmed || '[imagem]';
+            notifySupportMessage(rows[0].company_name ?? 'Sem nome', rows[0].email, preview);
           }
         })
         .catch(() => {});
@@ -88,28 +89,35 @@ export class SupportController {
   async adminSendMessage(req: Request, res: Response): Promise<void> {
     try {
       const { userId } = req.params;
-      const { message } = req.body;
-      if (!message?.trim()) {
-        res.status(400).json({ success: false, error: 'message é obrigatório' });
+      const { message, imageUrl } = req.body;
+      const trimmed = (message ?? '').trim();
+      if (!trimmed && !imageUrl) {
+        res.status(400).json({ success: false, error: 'message ou imageUrl é obrigatório' });
         return;
       }
-      const item = await repo.create({ userId, senderType: 'admin', message: message.trim() });
+      const item = await repo.create({ userId, senderType: 'admin', message: trimmed, imageUrl: imageUrl ?? null });
 
       // Push notification para o usuário (fire-and-forget)
       pushTokenRepo.findByUserId(userId)
         .then(tokens => {
           if (tokens.length > 0) {
             const tokenStrings = tokens.map(t => t.token);
-            sendPushNotifications(tokenStrings, 'Suporte DocePreço', message.trim(), { screen: 'SupportChat' });
+            const preview = trimmed || '📷 Imagem';
+            sendPushNotifications(tokenStrings, 'Suporte DocePreço', preview, { screen: 'SupportChat' });
           }
         })
         .catch(() => {});
 
       res.status(201).json({ success: true, data: item });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Support] adminSendMessage error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
-      res.status(500).json({ success: false, error: 'Erro ao enviar mensagem' });
+      if (error?.code === '23503') {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const detail = process.env.NODE_ENV !== 'production' && error instanceof Error ? error.message : 'Erro ao enviar mensagem';
+      res.status(500).json({ success: false, error: detail });
     }
   }
 

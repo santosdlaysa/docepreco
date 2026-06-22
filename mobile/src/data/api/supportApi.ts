@@ -5,6 +5,7 @@ export interface SupportMessage {
   userId: string;
   senderType: 'user' | 'admin';
   message: string;
+  imageUrl: string | null;
   readAt: string | null;
   createdAt: string;
 }
@@ -15,8 +16,8 @@ export const supportApi = {
     return response.data.data;
   },
 
-  sendMessage: async (message: string): Promise<SupportMessage> => {
-    const response = await apiClient.post('/support/messages', { message });
+  sendMessage: async (message: string, imageUrl?: string | null): Promise<SupportMessage> => {
+    const response = await apiClient.post('/support/messages', { message, imageUrl });
     return response.data.data;
   },
 

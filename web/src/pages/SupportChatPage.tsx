@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { api, SupportConversation, SupportMessage, AdminUser } from '../lib/api';
 import { TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Headset, Send, MessageCircle, Search, PenSquare, X } from 'lucide-react';
+import { Headset, Send, MessageCircle, Search, PenSquare, X, ImagePlus } from 'lucide-react';
+
+const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
 interface Props {
   toast: ToastFn;
@@ -28,6 +30,8 @@ export function SupportChatPage({ toast }: Props) {
   const [selectedUserInfo, setSelectedUserInfo] = useState<{ userName: string; userEmail: string } | null>(null);
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [selectedImageName, setSelectedImageName] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -39,6 +43,7 @@ export function SupportChatPage({ toast }: Props) {
   const [searchingUsers, setSearchingUsers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
   const messagesPollRef = useRef<ReturnType<typeof setInterval>>();
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const lastTypingSentRef = useRef(0);
@@ -108,6 +113,8 @@ export function SupportChatPage({ toast }: Props) {
     setSelectedUserId(userId);
     setLoadingMessages(true);
     setMessages([]);
+    setSelectedImage(null);
+    setSelectedImageName('');
     await loadMessages(userId);
     // Update unread in conversation list
     setConversations(prev => prev.map(c => c.userId === userId ? { ...c, unreadCount: 0 } : c));
@@ -132,19 +139,22 @@ export function SupportChatPage({ toast }: Props) {
   };
 
   const handleSend = async () => {
-    if (!newMessage.trim() || !selectedUserId || sending) return;
+    const text = newMessage.trim();
+    if ((!text && !selectedImage) || !selectedUserId || sending) return;
     setSending(true);
     try {
-      const sent = await api.sendSupportMessage(selectedUserId, newMessage.trim());
+      const sent = await api.sendSupportMessage(selectedUserId, text, selectedImage);
       setMessages(prev => [...prev, sent]);
       setNewMessage('');
+      setSelectedImage(null);
+      setSelectedImageName('');
       textareaRef.current?.focus();
       // Update conversation list preview — ou cria a entrada se for conversa nova
       setConversations(prev => {
         if (prev.some(c => c.userId === selectedUserId)) {
           return prev.map(c =>
             c.userId === selectedUserId
-              ? { ...c, lastMessage: sent.message, lastMessageAt: sent.createdAt, lastSenderType: 'admin' }
+              ? { ...c, lastMessage: sent.message || '[Imagem]', lastMessageAt: sent.createdAt, lastSenderType: 'admin' }
               : c
           );
         }
@@ -152,7 +162,7 @@ export function SupportChatPage({ toast }: Props) {
           userId: selectedUserId,
           userName: selectedUserInfo?.userName ?? '',
           userEmail: selectedUserInfo?.userEmail ?? '',
-          lastMessage: sent.message,
+          lastMessage: sent.message || '[Imagem]',
           lastMessageAt: sent.createdAt,
           lastSenderType: 'admin',
           unreadCount: 0,
@@ -164,6 +174,29 @@ export function SupportChatPage({ toast }: Props) {
     } finally {
       setSending(false);
     }
+  };
+
+  const handlePickImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Selecione um arquivo de imagem');
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      toast.error('A imagem deve ter no máximo 3 MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result !== 'string') return;
+      setSelectedImage(reader.result);
+      setSelectedImageName(file.name);
+    };
+    reader.onerror = () => toast.error('Não foi possível ler a imagem');
+    reader.readAsDataURL(file);
   };
 
   const sendTypingSignal = useCallback(() => {
@@ -273,7 +306,7 @@ export function SupportChatPage({ toast }: Props) {
                       <p className="text-xs text-gray-400 truncate">{conv.userEmail}</p>
                       <p className="text-sm text-gray-500 dark:text-gray-400 truncate mt-0.5">
                         {conv.lastSenderType === 'admin' && <span className="text-primary-500">Você: </span>}
-                        {conv.lastMessage}
+                        {conv.lastMessage || '[Imagem]'}
                       </p>
                     </div>
                     {conv.unreadCount > 0 && (
@@ -329,7 +362,14 @@ export function SupportChatPage({ toast }: Props) {
                               : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 rounded-bl-sm'
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                          {msg.imageUrl && (
+                            <img
+                              src={msg.imageUrl}
+                              alt="Imagem enviada no chat"
+                              className="mb-1.5 max-h-72 max-w-full rounded-xl object-cover"
+                            />
+                          )}
+                          {msg.message && <p className="text-sm whitespace-pre-wrap">{msg.message}</p>}
                           <p className={`text-[10px] mt-1 text-right ${
                             msg.senderType === 'admin' ? 'text-white/70' : 'text-gray-400'
                           }`}>
@@ -344,7 +384,38 @@ export function SupportChatPage({ toast }: Props) {
 
                 {/* Input */}
                 <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  {selectedImage && (
+                    <div className="mb-2 flex items-center gap-2 rounded-xl bg-gray-50 dark:bg-gray-700 p-2">
+                      <img src={selectedImage} alt="Pré-visualização" className="h-16 w-16 rounded-lg object-cover" />
+                      <span className="min-w-0 flex-1 truncate text-xs text-gray-500 dark:text-gray-300">{selectedImageName}</span>
+                      <button
+                        type="button"
+                        onClick={() => { setSelectedImage(null); setSelectedImageName(''); }}
+                        className="rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-600"
+                        aria-label="Remover imagem"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  )}
                   <div className="flex items-end gap-2">
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handlePickImage}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => imageInputRef.current?.click()}
+                      disabled={sending}
+                      className="rounded-xl border border-gray-200 p-2.5 text-gray-500 transition-colors hover:border-primary-300 hover:text-primary-500 disabled:opacity-50 dark:border-gray-600 dark:text-gray-300"
+                      aria-label="Anexar imagem"
+                      title="Anexar imagem (máximo 3 MB)"
+                    >
+                      <ImagePlus size={18} />
+                    </button>
                     <textarea
                       ref={textareaRef}
                       value={newMessage}
@@ -357,7 +428,7 @@ export function SupportChatPage({ toast }: Props) {
                     />
                     <button
                       onClick={handleSend}
-                      disabled={!newMessage.trim() || sending}
+                      disabled={(!newMessage.trim() && !selectedImage) || sending}
                       className="bg-primary-500 text-white rounded-xl p-2.5 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       <Send size={18} />

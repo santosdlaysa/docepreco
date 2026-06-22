@@ -27,6 +27,7 @@ import { SupportChatPage } from '../pages/SupportChatPage';
 import { WhatsAppPage } from '../pages/WhatsAppPage';
 import { PixRequestsPage } from '../pages/PixRequestsPage';
 import { ReferralsPage } from '../pages/ReferralsPage';
+import { DatabasePage } from '../pages/DatabasePage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -64,11 +65,12 @@ import {
   Sun,
   QrCode,
   Gift,
+  Database,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'subscriptions' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database';
 
 interface NavItem {
   id: Page;
@@ -107,6 +109,7 @@ const NAV: NavItem[] = [
 
   { id: 'logs', label: 'Logs do sistema', icon: ScrollText, section: 'Sistema' },
   { id: 'requests', label: 'Rotas HTTP', icon: Globe },
+  { id: 'database', label: 'Console SQL', icon: Database },
 ];
 
 function formatTimeAgo(dateStr: string): string {
@@ -457,6 +460,7 @@ export default function AdminApp() {
             {page === 'onboarding' && <OnboardingPage toast={toast} />}
             {page === 'whatsapp' && <WhatsAppPage toast={toast} />}
             {page === 'telegram' && <TelegramAlertsPage toast={toast} />}
+            {page === 'database' && <DatabasePage toast={toast} />}
           </PageTransition>
         </div>
       </main>

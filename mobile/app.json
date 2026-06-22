@@ -20,7 +20,8 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.laysadiniz.sweetpricing",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSPhotoLibraryUsageDescription": "Precisamos acessar sua galeria para enviar fotos no suporte."
       },
       "buildNumber": "39"
     },

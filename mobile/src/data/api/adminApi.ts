@@ -76,6 +76,7 @@ export interface AdminMessage {
   userId: string;
   senderType: 'user' | 'admin';
   message: string;
+  imageUrl: string | null;
   readAt: string | null;
   createdAt: string;
 }
@@ -149,8 +150,8 @@ export const adminApi = {
     return data.data ?? [];
   },
 
-  async sendMessage(userId: string, message: string): Promise<AdminMessage> {
-    const { data } = await adminClient.post(`/support/admin/conversations/${userId}`, { message });
+  async sendMessage(userId: string, message: string, imageUrl?: string | null): Promise<AdminMessage> {
+    const { data } = await adminClient.post(`/support/admin/conversations/${userId}`, { message, imageUrl });
     return data.data;
   },
 

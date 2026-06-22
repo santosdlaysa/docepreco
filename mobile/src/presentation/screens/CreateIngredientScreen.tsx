@@ -68,6 +68,7 @@ export const CreateIngredientScreen: React.FC = () => {
   const [purchaseQuantity, setPurchaseQuantity] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
   const [unit, setUnit] = useState<Unit>('' as Unit);
+  const [packageType, setPackageType] = useState('');
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(isEditing);
   const [originalPrice, setOriginalPrice] = useState<number | null>(null);
@@ -96,6 +97,7 @@ export const CreateIngredientScreen: React.FC = () => {
         setPurchaseQuantity(String(ing.purchaseQuantity));
         setPurchasePrice(Number(ing.purchasePrice).toFixed(2).replace('.', ','));
         setUnit(ing.unit);
+        setPackageType(ing.purchaseUnitLabel ?? '');
         setOriginalPrice(ing.purchasePrice);
         setOriginalQty(ing.purchaseQuantity);
       })
@@ -148,6 +150,7 @@ export const CreateIngredientScreen: React.FC = () => {
         purchaseQuantity: finalQty,
         purchasePrice: parseLocaleNumber(purchasePrice),
         unit: finalUnit,
+        ...(packageType.trim() ? { purchaseUnitLabel: packageType.trim() } : {}),
       };
 
       if (isEditing) {
@@ -251,6 +254,22 @@ export const CreateIngredientScreen: React.FC = () => {
                 ))}
               </View>
             )}
+          </View>
+
+          {/* ── Tipo da embalagem ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Tipo da embalagem <Text style={{ color: INK2, fontWeight: '400' }}>(opcional)</Text></Text>
+            <Text style={st.hint}>Ex: Lata, Pacote, Garrafa, Saco…</Text>
+            <View style={st.input}>
+              <Ionicons name="cube-outline" size={18} color={INK3} />
+              <TextInput
+                style={st.inputText}
+                value={packageType}
+                onChangeText={setPackageType}
+                placeholder="Ex: Lata"
+                placeholderTextColor={INK3}
+              />
+            </View>
           </View>
 
           {/* ── Aviso sobre unidades ── */}

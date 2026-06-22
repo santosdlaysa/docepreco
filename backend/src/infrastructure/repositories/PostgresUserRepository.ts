@@ -203,7 +203,13 @@ export class PostgresUserRepository {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      // Delete recipe_ingredients first (has ON DELETE RESTRICT on ingredient_id)
+      // Delete rows with ON DELETE RESTRICT before the CASCADE reaches recipes
+      await client.query(
+        `DELETE FROM recipe_sub_recipes
+         WHERE recipe_id IN (SELECT id FROM recipes WHERE user_id = $1)
+            OR sub_recipe_id IN (SELECT id FROM recipes WHERE user_id = $1)`,
+        [userId]
+      );
       await client.query(
         `DELETE FROM recipe_ingredients WHERE recipe_id IN (SELECT id FROM recipes WHERE user_id = $1)`,
         [userId]
