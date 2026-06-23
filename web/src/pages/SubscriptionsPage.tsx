@@ -353,9 +353,16 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
         <StatMetric
           label="Assinantes Ativos"
           value={overview.activeSubscribers}
-          sub={`${overview.totalSubscribers} total (${overview.expiredSubscribers} exp.)`}
+          sub={`${overview.expiringSubscribers} expirando em 7d`}
           icon={Users}
           color="bg-blue-500"
+        />
+        <StatMetric
+          label="Expirando em 7 dias"
+          value={overview.expiringSubscribers}
+          sub={`${overview.expiredSubscribers} já expirados`}
+          icon={Zap}
+          color="bg-yellow-500"
         />
         <StatMetric
           label="Receita Total"

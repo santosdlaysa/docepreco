@@ -847,6 +847,7 @@ export class AdminController {
           SELECT
             (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND (premium_until IS NULL OR premium_until > NOW())) AS "activeSubscribers",
             (SELECT COUNT(*)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND (expiration_at IS NULL OR expiration_at > NOW())) AS "totalActiveEvents",
+            (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND premium_until IS NOT NULL AND premium_until > NOW() AND premium_until <= NOW() + INTERVAL '7 days') AS "expiringSubscribers",
             (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND premium_until IS NOT NULL AND premium_until <= NOW()) AS "expiredSubscribers",
             (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')) AS "totalReceivedCents",
             (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyReceivedCents",
@@ -926,6 +927,7 @@ export class AdminController {
         data: {
           overview: {
             activeSubscribers,
+            expiringSubscribers: parseInt(overview.expiringSubscribers || '0'),
             expiredSubscribers: parseInt(overview.expiredSubscribers || '0'),
             totalSubscribers: parseInt(overview.totalSubscribers || '0'),
             totalReceivedBRL: totalReceivedCents / 100,
