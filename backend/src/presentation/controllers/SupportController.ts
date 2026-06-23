@@ -61,7 +61,8 @@ export class SupportController {
     try {
       const count = await repo.getUnreadCountForUser(req.userId!);
       res.json({ success: true, data: { unreadCount: count } });
-    } catch {
+    } catch (error) {
+      console.error('[Support] getUnreadCount error:', error);
       res.status(500).json({ success: false, error: 'Erro ao buscar contagem' });
     }
   }

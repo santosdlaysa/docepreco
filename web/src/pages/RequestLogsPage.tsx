@@ -64,6 +64,7 @@ export function RequestLogsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -85,7 +86,7 @@ export function RequestLogsPage() {
     }
   };
 
-  useEffect(() => { load(); }, [methodFilter]);
+  useEffect(() => { load(); }, [methodFilter, statusFilter]);
 
   useEffect(() => {
     if (autoRefresh) {
@@ -94,11 +95,17 @@ export function RequestLogsPage() {
       if (intervalRef.current) clearInterval(intervalRef.current);
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
-  }, [autoRefresh, methodFilter, search]);
+  }, [autoRefresh, methodFilter, statusFilter, search]);
 
-  const filtered = search
-    ? logs.filter(l => l.path.toLowerCase().includes(search.toLowerCase()) || (l.bodyEmail && l.bodyEmail.toLowerCase().includes(search.toLowerCase())))
-    : logs;
+  const filtered = logs.filter(l => {
+    if (search && !l.path.toLowerCase().includes(search.toLowerCase()) && (!l.bodyEmail || !l.bodyEmail.toLowerCase().includes(search.toLowerCase()))) {
+      return false;
+    }
+    if (statusFilter && l.statusCode !== parseInt(statusFilter)) {
+      return false;
+    }
+    return true;
+  });
 
   const methodCounts = logs.reduce((acc, l) => {
     acc[l.method] = (acc[l.method] ?? 0) + 1;
@@ -202,6 +209,35 @@ export function RequestLogsPage() {
           {['GET', 'POST', 'PUT', 'PATCH', 'DELETE'].map(m => (
             <option key={m} value={m}>{m}</option>
           ))}
+        </select>
+        <select
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+        >
+          <option value="">Todos os status</option>
+          <optgroup label="2xx - Sucesso">
+            <option value="200">200 OK</option>
+            <option value="201">201 Created</option>
+            <option value="204">204 No Content</option>
+          </optgroup>
+          <optgroup label="3xx - Redirecionamento">
+            <option value="304">304 Not Modified</option>
+            <option value="301">301 Moved Permanently</option>
+            <option value="302">302 Found</option>
+          </optgroup>
+          <optgroup label="4xx - Cliente">
+            <option value="400">400 Bad Request</option>
+            <option value="401">401 Unauthorized</option>
+            <option value="403">403 Forbidden</option>
+            <option value="404">404 Not Found</option>
+            <option value="429">429 Too Many Requests</option>
+          </optgroup>
+          <optgroup label="5xx - Servidor">
+            <option value="500">500 Internal Error</option>
+            <option value="502">502 Bad Gateway</option>
+            <option value="503">503 Service Unavailable</option>
+          </optgroup>
         </select>
       </div>
 
