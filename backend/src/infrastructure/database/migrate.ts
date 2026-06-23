@@ -955,32 +955,8 @@ export async function runMigrations() {
         AND platform IN ('ios', 'android')
     `);
 
-    // Fix ingredients with custom packaging format (convert to g/ml and remove confusion)
-    console.log('\n🔄 Fixing ingredient packaging format...');
-    const ingredientsWithPackaging = await client.query(
-      'SELECT id, name, purchase_quantity, unit, purchase_unit_weight, purchase_price FROM ingredients WHERE purchase_unit_weight IS NOT NULL'
-    );
-
-    for (const ing of ingredientsWithPackaging.rows) {
-      let newQuantity = ing.purchase_quantity;
-      let newUnit = ing.unit;
-
-      if (ing.unit === 'kg') {
-        newQuantity = ing.purchase_quantity * 1000;
-        newUnit = 'g';
-      } else if (ing.unit === 'l') {
-        newQuantity = ing.purchase_quantity * 1000;
-        newUnit = 'ml';
-      } else if ((ing.unit === 'g' || ing.unit === 'ml') && ing.purchase_unit_weight) {
-        newQuantity = ing.purchase_quantity * ing.purchase_unit_weight;
-      }
-
-      await client.query(
-        `UPDATE ingredients SET purchase_quantity = $1, unit = $2, purchase_unit_label = NULL, purchase_unit_weight = NULL WHERE id = $3`,
-        [newQuantity, newUnit, ing.id]
-      );
-      console.log(`  ✅ ${ing.name}: ${ing.purchase_quantity}${ing.unit} → ${newQuantity}${newUnit}`);
-    }
+    // Aumenta o campo purchase_quantity para acomodar valores grandes se necessário
+    await client.query(`ALTER TABLE ingredients ALTER COLUMN purchase_quantity TYPE DECIMAL(15,3)`).catch(() => {});
 
     await client.query('COMMIT');
     console.log('\n✨ Migrations applied successfully');
