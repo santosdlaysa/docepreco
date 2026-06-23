@@ -937,12 +937,20 @@ export async function runMigrations() {
     await client.query(`
       UPDATE premium_events SET amount_cents = 1490
       WHERE source = 'webhook' AND amount_cents IS NULL
-        AND event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE')
+        AND event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'NON_RENEWING_PURCHASE', 'UNCANCELLATION', 'PRODUCT_CHANGE')
         AND product_id IS NOT NULL
         AND product_id NOT ILIKE '%master%'
         AND product_id NOT ILIKE '%anual%'
         AND product_id NOT ILIKE '%annual%'
         AND product_id NOT ILIKE '%year%'
+    `);
+
+    // Para eventos sem product_id, preencher com default baseado na plataforma (iOS/Android = R$ 14,90)
+    await client.query(`
+      UPDATE premium_events SET amount_cents = 1490
+      WHERE source IN ('webhook', 'app_sync') AND amount_cents IS NULL
+        AND event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')
+        AND platform IN ('ios', 'android')
     `);
 
     // Fix ingredients with custom packaging format (convert to g/ml and remove confusion)

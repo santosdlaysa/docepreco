@@ -845,24 +845,25 @@ export class AdminController {
       const [overviewRes, byPlatformRes, eventsRes, timeseriesRes] = await Promise.all([
         pool.query(`
           SELECT
-            (SELECT COUNT(DISTINCT user_id)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND (expiration_at IS NULL OR expiration_at > NOW())) AS "activeSubscribers",
-            (SELECT COUNT(*)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND (expiration_at IS NULL OR expiration_at > NOW())) AS "totalActiveEvents",
-            (SELECT COUNT(DISTINCT user_id)::int FROM premium_events WHERE expiration_at IS NOT NULL AND expiration_at <= NOW()) AS "expiredSubscribers",
-            (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL')) AS "totalReceivedCents",
-            (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyReceivedCents",
-            (SELECT COALESCE(SUM(amount_cents), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month') AND created_at < DATE_TRUNC('month', NOW())) AS "lastMonthCents",
-            (SELECT COALESCE(AVG(amount_cents), 0)::float FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND amount_cents > 0) AS "avgValue",
-            (SELECT COUNT(DISTINCT user_id)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL')) AS "totalSubscribers"
+            (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND (premium_until IS NULL OR premium_until > NOW())) AS "activeSubscribers",
+            (SELECT COUNT(*)::int FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND (expiration_at IS NULL OR expiration_at > NOW())) AS "totalActiveEvents",
+            (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND premium_until IS NOT NULL AND premium_until <= NOW()) AS "expiredSubscribers",
+            (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')) AS "totalReceivedCents",
+            (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyReceivedCents",
+            (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND created_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month') AND created_at < DATE_TRUNC('month', NOW())) AS "lastMonthCents",
+            (SELECT COALESCE(AVG(amount_cents), 0)::float FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND amount_cents > 0) AS "avgValue",
+            (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE) AS "totalSubscribers"
         `),
         pool.query(`
           SELECT
             COALESCE(platform, 'unknown') AS platform,
             COUNT(DISTINCT user_id)::int AS "subscriberCount",
             COUNT(*)::int AS "eventCount",
-            COALESCE(SUM(amount_cents), 0)::bigint AS "totalCents",
-            COALESCE(AVG(amount_cents), 0)::float AS "avgCents"
+            COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint AS "totalCents",
+            COALESCE(AVG(CASE WHEN amount_cents > 0 THEN amount_cents ELSE NULL END), 0)::float AS "avgCents"
           FROM premium_events
-          WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND (expiration_at IS NULL OR expiration_at > NOW())
+          WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')
+            AND (expiration_at IS NULL OR expiration_at > NOW())
           GROUP BY platform
           ORDER BY "totalCents" DESC
         `),
@@ -881,18 +882,18 @@ export class AdminController {
             pe.created_at AS "createdAt"
           FROM premium_events pe
           JOIN users u ON u.id = pe.user_id
-          WHERE pe.event_type IN ('INITIAL_PURCHASE', 'RENEWAL')
+          WHERE pe.event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')
           ORDER BY pe.created_at DESC
           LIMIT 200
         `),
         pool.query(`
           SELECT
             DATE_TRUNC('day', created_at)::date AS "date",
-            COALESCE(SUM(amount_cents), 0)::bigint AS "totalCents",
+            COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint AS "totalCents",
             COUNT(*)::int AS "eventCount",
             COUNT(DISTINCT user_id)::int AS "uniqueUsers"
           FROM premium_events
-          WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL') AND created_at >= NOW() - INTERVAL '90 days'
+          WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND created_at >= NOW() - INTERVAL '90 days'
           GROUP BY DATE_TRUNC('day', created_at)
           ORDER BY "date" ASC
         `)

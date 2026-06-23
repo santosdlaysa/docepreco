@@ -85,14 +85,14 @@ export class PostgresSupportRepository {
       `SELECT COUNT(*)::int AS count FROM support_messages WHERE user_id = $1 AND sender_type = 'admin' AND read_at IS NULL`,
       [userId]
     );
-    return result.rows[0].count;
+    return result.rows[0]?.count ?? 0;
   }
 
   async getTotalUnreadCount(): Promise<number> {
     const result = await pool.query(
       `SELECT COUNT(*)::int AS count FROM support_messages WHERE sender_type = 'user' AND read_at IS NULL`
     );
-    return result.rows[0].count;
+    return result.rows[0]?.count ?? 0;
   }
 
   private mapRow(row: Record<string, unknown>): SupportMessage {
