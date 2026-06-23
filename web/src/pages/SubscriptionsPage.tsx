@@ -215,6 +215,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo</th>
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Valor</th>
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
+                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Expiração</th>
               </tr>
             </thead>
             <tbody>
@@ -234,6 +235,15 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                   <td className="px-5 py-3 text-gray-600 dark:text-gray-400 text-xs">{event.eventType}</td>
                   <td className="px-5 py-3 font-semibold text-gray-900 dark:text-white">{fmt(event.amountBRL)}</td>
                   <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">{fmtDateTime(event.createdAt)}</td>
+                  <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">
+                    {event.expirationAt ? (
+                      new Date(event.expirationAt) <= new Date() ? (
+                        <span className="text-red-600 dark:text-red-400 font-semibold">Expirado</span>
+                      ) : (
+                        fmtDate(event.expirationAt)
+                      )
+                    ) : '—'}
+                  </td>
                 </tr>
               ))}
             </tbody>
