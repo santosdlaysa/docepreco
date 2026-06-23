@@ -599,6 +599,8 @@ export interface RequestLog {
   ip: string | null;
   errorMessage: string | null;
   bodyEmail: string | null;
+  requestBody: string | null;
+  responseBody: string | null;
   ts: string;
 }
 

@@ -493,6 +493,8 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'signup_platform', "VARCHAR(20) NULL CHECK (signup_platform IN ('ios', 'android'))");
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
     await addColumnIfMissing(client, 'request_logs', 'body_email', 'VARCHAR(255)');
+    await addColumnIfMissing(client, 'request_logs', 'request_body', 'TEXT');
+    await addColumnIfMissing(client, 'request_logs', 'response_body', 'TEXT');
 
     // Purchase unit fields (e.g. "lata" = 550g)
     await addColumnIfMissing(client, 'ingredients', 'purchase_unit_label', 'VARCHAR(50)');

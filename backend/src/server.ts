@@ -93,12 +93,19 @@ app.use(express.json({ limit: '5mb' }));
 app.use((req, res, next) => {
   const start = Date.now();
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.socket.remoteAddress ?? null;
+  let responseBody: string | null = null;
 
-  // Intercepta res.json para capturar a mensagem de erro
+  // Intercepta res.json para capturar a mensagem de erro e response body
   const originalJson = res.json.bind(res);
   res.json = (body: any) => {
     if (res.statusCode >= 400 && body && !res.locals.errorMessage) {
       res.locals.errorMessage = body.error || body.message || undefined;
+    }
+    // Armazena apenas erros e respostas pequenas (< 5KB)
+    if (res.statusCode >= 400 || (body && JSON.stringify(body).length < 5000)) {
+      try {
+        responseBody = JSON.stringify(body).slice(0, 2000);
+      } catch {}
     }
     return originalJson(body);
   };
@@ -111,9 +118,18 @@ app.use((req, res, next) => {
     // Capture email from login/register attempts
     const isAuthRoute = path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/auth/forgot-password';
     const bodyEmail = isAuthRoute && req.body?.email ? String(req.body.email).toLowerCase() : null;
+
+    // Armazena apenas request body de erros ou formas POST/PUT/PATCH
+    let requestBody: string | null = null;
+    if ((res.statusCode >= 400 || ['POST', 'PUT', 'PATCH'].includes(req.method)) && req.body) {
+      try {
+        requestBody = JSON.stringify(req.body).slice(0, 2000);
+      } catch {}
+    }
+
     pool.query(
-      `INSERT INTO request_logs (method, path, status_code, duration_ms, ip, error_message, body_email) VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [req.method, path, res.statusCode, duration, ip, errorMsg, bodyEmail]
+      `INSERT INTO request_logs (method, path, status_code, duration_ms, ip, error_message, body_email, request_body, response_body) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [req.method, path, res.statusCode, duration, ip, errorMsg, bodyEmail, requestBody, responseBody]
     ).catch(() => {});
 
     if (res.statusCode >= 500) {

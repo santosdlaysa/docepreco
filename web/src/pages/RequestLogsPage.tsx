@@ -256,6 +256,22 @@ export function RequestLogsPage() {
                           <p className="text-red-700 font-mono text-xs">{log.errorMessage || 'Sem descrição disponível'}</p>
                         </div>
                       )}
+                      {log.requestBody && (
+                        <div className="mt-2 p-2.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                          <p className="text-xs font-medium text-blue-600 dark:text-blue-400 mb-1">Parâmetros (Request):</p>
+                          <pre className="text-xs bg-white dark:bg-gray-800 p-2 rounded border border-blue-100 dark:border-blue-900 overflow-x-auto text-blue-900 dark:text-blue-200 max-h-40 overflow-y-auto">
+                            {log.requestBody}
+                          </pre>
+                        </div>
+                      )}
+                      {log.responseBody && (
+                        <div className="mt-2 p-2.5 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg">
+                          <p className="text-xs font-medium text-green-600 dark:text-green-400 mb-1">Resposta (Response):</p>
+                          <pre className="text-xs bg-white dark:bg-gray-800 p-2 rounded border border-green-100 dark:border-green-900 overflow-x-auto text-green-900 dark:text-green-200 max-h-40 overflow-y-auto">
+                            {log.responseBody}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
