@@ -49,10 +49,17 @@ router.post('/send', async (req: Request, res: Response) => {
       res.status(400).json({ error: 'phone e message são obrigatórios' });
       return;
     }
+    if (typeof message !== 'string' || message.length === 0 || message.length > 4096) {
+      res.status(400).json({ error: 'Mensagem deve ter entre 1 e 4096 caracteres' });
+      return;
+    }
     const result = await sendWhatsAppMessage(phone, message);
     res.json({ data: result });
   } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao enviar mensagem' });
+    const msg = e instanceof Error ? e.message : 'Erro ao enviar mensagem';
+    // Diferencia erros de validação (400) de erros do servidor (500)
+    const status = msg.includes('inválido') || msg.includes('obrigatório') ? 400 : 500;
+    res.status(status).json({ error: msg });
   }
 });
 

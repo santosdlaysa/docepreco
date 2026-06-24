@@ -20,6 +20,7 @@ async function evoFetch(path: string, body?: unknown, timeoutMs = 60_000): Promi
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
+    console.log(`[EvolutionAPI] ${body ? 'POST' : 'GET'} ${path}`);
     const res = await fetch(`${EVOLUTION_API_URL}${path}`, {
       method: body ? 'POST' : 'GET',
       headers: {
@@ -34,11 +35,13 @@ async function evoFetch(path: string, body?: unknown, timeoutMs = 60_000): Promi
       const message = typeof json.message === 'string'
         ? json.message
         : `Evolution API error: ${res.status}`;
+      console.error(`[EvolutionAPI] Error ${res.status}: ${message}`);
       throw new EvolutionApiError(message, res.status);
     }
     return json;
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') {
+      console.error('[EvolutionAPI] Request timeout');
       throw new EvolutionTimeoutError();
     }
     throw err;
@@ -73,17 +76,29 @@ let instanceVerified = false;
 async function ensureInstance(): Promise<void> {
   if (instanceVerified) return;
   try {
+    console.log(`[WhatsApp] Verificando instância ${EVOLUTION_INSTANCE}`);
     await evoFetchWithColdStartRetry(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
     instanceVerified = true;
+    console.log(`[WhatsApp] Instância verificada com sucesso`);
   } catch (err: unknown) {
     // Somente 404 significa que a instancia nao existe. Timeout, autenticacao e
     // falhas de rede nao devem disparar uma tentativa incorreta de criacao.
-    if (!(err instanceof EvolutionApiError) || err.status !== 404) throw err;
-    await evoFetchWithColdStartRetry('/instance/create', {
-      instanceName: EVOLUTION_INSTANCE,
-      qrcode: true,
-    });
-    instanceVerified = true;
+    if (!(err instanceof EvolutionApiError) || err.status !== 404) {
+      console.error(`[WhatsApp] Erro ao verificar instância:`, err);
+      throw err;
+    }
+    try {
+      console.log(`[WhatsApp] Criando nova instância ${EVOLUTION_INSTANCE}`);
+      await evoFetchWithColdStartRetry('/instance/create', {
+        instanceName: EVOLUTION_INSTANCE,
+        qrcode: true,
+      });
+      instanceVerified = true;
+      console.log(`[WhatsApp] Instância criada com sucesso`);
+    } catch (createErr) {
+      console.error(`[WhatsApp] Erro ao criar instância:`, createErr);
+      throw createErr;
+    }
   }
 }
 
@@ -106,13 +121,37 @@ export async function getInstanceStatus(): Promise<{ state: string }> {
 }
 
 export async function sendWhatsAppMessage(phone: string, message: string): Promise<unknown> {
+  console.log(`[WhatsApp] Tentando enviar mensagem para ${phone}`);
+
   await ensureInstance();
   let cleanPhone = phone.replace(/\D/g, '');
   if (!cleanPhone.startsWith('55')) cleanPhone = `55${cleanPhone}`;
-  return evoFetchWithColdStartRetry(`/message/sendText/${EVOLUTION_INSTANCE}`, {
-    number: cleanPhone,
-    textMessage: { text: message },
-  });
+
+  // Validação: número brasileiro deve ter 10-11 dígitos após o 55
+  const digitsAfter55 = cleanPhone.replace(/^55/, '');
+  if (digitsAfter55.length < 10 || digitsAfter55.length > 11) {
+    const error = `Número de telefone inválido: ${phone} (após limpeza: 55${digitsAfter55}). Deve ter 10-11 dígitos.`;
+    console.error(`[WhatsApp] ${error}`);
+    throw new Error(error);
+  }
+
+  console.log(`[WhatsApp] Número validado: ${cleanPhone}`);
+
+  try {
+    const result = await evoFetchWithColdStartRetry(`/message/sendText/${EVOLUTION_INSTANCE}`, {
+      number: cleanPhone,
+      textMessage: { text: message },
+    });
+    console.log(`[WhatsApp] Mensagem enviada com sucesso para ${cleanPhone}`);
+    return result;
+  } catch (err) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`[WhatsApp] Erro ao enviar: ${errorMsg}`);
+    if (errorMsg.includes('Evolution API') || errorMsg.includes('indisponível')) {
+      throw new Error(`Evolution API indisponível: ${errorMsg}`);
+    }
+    throw err;
+  }
 }
 
 /** Pinga a Evolution API para mantê-la acordada no Render */
