@@ -73,6 +73,12 @@ async function evoFetchWithColdStartRetry(path: string, body?: unknown): Promise
 
 let instanceVerified = false;
 
+// Reset instance state se necessário (força recriação)
+export function resetInstanceState(): void {
+  instanceVerified = false;
+  console.log('[WhatsApp] Instance state resetado - será recriada na próxima requisição');
+}
+
 async function ensureInstance(): Promise<void> {
   if (instanceVerified) return;
   try {

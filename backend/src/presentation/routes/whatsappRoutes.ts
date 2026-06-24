@@ -5,6 +5,7 @@ import {
   getQrCode,
   getInstanceStatus,
   sendWhatsAppMessage,
+  resetInstanceState,
 } from '../../infrastructure/services/whatsappService';
 
 const router = Router();
@@ -18,6 +19,16 @@ router.post('/instance', async (_req: Request, res: Response) => {
     res.json({ data: result });
   } catch (e: unknown) {
     res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao criar instância' });
+  }
+});
+
+// Reset da instância (força recriação na próxima requisição)
+router.post('/reset', async (_req: Request, res: Response) => {
+  try {
+    resetInstanceState();
+    res.json({ data: 'Instance state resetado. A próxima requisição irá recriar a instância.' });
+  } catch (e: unknown) {
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao resetar' });
   }
 });
 
