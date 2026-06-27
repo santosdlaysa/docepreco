@@ -139,7 +139,14 @@ function RevenueChart({ timeseries }: { timeseries: any[] }) {
 function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExport: () => void }) {
   const [page, setPage] = useState(1);
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
+  const [filterMonth, setFilterMonth] = useState('');
   const pageSize = 15;
+
+  const eventMonth = (dateValue: string) => {
+    if (!dateValue) return '';
+    const date = new Date(dateValue);
+    return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 7);
+  };
 
   const platforms = useMemo(() => {
     const set = new Set<string>();
@@ -149,15 +156,55 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
     return Array.from(set).sort();
   }, [events]);
 
-  const filtered = useMemo(
-    () => (filterPlatform ? events.filter(e => e.platform === filterPlatform) : events),
-    [events, filterPlatform]
-  );
+  const months = useMemo(() => {
+    const set = new Set<string>();
+    events.forEach(e => {
+      const month = eventMonth(e.createdAt);
+      if (month) set.add(month);
+    });
+    return Array.from(set).sort().reverse();
+  }, [events]);
+
+  const monthLabel = (month: string) => {
+    const [year, monthIndex] = month.split('-').map(Number);
+    return new Date(year, monthIndex - 1, 1).toLocaleDateString('pt-BR', {
+      month: 'long',
+      year: 'numeric',
+    });
+  };
+
+  const filtered = useMemo(() => {
+    return events.filter(event => {
+      const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
+      const monthMatches = filterMonth ? eventMonth(event.createdAt) === filterMonth : true;
+      return platformMatches && monthMatches;
+    });
+  }, [events, filterPlatform, filterMonth]);
+
+  const monthlyTotals = useMemo(() => {
+    return months.map(month => {
+      const monthEvents = events.filter(event => {
+        const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
+        return platformMatches && eventMonth(event.createdAt) === month;
+      });
+
+      return {
+        month,
+        count: monthEvents.length,
+        totalBRL: monthEvents.reduce((sum, event) => sum + event.amountBRL, 0),
+      };
+    });
+  }, [events, filterPlatform, months]);
+
+  const filteredTotalBRL = filtered.reduce((sum, event) => sum + event.amountBRL, 0);
+  const selectedMonthTotal = filterMonth
+    ? monthlyTotals.find(item => item.month === filterMonth)
+    : null;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  useEffect(() => setPage(1), [filterPlatform]);
+  useEffect(() => setPage(1), [filterPlatform, filterMonth]);
 
   return (
     <div className={`${card}`}>
@@ -175,31 +222,97 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
         </button>
       </div>
 
-      {platforms.length > 0 && (
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700/50 flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilterPlatform(null)}
-            className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-              filterPlatform === null
-                ? 'bg-primary-500 text-white'
-                : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-            }`}
-          >
-            Todas ({events.length})
-          </button>
-          {platforms.map(p => (
-            <button
-              key={p}
-              onClick={() => setFilterPlatform(p)}
-              className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                filterPlatform === p
-                  ? 'bg-primary-500 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-              }`}
-            >
-              {p} ({events.filter(e => e.platform === p).length})
-            </button>
-          ))}
+      {(platforms.length > 0 || months.length > 0) && (
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700/50 space-y-3">
+          {months.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mês</span>
+              <select
+                value={filterMonth}
+                onChange={e => setFilterMonth(e.target.value)}
+                className="h-8 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-xs font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400"
+              >
+                <option value="">Todos os meses</option>
+                {months.map(month => (
+                  <option key={month} value={month}>
+                    {monthLabel(month)}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {platforms.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setFilterPlatform(null)}
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                  filterPlatform === null
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                Todas ({events.filter(e => (filterMonth ? eventMonth(e.createdAt) === filterMonth : true)).length})
+              </button>
+              {platforms.map(p => (
+                <button
+                  key={p}
+                  onClick={() => setFilterPlatform(p)}
+                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                    filterPlatform === p
+                      ? 'bg-primary-500 text-white'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                  }`}
+                >
+                  {p} ({events.filter(e => e.platform === p && (filterMonth ? eventMonth(e.createdAt) === filterMonth : true)).length})
+                </button>
+              ))}
+            </div>
+          )}
+
+          {monthlyTotals.length > 0 && (
+            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] gap-3">
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50/70 dark:bg-gray-900/30 p-3">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  {filterMonth ? `Total de ${monthLabel(filterMonth)}` : 'Total dos registros filtrados'}
+                </p>
+                <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
+                  <p className="text-xl font-bold text-gray-900 dark:text-white">
+                    {fmt(filterMonth ? selectedMonthTotal?.totalBRL ?? 0 : filteredTotalBRL)}
+                  </p>
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                    {filterMonth ? selectedMonthTotal?.count ?? 0 : filtered.length} registros
+                  </p>
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-gray-100 dark:border-gray-700/50 bg-white dark:bg-gray-800 overflow-hidden">
+                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700/50">
+                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Soma por mÃªs</p>
+                </div>
+                <div className="max-h-36 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/50">
+                  {monthlyTotals.map(item => (
+                    <button
+                      key={item.month}
+                      type="button"
+                      onClick={() => setFilterMonth(item.month)}
+                      className={`w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors ${
+                        filterMonth === item.month
+                          ? 'bg-primary-50 dark:bg-primary-900/20'
+                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
+                      }`}
+                    >
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{monthLabel(item.month)}</span>
+                        <span className="block text-[11px] text-gray-400">{item.count} registros</span>
+                      </span>
+                      <span className="text-xs font-bold text-gray-900 dark:text-white flex-shrink-0">{fmt(item.totalBRL)}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
