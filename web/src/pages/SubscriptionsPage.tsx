@@ -140,6 +140,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const [page, setPage] = useState(1);
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
   const [filterMonth, setFilterMonth] = useState('');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired'>('all');
   const pageSize = 15;
 
   const eventMonth = (dateValue: string) => {
@@ -173,19 +174,28 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
     });
   };
 
+  const eventStatus = (event: SubscriptionEvent) => {
+    if (!event.expirationAt) return 'active';
+    return new Date(event.expirationAt) <= new Date() ? 'expired' : 'active';
+  };
+
+  const statusMatches = (event: SubscriptionEvent) => {
+    return filterStatus === 'all' ? true : eventStatus(event) === filterStatus;
+  };
+
   const filtered = useMemo(() => {
     return events.filter(event => {
       const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
       const monthMatches = filterMonth ? eventMonth(event.createdAt) === filterMonth : true;
-      return platformMatches && monthMatches;
+      return platformMatches && monthMatches && statusMatches(event);
     });
-  }, [events, filterPlatform, filterMonth]);
+  }, [events, filterPlatform, filterMonth, filterStatus]);
 
   const monthlyTotals = useMemo(() => {
     return months.map(month => {
       const monthEvents = events.filter(event => {
         const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
-        return platformMatches && eventMonth(event.createdAt) === month;
+        return platformMatches && eventMonth(event.createdAt) === month && statusMatches(event);
       });
 
       return {
@@ -194,7 +204,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
         totalBRL: monthEvents.reduce((sum, event) => sum + event.amountBRL, 0),
       };
     });
-  }, [events, filterPlatform, months]);
+  }, [events, filterPlatform, filterStatus, months]);
 
   const filteredTotalBRL = filtered.reduce((sum, event) => sum + event.amountBRL, 0);
   const selectedMonthTotal = filterMonth
@@ -204,7 +214,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  useEffect(() => setPage(1), [filterPlatform, filterMonth]);
+  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterStatus]);
 
   return (
     <div className={`${card}`}>
@@ -224,6 +234,26 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
 
       {(platforms.length > 0 || months.length > 0) && (
         <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700/50 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {[
+              { value: 'all' as const, label: 'Todos' },
+              { value: 'active' as const, label: 'Ativos' },
+              { value: 'expired' as const, label: 'Expirados' },
+            ].map(status => (
+              <button
+                key={status.value}
+                onClick={() => setFilterStatus(status.value)}
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                  filterStatus === status.value
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                {status.label} ({events.filter(e => status.value === 'all' || eventStatus(e) === status.value).length})
+              </button>
+            ))}
+          </div>
+
           {months.length > 0 && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mês</span>
@@ -252,7 +282,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                 }`}
               >
-                Todas ({events.filter(e => (filterMonth ? eventMonth(e.createdAt) === filterMonth : true)).length})
+                Todas ({events.filter(e => (filterMonth ? eventMonth(e.createdAt) === filterMonth : true) && statusMatches(e)).length})
               </button>
               {platforms.map(p => (
                 <button
@@ -264,7 +294,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                   }`}
                 >
-                  {p} ({events.filter(e => e.platform === p && (filterMonth ? eventMonth(e.createdAt) === filterMonth : true)).length})
+                  {p} ({events.filter(e => e.platform === p && (filterMonth ? eventMonth(e.createdAt) === filterMonth : true) && statusMatches(e)).length})
                 </button>
               ))}
             </div>

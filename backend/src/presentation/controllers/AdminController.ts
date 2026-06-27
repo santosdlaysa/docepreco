@@ -879,10 +879,7 @@ export class AdminController {
             COALESCE(SUM(CASE WHEN pe.amount_cents > 0 THEN pe.amount_cents ELSE 0 END), 0)::bigint AS "totalCents",
             COALESCE(AVG(CASE WHEN pe.amount_cents > 0 THEN pe.amount_cents ELSE NULL END), 0)::float AS "avgCents"
           FROM premium_events pe
-          INNER JOIN users u ON u.id = pe.user_id
           WHERE pe.event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')
-            AND u.is_premium = TRUE
-            AND (u.premium_until IS NULL OR u.premium_until > NOW())
           GROUP BY pe.platform
           ORDER BY "totalCents" DESC
         `),
@@ -902,10 +899,7 @@ export class AdminController {
           FROM premium_events pe
           JOIN users u ON u.id = pe.user_id
           WHERE pe.event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')
-            AND u.is_premium = TRUE
-            AND (u.premium_until IS NULL OR u.premium_until > NOW())
           ORDER BY pe.created_at DESC
-          LIMIT 200
         `),
         pool.query(`
           SELECT
@@ -914,11 +908,8 @@ export class AdminController {
             COUNT(*)::int AS "eventCount",
             COUNT(DISTINCT pe.user_id)::int AS "uniqueUsers"
           FROM premium_events pe
-          INNER JOIN users u ON u.id = pe.user_id
           WHERE pe.event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')
             AND pe.created_at >= NOW() - INTERVAL '90 days'
-            AND u.is_premium = TRUE
-            AND (u.premium_until IS NULL OR u.premium_until > NOW())
           GROUP BY DATE_TRUNC('day', pe.created_at)
           ORDER BY "date" ASC
         `)
