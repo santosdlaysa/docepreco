@@ -21,6 +21,11 @@ export interface Recipe {
   id: string;
   name: string;
   yield: number;
+  yieldMode?: 'manual' | 'estimated';
+  yieldTotalWeight?: number | null;
+  yieldTotalUnit?: 'g' | 'kg' | null;
+  yieldUnitWeight?: number | null;
+  yieldUnitWeightUnit?: 'g' | 'kg' | null;
   profitMargin: number;
   photoUrl?: string;
   ingredients: RecipeIngredient[];
@@ -33,6 +38,11 @@ export interface Recipe {
 export interface CreateRecipeDTO {
   name: string;
   yield: number;
+  yieldMode?: 'manual' | 'estimated';
+  yieldTotalWeight?: number | null;
+  yieldTotalUnit?: 'g' | 'kg' | null;
+  yieldUnitWeight?: number | null;
+  yieldUnitWeightUnit?: 'g' | 'kg' | null;
   profitMargin: number;
   photoUrl?: string;
   ingredients: RecipeIngredient[];

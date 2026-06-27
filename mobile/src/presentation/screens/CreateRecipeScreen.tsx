@@ -76,6 +76,13 @@ const MARGIN_PRESETS = [
   { value: 150, label: 'Premium',     emoji: '💎', desc: 'Gourmet / personalizado' },
 ];
 
+const normalizeCostName = (value: string) =>
+  value
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+
 export const CreateRecipeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
@@ -85,6 +92,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const localizedAdditionalCosts = DEFAULT_ADDITIONAL_COSTS.map(cost => ({
     ...cost,
+    baseName: cost.name,
     name: cost.name === 'Embalagem' ? t('createRecipe.packaging')
       : cost.name === 'Gas' ? t('createRecipe.gas')
       : cost.name === 'Energia' ? t('createRecipe.energy')
@@ -96,6 +104,19 @@ export const CreateRecipeScreen: React.FC = () => {
       : cost.name === 'Mao de obra' ? t('createRecipe.laborHint')
       : cost.hint,
   }));
+
+  const getCostInputName = (name: string) => {
+    const normalized = normalizeCostName(name);
+    const match = localizedAdditionalCosts.find(cost =>
+      normalizeCostName(cost.name) === normalized ||
+      normalizeCostName(cost.baseName) === normalized
+    );
+    return match?.name ?? name;
+  };
+
+  const isProfessionalLaborCost = (name: string) =>
+    normalizeCostName(name).includes('maodeobraprofissional') ||
+    normalizeCostName(name).includes('laborprofessional');
 
   const localizedMarginPresets = MARGIN_PRESETS.map(preset => ({
     ...preset,
@@ -115,6 +136,11 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const [name, setName] = useState('');
   const [yieldAmount, setYieldAmount] = useState('');
+  const [yieldMode, setYieldMode] = useState<'manual' | 'estimated'>('manual');
+  const [totalReadyWeight, setTotalReadyWeight] = useState('');
+  const [totalReadyUnit, setTotalReadyUnit] = useState<'g' | 'kg'>('g');
+  const [weightPerUnit, setWeightPerUnit] = useState('');
+  const [weightPerUnitUnit, setWeightPerUnitUnit] = useState<'g' | 'kg'>('g');
   const [profitMargin, setProfitMargin] = useState('30');
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([]);
   const [additionalCosts, setAdditionalCosts] = useState<AdditionalCost[]>([]);
@@ -153,6 +179,11 @@ export const CreateRecipeScreen: React.FC = () => {
   interface RecipeDraft {
     name: string;
     yieldAmount: string;
+    yieldMode: 'manual' | 'estimated';
+    totalReadyWeight: string;
+    totalReadyUnit: 'g' | 'kg';
+    weightPerUnit: string;
+    weightPerUnitUnit: 'g' | 'kg';
     profitMargin: string;
     ingredients: RecipeIngredient[];
     additionalCosts: AdditionalCost[];
@@ -188,12 +219,17 @@ export const CreateRecipeScreen: React.FC = () => {
       .then(recipe => {
         setName(recipe.name);
         setYieldAmount(String(recipe.yield));
+        setYieldMode(recipe.yieldMode ?? 'manual');
+        setTotalReadyWeight(recipe.yieldTotalWeight ? String(recipe.yieldTotalWeight).replace('.', ',') : '');
+        setTotalReadyUnit(recipe.yieldTotalUnit ?? 'g');
+        setWeightPerUnit(recipe.yieldUnitWeight ? String(recipe.yieldUnitWeight).replace('.', ',') : '');
+        setWeightPerUnitUnit(recipe.yieldUnitWeightUnit ?? 'g');
         setProfitMargin(String(recipe.profitMargin));
         setIngredients(recipe.ingredients);
         setAdditionalCosts(recipe.additionalCosts);
         setAdditionalCostInputs(
           recipe.additionalCosts.reduce((acc, c) => {
-            acc[c.name] = c.value ? String(c.value).replace('.', ',') : '';
+            acc[getCostInputName(c.name)] = c.value ? String(c.value).replace('.', ',') : '';
             return acc;
           }, {} as Record<string, string>)
         );
@@ -221,6 +257,11 @@ export const CreateRecipeScreen: React.FC = () => {
           onPress: () => {
             setName(recipeDraft.name);
             setYieldAmount(recipeDraft.yieldAmount);
+            setYieldMode(recipeDraft.yieldMode ?? 'manual');
+            setTotalReadyWeight(recipeDraft.totalReadyWeight ?? '');
+            setTotalReadyUnit(recipeDraft.totalReadyUnit ?? 'g');
+            setWeightPerUnit(recipeDraft.weightPerUnit ?? '');
+            setWeightPerUnitUnit(recipeDraft.weightPerUnitUnit ?? 'g');
             setProfitMargin(recipeDraft.profitMargin);
             setIngredients(recipeDraft.ingredients);
             setAdditionalCosts(recipeDraft.additionalCosts);
@@ -238,13 +279,34 @@ export const CreateRecipeScreen: React.FC = () => {
   // Auto-save form state whenever it changes
   useEffect(() => {
     if (isEditing || isDraftLoading) return;
-    saveDraft({ name, yieldAmount, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded });
-  }, [name, yieldAmount, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded]);
+    saveDraft({ name, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded });
+  }, [name, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded]);
+
+  const toGrams = (value: number, unit: 'g' | 'kg') => unit === 'kg' ? value * 1000 : value;
+
+  const estimatedYield = (() => {
+    const total = toGrams(parseLocaleNumber(totalReadyWeight), totalReadyUnit);
+    const perUnit = toGrams(parseLocaleNumber(weightPerUnit), weightPerUnitUnit);
+    if (total <= 0 || perUnit <= 0) return 0;
+    return Math.floor(total / perUnit);
+  })();
+
+  const estimatedExactYield = (() => {
+    const total = toGrams(parseLocaleNumber(totalReadyWeight), totalReadyUnit);
+    const perUnit = toGrams(parseLocaleNumber(weightPerUnit), weightPerUnitUnit);
+    if (total <= 0 || perUnit <= 0) return 0;
+    return total / perUnit;
+  })();
+
+  useEffect(() => {
+    if (yieldMode !== 'estimated') return;
+    setYieldAmount(estimatedYield > 0 ? String(estimatedYield) : '');
+  }, [yieldMode, estimatedYield]);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
     if (!name.trim()) newErrors.name = t('createRecipe.nameRequired');
-    if (!yieldAmount || parseInt(yieldAmount) <= 0)
+    if (!yieldAmount || parseLocaleNumber(yieldAmount) <= 0)
       newErrors.yield = t('createRecipe.yieldRequired');
     if (ingredients.length === 0 && subRecipes.length === 0) newErrors.ingredients = t('createRecipe.ingredientsRequired');
     setErrors(newErrors);
@@ -381,7 +443,11 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const addSubRecipe = () => {
     const qty = parseLocaleNumber(subRecipeQuantity);
-    if (!selectedSubRecipe || !subRecipeQuantity || qty <= 0) return;
+    if (!selectedSubRecipe) return;
+    if (!subRecipeQuantity || qty <= 0) {
+      showToast('Informe a quantidade usada da receita.', 'warning');
+      return;
+    }
 
     if (selectedSubRecipe.id === recipeId) {
       showToast(t('createRecipe.subRecipeIsSelf'), 'warning');
@@ -395,31 +461,20 @@ export const CreateRecipeScreen: React.FC = () => {
     }
 
     const unit = subRecipeUnit;
-    Alert.alert(
-      t('createRecipe.confirmSubRecipe'),
-      t('createRecipe.confirmSubRecipeMessage', { name: selectedSubRecipe.name, qty, unit }),
-      [
-        { text: t('common.cancel'), style: 'cancel' },
-        {
-          text: t('common.add'),
-          onPress: () => {
-            setSubRecipes(prev => [
-              ...prev,
-              {
-                subRecipeId: selectedSubRecipe.id,
-                subRecipeName: selectedSubRecipe.name,
-                quantityUsed: qty,
-                unit,
-              },
-            ]);
-            setSelectedSubRecipe(null);
-            setSubRecipeQuantity('');
-            setSubRecipeUnit('un');
-            setShowSubRecipeModal(false);
-          },
-        },
-      ]
-    );
+    setSubRecipes(prev => [
+      ...prev,
+      {
+        subRecipeId: selectedSubRecipe.id,
+        subRecipeName: selectedSubRecipe.name,
+        quantityUsed: qty,
+        unit,
+      },
+    ]);
+    setSelectedSubRecipe(null);
+    setSubRecipeQuantity('');
+    setSubRecipeUnit('un');
+    setShowSubRecipeModal(false);
+    showToast('Receita adicionada.', 'success');
   };
 
   const removeSubRecipe = (id: string) => {
@@ -551,16 +606,43 @@ export const CreateRecipeScreen: React.FC = () => {
     return finalCosts;
   };
 
+  const getFinalCostsFromInputs = () => {
+    const standardNames = new Set(localizedAdditionalCosts.map(cost => normalizeCostName(cost.name)));
+    const finalCosts = localizedAdditionalCosts
+      .map(cost => ({
+        name: cost.name,
+        value: parseLocaleNumber(additionalCostInputs[cost.name] ?? ''),
+      }))
+      .filter(cost => cost.value > 0);
+
+    for (const cost of additionalCosts) {
+      const normalized = normalizeCostName(getCostInputName(cost.name));
+      if (standardNames.has(normalized) || isProfessionalLaborCost(cost.name)) continue;
+      if (cost.value > 0) finalCosts.push(cost);
+    }
+
+    if (laborCostValue > 0) {
+      finalCosts.push({ name: 'MÃ£o de obra (profissional)', value: laborCostValue });
+    }
+
+    return finalCosts;
+  };
+
   const handleConfirmSave = async () => {
     setShowConfirmModal(false);
     setLoading(true);
     try {
       const payload = {
         name: name.trim(),
-        yield: parseInt(yieldAmount),
+        yield: Math.floor(parseLocaleNumber(yieldAmount)),
+        yieldMode,
+        yieldTotalWeight: yieldMode === 'estimated' ? parseLocaleNumber(totalReadyWeight) : null,
+        yieldTotalUnit: yieldMode === 'estimated' ? totalReadyUnit : null,
+        yieldUnitWeight: yieldMode === 'estimated' ? parseLocaleNumber(weightPerUnit) : null,
+        yieldUnitWeightUnit: yieldMode === 'estimated' ? weightPerUnitUnit : null,
         profitMargin: parseLocaleNumber(profitMargin) || 30,
         ingredients,
-        additionalCosts: getFinalCosts(),
+        additionalCosts: getFinalCostsFromInputs(),
         subRecipes,
       };
       if (isEditing) {
@@ -744,13 +826,141 @@ export const CreateRecipeScreen: React.FC = () => {
               </View>
             )}
           </View>
-          <View style={{ gap: 7 }}>
+          <View style={{ gap: 8 }}>
             <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Rendimento</Text>
-            <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, ...SH }}>
-              <TextInput style={{ flex: 1, fontSize: 15, color: INK, padding: 0 }} value={yieldAmount} onChangeText={setYieldAmount}
-                placeholder="12" placeholderTextColor={INK3} keyboardType="number-pad" />
-              <Text style={{ color: INK2, fontWeight: '700', fontSize: 13 }}>unidades</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                onPress={() => setYieldMode('manual')}
+                activeOpacity={0.8}
+                style={{
+                  flex: 1,
+                  minHeight: 42,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: yieldMode === 'manual' ? '#FFF0F6' : '#fff',
+                  borderWidth: 2,
+                  borderColor: yieldMode === 'manual' ? PINK : 'transparent',
+                  ...SH,
+                }}
+              >
+                <Text style={{ fontSize: 12.5, fontWeight: '800', color: yieldMode === 'manual' ? PINK : INK2 }}>
+                  Informar unidades
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setYieldMode('estimated')}
+                activeOpacity={0.8}
+                style={{
+                  flex: 1,
+                  minHeight: 42,
+                  borderRadius: 14,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  backgroundColor: yieldMode === 'estimated' ? '#FFF0F6' : '#fff',
+                  borderWidth: 2,
+                  borderColor: yieldMode === 'estimated' ? PINK : 'transparent',
+                  ...SH,
+                }}
+              >
+                <Text style={{ fontSize: 12.5, fontWeight: '800', color: yieldMode === 'estimated' ? PINK : INK2 }}>
+                  Calcular por peso
+                </Text>
+              </TouchableOpacity>
             </View>
+
+            {yieldMode === 'manual' ? (
+              <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 14, paddingHorizontal: 15, flexDirection: 'row', alignItems: 'center', gap: 10, ...SH }}>
+                <TextInput style={{ flex: 1, fontSize: 15, color: INK, padding: 0 }} value={yieldAmount} onChangeText={setYieldAmount}
+                  placeholder="12" placeholderTextColor={INK3} keyboardType="number-pad" />
+                <Text style={{ color: INK2, fontWeight: '700', fontSize: 13 }}>unidades</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 8 }}>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12, ...SH }}>
+                    <Text style={{ color: INK2, fontWeight: '700', fontSize: 11, marginBottom: 5 }}>Peso total pronto</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <TextInput
+                        style={{ flex: 1, fontSize: 15, color: INK, padding: 0 }}
+                        value={totalReadyWeight}
+                        onChangeText={setTotalReadyWeight}
+                        placeholder="1560"
+                        placeholderTextColor={INK3}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      {(['g', 'kg'] as const).map(unit => (
+                        <TouchableOpacity
+                          key={unit}
+                          onPress={() => setTotalReadyUnit(unit)}
+                          activeOpacity={0.8}
+                          style={{
+                            flex: 1,
+                            borderRadius: 9,
+                            paddingVertical: 6,
+                            alignItems: 'center',
+                            backgroundColor: totalReadyUnit === unit ? '#FFF0F6' : CREAM2,
+                            borderWidth: 1,
+                            borderColor: totalReadyUnit === unit ? PINK : LINE2,
+                          }}
+                        >
+                          <Text style={{ color: totalReadyUnit === unit ? PINK : INK2, fontWeight: '800', fontSize: 11 }}>{unit}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                  <View style={{ flex: 1, backgroundColor: '#fff', borderRadius: 14, padding: 12, ...SH }}>
+                    <Text style={{ color: INK2, fontWeight: '700', fontSize: 11, marginBottom: 5 }}>Peso por unidade</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                      <TextInput
+                        style={{ flex: 1, fontSize: 15, color: INK, padding: 0 }}
+                        value={weightPerUnit}
+                        onChangeText={setWeightPerUnit}
+                        placeholder="20"
+                        placeholderTextColor={INK3}
+                        keyboardType="decimal-pad"
+                      />
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 6 }}>
+                      {(['g', 'kg'] as const).map(unit => (
+                        <TouchableOpacity
+                          key={unit}
+                          onPress={() => setWeightPerUnitUnit(unit)}
+                          activeOpacity={0.8}
+                          style={{
+                            flex: 1,
+                            borderRadius: 9,
+                            paddingVertical: 6,
+                            alignItems: 'center',
+                            backgroundColor: weightPerUnitUnit === unit ? '#FFF0F6' : CREAM2,
+                            borderWidth: 1,
+                            borderColor: weightPerUnitUnit === unit ? PINK : LINE2,
+                          }}
+                        >
+                          <Text style={{ color: weightPerUnitUnit === unit ? PINK : INK2, fontWeight: '800', fontSize: 11 }}>{unit}</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+                <View style={{ backgroundColor: '#fff', borderRadius: 14, padding: 12, ...SH }}>
+                  {estimatedYield > 0 ? (
+                    <Text style={{ color: INK, fontSize: 12.5, fontWeight: '700' }}>
+                      Rendimento usado: {estimatedYield} unidades
+                      {estimatedExactYield !== estimatedYield
+                        ? ` (${estimatedExactYield.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} no cálculo bruto)`
+                        : ''}
+                    </Text>
+                  ) : (
+                    <Text style={{ color: INK2, fontSize: 12.5, fontWeight: '600' }}>
+                      Informe os dois pesos para estimar o rendimento.
+                    </Text>
+                  )}
+                </View>
+              </View>
+            )}
             {errors.yield && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.yield}</Text>}
           </View>
 
@@ -1104,10 +1314,10 @@ export const CreateRecipeScreen: React.FC = () => {
               </Card>
             )}
 
-            {getFinalCosts().length > 0 && (
+            {getFinalCostsFromInputs().length > 0 && (
               <Card style={styles.confirmCard}>
                 <Text style={styles.confirmSectionTitle}>{t('createRecipe.additionalCosts')}</Text>
-                {getFinalCosts().map((c, idx) => (
+                {getFinalCostsFromInputs().map((c, idx) => (
                   <View key={idx} style={styles.confirmRow}>
                     <Text style={styles.confirmLabel}>{c.name}</Text>
                     <Text style={styles.confirmValueHighlight}>

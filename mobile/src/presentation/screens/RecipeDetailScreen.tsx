@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Skeleton } from '../components/Skeleton';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Recipe } from '../../domain/entities/Recipe';
@@ -91,11 +91,13 @@ export const RecipeDetailScreen: React.FC = () => {
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
 
-  useEffect(() => {
-    loadRecipe();
-    pdfSettingsStorage.get().then(setPdfSettings);
-    if (isPremium && !isDemoMode()) seasonApi.getActive().then(setActiveSeason).catch(() => {});
-  }, [recipeId]);
+  useFocusEffect(
+    useCallback(() => {
+      loadRecipe();
+      pdfSettingsStorage.get().then(setPdfSettings);
+      if (isPremium && !isDemoMode()) seasonApi.getActive().then(setActiveSeason).catch(() => {});
+    }, [recipeId, isPremium])
+  );
 
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -150,6 +152,8 @@ export const RecipeDetailScreen: React.FC = () => {
 
   const loadRecipe = async () => {
     try {
+      setCalculation(null);
+      setCalculationError(false);
       const data = await api.getById(recipeId);
       setRecipe(data);
       // Do not block the whole detail screen while the independent pricing

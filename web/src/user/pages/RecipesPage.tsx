@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Pencil, Trash2, ChefHat, X, Plus, Info, Layers, ChevronDown } from 'lucide-react';
+import { Pencil, Trash2, ChefHat, X, Plus, Info, Layers, ChevronDown, Calculator } from 'lucide-react';
 import {
   userApi,
   Recipe,
@@ -253,6 +253,15 @@ function RecipeForm({
 
   const [name, setName] = useState(initial?.name ?? '');
   const [yieldValue, setYieldValue] = useState(String(initial?.yield ?? ''));
+  const [yieldMode, setYieldMode] = useState<'manual' | 'estimated'>(initial?.yieldMode ?? 'manual');
+  const [totalReadyWeight, setTotalReadyWeight] = useState(
+    initial?.yieldTotalWeight ? String(initial.yieldTotalWeight).replace('.', ',') : ''
+  );
+  const [totalReadyUnit, setTotalReadyUnit] = useState<'g' | 'kg'>(initial?.yieldTotalUnit ?? 'g');
+  const [weightPerUnit, setWeightPerUnit] = useState(
+    initial?.yieldUnitWeight ? String(initial.yieldUnitWeight).replace('.', ',') : ''
+  );
+  const [weightPerUnitUnit, setWeightPerUnitUnit] = useState<'g' | 'kg'>(initial?.yieldUnitWeightUnit ?? 'g');
   const [margin, setMargin] = useState(String(initialMargin));
   const [customMargin, setCustomMargin] = useState(
     initial ? !MARGIN_PRESETS.some(p => p.value === initialMargin) : false
@@ -307,6 +316,27 @@ function RecipeForm({
     return 0;
   })();
 
+  const toGrams = (value: number, unit: 'g' | 'kg') => unit === 'kg' ? value * 1000 : value;
+
+  const estimatedYield = (() => {
+    const total = toGrams(parseLocaleNumber(totalReadyWeight), totalReadyUnit);
+    const perUnit = toGrams(parseLocaleNumber(weightPerUnit), weightPerUnitUnit);
+    if (total <= 0 || perUnit <= 0) return 0;
+    return Math.floor(total / perUnit);
+  })();
+
+  const estimatedExactYield = (() => {
+    const total = toGrams(parseLocaleNumber(totalReadyWeight), totalReadyUnit);
+    const perUnit = toGrams(parseLocaleNumber(weightPerUnit), weightPerUnitUnit);
+    if (total <= 0 || perUnit <= 0) return 0;
+    return total / perUnit;
+  })();
+
+  useEffect(() => {
+    if (yieldMode !== 'estimated') return;
+    setYieldValue(estimatedYield > 0 ? String(estimatedYield) : '');
+  }, [yieldMode, estimatedYield]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error('Informe o nome da receita.');
@@ -335,6 +365,11 @@ function RecipeForm({
     const data: CreateRecipeDTO = {
       name: name.trim(),
       yield: parseLocaleNumber(yieldValue) || 1,
+      yieldMode,
+      yieldTotalWeight: yieldMode === 'estimated' ? parseLocaleNumber(totalReadyWeight) : null,
+      yieldTotalUnit: yieldMode === 'estimated' ? totalReadyUnit : null,
+      yieldUnitWeight: yieldMode === 'estimated' ? parseLocaleNumber(weightPerUnit) : null,
+      yieldUnitWeightUnit: yieldMode === 'estimated' ? weightPerUnitUnit : null,
       profitMargin: parseLocaleNumber(margin) || 30,
       ingredients: rows.map(r => ({ ...r, quantityUsed: parseLocaleNumber(r.quantityUsed) })),
       additionalCosts,
@@ -391,17 +426,100 @@ function RecipeForm({
           />
         </FormField>
 
-        <FormField label="Rendimento (unidades)">
-          <input
-            type="text"
-            inputMode="numeric"
-            step="any"
-            value={yieldValue}
-            onChange={e => setYieldValue(e.target.value)}
-            placeholder="12"
-            className={inputClass}
-          />
-        </FormField>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+            Rendimento
+          </label>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <button
+              type="button"
+              onClick={() => setYieldMode('manual')}
+              className={`rounded-xl border-2 py-2 px-3 text-sm font-semibold transition-colors ${
+                yieldMode === 'manual'
+                  ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200'
+                  : 'border-gray-200 text-gray-600 dark:border-gray-600 dark:text-gray-300'
+              }`}
+            >
+              Informar unidades
+            </button>
+            <button
+              type="button"
+              onClick={() => setYieldMode('estimated')}
+              className={`rounded-xl border-2 py-2 px-3 text-sm font-semibold transition-colors flex items-center justify-center gap-1.5 ${
+                yieldMode === 'estimated'
+                  ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-200'
+                  : 'border-gray-200 text-gray-600 dark:border-gray-600 dark:text-gray-300'
+              }`}
+            >
+              <Calculator size={15} /> Calcular por peso
+            </button>
+          </div>
+
+          {yieldMode === 'manual' ? (
+            <input
+              type="text"
+              inputMode="numeric"
+              step="any"
+              value={yieldValue}
+              onChange={e => setYieldValue(e.target.value)}
+              placeholder="12"
+              className={inputClass}
+            />
+          ) : (
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={totalReadyWeight}
+                    onChange={e => setTotalReadyWeight(e.target.value)}
+                    placeholder="Peso total pronto"
+                    className={inputClass + ' flex-1 !w-auto min-w-0'}
+                  />
+                  <select
+                    value={totalReadyUnit}
+                    onChange={e => setTotalReadyUnit(e.target.value as 'g' | 'kg')}
+                    className={inputClass + ' !w-20 shrink-0'}
+                  >
+                    <option value="g">g</option>
+                    <option value="kg">kg</option>
+                  </select>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={weightPerUnit}
+                    onChange={e => setWeightPerUnit(e.target.value)}
+                    placeholder="Peso por unidade"
+                    className={inputClass + ' flex-1 !w-auto min-w-0'}
+                  />
+                  <select
+                    value={weightPerUnitUnit}
+                    onChange={e => setWeightPerUnitUnit(e.target.value as 'g' | 'kg')}
+                    className={inputClass + ' !w-20 shrink-0'}
+                  >
+                    <option value="g">g</option>
+                    <option value="kg">kg</option>
+                  </select>
+                </div>
+              </div>
+              <div className="rounded-lg bg-gray-50 dark:bg-gray-700/40 px-3 py-2 text-xs text-gray-600 dark:text-gray-300">
+                {estimatedYield > 0 ? (
+                  <>
+                    Rendimento usado: <strong>{estimatedYield} unidades</strong>
+                    {estimatedExactYield !== estimatedYield && (
+                      <span> ({estimatedExactYield.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} no cálculo bruto)</span>
+                    )}
+                  </>
+                ) : (
+                  'Informe os dois pesos para o app estimar o rendimento.'
+                )}
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Margem de lucro — presets */}
         <div>

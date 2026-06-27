@@ -36,6 +36,11 @@ CREATE TABLE IF NOT EXISTS recipes (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
   yield INTEGER NOT NULL,
+  yield_mode VARCHAR(20) NULL,
+  yield_total_weight DECIMAL(10,3) NULL,
+  yield_total_unit VARCHAR(10) NULL,
+  yield_unit_weight DECIMAL(10,3) NULL,
+  yield_unit_weight_unit VARCHAR(10) NULL,
   profit_margin DECIMAL(5,2) NOT NULL DEFAULT 30,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
@@ -477,6 +482,11 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'is_premium', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'premium_platform', 'VARCHAR(20) NULL');
+    await addColumnIfMissing(client, 'recipes', 'yield_mode', 'VARCHAR(20) NULL');
+    await addColumnIfMissing(client, 'recipes', 'yield_total_weight', 'DECIMAL(10,3) NULL');
+    await addColumnIfMissing(client, 'recipes', 'yield_total_unit', 'VARCHAR(10) NULL');
+    await addColumnIfMissing(client, 'recipes', 'yield_unit_weight', 'DECIMAL(10,3) NULL');
+    await addColumnIfMissing(client, 'recipes', 'yield_unit_weight_unit', 'VARCHAR(10) NULL');
 
     // 3 tiers (free/premium/master). Backfill existing premium users to the
     // 'premium' tier once; idempotent thanks to the `plan_tier = 'free'` guard.

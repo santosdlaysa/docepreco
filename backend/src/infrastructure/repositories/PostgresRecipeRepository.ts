@@ -98,8 +98,22 @@ export class PostgresRecipeRepository implements IRecipeRepository {
     try {
       await client.query('BEGIN');
       const recipeResult = await client.query(
-        `INSERT INTO recipes (user_id, name, yield, profit_margin, photo_url) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [userId, data.name, data.yield, data.profitMargin, data.photoUrl || null]
+        `INSERT INTO recipes (
+          user_id, name, yield, yield_mode, yield_total_weight, yield_total_unit,
+          yield_unit_weight, yield_unit_weight_unit, profit_margin, photo_url
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+        [
+          userId,
+          data.name,
+          data.yield,
+          data.yieldMode || null,
+          data.yieldTotalWeight ?? null,
+          data.yieldTotalUnit || null,
+          data.yieldUnitWeight ?? null,
+          data.yieldUnitWeightUnit || null,
+          data.profitMargin,
+          data.photoUrl || null,
+        ]
       );
       const recipe = recipeResult.rows[0];
 
@@ -147,6 +161,11 @@ export class PostgresRecipeRepository implements IRecipeRepository {
 
       if (data.name !== undefined) { fields.push(`name = $${idx++}`); values.push(data.name); }
       if (data.yield !== undefined) { fields.push(`yield = $${idx++}`); values.push(data.yield); }
+      if (data.yieldMode !== undefined) { fields.push(`yield_mode = $${idx++}`); values.push(data.yieldMode || null); }
+      if (data.yieldTotalWeight !== undefined) { fields.push(`yield_total_weight = $${idx++}`); values.push(data.yieldTotalWeight ?? null); }
+      if (data.yieldTotalUnit !== undefined) { fields.push(`yield_total_unit = $${idx++}`); values.push(data.yieldTotalUnit || null); }
+      if (data.yieldUnitWeight !== undefined) { fields.push(`yield_unit_weight = $${idx++}`); values.push(data.yieldUnitWeight ?? null); }
+      if (data.yieldUnitWeightUnit !== undefined) { fields.push(`yield_unit_weight_unit = $${idx++}`); values.push(data.yieldUnitWeightUnit || null); }
       if (data.profitMargin !== undefined) { fields.push(`profit_margin = $${idx++}`); values.push(data.profitMargin); }
       if (data.photoUrl !== undefined) { fields.push(`photo_url = $${idx++}`); values.push(data.photoUrl || null); }
 
@@ -262,6 +281,11 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       id: row.id as string,
       name: row.name as string,
       yield: row.yield as number,
+      yieldMode: (row.yield_mode as 'manual' | 'estimated' | null) || undefined,
+      yieldTotalWeight: row.yield_total_weight !== null && row.yield_total_weight !== undefined ? parseFloat(row.yield_total_weight as string) : undefined,
+      yieldTotalUnit: (row.yield_total_unit as 'g' | 'kg' | null) || undefined,
+      yieldUnitWeight: row.yield_unit_weight !== null && row.yield_unit_weight !== undefined ? parseFloat(row.yield_unit_weight as string) : undefined,
+      yieldUnitWeightUnit: (row.yield_unit_weight_unit as 'g' | 'kg' | null) || undefined,
       profitMargin: parseFloat(row.profit_margin as string),
       photoUrl: (row.photo_url as string) || undefined,
       ingredients,
