@@ -41,6 +41,7 @@ import { useDraft } from '../hooks/useDraft';
 import { formatUnitLabel } from '../utils/units';
 import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 import { parseLocaleNumber } from '../utils/number';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -202,6 +203,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const { showToast } = useToast();
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
+  const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
@@ -673,6 +675,43 @@ export const CreateRecipeScreen: React.FC = () => {
   };
 
   // ─── Design tokens ───
+  const pricingPreview = (() => {
+    const yieldNum = Math.floor(parseLocaleNumber(yieldAmount));
+    if (yieldNum <= 0) return null;
+
+    let ingredientsCost = 0;
+    for (const recipeIngredient of ingredients) {
+      const ingredient = availableIngredients.find(item => item.id === recipeIngredient.ingredientId);
+      if (!ingredient) continue;
+
+      const effectivePurchaseQty = getEffectivePurchaseQuantity(ingredient);
+      if (effectivePurchaseQty <= 0) continue;
+
+      const qtyInPurchaseUnit =
+        recipeIngredient.unit === 'unit' && ingredient.purchaseUnitWeight
+          ? recipeIngredient.quantityUsed * ingredient.purchaseUnitWeight
+          : convertToSameUnit(recipeIngredient.quantityUsed, recipeIngredient.unit, ingredient.unit);
+
+      ingredientsCost += (ingredient.purchasePrice / effectivePurchaseQty) * qtyInPurchaseUnit;
+    }
+
+    const additionalCostTotal = getFinalCostsFromInputs().reduce((sum, cost) => sum + cost.value, 0);
+    const totalCost = ingredientsCost + additionalCostTotal;
+    const costPerUnit = totalCost / yieldNum;
+    const margin = parseLocaleNumber(profitMargin) || 0;
+    const suggestedPrice = costPerUnit * (1 + margin / 100);
+    const estimatedProfit = (suggestedPrice - costPerUnit) * yieldNum;
+
+    return {
+      ingredientsCost,
+      additionalCostTotal,
+      totalCost,
+      costPerUnit,
+      suggestedPrice,
+      estimatedProfit,
+    };
+  })();
+
   const INK = '#3D2233';
   const INK2 = '#9A7E8C';
   const INK3 = '#C4B0BB';
@@ -1072,6 +1111,41 @@ export const CreateRecipeScreen: React.FC = () => {
           </View>
 
           {/* ── Save button ── */}
+          {pricingPreview && pricingPreview.totalCost > 0 && (
+            <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 15, gap: 12, ...SH }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: INK2, fontWeight: '700', textTransform: 'uppercase' }}>
+                    Preço de venda sugerido
+                  </Text>
+                  <Text style={{ fontSize: 30, color: PINK, fontWeight: '800', marginTop: 3 }}>
+                    {formatCurrency(pricingPreview.suggestedPrice)}
+                  </Text>
+                </View>
+                <View style={{ alignItems: 'flex-end' }}>
+                  <Text style={{ fontSize: 11.5, color: INK2, fontWeight: '600' }}>Custo / un</Text>
+                  <Text style={{ fontSize: 16, color: INK, fontWeight: '800' }}>
+                    {formatCurrencyUnit(pricingPreview.costPerUnit)}
+                  </Text>
+                </View>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <View style={{ flex: 1, backgroundColor: CREAM2, borderRadius: 12, padding: 10 }}>
+                  <Text style={{ fontSize: 11, color: INK2, fontWeight: '600' }}>Custo total</Text>
+                  <Text style={{ fontSize: 14, color: INK, fontWeight: '800', marginTop: 2 }}>
+                    {formatCurrency(pricingPreview.totalCost)}
+                  </Text>
+                </View>
+                <View style={{ flex: 1, backgroundColor: CREAM2, borderRadius: 12, padding: 10 }}>
+                  <Text style={{ fontSize: 11, color: INK2, fontWeight: '600' }}>Lucro estimado</Text>
+                  <Text style={{ fontSize: 14, color: '#2BA060', fontWeight: '800', marginTop: 2 }}>
+                    {formatCurrency(pricingPreview.estimatedProfit)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+          )}
+
           <TouchableOpacity onPress={handleShowConfirmation} disabled={loading} activeOpacity={0.85}>
             <View style={{ height: 54, borderRadius: 16, backgroundColor: PINK, alignItems: 'center', justifyContent: 'center', ...SH, shadowColor: PINK, shadowOpacity: 0.35 }}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={{ fontSize: 16, fontWeight: '700', color: '#fff' }}>{isEditing ? 'Atualizar receita' : 'Salvar receita'}</Text>}
