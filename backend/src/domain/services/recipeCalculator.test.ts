@@ -119,6 +119,56 @@ describe('calculateRecipe', () => {
       );
       expect(result.costPerUnit).toBe(5);
     });
+
+    it('calcula sub-receita por unidade quando o uso esta em un', () => {
+      const result = calculateRecipe(
+        {
+          yield: 1,
+          profitMargin: 0,
+          ingredients: [],
+          additionalCosts: [],
+          subRecipes: [{ subRecipeId: 'brigadeiro', quantityUsed: 3, unit: 'un' }],
+        },
+        makeIngredientMap([]),
+        [{ subRecipeId: 'brigadeiro', costPerUnit: 1.79, totalCost: 30.49, baseQuantityProduced: 1910 }]
+      );
+
+      expect(result.subRecipesCost).toBeCloseTo(5.37, 5);
+      expect(result.totalCost).toBeCloseTo(5.37, 5);
+    });
+
+    it('calcula sub-receita por peso quando o uso esta em g', () => {
+      const result = calculateRecipe(
+        {
+          yield: 1,
+          profitMargin: 0,
+          ingredients: [],
+          additionalCosts: [],
+          subRecipes: [{ subRecipeId: 'brigadeiro', quantityUsed: 100, unit: 'g' }],
+        },
+        makeIngredientMap([]),
+        [{ subRecipeId: 'brigadeiro', costPerUnit: 1.79, totalCost: 30.49, baseQuantityProduced: 1910 }]
+      );
+
+      expect(result.subRecipesCost).toBeCloseTo(1.5963, 4);
+      expect(result.totalCost).toBeCloseTo(1.5963, 4);
+    });
+
+    it('converte kg no uso da sub-receita para a mesma base de g/ml', () => {
+      const result = calculateRecipe(
+        {
+          yield: 1,
+          profitMargin: 0,
+          ingredients: [],
+          additionalCosts: [],
+          subRecipes: [{ subRecipeId: 'massa', quantityUsed: 0.5, unit: 'kg' }],
+        },
+        makeIngredientMap([]),
+        [{ subRecipeId: 'massa', costPerUnit: 10, totalCost: 40, baseQuantityProduced: 2000 }]
+      );
+
+      expect(result.subRecipesCost).toBeCloseTo(10, 5);
+    });
   });
 
   describe('edge cases', () => {

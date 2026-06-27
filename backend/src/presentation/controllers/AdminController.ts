@@ -569,6 +569,7 @@ export class AdminController {
       let recipeSubRecipesMap: Record<string, any[]> = {};
       let recipeIngredientCostsMap: Record<string, number> = {};
       let recipeAdditionalCostsTotalMap: Record<string, number> = {};
+      let recipeBaseQuantityProducedMap: Record<string, number> = {};
       if (recipeIds.length > 0) {
         const [riRes, acRes, srRes] = await Promise.all([
           pool.query(
@@ -621,6 +622,11 @@ export class AdminController {
           );
           const ingredientCost = usedQuantity * ((Number(row.purchasePrice) || 0) / effectivePurchaseQuantity);
           recipeIngredientCostsMap[row.recipeId] = (recipeIngredientCostsMap[row.recipeId] ?? 0) + ingredientCost;
+
+          const baseQuantity = this.normalizeAdminBaseMeasure(usedQuantity, row.purchaseUnit);
+          if (baseQuantity !== undefined) {
+            recipeBaseQuantityProducedMap[row.recipeId] = (recipeBaseQuantityProducedMap[row.recipeId] ?? 0) + baseQuantity;
+          }
         }
         for (const row of acRes.rows) {
           if (!recipeAdditionalCostsMap[row.recipeId]) recipeAdditionalCostsMap[row.recipeId] = [];
@@ -649,11 +655,21 @@ export class AdminController {
 
       const getRecipeTotal = (recipeId: string, seen = new Set<string>()): number => {
         if (seen.has(recipeId)) return directRecipeTotals.get(recipeId) ?? 0;
-        seen.add(recipeId);
+        const nextSeen = new Set(seen);
+        nextSeen.add(recipeId);
 
         const subRecipesCost = (recipeSubRecipesMap[recipeId] ?? []).reduce((sum, sub) => {
-          const subCostPerUnit = getRecipeTotal(sub.subRecipeId, seen) / Math.max(Number(sub.yield) || 1, 1);
-          return sum + subCostPerUnit * (Number(sub.quantityUsed) || 0);
+          const subTotalCost = getRecipeTotal(sub.subRecipeId, nextSeen);
+          const subQuantityUsed = Number(sub.quantityUsed) || 0;
+          if (sub.unit === 'un' || sub.unit === 'unit') {
+            const subCostPerUnit = subTotalCost / Math.max(Number(sub.yield) || 1, 1);
+            return sum + subCostPerUnit * subQuantityUsed;
+          }
+
+          const baseQuantityUsed = this.normalizeAdminBaseMeasure(subQuantityUsed, sub.unit);
+          const baseQuantityProduced = recipeBaseQuantityProducedMap[sub.subRecipeId] ?? 0;
+          if (baseQuantityUsed === undefined || baseQuantityProduced <= 0) return sum;
+          return sum + (subTotalCost / baseQuantityProduced) * baseQuantityUsed;
         }, 0);
 
         return (directRecipeTotals.get(recipeId) ?? 0) + subRecipesCost;
@@ -1013,5 +1029,11 @@ export class AdminController {
     if (fromUnit === 'ml' && toUnit === 'l') return quantity / 1000;
     if (fromUnit === 'l' && toUnit === 'ml') return quantity * 1000;
     return quantity;
+  }
+
+  private normalizeAdminBaseMeasure(quantity: number, unit: string): number | undefined {
+    if (unit === 'g' || unit === 'ml') return quantity;
+    if (unit === 'kg' || unit === 'l') return quantity * 1000;
+    return undefined;
   }
 }

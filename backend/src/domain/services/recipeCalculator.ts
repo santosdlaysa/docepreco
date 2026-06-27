@@ -5,6 +5,8 @@ import { AdditionalCost, RecipeIngredient, SubRecipe } from '../entities/Recipe'
 export interface SubRecipeCostInfo {
   subRecipeId: string;
   costPerUnit: number;
+  totalCost?: number;
+  baseQuantityProduced?: number;
 }
 
 export interface RecipeCalculationInput {
@@ -22,6 +24,28 @@ export function convertUnit(quantity: number, fromUnit: string, toUnit: string):
   if (fromUnit === 'ml' && toUnit === 'l')  return quantity / 1000;
   if (fromUnit === 'l'  && toUnit === 'ml') return quantity * 1000;
   throw new Error(`Cannot convert ${fromUnit} to ${toUnit}`);
+}
+
+export function normalizeToBaseMeasure(quantity: number, unit: string): number | undefined {
+  if (unit === 'g' || unit === 'ml') return quantity;
+  if (unit === 'kg' || unit === 'l') return quantity * 1000;
+  return undefined;
+}
+
+function convertSubRecipeQuantity(quantity: number, unit: string, info: SubRecipeCostInfo): number {
+  if (unit === 'un' || unit === 'unit') return info.costPerUnit * quantity;
+
+  const totalCost = info.totalCost ?? info.costPerUnit;
+  const baseQuantityProduced = info.baseQuantityProduced ?? 0;
+  const baseQuantityUsed = normalizeToBaseMeasure(quantity, unit);
+  if (baseQuantityUsed === undefined) {
+    throw new Error(`Cannot calculate sub-recipe cost for unit ${unit}`);
+  }
+  if (baseQuantityProduced <= 0) {
+    throw new Error('Sub-recipe does not have a measurable yield in g/ml');
+  }
+
+  return (totalCost / baseQuantityProduced) * baseQuantityUsed;
 }
 
 /**
@@ -65,11 +89,11 @@ export function calculateRecipe(
 
   let subRecipesCost = 0;
   if (recipe.subRecipes && subRecipeCosts) {
-    const costMap = new Map(subRecipeCosts.map(s => [s.subRecipeId, s.costPerUnit]));
+    const costMap = new Map(subRecipeCosts.map(s => [s.subRecipeId, s]));
     for (const sub of recipe.subRecipes) {
-      const costPerUnit = costMap.get(sub.subRecipeId);
-      if (costPerUnit !== undefined) {
-        subRecipesCost += costPerUnit * sub.quantityUsed;
+      const subRecipeCost = costMap.get(sub.subRecipeId);
+      if (subRecipeCost !== undefined) {
+        subRecipesCost += convertSubRecipeQuantity(sub.quantityUsed, sub.unit, subRecipeCost);
       }
     }
   }

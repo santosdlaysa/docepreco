@@ -1,7 +1,9 @@
 import { CalculationResult } from '../../../domain/entities/Calculation';
 import { IRecipeRepository } from '../../../domain/repositories/IRecipeRepository';
 import { IIngredientRepository } from '../../../domain/repositories/IIngredientRepository';
-import { calculateRecipe, SubRecipeCostInfo } from '../../../domain/services/recipeCalculator';
+import { Recipe, RecipeIngredient } from '../../../domain/entities/Recipe';
+import { Ingredient } from '../../../domain/entities/Ingredient';
+import { calculateRecipe, convertUnit, normalizeToBaseMeasure, SubRecipeCostInfo } from '../../../domain/services/recipeCalculator';
 
 export class CalculateRecipeUseCase {
   constructor(
@@ -43,8 +45,34 @@ export class CalculateRecipeUseCase {
         []
       );
 
-      costs.push({ subRecipeId: subId, costPerUnit: subResult.costPerUnit });
+      costs.push({
+        subRecipeId: subId,
+        costPerUnit: subResult.costPerUnit,
+        totalCost: subResult.totalCost,
+        baseQuantityProduced: this.calculateBaseQuantityProduced(subRecipe, ingredientsById),
+      });
     }
     return costs;
+  }
+
+  private calculateBaseQuantityProduced(
+    recipe: Pick<Recipe, 'ingredients'>,
+    ingredientsById: Map<string, Ingredient>
+  ): number {
+    return recipe.ingredients.reduce((total, ri) => {
+      const ingredient = ingredientsById.get(ri.ingredientId);
+      if (!ingredient) return total;
+
+      const quantityInIngredientUnit = this.convertIngredientQuantity(ri, ingredient);
+      const baseQuantity = normalizeToBaseMeasure(quantityInIngredientUnit, ingredient.unit);
+      return total + (baseQuantity ?? 0);
+    }, 0);
+  }
+
+  private convertIngredientQuantity(ri: RecipeIngredient, ingredient: Ingredient): number {
+    if (ri.unit === 'unit' && ingredient.purchaseUnitWeight) {
+      return ri.quantityUsed * ingredient.purchaseUnitWeight;
+    }
+    return convertUnit(ri.quantityUsed, ri.unit, ingredient.unit);
   }
 }
