@@ -81,7 +81,7 @@ export function calculateRecipe(
       : ingredient.purchaseQuantity;
     const pricePerUnit = ingredient.purchasePrice / effectiveQuantity;
     const convertedQuantity =
-      ri.unit === 'unit' && ingredient.purchaseUnitWeight
+      ri.unit === 'unit' && ingredient.purchaseUnitWeight && ingredient.unit !== 'unit'
         ? ri.quantityUsed * ingredient.purchaseUnitWeight
         : convertUnit(ri.quantityUsed, ri.unit, ingredient.unit);
     ingredientsCost += pricePerUnit * convertedQuantity;

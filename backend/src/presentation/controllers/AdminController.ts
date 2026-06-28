@@ -1013,7 +1013,7 @@ export class AdminController {
   }
 
   private convertAdminRecipeQuantity(quantity: number, fromUnit: string, toUnit: string, purchaseUnitWeight: number): number {
-    if (fromUnit === 'unit' && purchaseUnitWeight > 0) return quantity * purchaseUnitWeight;
+    if (fromUnit === 'unit' && toUnit !== 'unit' && purchaseUnitWeight > 0) return quantity * purchaseUnitWeight;
     if (fromUnit === toUnit) return quantity;
     if (fromUnit === 'g' && toUnit === 'kg') return quantity / 1000;
     if (fromUnit === 'kg' && toUnit === 'g') return quantity * 1000;
