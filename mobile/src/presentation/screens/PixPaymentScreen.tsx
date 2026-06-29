@@ -217,7 +217,7 @@ export const PixPaymentScreen: React.FC = () => {
           navigation.goBack();
         }
       } catch {}
-    }, 15000);
+    }, 5000);
     return () => clearInterval(interval);
   }, [sent, refresh, navigation, showToast, t]);
 
