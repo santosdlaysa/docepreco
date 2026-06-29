@@ -6,7 +6,6 @@ import { AuthRequest } from '../middleware/authMiddleware';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { createMpPixPayment, getMpPaymentInfo } from '../../infrastructure/services/mercadoPagoService';
-import crypto from 'crypto';
 
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -285,26 +284,6 @@ export class PixController {
    * POST /api/pix/webhook/mercadopago
    */
   async handleWebhook(req: Request, res: Response): Promise<void> {
-    // Valida assinatura do Mercado Pago
-    const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
-    if (secret) {
-      const xSignature = req.headers['x-signature'] as string | undefined;
-      const xRequestId = req.headers['x-request-id'] as string | undefined;
-      const dataId = (req.query['data.id'] as string | undefined) ?? (req.body?.data?.id ? String(req.body.data.id) : undefined);
-
-      if (xSignature && xRequestId && dataId) {
-        const ts = xSignature.split(',').find(p => p.startsWith('ts='))?.split('=')[1] ?? '';
-        const v1 = xSignature.split(',').find(p => p.startsWith('v1='))?.split('=')[1] ?? '';
-        const expected = crypto.createHmac('sha256', secret).update(`id:${dataId};request-id:${xRequestId};ts:${ts}`).digest('hex');
-
-        if (v1 && expected !== v1) {
-          console.warn('[PIX Webhook] Assinatura inválida — requisição ignorada');
-          res.status(200).json({ received: true });
-          return;
-        }
-      }
-    }
-
     // Responde 200 imediatamente para o MP não reenviar
     res.status(200).json({ received: true });
 
