@@ -22,10 +22,11 @@ import { OrderStatus, OrderPayment, OrderItem, PaymentMethodType } from '../../d
 import { Recipe } from '../../domain/entities/Recipe';
 import { Client } from '../../domain/entities/Client';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
+import { saleApi } from '../../data/api/saleApi';
 import { clientStorage } from '../../data/storage/clientStorage';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoRecipeApi } from '../../data/demo/demoApi';
+import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -87,6 +88,7 @@ export const CreateOrderScreen: React.FC = () => {
   const isEditing = !!orderId;
   const { showToast } = useToast();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
+  const sApi = isDemoMode() ? demoSaleApi : saleApi;
 
   interface ItemDraft { id: string; recipeId?: string; recipeName: string; quantity: string; unitPrice: string; }
   const newItemDraft = (): ItemDraft => ({ id: Math.random().toString(36).slice(2), recipeId: undefined, recipeName: '', quantity: '', unitPrice: '' });
@@ -106,6 +108,8 @@ export const CreateOrderScreen: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [showSaleConfirm, setShowSaleConfirm] = useState(false);
+  const [pendingSale, setPendingSale] = useState<{ clientName: string; recipeName: string; totalPrice: number; recipeId?: string; quantity: number; unitPrice: number } | null>(null);
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -183,7 +187,13 @@ export const CreateOrderScreen: React.FC = () => {
       };
       if (isEditing) { await orderStorage.update(orderId!, data); showToast('Encomenda atualizada!', 'success'); }
       else { await orderStorage.create(data); showToast('Encomenda criada!', 'success'); }
-      navigation.goBack();
+      const isFullyPaid = totalPrice > 0 && toCents(totalPaid) >= toCents(totalPrice);
+      if (isFullyPaid && status === 'delivered') {
+        setPendingSale({ clientName: data.clientName, recipeName: data.recipeName, totalPrice: data.totalPrice, recipeId: data.recipeId, quantity: data.quantity, unitPrice: data.unitPrice });
+        setShowSaleConfirm(true);
+      } else {
+        navigation.goBack();
+      }
     } catch { showToast('Erro ao salvar', 'error'); }
     finally { setLoading(false); }
   };
@@ -489,6 +499,50 @@ export const CreateOrderScreen: React.FC = () => {
           />
         </SafeAreaView>
       </Modal>
+
+      {/* ── Sale confirmation modal ── */}
+      <Modal visible={showSaleConfirm} animationType="fade" transparent statusBarTranslucent>
+        <View style={st.saleOverlay}>
+          <View style={st.saleCard}>
+            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleIconGrad}>
+              <Ionicons name="storefront-outline" size={32} color="#fff" />
+            </LinearGradient>
+            <Text style={st.saleTitle}>Lançar nas vendas do dia?</Text>
+            <Text style={st.saleDesc}>O pagamento foi concluído. Deseja registrar esta encomenda como uma venda do dia também?</Text>
+            {pendingSale && (
+              <View style={st.saleInfoRow}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={st.saleInfoName} numberOfLines={1}>{pendingSale.recipeName}</Text>
+                  <Text style={st.saleInfoClient}>{pendingSale.clientName}</Text>
+                </View>
+                <Text style={st.saleInfoValue}>{pendingSale.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</Text>
+              </View>
+            )}
+            <View style={st.saleBtns}>
+              <TouchableOpacity style={st.saleBtnNo} activeOpacity={0.7}
+                onPress={() => { setShowSaleConfirm(false); navigation.goBack(); }}>
+                <Text style={st.saleBtnNoText}>Agora não</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}
+                onPress={async () => {
+                  if (pendingSale) {
+                    try {
+                      await sApi.create({ recipeId: pendingSale.recipeId || '', quantitySold: pendingSale.quantity, salePrice: pendingSale.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${pendingSale.clientName}` });
+                      showToast('Venda registrada!', 'success');
+                    } catch { showToast('Erro ao registrar venda', 'warning'); }
+                  }
+                  setShowSaleConfirm(false);
+                  navigation.goBack();
+                }}>
+                <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleBtnYes}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                  <Text style={st.saleBtnYesText}>Sim, registrar</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -546,6 +600,21 @@ const st = StyleSheet.create({
   sugBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: PINK, marginTop: -4, overflow: 'hidden', ...SHADOW, shadowOpacity: 0.12 },
   sugItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LINE },
   sugText: { fontSize: 14, color: INK },
+
+  saleOverlay: { flex: 1, backgroundColor: 'rgba(61,34,51,0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  saleCard: { backgroundColor: CREAM, borderRadius: 26, padding: 24, width: '100%', alignItems: 'center', gap: 12, ...SHADOW, shadowOpacity: 0.18, shadowRadius: 20 },
+  saleIconGrad: { width: 70, height: 70, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  saleTitle: { fontSize: 20, fontWeight: '800', color: INK, textAlign: 'center', lineHeight: 25 },
+  saleDesc: { fontSize: 13.5, color: INK2, fontWeight: '500', textAlign: 'center', lineHeight: 20, maxWidth: 270 },
+  saleInfoRow: { backgroundColor: '#fff', borderRadius: 16, padding: 14, paddingHorizontal: 16, width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12, ...SHADOW },
+  saleInfoName: { fontSize: 14.5, fontWeight: '700', color: INK },
+  saleInfoClient: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+  saleInfoValue: { fontSize: 17, fontWeight: '800', color: PINK },
+  saleBtns: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 4 },
+  saleBtnNo: { flex: 1, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', ...SHADOW },
+  saleBtnNoText: { fontSize: 14, fontWeight: '700', color: INK2 },
+  saleBtnYes: { height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
+  saleBtnYesText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
   modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: LINE, backgroundColor: '#fff' },
   modalTitle: { fontSize: 20, fontWeight: '700', color: INK },
