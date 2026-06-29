@@ -8,6 +8,10 @@ export interface PixRequest {
   created_at: string;
   reviewed_at: string | null;
   alreadyExists?: boolean;
+  /** QR copia-e-cola gerado pelo Mercado Pago (pode ser null se MP não configurado) */
+  mp_qr_code?: string | null;
+  /** Base64 da imagem do QR (sem prefixo data:image) */
+  mp_qr_code_base64?: string | null;
 }
 
 /** Valor (em centavos) do antigo plano mensal por PIX. Assinantes que pagaram

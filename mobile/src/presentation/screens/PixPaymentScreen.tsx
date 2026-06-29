@@ -104,6 +104,8 @@ export const PixPaymentScreen: React.FC = () => {
   const [sent, setSent] = useState(false);
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
+  // QR dinâmico retornado pelo Mercado Pago
+  const [dynamicQr, setDynamicQr] = useState<{ copyPaste: string; base64: string } | null>(null);
   // Assinante legado: já pagou o mensal de R$ 10,00 — mantém esse preço na renovação
   const [legacyMonthly, setLegacyMonthly] = useState(false);
   // Config de PIX vinda do painel web (valor, código e QR). Null → usa embutido.
@@ -131,6 +133,10 @@ export const PixPaymentScreen: React.FC = () => {
         }
         if (status?.status === 'pending') {
           setSent(true);
+          // Recupera QR dinâmico salvo (se existir)
+          if (status.mp_qr_code && status.mp_qr_code_base64) {
+            setDynamicQr({ copyPaste: status.mp_qr_code, base64: status.mp_qr_code_base64 });
+          }
         }
       } catch {}
     })();
@@ -149,8 +155,10 @@ export const PixPaymentScreen: React.FC = () => {
     })();
   }, []);
 
+  const activeCopyPaste = dynamicQr?.copyPaste || plan.pixCopyPaste;
+
   const handleCopyPix = async () => {
-    await ClipboardModule.setStringAsync(plan.pixCopyPaste);
+    await ClipboardModule.setStringAsync(activeCopyPaste);
     setCopied(true);
     showToast(t('pix.pixCopied'), 'success');
     setTimeout(() => setCopied(false), 3000);
@@ -167,7 +175,11 @@ export const PixPaymentScreen: React.FC = () => {
           onPress: async () => {
             setSending(true);
             try {
-              await pixApi.createRequest(plan.label, plan.priceCents, tier);
+              const result = await pixApi.createRequest(plan.label, plan.priceCents, tier);
+              // Salva QR dinâmico do Mercado Pago se disponível
+              if (result.mp_qr_code && result.mp_qr_code_base64) {
+                setDynamicQr({ copyPaste: result.mp_qr_code, base64: result.mp_qr_code_base64 });
+              }
               setSent(true);
               showToast(t('pix.requestSent'), 'success');
             } catch (error) {
@@ -278,7 +290,11 @@ export const PixPaymentScreen: React.FC = () => {
             <View style={styles.qrContainer}>
               <View style={[styles.qrBorder, { borderColor: accent, shadowColor: accent }]}>
                 <Image
-                  source={plan.qrImage}
+                  source={
+                    dynamicQr
+                      ? { uri: `data:image/png;base64,${dynamicQr.base64}` }
+                      : plan.qrImage
+                  }
                   style={styles.qrImage}
                   resizeMode="contain"
                 />
@@ -291,7 +307,7 @@ export const PixPaymentScreen: React.FC = () => {
               <View style={{ flex: 1 }}>
                 <Text style={styles.copyLabel}>{t('pix.copyPaste')}</Text>
                 <Text style={styles.copyValue} numberOfLines={1} ellipsizeMode="middle">
-                  {plan.pixCopyPaste}
+                  {activeCopyPaste}
                 </Text>
               </View>
               <View style={[styles.copyBtnSmall, copied && { backgroundColor: '#E8F5E9' }]}>

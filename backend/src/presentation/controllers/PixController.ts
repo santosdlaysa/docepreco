@@ -5,6 +5,8 @@ import { notifyPremiumEvent, notifyPixRequest } from '../../infrastructure/servi
 import { AuthRequest } from '../middleware/authMiddleware';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { createMpPixPayment, getMpPaymentInfo } from '../../infrastructure/services/mercadoPagoService';
+import crypto from 'crypto';
 
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -32,11 +34,21 @@ export class PixController {
     try {
       // Check if user already has a pending request
       const existing = await pool.query(
-        `SELECT id FROM pix_requests WHERE user_id = $1 AND status = 'pending' LIMIT 1`,
+        `SELECT id, status, mp_qr_code, mp_qr_code_base64 FROM pix_requests WHERE user_id = $1 AND status = 'pending' LIMIT 1`,
         [userId]
       );
       if (existing.rows.length > 0) {
-        res.json({ success: true, data: { id: existing.rows[0].id, status: 'pending', alreadyExists: true } });
+        const row = existing.rows[0];
+        res.json({
+          success: true,
+          data: {
+            id: row.id,
+            status: row.status,
+            alreadyExists: true,
+            mp_qr_code: row.mp_qr_code,
+            mp_qr_code_base64: row.mp_qr_code_base64,
+          },
+        });
         return;
       }
 
@@ -47,8 +59,32 @@ export class PixController {
         [userId, planLabel ?? 'Mensal', tier, amountCents ?? 0]
       );
 
+      const pixRequestId: string = result.rows[0].id;
       const user = await userRepo.findById(userId);
-      // Notify admin via Telegram
+
+      // Gera pagamento PIX no Mercado Pago
+      let mpQrCode: string | null = null;
+      let mpQrCodeBase64: string | null = null;
+      try {
+        const mp = await createMpPixPayment({
+          amountCents: amountCents ?? 0,
+          description: `DocePreço ${planLabel ?? 'Mensal'} - ${tier}`,
+          payerEmail: user?.email ?? 'cliente@docepreco.com',
+          externalReference: pixRequestId,
+        });
+
+        mpQrCode = mp.qrCode;
+        mpQrCodeBase64 = mp.qrCodeBase64;
+
+        await pool.query(
+          `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3 WHERE id = $4`,
+          [mp.paymentId, mpQrCode, mpQrCodeBase64, pixRequestId]
+        );
+      } catch (mpErr) {
+        console.error('[PIX] Erro ao gerar QR no Mercado Pago (continuando no modo manual):', mpErr);
+      }
+
+      // Notifica admin via Telegram
       notifyPixRequest(
         user?.companyName ?? 'Usuário',
         user?.email ?? '',
@@ -56,7 +92,14 @@ export class PixController {
         amountCents ?? 0
       );
 
-      res.status(201).json({ success: true, data: result.rows[0] });
+      res.status(201).json({
+        success: true,
+        data: {
+          ...result.rows[0],
+          mp_qr_code: mpQrCode,
+          mp_qr_code_base64: mpQrCodeBase64,
+        },
+      });
     } catch (error) {
       console.error('[PIX] Create request error:', error);
       res.status(500).json({ success: false, error: 'Internal error' });
@@ -76,7 +119,7 @@ export class PixController {
 
     try {
       const result = await pool.query(
-        `SELECT id, status, plan_label, amount_cents, created_at, reviewed_at
+        `SELECT id, status, plan_label, amount_cents, created_at, reviewed_at, mp_qr_code, mp_qr_code_base64
          FROM pix_requests
          WHERE user_id = $1
          ORDER BY created_at DESC
@@ -210,6 +253,112 @@ export class PixController {
     } catch (error) {
       console.error('[PIX] Approve error:', error);
       res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
+   * Webhook do Mercado Pago — aprovação automática ao receber confirmação de pagamento.
+   * POST /api/pix/webhook/mercadopago
+   */
+  async handleWebhook(req: Request, res: Response): Promise<void> {
+    // Valida assinatura do Mercado Pago
+    const secret = process.env.MERCADO_PAGO_WEBHOOK_SECRET;
+    if (secret) {
+      const xSignature = req.headers['x-signature'] as string | undefined;
+      const xRequestId = req.headers['x-request-id'] as string | undefined;
+      const dataId = (req.query['data.id'] as string | undefined) ?? (req.body?.data?.id ? String(req.body.data.id) : undefined);
+
+      if (xSignature && xRequestId && dataId) {
+        const manifest = `id:${dataId};request-id:${xRequestId};ts:${xSignature.split(',').find(p => p.startsWith('ts='))?.split('=')[1] ?? ''}`;
+        const ts = xSignature.split(',').find(p => p.startsWith('ts='))?.split('=')[1] ?? '';
+        const v1 = xSignature.split(',').find(p => p.startsWith('v1='))?.split('=')[1] ?? '';
+        const expected = crypto.createHmac('sha256', secret).update(`id:${dataId};request-id:${xRequestId};ts:${ts}`).digest('hex');
+
+        if (v1 && expected !== v1) {
+          console.warn('[PIX Webhook] Assinatura inválida — requisição ignorada');
+          res.status(200).json({ received: true });
+          return;
+        }
+      }
+    }
+
+    // Responde 200 imediatamente para o MP não reenviar
+    res.status(200).json({ received: true });
+
+    try {
+      const { type, data } = req.body as { type?: string; data?: { id?: string } };
+
+      if (type !== 'payment' || !data?.id) return;
+
+      const paymentId = String(data.id);
+
+      // Consulta o pagamento no MP para confirmar status
+      let mpInfo: { status: string; externalReference: string };
+      try {
+        mpInfo = await getMpPaymentInfo(paymentId);
+      } catch (err) {
+        console.error('[PIX Webhook] Erro ao consultar pagamento no MP:', err);
+        return;
+      }
+
+      if (mpInfo.status !== 'approved') return;
+
+      const pixRequestId = mpInfo.externalReference;
+      if (!pixRequestId) return;
+
+      // Busca a pix_request correspondente
+      const reqResult = await pool.query(
+        `SELECT id, user_id, status, plan_tier, amount_cents FROM pix_requests WHERE id = $1`,
+        [pixRequestId]
+      );
+
+      if (reqResult.rows.length === 0) {
+        console.warn(`[PIX Webhook] pix_request não encontrada: ${pixRequestId}`);
+        return;
+      }
+
+      if (reqResult.rows[0].status !== 'pending') {
+        console.log(`[PIX Webhook] pix_request ${pixRequestId} já processada (${reqResult.rows[0].status})`);
+        return;
+      }
+
+      const userId = reqResult.rows[0].user_id;
+      const tier: 'premium' | 'master' = reqResult.rows[0].plan_tier === 'master' ? 'master' : 'premium';
+      const premiumDays = tier === 'master' ? 30 : 30;
+      const premiumUntil = new Date();
+      premiumUntil.setDate(premiumUntil.getDate() + premiumDays);
+
+      await pool.query(
+        `UPDATE pix_requests SET status = 'approved', reviewed_at = NOW(), reviewed_by = 'mercadopago' WHERE id = $1`,
+        [pixRequestId]
+      );
+
+      await userRepo.updatePlanTier(userId, tier, premiumUntil, 'manual');
+
+      const pixAmountCents = reqResult.rows[0].amount_cents ?? null;
+      await pool.query(
+        `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents)
+         VALUES ($1, 'INITIAL_PURCHASE', 'pix', 'manual', $2, $3, 'PIX', $4)`,
+        [userId, tier === 'master' ? 'pix_master' : 'pix_premium', premiumUntil, pixAmountCents]
+      );
+
+      // Notifica o usuário por push
+      const tokens = await pushTokenRepo.findByUserId(userId);
+      if (tokens.length > 0) {
+        await sendPushNotifications(
+          tokens.map(t => t.token),
+          'Pagamento aprovado! 🎉',
+          'Seu pagamento via PIX foi confirmado. Aproveite o DocePreço Premium!',
+          { screen: 'Home' }
+        );
+      }
+
+      const user = await userRepo.findById(userId);
+      notifyPremiumEvent(user?.companyName ?? 'Usuário', 'PIX_APPROVED', 'pix');
+
+      console.log(`[PIX Webhook] Usuário ${userId} aprovado automaticamente via MP (payment ${paymentId})`);
+    } catch (err) {
+      console.error('[PIX Webhook] Erro inesperado:', err);
     }
   }
 

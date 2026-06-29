@@ -493,6 +493,9 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'free'");
     await client.query(`UPDATE users SET plan_tier = 'premium' WHERE is_premium = TRUE AND plan_tier = 'free'`);
     await addColumnIfMissing(client, 'pix_requests', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'premium'");
+    await addColumnIfMissing(client, 'pix_requests', 'mp_payment_id', 'VARCHAR(100) NULL');
+    await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code', 'TEXT NULL');
+    await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code_base64', 'TEXT NULL');
 
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
