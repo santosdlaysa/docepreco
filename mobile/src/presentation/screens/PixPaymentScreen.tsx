@@ -356,13 +356,37 @@ export const PixPaymentScreen: React.FC = () => {
                 </View>
               </>
             ) : (
-              /* Fallback: MP indisponível */
+              /* Fallback: MP indisponível — exibe QR estático */
               <>
-                <View style={styles.waitingIcon}>
-                  <Ionicons name="time-outline" size={48} color={colors.primary} />
+                <Text style={[styles.waitingTitle, { marginBottom: 4 }]}>Pague com PIX</Text>
+                <Text style={[styles.waitingSubtitle, { marginBottom: 16 }]}>
+                  Escaneie o QR ou copie o código abaixo e confirme o pagamento no seu banco.
+                </Text>
+
+                <View style={styles.qrContainer}>
+                  <View style={[styles.qrBorder, { borderColor: accent, shadowColor: accent }]}>
+                    <Image
+                      source={plan.qrImage}
+                      style={styles.qrImage}
+                      resizeMode="contain"
+                    />
+                  </View>
                 </View>
-                <Text style={styles.waitingTitle}>{t('pix.waitingTitle')}</Text>
-                <Text style={styles.waitingSubtitle}>{t('pix.waitingSubtitle')}</Text>
+
+                <TouchableOpacity style={styles.copyCard} onPress={handleCopyPix} activeOpacity={0.7}>
+                  <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={22} color={copied ? colors.success : colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.copyLabel}>{t('pix.copyPaste')}</Text>
+                    <Text style={styles.copyValue} numberOfLines={1} ellipsizeMode="middle">
+                      {plan.pixCopyPaste}
+                    </Text>
+                  </View>
+                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: '#E8F5E9' }]}>
+                    <Text style={[styles.copyBtnText, copied && { color: colors.success }]}>
+                      {copied ? t('pix.copied') : t('pix.copy')}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
               </>
             )}
 
