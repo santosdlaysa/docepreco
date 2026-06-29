@@ -269,7 +269,6 @@ export class PixController {
       const dataId = (req.query['data.id'] as string | undefined) ?? (req.body?.data?.id ? String(req.body.data.id) : undefined);
 
       if (xSignature && xRequestId && dataId) {
-        const manifest = `id:${dataId};request-id:${xRequestId};ts:${xSignature.split(',').find(p => p.startsWith('ts='))?.split('=')[1] ?? ''}`;
         const ts = xSignature.split(',').find(p => p.startsWith('ts='))?.split('=')[1] ?? '';
         const v1 = xSignature.split(',').find(p => p.startsWith('v1='))?.split('=')[1] ?? '';
         const expected = crypto.createHmac('sha256', secret).update(`id:${dataId};request-id:${xRequestId};ts:${ts}`).digest('hex');

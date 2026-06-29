@@ -164,34 +164,21 @@ export const PixPaymentScreen: React.FC = () => {
     setTimeout(() => setCopied(false), 3000);
   };
 
-  const handlePixDone = async () => {
-    Alert.alert(
-      t('pix.confirmTitle'),
-      t('pix.confirmMessage'),
-      [
-        { text: t('pix.confirmCancel'), style: 'cancel' },
-        {
-          text: t('pix.confirmOk'),
-          onPress: async () => {
-            setSending(true);
-            try {
-              const result = await pixApi.createRequest(plan.label, plan.priceCents, tier);
-              // Salva QR dinâmico do Mercado Pago se disponível
-              if (result.mp_qr_code && result.mp_qr_code_base64) {
-                setDynamicQr({ copyPaste: result.mp_qr_code, base64: result.mp_qr_code_base64 });
-              }
-              setSent(true);
-              showToast(t('pix.requestSent'), 'success');
-            } catch (error) {
-              const msg = error instanceof Error ? error.message : t('pix.requestError');
-              showToast(msg, 'error');
-            } finally {
-              setSending(false);
-            }
-          },
-        },
-      ]
-    );
+  // Gera o QR de pagamento no Mercado Pago e exibe para o usuário pagar
+  const handleGenerateQr = async () => {
+    setSending(true);
+    try {
+      const result = await pixApi.createRequest(plan.label, plan.priceCents, tier);
+      if (result.mp_qr_code && result.mp_qr_code_base64) {
+        setDynamicQr({ copyPaste: result.mp_qr_code, base64: result.mp_qr_code_base64 });
+      }
+      setSent(true);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t('pix.requestError');
+      showToast(msg, 'error');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleCheckStatus = useCallback(async () => {
@@ -286,59 +273,27 @@ export const PixPaymentScreen: React.FC = () => {
               )}
             </View>
 
-            {/* QR Code Image */}
-            <View style={styles.qrContainer}>
-              <View style={[styles.qrBorder, { borderColor: accent, shadowColor: accent }]}>
-                <Image
-                  source={
-                    dynamicQr
-                      ? { uri: `data:image/png;base64,${dynamicQr.base64}` }
-                      : plan.qrImage
-                  }
-                  style={styles.qrImage}
-                  resizeMode="contain"
-                />
-              </View>
-            </View>
-
-            {/* Copy PIX */}
-            <TouchableOpacity style={styles.copyCard} onPress={handleCopyPix} activeOpacity={0.7}>
-              <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={22} color={copied ? colors.success : colors.primary} />
-              <View style={{ flex: 1 }}>
-                <Text style={styles.copyLabel}>{t('pix.copyPaste')}</Text>
-                <Text style={styles.copyValue} numberOfLines={1} ellipsizeMode="middle">
-                  {activeCopyPaste}
-                </Text>
-              </View>
-              <View style={[styles.copyBtnSmall, copied && { backgroundColor: '#E8F5E9' }]}>
-                <Text style={[styles.copyBtnText, copied && { color: colors.success }]}>
-                  {copied ? t('pix.copied') : t('pix.copy')}
-                </Text>
-              </View>
-            </TouchableOpacity>
-
-            {/* Instructions */}
+            {/* Instrução breve */}
             <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>{t('pix.howToPay')}</Text>
-
               <View style={styles.step}>
                 <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
-                <Text style={styles.stepText}>{t('pix.step1')}</Text>
+                <Text style={styles.stepText}>Clique em "Gerar QR de Pagamento" abaixo</Text>
               </View>
               <View style={styles.step}>
                 <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
-                <Text style={styles.stepText}>{t('pix.step2')}</Text>
+                <Text style={styles.stepText}>Escaneie o QR ou copie o código no seu banco</Text>
               </View>
               <View style={styles.step}>
                 <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
-                <Text style={styles.stepText}>{t('pix.step3')}</Text>
+                <Text style={styles.stepText}>Confirme o pagamento — o acesso é liberado automaticamente</Text>
               </View>
             </View>
 
-            {/* CTA */}
+            {/* CTA — gera QR no Mercado Pago */}
             <TouchableOpacity
               style={[styles.cta, { backgroundColor: accent, shadowColor: accent }]}
-              onPress={handlePixDone}
+              onPress={handleGenerateQr}
               disabled={sending}
               activeOpacity={0.85}
             >
@@ -346,35 +301,70 @@ export const PixPaymentScreen: React.FC = () => {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="checkmark-circle" size={20} color="#fff" />
-                  <Text style={styles.ctaText}>{t('pix.iAlreadyPaid')}</Text>
+                  <Ionicons name="qr-code-outline" size={20} color="#fff" />
+                  <Text style={styles.ctaText}>Gerar QR de Pagamento</Text>
                 </>
               )}
             </TouchableOpacity>
           </>
         ) : (
-          /* Waiting for approval */
+          /* QR gerado — aguardando pagamento */
           <View style={styles.waitingContainer}>
-            <View style={styles.waitingIcon}>
-              <Ionicons name="time-outline" size={48} color={colors.primary} />
-            </View>
-            <Text style={styles.waitingTitle}>{t('pix.waitingTitle')}</Text>
-            <Text style={styles.waitingSubtitle}>{t('pix.waitingSubtitle')}</Text>
+            {dynamicQr ? (
+              <>
+                <Text style={[styles.waitingTitle, { marginBottom: 4 }]}>Pague com PIX</Text>
+                <Text style={[styles.waitingSubtitle, { marginBottom: 16 }]}>
+                  Escaneie o QR ou copie o código abaixo. O acesso é liberado automaticamente após o pagamento.
+                </Text>
 
-            <View style={styles.waitingSteps}>
-              <View style={styles.waitingStep}>
-                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-                <Text style={styles.waitingStepText}>{t('pix.waitingStep1')}</Text>
-              </View>
-              <View style={styles.waitingStep}>
-                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
-                <Text style={styles.waitingStepText}>{t('pix.waitingStep2')}</Text>
-              </View>
-              <View style={styles.waitingStep}>
-                <ActivityIndicator size="small" color={colors.primary} style={{ width: 24 }} />
-                <Text style={styles.waitingStepText}>{t('pix.waitingStep3')}</Text>
-              </View>
-            </View>
+                {/* QR dinâmico do Mercado Pago */}
+                <View style={styles.qrContainer}>
+                  <View style={[styles.qrBorder, { borderColor: accent, shadowColor: accent }]}>
+                    <Image
+                      source={{ uri: `data:image/png;base64,${dynamicQr.base64}` }}
+                      style={styles.qrImage}
+                      resizeMode="contain"
+                    />
+                  </View>
+                </View>
+
+                {/* Copiar copia-e-cola */}
+                <TouchableOpacity style={styles.copyCard} onPress={handleCopyPix} activeOpacity={0.7}>
+                  <Ionicons name={copied ? 'checkmark-circle' : 'copy-outline'} size={22} color={copied ? colors.success : colors.primary} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.copyLabel}>{t('pix.copyPaste')}</Text>
+                    <Text style={styles.copyValue} numberOfLines={1} ellipsizeMode="middle">
+                      {dynamicQr.copyPaste}
+                    </Text>
+                  </View>
+                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: '#E8F5E9' }]}>
+                    <Text style={[styles.copyBtnText, copied && { color: colors.success }]}>
+                      {copied ? t('pix.copied') : t('pix.copy')}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <View style={styles.waitingSteps}>
+                  <View style={styles.waitingStep}>
+                    <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                    <Text style={styles.waitingStepText}>QR de pagamento gerado</Text>
+                  </View>
+                  <View style={styles.waitingStep}>
+                    <ActivityIndicator size="small" color={colors.primary} style={{ width: 24 }} />
+                    <Text style={styles.waitingStepText}>Aguardando confirmação do pagamento...</Text>
+                  </View>
+                </View>
+              </>
+            ) : (
+              /* Fallback: MP indisponível */
+              <>
+                <View style={styles.waitingIcon}>
+                  <Ionicons name="time-outline" size={48} color={colors.primary} />
+                </View>
+                <Text style={styles.waitingTitle}>{t('pix.waitingTitle')}</Text>
+                <Text style={styles.waitingSubtitle}>{t('pix.waitingSubtitle')}</Text>
+              </>
+            )}
 
             <TouchableOpacity
               style={[styles.cta, { marginTop: 24 }]}
