@@ -38,6 +38,7 @@ export async function createMpPixPayment(opts: {
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
+      'X-Idempotency-Key': opts.externalReference,
     },
     body: JSON.stringify({
       transaction_amount: amount,
