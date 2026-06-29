@@ -39,14 +39,38 @@ export class PixController {
       );
       if (existing.rows.length > 0) {
         const row = existing.rows[0];
+        let mpQrCode: string | null = row.mp_qr_code;
+        let mpQrCodeBase64: string | null = row.mp_qr_code_base64;
+
+        // Pedido antigo sem QR do MP — gera agora
+        if (!mpQrCode) {
+          try {
+            const user = await userRepo.findById(userId);
+            const mp = await createMpPixPayment({
+              amountCents: amountCents ?? 0,
+              description: `DocePreço ${planLabel ?? 'Mensal'} - ${tier}`,
+              payerEmail: user?.email ?? 'cliente@docepreco.com',
+              externalReference: row.id,
+            });
+            mpQrCode = mp.qrCode;
+            mpQrCodeBase64 = mp.qrCodeBase64;
+            await pool.query(
+              `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3 WHERE id = $4`,
+              [mp.paymentId, mpQrCode, mpQrCodeBase64, row.id]
+            );
+          } catch (mpErr) {
+            console.error('[PIX] Erro ao gerar QR para pedido existente:', mpErr);
+          }
+        }
+
         res.json({
           success: true,
           data: {
             id: row.id,
             status: row.status,
             alreadyExists: true,
-            mp_qr_code: row.mp_qr_code,
-            mp_qr_code_base64: row.mp_qr_code_base64,
+            mp_qr_code: mpQrCode,
+            mp_qr_code_base64: mpQrCodeBase64,
           },
         });
         return;
