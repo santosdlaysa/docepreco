@@ -92,6 +92,7 @@ export const OrdersScreen: React.FC = () => {
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
+  const [saleConfirmOrder, setSaleConfirmOrder] = useState<Order | null>(null);
 
   const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
     { key: 'pix', icon: 'qr-code-outline', label: 'Pix' },
@@ -178,13 +179,19 @@ export const OrdersScreen: React.FC = () => {
       const payment: OrderPayment = { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] };
       const updatedPayments = [...basePayments, payment];
       const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
+      const nowFullyPaid = toCents(newPaidAmount) >= toCents(paymentModalOrder.totalPrice);
+      const wasDelivered = paymentModalOrder.status === 'delivered';
+      const orderSnapshot = paymentModalOrder;
       await orderStorage.update(paymentModalOrder.id, {
         payments: updatedPayments,
         paidAmount: newPaidAmount,
-        paid: toCents(newPaidAmount) >= toCents(paymentModalOrder.totalPrice),
+        paid: nowFullyPaid,
       });
       setPaymentModalOrder(null); setNewPaymentAmount(''); setNewPaymentMethod('pix');
       loadOrders(); showToast('Pagamento adicionado', 'success');
+      if (nowFullyPaid && wasDelivered) {
+        setSaleConfirmOrder(orderSnapshot);
+      }
     } catch {
       showToast('Erro ao adicionar pagamento', 'error');
     }
@@ -343,6 +350,49 @@ export const OrdersScreen: React.FC = () => {
         }
       />
 
+      {/* ── Sale confirmation modal ── */}
+      <Modal visible={!!saleConfirmOrder} animationType="fade" transparent statusBarTranslucent>
+        <View style={st.saleOverlay}>
+          <View style={st.saleCard}>
+            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleIconGrad}>
+              <Ionicons name="storefront-outline" size={32} color="#fff" />
+            </LinearGradient>
+            <Text style={st.saleTitle}>Lançar nas vendas do dia?</Text>
+            <Text style={st.saleDesc}>O pagamento foi concluído. Deseja registrar esta encomenda como uma venda do dia também?</Text>
+            {saleConfirmOrder && (
+              <View style={st.saleInfoRow}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={st.saleInfoName} numberOfLines={1}>
+                    {saleConfirmOrder.items && saleConfirmOrder.items.length > 1
+                      ? `${saleConfirmOrder.items[0].recipeName} +${saleConfirmOrder.items.length - 1}`
+                      : saleConfirmOrder.recipeName}
+                  </Text>
+                  <Text style={st.saleInfoClient}>{saleConfirmOrder.clientName}</Text>
+                </View>
+                <Text style={st.saleInfoValue}>{fmtCurrency(saleConfirmOrder.totalPrice)}</Text>
+              </View>
+            )}
+            <View style={st.saleBtns}>
+              <TouchableOpacity style={st.saleBtnNo} onPress={() => setSaleConfirmOrder(null)} activeOpacity={0.7}>
+                <Text style={st.saleBtnNoText}>Agora não</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={{ flex: 1 }}
+                activeOpacity={0.85}
+                onPress={async () => {
+                  if (saleConfirmOrder) await registerSale(saleConfirmOrder);
+                  setSaleConfirmOrder(null);
+                }}>
+                <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleBtnYes}>
+                  <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
+                  <Text style={st.saleBtnYesText}>Sim, registrar</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       {/* ── Payment modal ── */}
       <Modal visible={!!paymentModalOrder} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.modalOverlay}>
@@ -466,6 +516,22 @@ const st = StyleSheet.create({
   /* FAB */
   fab: { position: 'absolute', right: 18, bottom: 30, borderRadius: 19, ...SHADOW, shadowColor: '#D8377F', shadowOpacity: 0.42, shadowRadius: 12, elevation: 8 },
   fabInner: { width: 58, height: 58, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+
+  /* Sale confirmation modal */
+  saleOverlay: { flex: 1, backgroundColor: 'rgba(61,34,51,0.55)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  saleCard: { backgroundColor: CREAM, borderRadius: 26, padding: 24, width: '100%', alignItems: 'center', gap: 12, ...SHADOW, shadowOpacity: 0.18, shadowRadius: 20 },
+  saleIconGrad: { width: 70, height: 70, borderRadius: 22, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  saleTitle: { fontSize: 20, fontWeight: '800', color: INK, textAlign: 'center', lineHeight: 25 },
+  saleDesc: { fontSize: 13.5, color: INK2, fontWeight: '500', textAlign: 'center', lineHeight: 20, maxWidth: 270 },
+  saleInfoRow: { backgroundColor: '#fff', borderRadius: 16, padding: 14, paddingHorizontal: 16, width: '100%', flexDirection: 'row', alignItems: 'center', gap: 12, ...SHADOW },
+  saleInfoName: { fontSize: 14.5, fontWeight: '700', color: INK },
+  saleInfoClient: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+  saleInfoValue: { fontSize: 17, fontWeight: '800', color: PINK },
+  saleBtns: { flexDirection: 'row', gap: 10, width: '100%', marginTop: 4 },
+  saleBtnNo: { flex: 1, height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fff', ...SHADOW },
+  saleBtnNoText: { fontSize: 14, fontWeight: '700', color: INK2 },
+  saleBtnYes: { height: 50, borderRadius: 14, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 7 },
+  saleBtnYesText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 
   /* Payment modal */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(61,34,51,0.35)', justifyContent: 'flex-end' },
