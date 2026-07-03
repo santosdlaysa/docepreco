@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useContext } from 'react';
 import {
   View,
   Text,
@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Recipe } from '../../domain/entities/Recipe';
@@ -50,6 +51,8 @@ function getCardColor(index: number) {
 export const RecipesScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
+  // Altura da tab bar flutuante (0 quando a tela é aberta fora das abas)
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [calculations, setCalculations] = useState<Record<string, CalculationResult>>({});
   const [loading, setLoading] = useState(true);
@@ -412,7 +415,7 @@ export const RecipesScreen: React.FC = () => {
         data={filteredRecipes}
         keyExtractor={item => item.id}
         renderItem={renderItem}
-        contentContainerStyle={styles.list}
+        contentContainerStyle={[styles.list, { paddingBottom: 20 + tabBarHeight }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl

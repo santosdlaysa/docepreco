@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useContext } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Ingredient } from '../../domain/entities/Ingredient';
@@ -49,6 +50,8 @@ const SHADOW = {
 
 export const IngredientsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  // Altura da tab bar flutuante (0 quando a tela é aberta fora das abas)
+  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -209,7 +212,7 @@ export const IngredientsScreen: React.FC = () => {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={s.body}
+        contentContainerStyle={[s.body, { paddingBottom: 24 + tabBarHeight }]}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
