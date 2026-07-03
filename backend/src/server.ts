@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendSlowApiAlert, sendDailyGoalProgress } from './infrastructure/services/telegramService';
+import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendDailyGoalProgress } from './infrastructure/services/telegramService';
 import { connectDatabase } from './infrastructure/database/connection';
 import recipeRoutes from './presentation/routes/recipeRoutes';
 import ingredientRoutes from './presentation/routes/ingredientRoutes';
@@ -134,8 +134,6 @@ app.use((req, res, next) => {
 
     if (res.statusCode >= 500) {
       sendErrorAlert(req.method, path, res.statusCode, duration, res.locals.errorMessage);
-    } else if (duration > 2000) {
-      sendSlowApiAlert(req.method, path, duration);
     }
   });
   next();

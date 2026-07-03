@@ -108,14 +108,6 @@ export async function sendErrorAlert(method: string, path: string, statusCode: n
   sendTelegramMessage(text);
 }
 
-export async function sendSlowApiAlert(method: string, path: string, durationMs: number): Promise<void> {
-  if (!await isAlertEnabled('slow_api')) return;
-  const tpl = await getTemplate('slow_api');
-  const fallback = `🐢 Rota lenta\n\n${method} ${path}\nDuração: ${durationMs}ms\n🕐 ${brNow()}`;
-  const text = tpl ? applyTemplate(tpl, { method, path, duration: durationMs, time: brNow() }) : fallback;
-  sendTelegramMessage(text);
-}
-
 export async function notifySupportMessage(companyName: string, email: string, message: string): Promise<void> {
   if (!await isAlertEnabled('support_message')) return;
   const preview = message.length > 100 ? message.substring(0, 100) + '…' : message;

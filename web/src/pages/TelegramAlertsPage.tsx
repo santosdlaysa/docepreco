@@ -14,7 +14,7 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: typeof Bell; color:
 
 const KEY_EMOJIS: Record<string, string> = {
   new_user: '🆕', new_sale: '🧁', premium_event: '💎', user_milestone: '🎉',
-  error_alert: '🚨', slow_api: '🐢', daily_report: '📊', weekly_report: '📈', goal_progress: '🎯',
+  error_alert: '🚨', daily_report: '📊', weekly_report: '📈', goal_progress: '🎯',
 };
 
 const KEY_VARS: Record<string, string[]> = {
@@ -23,7 +23,6 @@ const KEY_VARS: Record<string, string[]> = {
   premium_event: ['eventLabel', 'companyName', 'eventType', 'platform', 'time'],
   user_milestone: ['total', 'time'],
   error_alert: ['method', 'path', 'statusCode', 'duration', 'error', 'time'],
-  slow_api: ['method', 'path', 'duration', 'time'],
   daily_report: ['total', 'premium', 'today', 'time'],
   weekly_report: ['newUsers', 'newRecipes', 'totalSales', 'revenue', 'time'],
   goal_progress: ['progressBar', 'percent', 'today', 'goal', 'status', 'time'],

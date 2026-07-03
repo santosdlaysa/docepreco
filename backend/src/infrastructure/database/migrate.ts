@@ -603,6 +603,9 @@ export async function runMigrations() {
       );
     }
 
+    // Alerta de rota lenta foi removido do sistema
+    await client.query(`DELETE FROM telegram_alerts WHERE key = 'slow_api'`);
+
     // Seed schedule for existing report alerts
     await client.query(`UPDATE telegram_alerts SET schedule_cron = '0 8 * * *', schedule_description = 'Todo dia às 8h' WHERE key = 'daily_report' AND schedule_cron IS NULL`);
 
@@ -618,7 +621,6 @@ export async function runMigrations() {
       ['premium_event', '{{eventLabel}}\n\n🏪 {{companyName}}\n🕐 {{time}}'],
       ['user_milestone', '🎉 Marco atingido!\n\n👥 {{total}} usuários cadastrados!\n🕐 {{time}}'],
       ['error_alert', '🚨 Erro no servidor\n\n{{method}} {{path}}\nStatus: {{statusCode}}\nDuração: {{duration}}ms\n🕐 {{time}}'],
-      ['slow_api', '🐢 Rota lenta\n\n{{method}} {{path}}\nDuração: {{duration}}ms\n🕐 {{time}}'],
       ['daily_report', '📊 Relatório diário\n\n👥 Total de usuários: {{total}}\n⭐ Premium: {{premium}}\n🆕 Novos hoje: {{today}}\n🕐 {{time}}'],
       ['weekly_report', '📊 Relatório semanal\n\n🆕 Novos usuários: {{newUsers}}\n🍰 Receitas criadas: {{newRecipes}}\n🧁 Vendas registradas: {{totalSales}}\n💰 Receita total: {{revenue}}\n🕐 {{time}}'],
       ['goal_progress', '📈 Meta de cadastros\n\n{{progressBar}} {{percent}}%\n👥 {{today}}/{{goal}} hoje\n{{status}}\n🕐 {{time}}'],
@@ -684,7 +686,6 @@ export async function runMigrations() {
         { key: 'premium_event', label: 'Evento premium', description: 'Assinatura, renovação, cancelamento, expiração', category: 'alerts' },
         { key: 'user_milestone', label: 'Marco de usuários', description: 'Quando atinge 50, 100, 200, 500, 1000, 2000, 5000, 10000', category: 'alerts' },
         { key: 'error_alert', label: 'Erro no servidor', description: 'Quando uma rota retorna status 500+', category: 'alerts' },
-        { key: 'slow_api', label: 'Rota lenta', description: 'Quando uma rota demora mais de 2 segundos', category: 'alerts' },
         { key: 'pix_request', label: 'Solicitação PIX', description: 'Notifica quando um usuário solicita pagamento via PIX', category: 'alerts' },
         { key: 'support_message', label: 'Mensagem no suporte', description: 'Notifica quando um usuário envia mensagem no chat de suporte', category: 'alerts' },
         { key: 'daily_report', label: 'Relatório diário', description: 'Enviado todo dia às 8h com total de usuários', category: 'reports' },
@@ -697,7 +698,6 @@ export async function runMigrations() {
         premium_event: '{{eventLabel}}\n\n🏪 {{companyName}}\n🕐 {{time}}',
         user_milestone: '🎉 Marco atingido!\n\n👥 {{total}} usuários cadastrados!\n🕐 {{time}}',
         error_alert: '🚨 Erro no servidor\n\n{{method}} {{path}}\nStatus: {{statusCode}}\nDuração: {{duration}}ms\n🕐 {{time}}',
-        slow_api: '🐢 Rota lenta\n\n{{method}} {{path}}\nDuração: {{duration}}ms\n🕐 {{time}}',
         daily_report: '📊 Relatório diário\n\n👥 Total de usuários: {{total}}\n⭐ Premium: {{premium}}\n🆕 Novos hoje: {{today}}\n🕐 {{time}}',
         weekly_report: '📊 Relatório semanal\n\n🆕 Novos usuários: {{newUsers}}\n🍰 Receitas criadas: {{newRecipes}}\n🧁 Vendas registradas: {{totalSales}}\n💰 Receita total: {{revenue}}\n🕐 {{time}}',
         goal_progress: '📈 Meta de cadastros\n\n{{progressBar}} {{percent}}%\n👥 {{today}}/{{goal}} hoje\n{{status}}\n🕐 {{time}}',

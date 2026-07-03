@@ -509,7 +509,6 @@ TELEGRAM_CHAT_ID=<id do chat/grupo>
 | **Venda registrada** | Usuario cria uma venda | `🧁 Nova venda! 🏪 Doces da Maria 🍰 Bolo de chocolate × 2 💰 R$ 120,00` |
 | **Marco de usuarios** | Total de usuarios atinge 50, 100, 200, 500, 1000, 2000, 5000 ou 10000 | `🎉 Marco atingido! 👥 500 usuarios cadastrados!` |
 | **Erro no servidor** | Rota retorna status >= 500 | `🚨 Erro no servidor POST /api/sales Status: 500` |
-| **Rota lenta** | Rota demora > 2000ms | `🐢 Rota lenta GET /api/recipes Duracao: 3200ms` |
 
 ### Comandos do Bot
 
@@ -548,7 +547,6 @@ Rotas de comandos: `backend/src/presentation/routes/telegramRoutes.ts`
 | `notifyPremiumEvent` | `PremiumController.revenueCatWebhook` |
 | `notifySale` | `SaleController.create` |
 | `sendErrorAlert` | Middleware de request logs (`server.ts`) |
-| `sendSlowApiAlert` | Middleware de request logs (`server.ts`) |
 | `sendDailyUserReport` | Cron `0 8 * * *` (`server.ts`) |
 | `sendWeeklyReport` | Cron `0 9 * * 1` (`server.ts`) |
 | `sendDailyGoalProgress` | Cron `0 12,15,18,21 * * *` (`server.ts`) |
