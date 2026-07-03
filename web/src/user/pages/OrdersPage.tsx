@@ -42,8 +42,9 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
 
   const changeStatus = async (o: Order, status: OrderStatus) => {
     try {
-      await userApi.updateOrder(o.id, { status });
+      const updated = await userApi.updateOrder(o.id, { status });
       setOrders(prev => prev.map(x => (x.id === o.id ? { ...x, status } : x)));
+      if (updated?.saleRegistered) toast.success('Encomenda entregue — venda registrada automaticamente.');
     } catch (e) {
       toast.error((e as Error).message);
     }

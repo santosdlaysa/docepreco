@@ -10,6 +10,7 @@ export interface Sale {
   saleDate: string;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
+  orderId?: string | null;
   createdAt: string;
 }
 
@@ -20,4 +21,5 @@ export interface CreateSaleDTO {
   saleDate: string;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
+  orderId?: string | null;
 }

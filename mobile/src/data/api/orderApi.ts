@@ -47,7 +47,9 @@ export const orderApi = {
     return res.data.data;
   },
 
-  update: async (id: string, data: Partial<Omit<Order, 'id' | 'createdAt'>>): Promise<Order | null> => {
+  // saleRegistered indica que o backend registrou a venda automaticamente
+  // (integração encomendas → vendas, disparada ao marcar como entregue).
+  update: async (id: string, data: Partial<Omit<Order, 'id' | 'createdAt'>>): Promise<(Order & { saleRegistered?: boolean }) | null> => {
     const res = await apiClient.put(`/orders/${id}`, data);
     return res.data.data;
   },

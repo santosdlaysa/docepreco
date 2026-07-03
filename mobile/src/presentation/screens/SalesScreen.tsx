@@ -209,6 +209,12 @@ export const SalesScreen: React.FC = () => {
               <View style={st.gt}>
                 <Text style={st.gtB}>{item.recipeName}</Text>
                 <Text style={st.gtS}>{item.quantitySold} un × {fmtCurrency(item.salePrice)}</Text>
+                {item.orderId ? (
+                  <View style={st.orderBadge}>
+                    <Ionicons name="calendar-outline" size={11} color="#B04A85" />
+                    <Text style={st.orderBadgeText} numberOfLines={1}>{item.notes || 'Encomenda'}</Text>
+                  </View>
+                ) : null}
               </View>
               <Text style={st.gv}>{fmtCurrency(item.totalRevenue)}</Text>
             </View>
@@ -295,6 +301,11 @@ const st = StyleSheet.create({
   gt: { flex: 1 },
   gtB: { fontSize: 14.5, fontWeight: '700', color: INK, lineHeight: 17 },
   gtS: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+  orderBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start',
+    backgroundColor: '#FFE9F3', borderRadius: 7, paddingHorizontal: 7, paddingVertical: 2, marginTop: 4,
+  },
+  orderBadgeText: { fontSize: 10.5, fontWeight: '700', color: '#B04A85' },
   gv: { fontSize: 15, fontWeight: '700', color: GREEN },
 
   /* empty */

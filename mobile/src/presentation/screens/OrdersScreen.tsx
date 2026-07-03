@@ -22,9 +22,11 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Order, OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
-import { saleApi } from '../../data/api/saleApi';
+import { recipeApi } from '../../data/api/recipeApi';
+import { ingredientApi } from '../../data/api/ingredientApi';
+import { applySaleDeduction } from '../../data/stock/stockStorage';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoSaleApi } from '../../data/demo/demoApi';
+import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { Skeleton } from '../components/Skeleton';
 import { usePaywall } from '../premium/usePaywall';
@@ -84,7 +86,8 @@ export const OrdersScreen: React.FC = () => {
   const { guardScreen } = usePaywall();
   const { showToast } = useToast();
   const { t } = useTranslation();
-  const sApi = isDemoMode() ? demoSaleApi : saleApi;
+  const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
+  const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
@@ -144,19 +147,31 @@ export const OrdersScreen: React.FC = () => {
     ]);
   };
 
-  const registerSale = async (order: Order) => {
+  // Baixa de estoque da entrega (Master) — best-effort, nunca bloqueia o fluxo.
+  const deductStockForOrder = async (order: Order) => {
     try {
-      await sApi.create({ recipeId: order.recipeId || '', quantitySold: order.quantity, salePrice: order.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${order.clientName}` });
-      showToast('Venda registrada!', 'success');
-    } catch { showToast('Erro ao registrar venda', 'warning'); }
+      const [recipes, ingredients] = await Promise.all([rApi.getAll(), iApi.getAll()]);
+      const items = order.items && order.items.length > 0
+        ? order.items
+        : [{ recipeId: order.recipeId, recipeName: order.recipeName, quantity: order.quantity, unitPrice: order.unitPrice }];
+      const lowStock: { name: string }[] = [];
+      for (const item of items) {
+        const recipe = recipes.find(r => r.id === item.recipeId)
+          ?? recipes.find(r => r.name.trim().toLowerCase() === item.recipeName.trim().toLowerCase());
+        if (!recipe) continue;
+        lowStock.push(...await applySaleDeduction(recipe, recipes, ingredients, item.quantity));
+      }
+      if (lowStock.length > 0) showToast(`Estoque baixo: ${lowStock.map(l => l.name).join(', ')}`, 'warning');
+    } catch { /* estoque é local e opcional */ }
   };
 
   const changeStatus = async (order: Order, newStatus: OrderStatus) => {
     if (newStatus === 'delivered') {
-      Alert.alert('Pagamento', `${order.clientName} já pagou?`, [
-        { text: 'Ainda não', style: 'cancel', onPress: async () => { await orderStorage.update(order.id, { status: 'delivered', paid: false }); loadOrders(); } },
-        { text: 'Sim, pago!', onPress: async () => { await orderStorage.update(order.id, { status: 'delivered', paid: true, paidAmount: order.totalPrice }); await registerSale(order); loadOrders(); } },
-      ]);
+      // Finalização automática: o backend registra a venda sozinho.
+      const updated = await orderStorage.update(order.id, { status: 'delivered' });
+      await deductStockForOrder(order);
+      showToast(updated?.saleRegistered ? 'Encomenda entregue · venda registrada!' : 'Encomenda entregue!', 'success');
+      loadOrders();
       return;
     }
     await orderStorage.update(order.id, { status: newStatus });

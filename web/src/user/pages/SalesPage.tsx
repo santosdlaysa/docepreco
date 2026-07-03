@@ -64,7 +64,14 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
           {sales.map(s => (
             <div key={s.id} className="flex items-center gap-3 px-4 py-3">
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white truncate">{s.recipeName}</p>
+                <p className="font-medium text-gray-900 dark:text-white truncate">
+                  {s.recipeName}
+                  {s.orderId && (
+                    <span className="ml-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300">
+                      Encomenda
+                    </span>
+                  )}
+                </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {s.quantitySold}× · {formatDate(s.saleDate)}
                   {s.notes ? ` · ${s.notes}` : ''}

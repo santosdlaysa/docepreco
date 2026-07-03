@@ -34,6 +34,15 @@ export class SaleController {
         res.status(400).json({ success: false, error: 'recipeId, quantitySold, salePrice e saleDate são obrigatórios' });
         return;
       }
+      // Versões antigas do app enviavam a venda da encomenda manualmente após
+      // marcá-la como entregue; o backend agora já registra essa venda sozinho.
+      if (typeof notes === 'string' && notes.startsWith('Encomenda de ')) {
+        const duplicate = await saleRepo.findRecentOrderLinkedDuplicate(recipeId, notes, req.userId!);
+        if (duplicate) {
+          res.status(201).json({ success: true, data: duplicate });
+          return;
+        }
+      }
       const sale = await saleRepo.create(
         { recipeId, quantitySold: Number(quantitySold), salePrice: Number(salePrice), saleDate, notes, paymentMethod },
         req.userId!

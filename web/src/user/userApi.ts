@@ -163,6 +163,7 @@ export interface Sale {
   saleDate: string;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
+  orderId?: string | null;
   createdAt: string;
 }
 export interface CreateSaleDTO {
@@ -255,6 +256,8 @@ export interface Order {
   payments: OrderPayment[];
   notes?: string | null;
   createdAt: string;
+  /** Transiente: retornado por create/update quando a venda foi registrada automaticamente. */
+  saleRegistered?: boolean;
 }
 export interface CreateOrderDTO {
   clientName: string;

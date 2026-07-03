@@ -911,6 +911,11 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'sales', 'payment_method', 'VARCHAR(20) NULL');
     await addColumnIfMissing(client, 'sales', 'session_id', 'UUID NULL REFERENCES cash_sessions(id) ON DELETE SET NULL');
 
+    // Integra encomendas e vendas: ao marcar uma encomenda como entregue,
+    // a venda é registrada automaticamente e fica vinculada pela order_id.
+    await addColumnIfMissing(client, 'sales', 'order_id', 'UUID NULL REFERENCES orders(id) ON DELETE SET NULL');
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_sales_order ON sales (order_id)`);
+
     // Índices para acelerar listagem/carregamento de receitas e suas relações
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipes_user ON recipes (user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients (recipe_id)`);

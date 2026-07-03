@@ -7,6 +7,7 @@ export interface Sale {
   totalRevenue: number;
   saleDate: string;
   notes?: string;
+  orderId?: string | null;
   createdAt: string;
 }
 

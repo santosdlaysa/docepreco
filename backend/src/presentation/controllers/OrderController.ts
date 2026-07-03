@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
-import { PostgresOrderRepository } from '../../infrastructure/repositories/PostgresOrderRepository';
+import { PostgresOrderRepository, Order } from '../../infrastructure/repositories/PostgresOrderRepository';
+import { registerSalesForDeliveredOrder, removeSalesForOrder } from '../../application/services/OrderSaleAutomation';
 
 const repo = new PostgresOrderRepository();
 const ORDER_STATUSES = new Set(['pending', 'in_progress', 'done', 'delivered', 'cancelled']);
@@ -7,6 +8,27 @@ const ORDER_STATUSES = new Set(['pending', 'in_progress', 'done', 'delivered', '
 function hasInvalidStatus(body: Record<string, unknown>): boolean {
   return body.status !== undefined &&
     (typeof body.status !== 'string' || !ORDER_STATUSES.has(body.status));
+}
+
+/**
+ * Integração encomendas → vendas. Quando o status muda nesta requisição:
+ * entregue registra a venda automaticamente; qualquer outro status desfaz
+ * a venda gerada (só existe venda vinculada se a encomenda foi entregue).
+ * Falha aqui não bloqueia a atualização da encomenda.
+ */
+async function syncSaleForStatusChange(order: Order, requestedStatus: unknown): Promise<boolean> {
+  if (typeof requestedStatus !== 'string') return false;
+  try {
+    if (requestedStatus === 'delivered' && order.status === 'delivered') {
+      return await registerSalesForDeliveredOrder(order);
+    }
+    if (requestedStatus !== 'delivered') {
+      await removeSalesForOrder(order.id, order.userId);
+    }
+  } catch (error) {
+    console.error('Falha ao sincronizar venda da encomenda', order.id, error);
+  }
+  return false;
 }
 
 export class OrderController {
@@ -49,7 +71,8 @@ export class OrderController {
         return;
       }
       const order = await repo.create(userId, b);
-      res.status(201).json({ success: true, data: order });
+      const saleRegistered = await syncSaleForStatusChange(order, b.status);
+      res.status(201).json({ success: true, data: { ...order, saleRegistered } });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao criar encomenda' });
@@ -69,7 +92,8 @@ export class OrderController {
         res.status(404).json({ success: false, message: 'Encomenda não encontrada' });
         return;
       }
-      res.json({ success: true, data: order });
+      const saleRegistered = await syncSaleForStatusChange(order, b.status);
+      res.json({ success: true, data: { ...order, saleRegistered } });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao atualizar encomenda' });

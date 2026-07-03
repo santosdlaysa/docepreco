@@ -40,11 +40,48 @@ export class PostgresSaleRepository implements ISaleRepository {
     );
     const sessionId = openSession.rows[0]?.id ?? null;
     const result = await pool.query(`
-      INSERT INTO sales (user_id, recipe_id, quantity_sold, sale_price, total_revenue, sale_date, notes, payment_method, session_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      INSERT INTO sales (user_id, recipe_id, quantity_sold, sale_price, total_revenue, sale_date, notes, payment_method, session_id, order_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
       RETURNING *
-    `, [userId, data.recipeId, data.quantitySold, data.salePrice, totalRevenue, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId]);
+    `, [userId, data.recipeId, data.quantitySold, data.salePrice, totalRevenue, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId, data.orderId || null]);
     return this.findById(result.rows[0].id, userId) as Promise<Sale>;
+  }
+
+  async existsForOrder(orderId: string, userId: string): Promise<boolean> {
+    const result = await pool.query(
+      'SELECT 1 FROM sales WHERE order_id = $1 AND user_id = $2 LIMIT 1',
+      [orderId, userId]
+    );
+    return result.rows.length > 0;
+  }
+
+  async deleteByOrderId(orderId: string, userId: string): Promise<number> {
+    const result = await pool.query(
+      'DELETE FROM sales WHERE order_id = $1 AND user_id = $2',
+      [orderId, userId]
+    );
+    return result.rowCount ?? 0;
+  }
+
+  /**
+   * Versões antigas do app registravam manualmente a venda da encomenda logo
+   * após marcá-la como entregue. Como o backend agora cria essa venda sozinho,
+   * este método detecta o registro automático recente equivalente para não
+   * duplicar a venda enviada pelo cliente antigo.
+   */
+  async findRecentOrderLinkedDuplicate(recipeId: string, notes: string, userId: string): Promise<Sale | null> {
+    const result = await pool.query(`
+      SELECT s.*, r.name AS recipe_name
+      FROM sales s
+      JOIN recipes r ON r.id = s.recipe_id
+      WHERE s.user_id = $1 AND s.recipe_id = $2 AND s.notes = $3
+        AND s.order_id IS NOT NULL
+        AND s.created_at > NOW() - INTERVAL '10 minutes'
+      ORDER BY s.created_at DESC
+      LIMIT 1
+    `, [userId, recipeId, notes]);
+    if (result.rows.length === 0) return null;
+    return this.mapRow(result.rows[0]);
   }
 
   async delete(id: string, userId: string): Promise<boolean> {
@@ -66,6 +103,7 @@ export class PostgresSaleRepository implements ISaleRepository {
       saleDate: (row.sale_date as Date).toISOString().split('T')[0],
       notes: row.notes as string | undefined,
       paymentMethod: (row.payment_method as Sale['paymentMethod']) ?? null,
+      orderId: (row.order_id as string) ?? null,
       createdAt: (row.created_at as Date).toISOString(),
     };
   }
