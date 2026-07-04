@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { NavigationContainer, NavigationContainerRef, useNavigationState, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, NavigationContainerRef, useNavigationState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
@@ -56,7 +56,6 @@ import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { authApi } from '../../data/api/authApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
-import { CurvedTabBarBackground } from '../components/CurvedTabBarBackground';
 import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { identifyRevenueCatUser, logoutRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { registerPushToken } from '../utils/notifications';
@@ -67,16 +66,6 @@ import { setForceLogout } from '../../data/api/client';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
-
-// Fundo do app no lugar do cinza padrão do react-navigation — aparece
-// atrás da tab bar transparente, no vale do corte ao redor do botão "+".
-const navTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: colors.background,
-  },
-};
 
 // Placeholder screen for the center "+" tab (never actually rendered)
 const DummyScreen = () => null;
@@ -122,15 +111,9 @@ function TabNavigator() {
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarBackground: () => <CurvedTabBarBackground />,
         tabBarStyle: {
-          // Barra flutuante: o conteúdo da tela continua por trás, então o
-          // vale do corte revela a própria tela (sem emenda reta de cor).
-          position: 'absolute',
-          backgroundColor: 'transparent',
-          borderTopWidth: 0,
-          elevation: 0,
-          shadowOpacity: 0,
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
           paddingBottom: insets.bottom + 4,
           height: 64 + insets.bottom,
         },
@@ -165,10 +148,8 @@ function TabNavigator() {
 }
 
 const tabStyles = StyleSheet.create({
-  // Centro do círculo alinhado à borda superior da barra, para o botão
-  // ficar encaixado no vale do corte (112px de largura x 32px de fundo).
   centerBtn: {
-    top: -30,
+    top: -18,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 3,
@@ -190,7 +171,7 @@ const tabStyles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '700',
     color: colors.primary,
-    marginTop: 16,
+    marginTop: 2,
   },
 });
 
@@ -373,7 +354,7 @@ export function AppNavigator() {
   if (authState === 'beginnerGuide') {
     return (
       <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
-        <NavigationContainer theme={navTheme}>
+        <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="BeginnerGuide">
               {() => (
@@ -408,7 +389,6 @@ export function AppNavigator() {
   return (
     <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
       <NavigationContainer
-        theme={navTheme}
         ref={navigationRef}
         onReady={() => {
           if (pendingPaywall.current) {

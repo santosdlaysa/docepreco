@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useContext } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -14,7 +14,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
@@ -129,9 +128,6 @@ export const HomeScreen: React.FC = () => {
     [allSales],
   );
 
-  // Altura da tab bar flutuante (0 quando a tela é aberta fora das abas)
-  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
-
   const now = new Date();
   const weekday = now.toLocaleDateString('pt-BR', { weekday: 'long' });
   const dayMonth = now.toLocaleDateString('pt-BR', { day: 'numeric', month: 'long' });
@@ -150,7 +146,7 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={s.safeArea} edges={['top']}>
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 + tabBarHeight }}>
+      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
 
         {/* ═══════ TOP BAR ═══════ */}
         <View style={s.topbar}>

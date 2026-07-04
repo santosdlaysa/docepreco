@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import { BottomTabBarHeightContext } from '@react-navigation/bottom-tabs';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supportApi } from '../../data/api/supportApi';
@@ -10,8 +9,6 @@ import { colors } from '../theme/colors';
 
 export const SupportFab: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
-  // Sobe o botão para ficar acima da tab bar flutuante (0 fora das abas)
-  const tabBarHeight = useContext(BottomTabBarHeightContext) ?? 0;
   const [unread, setUnread] = useState(0);
   const pulseAnim = useState(new Animated.Value(1))[0];
 
@@ -45,7 +42,7 @@ export const SupportFab: React.FC = () => {
   }, [unread, pulseAnim]);
 
   return (
-    <Animated.View style={[styles.container, { bottom: 20 + tabBarHeight, transform: [{ scale: pulseAnim }] }]}>
+    <Animated.View style={[styles.container, { transform: [{ scale: pulseAnim }] }]}>
       <TouchableOpacity
         style={styles.fab}
         onPress={() => navigation.navigate('SupportChat')}
