@@ -32,6 +32,16 @@ export class PostgresSaleRepository implements ISaleRepository {
   }
 
   async create(data: CreateSaleDTO, userId: string): Promise<Sale> {
+    // A venda exige uma receita cadastrada. Pedidos da loja online podem
+    // referenciar um produto sem receita vinculada; validamos aqui para
+    // devolver um erro claro em vez do erro cru de foreign key.
+    const recipe = await pool.query(
+      'SELECT 1 FROM recipes WHERE id = $1 AND user_id = $2',
+      [data.recipeId, userId]
+    );
+    if (recipe.rows.length === 0) {
+      throw new Error('Receita não encontrada — este item não tem receita cadastrada e não pode virar venda.');
+    }
     const totalRevenue = data.quantitySold * data.salePrice;
     // Vincula a venda ao caixa aberto do usuário (se houver)
     const openSession = await pool.query(

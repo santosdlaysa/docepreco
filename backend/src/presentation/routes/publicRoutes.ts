@@ -53,6 +53,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         acceptsPickup: s.accepts_pickup,
         minOrderValue: s.min_order_value ? Number(s.min_order_value) : null,
         deliveryFee: s.delivery_fee ? Number(s.delivery_fee) : null,
+        coverImageUrl: s.cover_image_url ?? null,
         phone: u.phone ?? null,
         instagramHandle: u.instagram_handle ?? null,
         products: productsResult.rows.map(p => ({
@@ -96,20 +97,20 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
     // Buscar preços dos produtos (nunca confiar no preço enviado pelo cliente)
     const productIds = b.items.map((i: any) => i.productId);
     const productsResult = await pool.query(
-      'SELECT id, name, public_price FROM store_products WHERE id = ANY($1) AND user_id = $2 AND available = TRUE',
+      'SELECT id, name, public_price, recipe_id FROM store_products WHERE id = ANY($1) AND user_id = $2 AND available = TRUE',
       [productIds, userId]
     );
     const productMap = new Map(productsResult.rows.map(p => [p.id, p]));
 
     // Montar itens com preços do banco
-    const items: Array<{ productId: string; recipeName: string; quantity: number; unitPrice: number }> = [];
+    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number }> = [];
     let totalPrice = 0;
     for (const item of b.items) {
       const product = productMap.get(item.productId);
       if (!product) continue;
       const qty = Math.max(1, Number(item.quantity) || 1);
       const unitPrice = Number(product.public_price);
-      items.push({ productId: product.id, recipeName: product.name, quantity: qty, unitPrice });
+      items.push({ productId: product.id, recipeId: product.recipe_id ?? null, recipeName: product.name, quantity: qty, unitPrice });
       totalPrice += qty * unitPrice;
     }
     if (items.length === 0) {
@@ -144,7 +145,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         firstItem.unitPrice,
         totalWithFee,
         deliveryDate,
-        JSON.stringify(items.map(i => ({ recipeId: i.productId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice }))),
+        JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice }))),
         b.notes ? String(b.notes).trim() : null,
         b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
       ]
