@@ -13,6 +13,7 @@ import {
   Image,
   Modal,
   Linking,
+  TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -25,8 +26,10 @@ import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct'
 import { Order, OrderStatus } from '../../domain/entities/Order';
 import { storeApi } from '../../data/api/storeApi';
 import { orderApi } from '../../data/api/orderApi';
-import { demoStoreApi } from '../../data/demo/demoApi';
+import { saleApi } from '../../data/api/saleApi';
+import { demoStoreApi, demoSaleApi } from '../../data/demo/demoApi';
 import { isDemoMode } from '../../data/demo/demoMode';
+import { PaymentMethodType } from '../../domain/entities/Order';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { Skeleton } from '../components/Skeleton';
@@ -69,6 +72,15 @@ const SHADOW = {
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
+  { key: 'pix',    icon: 'qr-code-outline', label: 'Pix' },
+  { key: 'cash',   icon: 'cash-outline',    label: 'Dinheiro' },
+  { key: 'credit', icon: 'card-outline',    label: 'Crédito' },
+  { key: 'debit',  icon: 'card-outline',    label: 'Débito' },
+];
+
+const num = (v: string) => parseFloat(String(v).replace(/\./g, '').replace(',', '.')) || 0;
+
 const SettingsRow: React.FC<{
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -91,6 +103,7 @@ export const StoreScreen: React.FC = () => {
   const { showToast } = useToast();
 
   const sApi = isDemoMode() ? demoStoreApi : storeApi;
+  const salApi = isDemoMode() ? demoSaleApi : saleApi;
 
   const [products, setProducts] = useState<StoreProduct[]>([]);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
@@ -103,6 +116,10 @@ export const StoreScreen: React.FC = () => {
   const [ordersLoading, setOrdersLoading] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [deliveryOrder, setDeliveryOrder] = useState<Order | null>(null);
+  const [deliveryModalMethod, setDeliveryModalMethod] = useState<PaymentMethodType>('pix');
+  const [deliveryModalAmount, setDeliveryModalAmount] = useState('');
+  const [deliveryModalLoading, setDeliveryModalLoading] = useState(false);
 
   useFocusEffect(useCallback(() => {
     if (!guardMaster()) return;
@@ -146,6 +163,58 @@ export const StoreScreen: React.FC = () => {
       showToast('Erro ao atualizar o pedido', 'error');
     } finally {
       setUpdatingStatus(false);
+    }
+  };
+
+  const openDeliveryModal = (order: Order) => {
+    const paid = order.paidAmount ?? 0;
+    const remaining = Math.max(order.totalPrice - paid, 0);
+    setDeliveryOrder(order);
+    setDeliveryModalMethod('pix');
+    setDeliveryModalAmount(remaining > 0 ? String(remaining).replace('.', ',') : '');
+  };
+
+  const handleDeliveryConfirm = async () => {
+    if (!deliveryOrder) return;
+    const paid = deliveryOrder.paidAmount ?? 0;
+    const remaining = Math.max(deliveryOrder.totalPrice - paid, 0);
+    const modalAmount = num(deliveryModalAmount);
+    if (remaining > 0 && modalAmount <= 0) {
+      showToast('Informe o valor recebido', 'warning');
+      return;
+    }
+    setDeliveryModalLoading(true);
+    try {
+      const existingPayments = deliveryOrder.payments ?? [];
+      const newPayments = remaining > 0
+        ? [...existingPayments, { id: Date.now().toString(36), amount: modalAmount, method: deliveryModalMethod, date: new Date().toISOString().split('T')[0] }]
+        : existingPayments;
+      const totalPaid = newPayments.reduce((s, p) => s + p.amount, 0);
+      await orderApi.update(deliveryOrder.id, {
+        status: 'delivered',
+        paid: true,
+        paidAmount: totalPaid,
+        payments: newPayments,
+      });
+      // Registrar venda
+      try {
+        const firstItem = deliveryOrder.items?.[0];
+        await salApi.create({
+          recipeId: firstItem?.recipeId ?? '',
+          quantitySold: firstItem?.quantity ?? deliveryOrder.quantity,
+          salePrice: firstItem?.unitPrice ?? deliveryOrder.unitPrice,
+          saleDate: new Date().toISOString().split('T')[0],
+          notes: `Encomenda de ${deliveryOrder.clientName}`,
+        });
+      } catch { /* sale registration is best-effort */ }
+      setOrders(prev => prev.map(o => o.id === deliveryOrder.id ? { ...o, status: 'delivered' } : o));
+      setSelectedOrder(prev => prev?.id === deliveryOrder.id ? { ...prev, status: 'delivered' } : prev);
+      setDeliveryOrder(null);
+      showToast('Entregue e venda registrada!', 'success');
+    } catch {
+      showToast('Erro ao finalizar entrega', 'error');
+    } finally {
+      setDeliveryModalLoading(false);
     }
   };
 
@@ -701,7 +770,7 @@ export const StoreScreen: React.FC = () => {
                         {action && (
                           <TouchableOpacity
                             disabled={updatingStatus}
-                            onPress={() => changeOrderStatus(o, action.next)}
+                            onPress={() => action.next === 'delivered' ? openDeliveryModal(o) : changeOrderStatus(o, action.next)}
                             activeOpacity={0.85}
                           >
                             <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.primaryAction}>
@@ -733,6 +802,109 @@ export const StoreScreen: React.FC = () => {
           </View>
         </View>
       </Modal>
+      {/* ── Modal confirmar entrega ── */}
+      <Modal visible={!!deliveryOrder} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 }}>
+            {/* Título */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DCF6E5', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="checkmark-circle" size={22} color="#1F8A48" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: '#3D2233' }}>Confirmar entrega</Text>
+                <Text style={{ fontSize: 12, color: INK2, marginTop: 1 }}>de {deliveryOrder?.clientName ?? ''}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setDeliveryOrder(null)}>
+                <Ionicons name="close" size={22} color={INK2} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Resumo */}
+            {deliveryOrder && (() => {
+              const paid = deliveryOrder.paidAmount ?? 0;
+              const remaining = Math.max(deliveryOrder.totalPrice - paid, 0);
+              return (
+                <>
+                  <View style={{ backgroundColor: '#F5F5F7', borderRadius: 14, padding: 14, gap: 6 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                      <Text style={{ fontSize: 13, color: INK2 }}>Total do pedido</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#3D2233' }}>{fmtCurrency(deliveryOrder.totalPrice)}</Text>
+                    </View>
+                    {paid > 0 && (
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                        <Text style={{ fontSize: 13, color: INK2 }}>Já recebido</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>{fmtCurrency(paid)}</Text>
+                      </View>
+                    )}
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingTop: 6, marginTop: 2 }}>
+                      {remaining > 0 ? (
+                        <>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#3D2233' }}>Restante a receber</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: PINK }}>{fmtCurrency(remaining)}</Text>
+                        </>
+                      ) : (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Ionicons name="checkmark-circle" size={14} color="#1F8A48" />
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>Pedido já quitado</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+
+                  {remaining > 0 && (
+                    <>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#3D2233' }}>Forma de pagamento</Text>
+                      <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                        {PAYMENT_METHODS.map(m => (
+                          <TouchableOpacity key={m.key} onPress={() => setDeliveryModalMethod(m.key)} activeOpacity={0.8}
+                            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
+                              backgroundColor: deliveryModalMethod === m.key ? PINK : '#F5F5F7',
+                              borderWidth: deliveryModalMethod === m.key ? 0 : 1, borderColor: '#E5E5E5' }}>
+                            <Ionicons name={m.icon} size={15} color={deliveryModalMethod === m.key ? '#fff' : INK2} />
+                            <Text style={{ fontSize: 13, fontWeight: '600', color: deliveryModalMethod === m.key ? '#fff' : INK2 }}>{m.label}</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F5F5F7', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
+                        <Ionicons name="cash-outline" size={18} color={INK2} />
+                        <TextInput
+                          style={{ flex: 1, fontSize: 15, fontWeight: '600', color: '#3D2233' }}
+                          value={deliveryModalAmount}
+                          onChangeText={setDeliveryModalAmount}
+                          keyboardType="decimal-pad"
+                          placeholder="Valor recebido"
+                          placeholderTextColor={INK3}
+                        />
+                      </View>
+                    </>
+                  )}
+                </>
+              );
+            })()}
+
+            {/* Botões */}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+              <TouchableOpacity onPress={() => setDeliveryOrder(null)} activeOpacity={0.8}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E5E5E5' }}>
+                <Text style={{ fontWeight: '600', color: INK2 }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDeliveryConfirm} disabled={deliveryModalLoading} activeOpacity={0.85} style={{ flex: 2 }}>
+                <LinearGradient colors={['#34D399', '#059669']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14 }}>
+                  {deliveryModalLoading ? <ActivityIndicator size="small" color="#fff" /> : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Confirmar entrega</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 };
