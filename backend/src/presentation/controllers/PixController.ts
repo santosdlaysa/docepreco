@@ -174,11 +174,13 @@ export class PixController {
     try {
       const result = await pool.query(
         `SELECT pr.id, pr.user_id, pr.status, pr.plan_label, pr.plan_tier, pr.amount_cents,
-                pr.created_at, pr.reviewed_at, pr.reviewed_by,
-                u.company_name, u.email, u.phone, u.is_premium, u.premium_until
+                pr.created_at, pr.reviewed_at, pr.reviewed_by, pr.product_type, pr.ref_id,
+                u.company_name, u.email, u.phone, u.is_premium, u.premium_until,
+                b.image_url AS banner_image_url, b.duration_days AS banner_duration_days
          FROM pix_requests pr
          JOIN users u ON u.id = pr.user_id
-         WHERE pr.product_type = 'subscription'
+         LEFT JOIN banners b ON b.id = pr.ref_id AND pr.product_type = 'ad_banner'
+         WHERE pr.product_type IN ('subscription', 'ad_banner')
          ${status !== 'all' ? 'AND pr.status = $1' : ''}
          ORDER BY pr.created_at DESC
          LIMIT 100`,
@@ -189,6 +191,7 @@ export class PixController {
         id: r.id,
         userId: r.user_id,
         status: r.status,
+        productType: r.product_type ?? 'subscription',
         planLabel: r.plan_label,
         planTier: r.plan_tier ?? 'premium',
         amountCents: r.amount_cents,
@@ -200,6 +203,9 @@ export class PixController {
         phone: r.phone,
         isPremium: r.is_premium,
         premiumUntil: r.premium_until,
+        // Anúncio de carrossel: arte e duração para o admin conferir antes de aprovar.
+        bannerImageUrl: r.banner_image_url ?? null,
+        bannerDurationDays: r.banner_duration_days ?? null,
       }));
 
       res.json({ success: true, data });
@@ -222,7 +228,7 @@ export class PixController {
     try {
       // Get the request
       const reqResult = await pool.query(
-        `SELECT user_id, status, plan_tier, amount_cents FROM pix_requests WHERE id = $1`,
+        `SELECT user_id, status, plan_tier, amount_cents, product_type, ref_id FROM pix_requests WHERE id = $1`,
         [id]
       );
       if (reqResult.rows.length === 0) {
@@ -235,6 +241,30 @@ export class PixController {
       }
 
       const userId = reqResult.rows[0].user_id;
+
+      // Compra de anúncio no carrossel → ativa o banner em vez de liberar premium.
+      if (reqResult.rows[0].product_type === 'ad_banner') {
+        const bannerId = reqResult.rows[0].ref_id as string | null;
+        await pool.query(
+          `UPDATE pix_requests SET status = 'approved', reviewed_at = NOW(), reviewed_by = 'admin' WHERE id = $1`,
+          [id]
+        );
+        if (bannerId) {
+          const banner = await bannerRepo.findById(bannerId);
+          if (banner) await bannerRepo.activateSponsored(bannerId, banner.durationDays);
+        }
+        const adTokens = await pushTokenRepo.findByUserId(userId);
+        if (adTokens.length > 0) {
+          await sendPushNotifications(
+            adTokens.map(t => t.token),
+            'Anúncio no ar! 🎉',
+            'Seu pagamento foi confirmado e seu banner já está aparecendo na Home do DocePreço.',
+            { screen: 'Home' }
+          );
+        }
+        res.json({ success: true, data: { bannerId } });
+        return;
+      }
       // Tier the user asked for, with an optional admin override in the body.
       const tier: 'premium' | 'master' =
         planTier === 'master' || planTier === 'premium'
@@ -402,7 +432,7 @@ export class PixController {
 
     try {
       const reqResult = await pool.query(
-        `SELECT user_id, status FROM pix_requests WHERE id = $1`,
+        `SELECT user_id, status, product_type, ref_id FROM pix_requests WHERE id = $1`,
         [id]
       );
       if (reqResult.rows.length === 0) {
@@ -420,15 +450,24 @@ export class PixController {
         [id]
       );
 
-      // Notify user
       const userId = reqResult.rows[0].user_id;
+      const isAdBanner = reqResult.rows[0].product_type === 'ad_banner';
+
+      // Anúncio recusado → remove o banner pendente para não deixar lixo.
+      if (isAdBanner && reqResult.rows[0].ref_id) {
+        await bannerRepo.delete(reqResult.rows[0].ref_id as string);
+      }
+
+      // Notify user
       const tokens = await pushTokenRepo.findByUserId(userId);
       if (tokens.length > 0) {
         await sendPushNotifications(
           tokens.map(t => t.token),
-          'Pagamento não confirmado',
-          'Não conseguimos confirmar seu pagamento via PIX. Por favor, tente novamente ou entre em contato.',
-          { screen: 'Paywall' }
+          isAdBanner ? 'Anúncio não confirmado' : 'Pagamento não confirmado',
+          isAdBanner
+            ? 'Não conseguimos confirmar o pagamento do seu anúncio. Por favor, tente novamente ou entre em contato.'
+            : 'Não conseguimos confirmar seu pagamento via PIX. Por favor, tente novamente ou entre em contato.',
+          { screen: isAdBanner ? 'Home' : 'Paywall' }
         );
       }
 

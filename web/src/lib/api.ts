@@ -861,6 +861,7 @@ export interface PixRequestItem {
   id: string;
   userId: string;
   status: 'pending' | 'approved' | 'rejected';
+  productType: 'subscription' | 'ad_banner';
   planLabel: string;
   planTier: 'premium' | 'master';
   amountCents: number;
@@ -872,6 +873,9 @@ export interface PixRequestItem {
   phone: string | null;
   isPremium: boolean;
   premiumUntil: string | null;
+  // Anúncio de carrossel: arte e duração contratada.
+  bannerImageUrl: string | null;
+  bannerDurationDays: number | null;
 }
 
 // ── Referrals ──
