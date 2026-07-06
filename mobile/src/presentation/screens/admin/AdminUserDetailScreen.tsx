@@ -63,8 +63,9 @@ export const AdminUserDetailScreen: React.FC = () => {
     ]);
   };
 
-  const handleGrantPremium = () => confirm('Conceder Premium', 'Ativar premium por 30 dias?', () => adminApi.setPremium(userId, true, 30));
-  const handleRevokePremium = () => confirm('Remover Premium', 'Remover o status premium?', () => adminApi.setPremium(userId, false));
+  const handleGrantPremium = () => confirm('Conceder Premium', 'Ativar Premium por 30 dias?', () => adminApi.setPremium(userId, true, 30, 'premium'));
+  const handleGrantMaster = () => confirm('Conceder Master', 'Ativar Master por 30 dias?', () => adminApi.setPremium(userId, true, 30, 'master'));
+  const handleRevokePremium = () => confirm('Remover acesso', 'Remover o acesso pago (Premium/Master)?', () => adminApi.setPremium(userId, false));
   const handleTrial = () => confirm('Conceder Trial (7 dias)', 'Ativar período de teste gratuito?', () => adminApi.grantTrial(userId, 7));
   const handleToggleActive = () => confirm(
     user?.isActive ? 'Desativar conta' : 'Ativar conta',
@@ -102,10 +103,17 @@ export const AdminUserDetailScreen: React.FC = () => {
           </View>
           <View style={styles.tags}>
             {user.isPremium && (
-              <View style={[styles.tag, { backgroundColor: '#FEF3C7' }]}>
-                <Ionicons name="star" size={12} color="#D97706" />
-                <Text style={[styles.tagText, { color: '#D97706' }]}>Premium</Text>
-              </View>
+              user.planTier === 'master' ? (
+                <View style={[styles.tag, { backgroundColor: '#EDE4FB' }]}>
+                  <Ionicons name="diamond" size={12} color="#7C3AED" />
+                  <Text style={[styles.tagText, { color: '#7C3AED' }]}>Master</Text>
+                </View>
+              ) : (
+                <View style={[styles.tag, { backgroundColor: '#FEF3C7' }]}>
+                  <Ionicons name="star" size={12} color="#D97706" />
+                  <Text style={[styles.tagText, { color: '#D97706' }]}>Premium</Text>
+                </View>
+              )
             )}
             {!user.isActive && (
               <View style={[styles.tag, { backgroundColor: '#FEE2E2' }]}>
@@ -137,11 +145,16 @@ export const AdminUserDetailScreen: React.FC = () => {
             <ActivityIndicator color={colors.primary} style={{ margin: 20 }} />
           ) : (
             <>
-              {user.isPremium
-                ? <ActionBtn label="Remover Premium" icon="star-outline" color={colors.error} onPress={handleRevokePremium} />
-                : <ActionBtn label="Conceder Premium (30d)" icon="star" color="#D97706" onPress={handleGrantPremium} />
-              }
-              <ActionBtn label="Conceder Trial" icon="gift-outline" color="#7C3AED" onPress={handleTrial} />
+              {!user.isPremium && (
+                <ActionBtn label="Conceder Premium (30d)" icon="star" color="#D97706" onPress={handleGrantPremium} />
+              )}
+              {user.planTier !== 'master' && (
+                <ActionBtn label="Conceder Master (30d)" icon="diamond" color="#7C3AED" onPress={handleGrantMaster} />
+              )}
+              {user.isPremium && (
+                <ActionBtn label="Remover acesso" icon="close-circle-outline" color={colors.error} onPress={handleRevokePremium} />
+              )}
+              <ActionBtn label="Conceder Trial" icon="gift-outline" color="#43BE6E" onPress={handleTrial} />
               <ActionBtn
                 label={user.isActive ? 'Desativar conta' : 'Ativar conta'}
                 icon={user.isActive ? 'ban-outline' : 'checkmark-circle-outline'}
