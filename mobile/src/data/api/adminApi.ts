@@ -83,11 +83,15 @@ export interface AdminMessage {
 
 type RawAdminConversation = Partial<AdminConversation> & {
   user_id?: string;
+  userName?: string;
+  user_name?: string;
   company_name?: string;
   name?: string;
   last_message?: string;
   last_message_at?: string;
   unread_count?: number;
+  userEmail?: string;
+  user_email?: string;
   user?: {
     id?: string;
     companyName?: string;
@@ -101,13 +105,15 @@ const normalizeConversation = (raw: RawAdminConversation): AdminConversation => 
   userId: raw.userId ?? raw.user_id ?? raw.user?.id ?? '',
   companyName:
     raw.companyName ??
+    raw.userName ??
+    raw.user_name ??
     raw.company_name ??
     raw.name ??
     raw.user?.companyName ??
     raw.user?.company_name ??
     raw.user?.name ??
     '',
-  email: raw.email ?? raw.user?.email ?? '',
+  email: raw.email ?? raw.userEmail ?? raw.user_email ?? raw.user?.email ?? '',
   lastMessage: raw.lastMessage ?? raw.last_message ?? '',
   lastMessageAt: raw.lastMessageAt ?? raw.last_message_at ?? '',
   unreadCount: raw.unreadCount ?? raw.unread_count ?? 0,
