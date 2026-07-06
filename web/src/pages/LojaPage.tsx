@@ -188,7 +188,7 @@ export function LojaPage() {
           try {
             const saved = localStorage.getItem(CUSTOMER_KEY(slug!));
             const customer = saved ? JSON.parse(saved) : null;
-            setForm(f => ({ ...f, deliveryType: defaultType, clientName: customer?.name ?? '', clientPhone: customer?.phone ?? '' }));
+            setForm(f => ({ ...f, deliveryType: defaultType, clientName: customer?.name ?? '', clientPhone: customer?.phone ?? '', deliveryAddress: customer?.address ?? '' }));
             const orders = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
             setSavedOrders(orders);
           } catch {
@@ -287,7 +287,7 @@ export function LojaPage() {
       setOrderStatus('pending');
       // Salvar cliente e pedido no localStorage
       try {
-        localStorage.setItem(CUSTOMER_KEY(slug!), JSON.stringify({ name: form.clientName.trim(), phone: form.clientPhone.trim() }));
+        localStorage.setItem(CUSTOMER_KEY(slug!), JSON.stringify({ name: form.clientName.trim(), phone: form.clientPhone.trim(), address: form.deliveryAddress.trim() }));
         const newOrder: SavedOrder = {
           orderId: json.data.orderId,
           items: Array.from(cart.entries()).map(([id, qty]) => {
@@ -944,7 +944,15 @@ export function LojaPage() {
             setCart(new Map());
             setStep('catalog');
             setOrderId(null);
-            setForm({ clientName: '', clientPhone: '', deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup', deliveryAddress: '', notes: '' });
+            let customer: { name?: string; phone?: string; address?: string } | null = null;
+            try { customer = JSON.parse(localStorage.getItem(CUSTOMER_KEY(slug!)) ?? 'null'); } catch { /* ignore */ }
+            setForm({
+              clientName: customer?.name ?? '',
+              clientPhone: customer?.phone ?? '',
+              deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup',
+              deliveryAddress: customer?.address ?? '',
+              notes: '',
+            });
           }}
           className="w-full bg-white border-2 border-[#EA4B92] text-[#EA4B92] font-bold py-3.5 rounded-2xl shadow-sm active:scale-[0.98] transition-transform"
         >

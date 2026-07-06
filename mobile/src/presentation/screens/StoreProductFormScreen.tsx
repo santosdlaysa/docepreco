@@ -116,6 +116,7 @@ export const StoreProductFormScreen: React.FC = () => {
   const handleSelectRecipe = (recipe: Recipe) => {
     setRecipeId(recipe.id);
     if (!name) setName(recipe.name);
+    if (!photoUrl && recipe.photoUrl) setPhotoUrl(recipe.photoUrl);
     setShowRecipePicker(false);
   };
 
@@ -225,6 +226,57 @@ export const StoreProductFormScreen: React.FC = () => {
             </TouchableOpacity>
           ) : null}
 
+          {/* ── Vincular receita ── */}
+          <Text style={st.label}>Vincular a receita (opcional)</Text>
+          <TouchableOpacity style={st.recipeSelect} onPress={() => setShowRecipePicker(true)} activeOpacity={0.7}>
+            {linkedRecipe ? (
+              <>
+                <Ionicons name="book-outline" size={18} color={PINK} />
+                <Text style={[st.recipeSelectText, { color: PINK }]} numberOfLines={1}>
+                  {linkedRecipe.name}
+                </Text>
+                <TouchableOpacity onPress={() => setRecipeId(undefined)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Ionicons name="close-circle" size={18} color={INK3} />
+                </TouchableOpacity>
+              </>
+            ) : (
+              <>
+                <Ionicons name="book-outline" size={18} color={INK3} />
+                <Text style={st.recipeSelectText}>Selecionar receita</Text>
+                <Ionicons name="chevron-down" size={16} color={INK3} />
+              </>
+            )}
+          </TouchableOpacity>
+
+          {/* ── Recipe picker inline ── */}
+          {showRecipePicker && (
+            <View style={st.recipePicker}>
+              <View style={st.recipePickerHead}>
+                <Text style={st.recipePickerTitle}>Selecionar receita</Text>
+                <TouchableOpacity onPress={() => setShowRecipePicker(false)}>
+                  <Ionicons name="close" size={22} color={INK} />
+                </TouchableOpacity>
+              </View>
+              {recipes.length === 0 ? (
+                <Text style={{ color: INK2, textAlign: 'center', paddingVertical: 16 }}>
+                  Nenhuma receita cadastrada
+                </Text>
+              ) : (
+                recipes.map(r => (
+                  <TouchableOpacity
+                    key={r.id}
+                    style={st.recipePickerItem}
+                    onPress={() => handleSelectRecipe(r)}
+                    activeOpacity={0.7}
+                  >
+                    <Ionicons name="book-outline" size={16} color={PINK} />
+                    <Text style={st.recipePickerItemText}>{r.name}</Text>
+                  </TouchableOpacity>
+                ))
+              )}
+            </View>
+          )}
+
           {/* ── Name ── */}
           <Text style={st.label}>Nome do produto *</Text>
           <TextInput
@@ -261,28 +313,6 @@ export const StoreProductFormScreen: React.FC = () => {
             />
           </View>
 
-          {/* ── Vincular receita ── */}
-          <Text style={st.label}>Vincular a receita (opcional)</Text>
-          <TouchableOpacity style={st.recipeSelect} onPress={() => setShowRecipePicker(true)} activeOpacity={0.7}>
-            {linkedRecipe ? (
-              <>
-                <Ionicons name="book-outline" size={18} color={PINK} />
-                <Text style={[st.recipeSelectText, { color: PINK }]} numberOfLines={1}>
-                  {linkedRecipe.name}
-                </Text>
-                <TouchableOpacity onPress={() => setRecipeId(undefined)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Ionicons name="close-circle" size={18} color={INK3} />
-                </TouchableOpacity>
-              </>
-            ) : (
-              <>
-                <Ionicons name="book-outline" size={18} color={INK3} />
-                <Text style={st.recipeSelectText}>Selecionar receita</Text>
-                <Ionicons name="chevron-down" size={16} color={INK3} />
-              </>
-            )}
-          </TouchableOpacity>
-
           {/* ── Available toggle ── */}
           <TouchableOpacity style={st.toggleRow} onPress={() => setAvailable(v => !v)} activeOpacity={0.7}>
             <View>
@@ -293,35 +323,6 @@ export const StoreProductFormScreen: React.FC = () => {
               <View style={[st.toggleThumb, available && st.toggleThumbOn]} />
             </View>
           </TouchableOpacity>
-
-          {/* ── Recipe picker inline ── */}
-          {showRecipePicker && (
-            <View style={st.recipePicker}>
-              <View style={st.recipePickerHead}>
-                <Text style={st.recipePickerTitle}>Selecionar receita</Text>
-                <TouchableOpacity onPress={() => setShowRecipePicker(false)}>
-                  <Ionicons name="close" size={22} color={INK} />
-                </TouchableOpacity>
-              </View>
-              {recipes.length === 0 ? (
-                <Text style={{ color: INK2, textAlign: 'center', paddingVertical: 16 }}>
-                  Nenhuma receita cadastrada
-                </Text>
-              ) : (
-                recipes.map(r => (
-                  <TouchableOpacity
-                    key={r.id}
-                    style={st.recipePickerItem}
-                    onPress={() => handleSelectRecipe(r)}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons name="book-outline" size={16} color={PINK} />
-                    <Text style={st.recipePickerItemText}>{r.name}</Text>
-                  </TouchableOpacity>
-                ))
-              )}
-            </View>
-          )}
 
         </ScrollView>
 
