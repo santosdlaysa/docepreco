@@ -128,7 +128,8 @@ export const HomeScreen: React.FC = () => {
   // não-Master, como upsell do Master) + patrocinados + slide "anuncie".
   const planSlideCount = (!isPremium || isAdmin) ? 2 : 0;
   const lojaSlideCount = (!isMaster || isAdmin) ? 1 : 0;
-  const totalSlides = planSlideCount + lojaSlideCount + carouselBanners.length + 1;
+  const lojaMasterSlideCount = isMaster ? 1 : 0;
+  const totalSlides = planSlideCount + lojaSlideCount + lojaMasterSlideCount + carouselBanners.length + 1;
 
   // Auto-rotação genérica entre todos os slides.
   useEffect(() => {
@@ -356,6 +357,38 @@ export const HomeScreen: React.FC = () => {
                         <Text style={s.planBannerDesc} numberOfLines={2}>Catálogo com fotos e preços, entrega ou retirada, e o pedido cai na hora aqui no app.</Text>
                         <View style={s.planBannerLink}>
                           <Text style={[s.planBannerLinkText, { color: '#0D9488' }]}>Conhecer o Master</Text>
+                          <Ionicons name="arrow-forward" size={12} color="#0D9488" />
+                        </View>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {/* Loja Online: anúncio da novidade p/ quem já é Master (leva à loja) */}
+              {isMaster && (
+                <TouchableOpacity
+                  style={{ width: PLAN_BANNER_WIDTH }}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('Store' as never)}
+                >
+                  <LinearGradient
+                    colors={['#2DD4BF', '#0D9488', '#0F766E']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.planBanner}
+                  >
+                    <View style={[s.planBlob, s.planBlobOne, { backgroundColor: 'rgba(255,255,255,0.16)' }]} />
+                    <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: 'rgba(255,255,255,0.16)' }]} />
+                    <Ionicons name="storefront" size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
+                    <View style={s.planBannerOverlay}>
+                      <View style={s.planIconBox}><Ionicons name="sparkles" size={22} color="#0D9488" /></View>
+                      <View style={s.planBannerContent}>
+                        <Text style={[s.planBannerEyebrow, { color: 'rgba(255,255,255,0.85)' }]}>NOVA FUNCIONALIDADE</Text>
+                        <Text style={[s.planBannerTitle, { color: '#FFFFFF' }]}>Sua Loja Online chegou!</Text>
+                        <Text style={s.planBannerDesc} numberOfLines={2}>Compartilhe seu link, receba pedidos pelo catálogo e acompanhe tudo aqui no app.</Text>
+                        <View style={s.planBannerLink}>
+                          <Text style={[s.planBannerLinkText, { color: '#0D9488' }]}>Abrir minha loja</Text>
                           <Ionicons name="arrow-forward" size={12} color="#0D9488" />
                         </View>
                       </View>
