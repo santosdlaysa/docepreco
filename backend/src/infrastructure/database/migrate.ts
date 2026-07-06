@@ -497,6 +497,18 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code', 'TEXT NULL');
     await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code_base64', 'TEXT NULL');
 
+    // Sponsored carousel banners — confeitarias pagam via PIX para anunciar na Home.
+    // Reaproveita a tabela `banners`; `placement='carousel'` distingue dos avisos.
+    await addColumnIfMissing(client, 'banners', 'placement', "VARCHAR(20) NOT NULL DEFAULT 'notification'");
+    await addColumnIfMissing(client, 'banners', 'image_url', 'TEXT NULL');
+    await addColumnIfMissing(client, 'banners', 'company_id', 'UUID NULL REFERENCES users(id) ON DELETE SET NULL');
+    await addColumnIfMissing(client, 'banners', 'priority', 'INTEGER NOT NULL DEFAULT 0');
+    await addColumnIfMissing(client, 'banners', 'paid_until', 'TIMESTAMP NULL');
+    await addColumnIfMissing(client, 'banners', 'duration_days', 'INTEGER NOT NULL DEFAULT 0');
+    // pix_requests genérico: 'subscription' (assinatura) | 'ad_banner' (compra de anúncio).
+    await addColumnIfMissing(client, 'pix_requests', 'product_type', "VARCHAR(20) NOT NULL DEFAULT 'subscription'");
+    await addColumnIfMissing(client, 'pix_requests', 'ref_id', 'UUID NULL');
+
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'users', 'phone', 'VARCHAR(20) NULL');
@@ -927,6 +939,38 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'premium_events', 'currency', "VARCHAR(3) NOT NULL DEFAULT 'BRL'");
 
     await addColumnIfMissing(client, 'support_messages', 'image_url', 'TEXT NULL');
+
+    // Loja Online (plano Master)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS store_settings (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+        active BOOLEAN NOT NULL DEFAULT FALSE,
+        store_name VARCHAR(255) NOT NULL,
+        slug VARCHAR(100) NOT NULL UNIQUE,
+        description TEXT NULL,
+        accepts_delivery BOOLEAN NOT NULL DEFAULT TRUE,
+        accepts_pickup BOOLEAN NOT NULL DEFAULT TRUE,
+        min_order_value DECIMAL(10,2) NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS store_products (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(255) NOT NULL,
+        description TEXT NULL,
+        photo_url TEXT NULL,
+        public_price DECIMAL(10,2) NOT NULL,
+        available BOOLEAN NOT NULL DEFAULT TRUE,
+        recipe_id UUID NULL REFERENCES recipes(id) ON DELETE SET NULL,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_store_products_user ON store_products (user_id)`);
 
     // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
     // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.

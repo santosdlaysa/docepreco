@@ -45,6 +45,7 @@ import { RecipeTutorialScreen } from '../screens/RecipeTutorialScreen';
 import { BeginnerGuideScreen, isGuideAvailable, resetGuide } from '../screens/BeginnerGuideScreen';
 import { SupportChatScreen } from '../screens/SupportChatScreen';
 import { PixPaymentScreen } from '../screens/PixPaymentScreen';
+import { AnnounceBannerScreen } from '../screens/AnnounceBannerScreen';
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { AdminUsersScreen } from '../screens/admin/AdminUsersScreen';
 import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
@@ -486,6 +487,11 @@ export function AppNavigator() {
           <Stack.Screen
             name="PixPayment"
             component={PixPaymentScreen}
+            options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+          />
+          <Stack.Screen
+            name="AnnounceBanner"
+            component={AnnounceBannerScreen}
             options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
           />
         </Stack.Navigator>

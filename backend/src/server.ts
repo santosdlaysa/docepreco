@@ -42,6 +42,7 @@ import cashRoutes from './presentation/routes/cashRoutes';
 import referralRoutes from './presentation/routes/referralRoutes';
 import stripeRoutes from './presentation/routes/stripeRoutes';
 import expenseRoutes from './presentation/routes/expenseRoutes';
+import storeRoutes from './presentation/routes/storeRoutes';
 import { warmUpEvolutionApi } from './infrastructure/services/whatsappService';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
@@ -179,6 +180,7 @@ app.use('/api/admin/changelog', changelogRoutes);
 app.use('/api/admin/onboarding', onboardingRoutes);
 app.use('/api/admin/telegram-alerts', telegramAlertRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/store', authMiddleware, storeRoutes);
 
 setupSwagger(app);
 
