@@ -244,9 +244,14 @@ export const ReportsScreen: React.FC = () => {
       <SafeAreaView style={styles.safeArea}>
         {/* Header skeleton */}
         <View style={styles.header}>
-          <View>
-            <Skeleton width={120} height={22} borderRadius={6} />
-            <Skeleton width={90} height={14} borderRadius={4} style={{ marginTop: 6 }} />
+          <View style={styles.headerLeft}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+              <Ionicons name="arrow-back" size={22} color={INK} />
+            </TouchableOpacity>
+            <View>
+              <Skeleton width={120} height={22} borderRadius={6} />
+              <Skeleton width={90} height={14} borderRadius={4} style={{ marginTop: 6 }} />
+            </View>
           </View>
           <Skeleton width={70} height={38} borderRadius={12} />
         </View>
@@ -304,9 +309,14 @@ export const ReportsScreen: React.FC = () => {
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>{t('reports.title')}</Text>
-          <Text style={styles.headerSubtitle}>{capitalizedMonth}</Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+            <Ionicons name="arrow-back" size={22} color={INK} />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>{t('reports.title')}</Text>
+            <Text style={styles.headerSubtitle}>{capitalizedMonth}</Text>
+          </View>
         </View>
         <TouchableOpacity
           onPress={handleDownload}
@@ -462,6 +472,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 8,
     paddingBottom: 12,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+    minWidth: 0,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: -6,
   },
   headerTitle: {
     fontSize: 24,
