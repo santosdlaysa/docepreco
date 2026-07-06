@@ -186,6 +186,22 @@ export function LojaPage() {
     prevTotal.current = totalItems;
   }, [totalItems]);
 
+  // Polling de status do pedido — deve estar aqui (antes de qualquer return condicional)
+  useEffect(() => {
+    if (step !== 'success' || !orderId || !slug) return;
+    if (orderStatus === 'delivered' || orderStatus === 'cancelled') return;
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}`);
+        const j = await r.json();
+        if (j.success) setOrderStatus(j.data.status);
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 20000);
+    return () => clearInterval(id);
+  }, [step, orderId, slug, orderStatus]);
+
   const setQty = (id: string, delta: number) => {
     setCart(prev => {
       const next = new Map(prev);
@@ -582,22 +598,6 @@ export function LojaPage() {
         </div>
       </div>
     );
-
-  // ── Polling de status ──
-  useEffect(() => {
-    if (step !== 'success' || !orderId || !slug) return;
-    if (orderStatus === 'delivered' || orderStatus === 'cancelled') return;
-    const poll = async () => {
-      try {
-        const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}`);
-        const j = await r.json();
-        if (j.success) setOrderStatus(j.data.status);
-      } catch {}
-    };
-    poll();
-    const id = setInterval(poll, 20000);
-    return () => clearInterval(id);
-  }, [step, orderId, slug, orderStatus]);
 
   // ── Sucesso / Acompanhamento ──
   const STATUS_STEPS: Array<{ key: string; label: string; icon: string }> = [
