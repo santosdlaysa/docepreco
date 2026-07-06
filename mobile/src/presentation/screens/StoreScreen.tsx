@@ -567,6 +567,160 @@ export const StoreScreen: React.FC = () => {
           </>
         )}
       </ScrollView>
+
+      {/* ══ Modal de pedido (fluxo de status) ══ */}
+      <Modal
+        visible={!!selectedOrder}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setSelectedOrder(null)}
+      >
+        <View style={st.modalOverlay}>
+          <View style={st.modalSheet}>
+            {selectedOrder && (() => {
+              const o = selectedOrder;
+              const meta = ORDER_STATUS_META[o.status];
+              const action = NEXT_ACTION[o.status];
+              const itemList = o.items?.length
+                ? o.items
+                : [{ recipeName: o.recipeName, quantity: o.quantity, unitPrice: o.unitPrice }];
+              const isFinal = o.status === 'delivered' || o.status === 'cancelled';
+              const currentStageIdx = ORDER_STAGES.indexOf(o.status);
+              return (
+                <>
+                  {/* Cabeçalho */}
+                  <View style={st.modalHead}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.modalClient} numberOfLines={1}>{o.clientName}</Text>
+                      <View style={[st.orderBadge, { backgroundColor: meta.bg, alignSelf: 'flex-start', marginTop: 4 }]}>
+                        <Text style={[st.orderBadgeText, { color: meta.color }]}>{meta.label}</Text>
+                      </View>
+                    </View>
+                    <TouchableOpacity onPress={() => setSelectedOrder(null)} style={st.modalClose}>
+                      <Ionicons name="close" size={22} color={INK} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 380 }}>
+                    {/* Stepper de status */}
+                    {o.status !== 'cancelled' && (
+                      <View style={st.stepper}>
+                        {ORDER_STAGES.map((stage, i) => {
+                          const reached = i <= currentStageIdx;
+                          return (
+                            <React.Fragment key={stage}>
+                              <View style={st.step}>
+                                <View style={[st.stepDot, reached && st.stepDotOn]}>
+                                  {reached
+                                    ? <Ionicons name="checkmark" size={13} color="#fff" />
+                                    : <Text style={st.stepNum}>{i + 1}</Text>}
+                                </View>
+                                <Text style={[st.stepLabel, reached && st.stepLabelOn]} numberOfLines={1}>
+                                  {ORDER_STATUS_META[stage].label}
+                                </Text>
+                              </View>
+                              {i < ORDER_STAGES.length - 1 && (
+                                <View style={[st.stepLine, i < currentStageIdx && st.stepLineOn]} />
+                              )}
+                            </React.Fragment>
+                          );
+                        })}
+                      </View>
+                    )}
+
+                    {/* Contato */}
+                    {o.clientPhone ? (
+                      <TouchableOpacity
+                        style={st.modalRow}
+                        onPress={() => Linking.openURL(`https://wa.me/${o.clientPhone!.replace(/\D/g, '')}`)}
+                        activeOpacity={0.7}
+                      >
+                        <Ionicons name="logo-whatsapp" size={17} color={GREEN} />
+                        <Text style={[st.modalRowText, { color: GREEN, fontWeight: '700' }]}>{o.clientPhone}</Text>
+                      </TouchableOpacity>
+                    ) : null}
+
+                    {/* Entrega/retirada */}
+                    <View style={st.modalRow}>
+                      <Ionicons name={o.deliveryAddress ? 'location-outline' : 'bag-handle-outline'} size={17} color={INK2} />
+                      <Text style={st.modalRowText}>
+                        {o.deliveryAddress ? o.deliveryAddress : 'Retirada no local'}
+                      </Text>
+                    </View>
+
+                    {/* Itens */}
+                    <View style={st.modalItems}>
+                      {itemList.map((it, i) => (
+                        <View key={i} style={st.modalItemRow}>
+                          <Text style={st.modalItemQty}>{it.quantity}x</Text>
+                          <Text style={st.modalItemName} numberOfLines={1}>{it.recipeName}</Text>
+                          <Text style={st.modalItemPrice}>{fmtCurrency(it.unitPrice * it.quantity)}</Text>
+                        </View>
+                      ))}
+                      <View style={st.modalTotalRow}>
+                        <Text style={st.modalTotalLabel}>Total</Text>
+                        <Text style={st.modalTotalValue}>{fmtCurrency(o.totalPrice)}</Text>
+                      </View>
+                    </View>
+
+                    {/* Observações */}
+                    {o.notes ? (
+                      <View style={st.modalNotes}>
+                        <Text style={st.modalNotesText}>{o.notes}</Text>
+                      </View>
+                    ) : null}
+                  </ScrollView>
+
+                  {/* Ações de status */}
+                  <View style={st.modalActions}>
+                    {isFinal ? (
+                      <View style={st.modalFinal}>
+                        <Ionicons
+                          name={o.status === 'delivered' ? 'checkmark-circle' : 'close-circle'}
+                          size={20}
+                          color={meta.color}
+                        />
+                        <Text style={[st.modalFinalText, { color: meta.color }]}>
+                          {o.status === 'delivered' ? 'Pedido entregue' : 'Pedido cancelado'}
+                        </Text>
+                      </View>
+                    ) : (
+                      <>
+                        {action && (
+                          <TouchableOpacity
+                            disabled={updatingStatus}
+                            onPress={() => changeOrderStatus(o, action.next)}
+                            activeOpacity={0.85}
+                          >
+                            <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.primaryAction}>
+                              {updatingStatus ? (
+                                <ActivityIndicator color="#fff" />
+                              ) : (
+                                <>
+                                  <Ionicons name={action.icon} size={18} color="#fff" />
+                                  <Text style={st.primaryActionText}>{action.label}</Text>
+                                </>
+                              )}
+                            </LinearGradient>
+                          </TouchableOpacity>
+                        )}
+                        <TouchableOpacity
+                          disabled={updatingStatus}
+                          style={st.cancelAction}
+                          onPress={() => confirmCancelOrder(o)}
+                          activeOpacity={0.7}
+                        >
+                          <Text style={st.cancelActionText}>Recusar pedido</Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </View>
+                </>
+              );
+            })()}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -651,11 +805,6 @@ const st = StyleSheet.create({
   orderMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1, minWidth: 0 },
   orderMetaText: { fontSize: 12, color: INK3, fontWeight: '500', flex: 1 },
   orderTotal: { fontSize: 15, fontWeight: '800', color: PINK },
-  manageBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    paddingVertical: 12, marginTop: 2,
-  },
-  manageBtnText: { fontSize: 14, fontWeight: '700', color: PINK },
 
   // Configuração
   settingsCard: { backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 14, ...SHADOW, marginBottom: 16 },
@@ -730,4 +879,66 @@ const st = StyleSheet.create({
     borderRadius: 12, borderWidth: 1.5, borderColor: PINK, backgroundColor: '#fff',
   },
   retryBtnText: { fontSize: 14, fontWeight: '700', color: PINK },
+
+  // Modal de pedido
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(61,34,51,0.45)', justifyContent: 'flex-end' },
+  modalSheet: {
+    backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 20, paddingTop: 16, paddingBottom: 28,
+  },
+  modalHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
+  modalClient: { fontSize: 19, fontWeight: '800', color: INK },
+  modalClose: {
+    width: 34, height: 34, borderRadius: 17, backgroundColor: '#F3EEF1',
+    alignItems: 'center', justifyContent: 'center',
+  },
+
+  stepper: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 18, paddingHorizontal: 4 },
+  step: { alignItems: 'center', width: 62 },
+  stepDot: {
+    width: 26, height: 26, borderRadius: 13, backgroundColor: '#EDE6EA',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  stepDotOn: { backgroundColor: PINK },
+  stepNum: { fontSize: 12, fontWeight: '700', color: INK3 },
+  stepLabel: { fontSize: 10.5, fontWeight: '600', color: INK3, marginTop: 5, textAlign: 'center' },
+  stepLabelOn: { color: INK },
+  stepLine: { flex: 1, height: 2, backgroundColor: '#EDE6EA', marginTop: 12 },
+  stepLineOn: { backgroundColor: PINK },
+
+  modalRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8 },
+  modalRowText: { flex: 1, fontSize: 14, color: INK2, fontWeight: '500' },
+
+  modalItems: {
+    backgroundColor: '#FAF6F8', borderRadius: 14, padding: 14, marginTop: 8, gap: 10,
+  },
+  modalItemRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  modalItemQty: { fontSize: 14, fontWeight: '800', color: PINK, minWidth: 26 },
+  modalItemName: { flex: 1, fontSize: 14, color: INK, fontWeight: '500' },
+  modalItemPrice: { fontSize: 14, fontWeight: '600', color: INK2 },
+  modalTotalRow: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingTop: 10, borderTopWidth: 1, borderTopColor: '#EDE6EA',
+  },
+  modalTotalLabel: { fontSize: 14, fontWeight: '700', color: INK },
+  modalTotalValue: { fontSize: 17, fontWeight: '800', color: PINK },
+
+  modalNotes: {
+    backgroundColor: '#FFF1CE', borderRadius: 12, padding: 12, marginTop: 10,
+  },
+  modalNotesText: { fontSize: 13, color: '#8A6D1B', lineHeight: 18 },
+
+  modalActions: { marginTop: 18, gap: 10 },
+  primaryAction: {
+    height: 52, borderRadius: 15, flexDirection: 'row',
+    alignItems: 'center', justifyContent: 'center', gap: 8,
+  },
+  primaryActionText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  cancelAction: { alignItems: 'center', paddingVertical: 12 },
+  cancelActionText: { fontSize: 14, fontWeight: '700', color: '#C0392B' },
+  modalFinal: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 14,
+  },
+  modalFinalText: { fontSize: 15, fontWeight: '700' },
 });
