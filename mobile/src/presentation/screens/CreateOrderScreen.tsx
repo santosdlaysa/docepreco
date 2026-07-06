@@ -375,7 +375,14 @@ export const CreateOrderScreen: React.FC = () => {
               return (
                 <TouchableOpacity key={s.key} activeOpacity={isLocked ? 1 : 0.8} disabled={isLocked}
                   style={[st.statusChip, { backgroundColor: s.bg }, on && { borderWidth: 2, borderColor: s.color }]}
-                  onPress={() => setStatus(s.key)}>
+                  onPress={() => {
+                    if (s.key === 'delivered' && payments.length === 0) {
+                      showToast('Registre o pagamento antes de marcar como Entregue', 'warning');
+                      setShowAddPayment(true);
+                      return;
+                    }
+                    setStatus(s.key);
+                  }}>
                   <Text style={[st.statusChipText, { color: s.color }]}>{s.label}</Text>
                 </TouchableOpacity>
               );
