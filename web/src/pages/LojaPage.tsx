@@ -24,15 +24,29 @@ const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 function initials(name: string) {
-  return name
-    .split(' ')
-    .slice(0, 2)
-    .map(w => w[0])
-    .join('')
-    .toUpperCase();
+  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
 }
 
-// ─── Produto individual ───────────────────────────────────────────────────────
+function ProductInitial({ name }: { name: string }) {
+  const colors = [
+    ['#FDDDE6', '#EA4B92'],
+    ['#EDE9FE', '#7C3AED'],
+    ['#FCE7F3', '#DB2777'],
+    ['#FEF3C7', '#D97706'],
+    ['#D1FAE5', '#059669'],
+  ];
+  const idx = name.charCodeAt(0) % colors.length;
+  const [bg, fg] = colors[idx];
+  return (
+    <div
+      className="w-full h-full flex items-center justify-center rounded-full text-xl font-black"
+      style={{ backgroundColor: bg, color: fg }}
+    >
+      {name[0]?.toUpperCase()}
+    </div>
+  );
+}
+
 function ProductRow({
   product,
   qty,
@@ -48,15 +62,11 @@ function ProductRow({
     <div className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm">
       {/* Foto circular */}
       <div className="relative flex-shrink-0">
-        <div className="w-[72px] h-[72px] rounded-full overflow-hidden bg-rose-50 shadow-md flex items-center justify-center">
+        <div className="w-[72px] h-[72px] rounded-full overflow-hidden shadow-md">
           {product.photoUrl ? (
-            <img
-              src={product.photoUrl}
-              alt={product.name}
-              className="w-full h-full object-cover"
-            />
+            <img src={product.photoUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
-            <span className="text-4xl select-none">🍬</span>
+            <ProductInitial name={product.name} />
           )}
         </div>
         {qty > 0 && (
@@ -81,7 +91,7 @@ function ProductRow({
 
       {/* Controles */}
       <div className="flex items-center gap-2 flex-shrink-0">
-        {qty > 0 ? (
+        {qty > 0 && (
           <>
             <button
               onClick={onRemove}
@@ -93,7 +103,7 @@ function ProductRow({
               {qty}
             </span>
           </>
-        ) : null}
+        )}
         <button
           onClick={onAdd}
           className="w-9 h-9 rounded-full bg-[#EA4B92] text-white font-bold text-xl flex items-center justify-center leading-none shadow-md shadow-pink-200 active:scale-90 transition-transform"
@@ -105,7 +115,6 @@ function ProductRow({
   );
 }
 
-// ─── Página principal ─────────────────────────────────────────────────────────
 export function LojaPage() {
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(true);
@@ -131,13 +140,8 @@ export function LojaPage() {
       .then(json => {
         if (json.success) {
           setStore(json.data);
-          setForm(f => ({
-            ...f,
-            deliveryType: json.data.acceptsDelivery ? 'delivery' : 'pickup',
-          }));
-        } else {
-          setNotFound(true);
-        }
+          setForm(f => ({ ...f, deliveryType: json.data.acceptsDelivery ? 'delivery' : 'pickup' }));
+        } else setNotFound(true);
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
@@ -169,21 +173,14 @@ export function LojaPage() {
   };
 
   const handleSubmit = async () => {
-    if (!form.clientName.trim()) {
-      setError('Informe seu nome');
-      return;
-    }
+    if (!form.clientName.trim()) { setError('Informe seu nome'); return; }
     if (store?.minOrderValue && totalPrice < store.minOrderValue) {
-      setError(`Pedido mínimo de ${fmt(store.minOrderValue)}`);
-      return;
+      setError(`Pedido mínimo de ${fmt(store.minOrderValue)}`); return;
     }
     setError(null);
     setSubmitting(true);
     try {
-      const items = Array.from(cart.entries()).map(([productId, quantity]) => ({
-        productId,
-        quantity,
-      }));
+      const items = Array.from(cart.entries()).map(([productId, quantity]) => ({ productId, quantity }));
       const res = await fetch(`${API_BASE}/public/store/${slug}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -205,7 +202,7 @@ export function LojaPage() {
     }
   };
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
+  // ── Loading ──
   if (loading)
     return (
       <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center gap-3">
@@ -214,12 +211,14 @@ export function LojaPage() {
       </div>
     );
 
-  // ── Not found ────────────────────────────────────────────────────────────────
+  // ── Not found ──
   if (notFound)
     return (
       <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center gap-4 p-6 text-center">
         <div className="w-20 h-20 bg-white rounded-full shadow-sm flex items-center justify-center">
-          <span className="text-4xl">🔍</span>
+          <svg className="w-8 h-8 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+          </svg>
         </div>
         <div>
           <h1 className="text-xl font-bold text-gray-800">Loja não encontrada</h1>
@@ -230,7 +229,7 @@ export function LojaPage() {
 
   if (!store) return null;
 
-  // ── Catálogo ─────────────────────────────────────────────────────────────────
+  // ── Catálogo ──
   if (step === 'catalog')
     return (
       <div className="min-h-screen bg-[#F5F5F7]">
@@ -238,34 +237,29 @@ export function LojaPage() {
         <div className="bg-gradient-to-br from-[#EA4B92] to-[#7C3AED]">
           <div className="max-w-lg mx-auto px-5 pt-10 pb-6">
             <div className="flex items-center gap-4 mb-5">
-              {/* Avatar */}
               <div className="w-14 h-14 rounded-2xl bg-white/20 border border-white/30 shadow-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-lg font-black text-white tracking-tight">
                   {initials(store.storeName)}
                 </span>
               </div>
               <div className="min-w-0">
-                <h1 className="text-[20px] font-bold text-white leading-tight">
-                  {store.storeName}
-                </h1>
+                <h1 className="text-[20px] font-bold text-white leading-tight">{store.storeName}</h1>
                 {store.description && (
-                  <p className="text-white/65 text-[13px] mt-0.5 line-clamp-1">
-                    {store.description}
-                  </p>
+                  <p className="text-white/65 text-[13px] mt-0.5 line-clamp-1">{store.description}</p>
                 )}
               </div>
             </div>
 
-            {/* Pills */}
+            {/* Pills sem emoji */}
             <div className="flex gap-2 flex-wrap">
               {store.acceptsDelivery && (
                 <span className="bg-white/15 border border-white/25 text-white text-xs px-3 py-1 rounded-full font-medium">
-                  🛵 Entrega
+                  Entrega
                 </span>
               )}
               {store.acceptsPickup && (
                 <span className="bg-white/15 border border-white/25 text-white text-xs px-3 py-1 rounded-full font-medium">
-                  🏪 Retirada
+                  Retirada
                 </span>
               )}
               {store.minOrderValue && (
@@ -275,30 +269,28 @@ export function LojaPage() {
               )}
             </div>
           </div>
-
-          {/* Curva */}
           <div className="h-6 bg-[#F5F5F7] rounded-t-[2rem]" />
         </div>
 
-        {/* Lista de produtos */}
+        {/* Produtos */}
         <div className="max-w-lg mx-auto px-4 pb-40">
           {store.products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3">
               <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center">
-                <span className="text-3xl">🛒</span>
+                <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-1.5 7h13" />
+                </svg>
               </div>
               <p className="text-gray-400 text-sm">Nenhum produto disponível no momento.</p>
             </div>
           ) : (
             <>
-              {/* Título seção */}
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-[18px] font-bold text-gray-900">Cardápio</h2>
                 <span className="text-xs text-gray-400 font-medium">
                   {store.products.length} {store.products.length === 1 ? 'item' : 'itens'}
                 </span>
               </div>
-
               <div className="flex flex-col gap-3">
                 {store.products.map(p => (
                   <ProductRow
@@ -313,19 +305,14 @@ export function LojaPage() {
             </>
           )}
 
-          {/* Branding rodapé */}
           <div className="mt-12 flex items-center justify-center gap-1 opacity-40">
             <span className="text-[11px] text-gray-400">Criado com</span>
             <span className="text-[11px] font-bold text-[#EA4B92]">DocePreço</span>
           </div>
         </div>
 
-        {/* Barra flutuante */}
-        <div
-          className={`fixed bottom-0 left-0 right-0 transition-all duration-300 ease-out ${
-            cartVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'
-          }`}
-        >
+        {/* Carrinho flutuante */}
+        <div className={`fixed bottom-0 left-0 right-0 transition-all duration-300 ease-out ${cartVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
           <div className="px-4 pb-6 pt-2 bg-gradient-to-t from-[#F5F5F7] via-[#F5F5F7]/95 to-transparent">
             <div className="max-w-lg mx-auto">
               <button
@@ -344,18 +331,19 @@ export function LojaPage() {
       </div>
     );
 
-  // ── Checkout ─────────────────────────────────────────────────────────────────
+  // ── Checkout ──
   if (step === 'checkout')
     return (
       <div className="min-h-screen bg-[#F5F5F7]">
-        {/* Header */}
         <div className="bg-gradient-to-r from-[#EA4B92] to-[#7C3AED] text-white px-5 py-5">
           <div className="max-w-lg mx-auto flex items-center gap-3">
             <button
               onClick={() => setStep('catalog')}
-              className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors text-base leading-none"
+              className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
             >
-              ←
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
             <h1 className="text-lg font-bold">Confirmar pedido</h1>
           </div>
@@ -365,17 +353,12 @@ export function LojaPage() {
           {/* Resumo */}
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 pt-4 pb-2">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">
-                Seu pedido
-              </p>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Seu pedido</p>
               {Array.from(cart.entries()).map(([id, qty]) => {
                 const p = store.products.find(p => p.id === id);
                 if (!p) return null;
                 return (
-                  <div
-                    key={id}
-                    className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0"
-                  >
+                  <div key={id} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
                         {qty}
@@ -396,8 +379,7 @@ export function LojaPage() {
             {store.minOrderValue && totalPrice < store.minOrderValue && (
               <div className="px-4 pb-3">
                 <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
-                  ⚠️ Pedido mínimo de {fmt(store.minOrderValue)}. Faltam{' '}
-                  {fmt(store.minOrderValue - totalPrice)}.
+                  Pedido mínimo de {fmt(store.minOrderValue)}. Faltam {fmt(store.minOrderValue - totalPrice)}.
                 </p>
               </div>
             )}
@@ -405,9 +387,7 @@ export function LojaPage() {
 
           {/* Formulário */}
           <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col gap-3">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">
-              Seus dados
-            </p>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Seus dados</p>
             <input
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#EA4B92] focus:ring-2 focus:ring-[#EA4B92]/10 transition-all placeholder:text-gray-300"
               placeholder="Seu nome *"
@@ -425,23 +405,15 @@ export function LojaPage() {
               <div className="flex gap-2">
                 <button
                   onClick={() => setForm(f => ({ ...f, deliveryType: 'delivery' }))}
-                  className={`flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all ${
-                    form.deliveryType === 'delivery'
-                      ? 'border-[#EA4B92] bg-rose-50 text-[#EA4B92]'
-                      : 'border-gray-100 bg-gray-50 text-gray-400'
-                  }`}
+                  className={`flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all ${form.deliveryType === 'delivery' ? 'border-[#EA4B92] bg-rose-50 text-[#EA4B92]' : 'border-gray-100 bg-gray-50 text-gray-400'}`}
                 >
-                  🛵 Entrega
+                  Entrega
                 </button>
                 <button
                   onClick={() => setForm(f => ({ ...f, deliveryType: 'pickup' }))}
-                  className={`flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all ${
-                    form.deliveryType === 'pickup'
-                      ? 'border-[#EA4B92] bg-rose-50 text-[#EA4B92]'
-                      : 'border-gray-100 bg-gray-50 text-gray-400'
-                  }`}
+                  className={`flex-1 py-3 rounded-xl text-sm font-semibold border-2 transition-all ${form.deliveryType === 'pickup' ? 'border-[#EA4B92] bg-rose-50 text-[#EA4B92]' : 'border-gray-100 bg-gray-50 text-gray-400'}`}
                 >
-                  🏪 Retirada
+                  Retirada
                 </button>
               </div>
             )}
@@ -465,47 +437,32 @@ export function LojaPage() {
             disabled={submitting}
             className="w-full bg-[#EA4B92] text-white font-bold py-4 rounded-2xl disabled:opacity-60 flex items-center justify-center gap-2 shadow-lg shadow-pink-200/60 active:scale-[0.98] transition-transform"
           >
-            {submitting && (
-              <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            )}
+            {submitting && <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
             {submitting ? 'Enviando...' : 'Confirmar pedido'}
           </button>
         </div>
       </div>
     );
 
-  // ── Sucesso ──────────────────────────────────────────────────────────────────
+  // ── Sucesso ──
   return (
     <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center gap-6 p-6 text-center">
       <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center shadow-xl shadow-green-200">
-        <svg
-          className="w-12 h-12 text-white"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
-          strokeWidth={2.5}
-        >
+        <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
         </svg>
       </div>
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Pedido recebido!</h1>
         <p className="text-gray-400 mt-2 text-sm max-w-xs mx-auto leading-relaxed">
-          Aguarde o contato de{' '}
-          <strong className="text-gray-700">{store.storeName}</strong> para combinar os
-          detalhes.
+          Aguarde o contato de <strong className="text-gray-700">{store.storeName}</strong> para combinar os detalhes.
         </p>
       </div>
       <button
         onClick={() => {
           setCart(new Map());
           setStep('catalog');
-          setForm({
-            clientName: '',
-            clientPhone: '',
-            deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup',
-            notes: '',
-          });
+          setForm({ clientName: '', clientPhone: '', deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup', notes: '' });
         }}
         className="bg-[#EA4B92] text-white font-bold py-3 px-8 rounded-2xl shadow-lg shadow-pink-200/60 active:scale-[0.98] transition-transform"
       >
