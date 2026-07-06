@@ -31,9 +31,9 @@ function formatPhone(phone: string): string {
   return phone;
 }
 
-function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: string | null }) {
-  if (!isPremium) return <span className="text-xs text-gray-400">Gratuito</span>;
-  const label = platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : 'Manual';
+function PremiumBadge({ planTier, platform }: { planTier: AdminUser['planTier']; platform: string | null }) {
+  if (planTier === 'free') return <span className="text-xs text-gray-400">Gratuito</span>;
+  const label = tierBadgeLabel(planTier, platform);
   return (
     <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
       <Crown size={12} />
@@ -57,6 +57,21 @@ function SortIcon({ active }: { active: boolean }) {
   );
 }
 
+type PaidTier = 'premium' | 'master';
+
+function tierLabel(tier: AdminUser['planTier'] | PaidTier): string {
+  return tier === 'master' ? 'Master' : 'Premium';
+}
+
+function tierBadgeLabel(planTier: AdminUser['planTier'], platform: string | null): string {
+  if (planTier === 'free') return 'Gratuito';
+  const label = tierLabel(planTier);
+  if (platform === 'ios') return `${label} • iOS`;
+  if (platform === 'android') return `${label} • Android`;
+  if (platform === 'manual') return `${label} • Manual`;
+  return label;
+}
+
 function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { userId: string; onClose: () => void; toast: ToastFn; onImpersonate?: (userId: string) => void; onWhatsApp: (phone: string, name: string) => void }) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [saving, setSaving] = useState(false);
@@ -64,7 +79,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   const [grantingTrial, setGrantingTrial] = useState(false);
   const [trialDays, setTrialDays] = useState('3');
   const [notifTitle, setNotifTitle] = useState('Presente especial para você!');
-  const [notifBody, setNotifBody] = useState('Você ganhou 3 dias grátis de acesso Premium! Aproveite todos os recursos exclusivos do DocePreço.');
+  const [notifBody, setNotifBody] = useState('Você ganhou dias grátis de acesso ao DocePreço! Aproveite todos os recursos exclusivos.');
   const [newPassword, setNewPassword] = useState('');
   const [resettingPassword, setResettingPassword] = useState(false);
   const [premiumHistory, setPremiumHistory] = useState<PremiumEvent[]>([]);
@@ -72,6 +87,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
   const [togglingActive, setTogglingActive] = useState(false);
   const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | ''>('');
   const [savingSignupPlatform, setSavingSignupPlatform] = useState(false);
+  const [selectedTier, setSelectedTier] = useState<PaidTier>('premium');
 
   const toggleActive = async () => {
     if (!user) return;
@@ -94,6 +110,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
     api.getUser(userId).then(result => {
       setUser(result);
       setSignupPlatform(result.signupPlatform ?? '');
+      setSelectedTier(result.planTier === 'master' ? 'master' : 'premium');
     }).catch(console.error);
     setLoadingHistory(true);
     api.getPremiumHistory(userId).then(setPremiumHistory).catch(console.error).finally(() => setLoadingHistory(false));
@@ -119,6 +136,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
     setSaving(true);
     try {
       let premiumUntil: string | null = null;
+      const targetTier: PaidTier = selectedTier;
       if (!user.isPremium) {
         const days = parseInt(premiumDays);
         if (!days || days <= 0) {
@@ -130,9 +148,17 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
         until.setDate(until.getDate() + days);
         premiumUntil = until.toISOString();
       }
-      await api.setPremium(user.id, !user.isPremium, premiumUntil);
-      const msg = user.isPremium ? 'Premium removido.' : `Premium ativado por ${premiumDays} dias!`;
-      setUser(prev => prev ? { ...prev, isPremium: !prev.isPremium, premiumUntil: premiumUntil } : prev);
+      const res = await api.setPremium(user.id, !user.isPremium, premiumUntil, targetTier);
+      const msg = user.isPremium
+        ? `${tierLabel(user.planTier)} removido.`
+        : `${tierLabel(targetTier)} ativado por ${premiumDays} dias!`;
+      setUser(prev => prev ? {
+        ...prev,
+        isPremium: res.isPremium,
+        planTier: res.planTier,
+        premiumUntil: res.premiumUntil,
+        premiumPlatform: res.premiumPlatform,
+      } : prev);
       toast.success(msg);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Erro');
@@ -154,13 +180,19 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
     }
     setGrantingTrial(true);
     try {
-      const res = await api.grantTrial(user.id, days, notifTitle.trim(), notifBody.trim());
+      const res = await api.grantTrial(user.id, days, notifTitle.trim(), notifBody.trim(), selectedTier);
       const until = new Date(res.premiumUntil);
-      setUser(prev => prev ? { ...prev, isPremium: true, premiumUntil: res.premiumUntil, premiumPlatform: 'manual' } : prev);
+      setUser(prev => prev ? {
+        ...prev,
+        isPremium: true,
+        planTier: res.planTier,
+        premiumUntil: res.premiumUntil,
+        premiumPlatform: 'manual',
+      } : prev);
       const notifMsg = res.notificationSent
         ? ' Notificação enviada!'
         : ' (usuário sem token de push — notificação não enviada)';
-      toast.success(`Premium ativado por ${days} dias até ${until.toLocaleDateString('pt-BR')}.${notifMsg}`);
+      toast.success(`${tierLabel(res.planTier)} ativado por ${days} dias até ${until.toLocaleDateString('pt-BR')}.${notifMsg}`);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Erro ao dar dias grátis');
     } finally {
@@ -298,9 +330,9 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
             <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Status premium</p>
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Status do plano</p>
                   <div className="mt-1">
-                    <PremiumBadge isPremium={user.isPremium} platform={user.premiumPlatform} />
+                    <PremiumBadge planTier={user.planTier} platform={user.premiumPlatform} />
                   </div>
                   {user.premiumUntil && (
                     <p className="text-xs text-gray-400 mt-1">
@@ -317,10 +349,22 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                       : 'bg-primary-500 hover:bg-primary-600 text-white'
                   }`}
                 >
-                  {saving ? '...' : user.isPremium ? 'Remover premium' : 'Dar premium'}
+                  {saving ? '...' : user.isPremium ? 'Remover acesso' : `Dar ${tierLabel(selectedTier)}`}
                 </button>
               </div>
               {!user.isPremium && (
+                <>
+                <div className="flex items-center gap-2 mb-3">
+                  <label className="text-xs text-gray-500 dark:text-gray-400">Plano:</label>
+                  <select
+                    value={selectedTier}
+                    onChange={e => setSelectedTier(e.target.value as PaidTier)}
+                    className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1.5 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+                  >
+                    <option value="premium">Premium</option>
+                    <option value="master">Master</option>
+                  </select>
+                </div>
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-gray-500 dark:text-gray-400">Período:</label>
                   <select
@@ -337,6 +381,7 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
                     <option value="365">1 ano</option>
                   </select>
                 </div>
+                </>
               )}
             </div>
 
@@ -1021,7 +1066,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                     <SignupPlatformBadge platform={u.signupPlatform} />
                   </td>
                   <td className="px-4 py-3">
-                    <PremiumBadge isPremium={u.isPremium} platform={u.premiumPlatform} />
+                    <PremiumBadge planTier={u.planTier} platform={u.premiumPlatform} />
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${sortBy === 'recipeCount' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{u.recipeCount}</td>
                   <td className={`px-4 py-3 text-right font-medium ${sortBy === 'ingredientCount' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{u.ingredientCount}</td>

@@ -152,6 +152,7 @@ export interface AdminUser {
   instagramHandle: string | null;
   createdAt: string;
   isPremium: boolean;
+  planTier: 'free' | 'premium' | 'master';
   premiumUntil: string | null;
   premiumPlatform: string | null;
   signupPlatform: 'ios' | 'android' | null;
@@ -269,6 +270,7 @@ export interface UserData {
     email: string;
     createdAt: string;
     isPremium: boolean;
+    planTier: 'free' | 'premium' | 'master';
     premiumUntil: string | null;
     premiumPlatform: string | null;
     lastSeenAt: string | null;
@@ -333,10 +335,10 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  setPremium: (id: string, isPremium: boolean, premiumUntil?: string | null) =>
-    req(`/admin/users/${id}/premium`, {
+  setPremium: (id: string, isPremium: boolean, premiumUntil?: string | null, planTier?: 'premium' | 'master') =>
+    req<{ isPremium: boolean; planTier: 'free' | 'premium' | 'master'; premiumUntil: string | null; premiumPlatform: string | null }>(`/admin/users/${id}/premium`, {
       method: 'POST',
-      body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null }),
+      body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null, planTier }),
     }),
 
   setSignupPlatform: (id: string, signupPlatform: 'ios' | 'android' | null) =>
@@ -345,10 +347,10 @@ export const api = {
       body: JSON.stringify({ signupPlatform }),
     }),
 
-  grantTrial: (id: string, days: number, notificationTitle: string, notificationBody: string) =>
-    req<{ premiumUntil: string; notificationSent: boolean; recipientsCount: number }>(`/admin/users/${id}/grant-trial`, {
+  grantTrial: (id: string, days: number, notificationTitle: string, notificationBody: string, planTier?: 'premium' | 'master') =>
+    req<{ premiumUntil: string; planTier: 'premium' | 'master'; notificationSent: boolean; recipientsCount: number }>(`/admin/users/${id}/grant-trial`, {
       method: 'POST',
-      body: JSON.stringify({ days, notificationTitle, notificationBody }),
+      body: JSON.stringify({ days, notificationTitle, notificationBody, planTier }),
     }),
 
   resetUserPassword: (id: string, newPassword: string) =>

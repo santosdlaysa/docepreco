@@ -8,6 +8,9 @@ import { UpdateIngredientUseCase } from '../../application/use-cases/ingredient/
 import { PostgresIngredientRepository } from '../../infrastructure/repositories/PostgresIngredientRepository';
 import { UpdateRecipeUseCase } from '../../application/use-cases/recipe/UpdateRecipeUseCase';
 import { PostgresRecipeRepository } from '../../infrastructure/repositories/PostgresRecipeRepository';
+import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
+
+const userRepo = new PostgresUserRepository();
 
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
@@ -173,6 +176,7 @@ export class AdminController {
             u.phone,
             u.created_at               AS "createdAt",
             u.is_premium               AS "isPremium",
+            u.plan_tier                AS "planTier",
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
             u.signup_platform          AS "signupPlatform",
@@ -203,13 +207,33 @@ export class AdminController {
 
   async setPremium(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { isPremium, premiumUntil } = req.body;
+    const { isPremium, premiumUntil, planTier } = req.body as {
+      isPremium?: boolean;
+      premiumUntil?: string | null;
+      planTier?: 'premium' | 'master';
+    };
+
+    if (typeof isPremium !== 'boolean') {
+      res.status(400).json({ error: 'isPremium boolean required' });
+      return;
+    }
     try {
-      await pool.query(
-        `UPDATE users SET is_premium = $1, premium_until = $2, premium_platform = $3 WHERE id = $4`,
-        [isPremium, premiumUntil ?? null, isPremium ? 'manual' : null, id]
-      );
-      res.json({ success: true });
+      const until = premiumUntil ? new Date(premiumUntil) : null;
+      const tier = isPremium ? (planTier === 'master' ? 'master' : 'premium') : 'free';
+      const user = await userRepo.updatePlanTier(id, tier, until, isPremium ? 'manual' : null);
+      if (!user) {
+        res.status(404).json({ error: 'Usuário não encontrado' });
+        return;
+      }
+      res.json({
+        success: true,
+        data: {
+          isPremium: user.isPremium,
+          planTier: user.planTier,
+          premiumUntil: user.premiumUntil,
+          premiumPlatform: user.premiumPlatform,
+        },
+      });
     } catch (error) {
       console.error('[Admin] setPremium error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
@@ -269,7 +293,12 @@ export class AdminController {
 
   async grantTrial(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { days, notificationTitle, notificationBody } = req.body;
+    const { days, notificationTitle, notificationBody, planTier } = req.body as {
+      days?: number;
+      notificationTitle?: string;
+      notificationBody?: string;
+      planTier?: 'premium' | 'master';
+    };
 
     if (!days || days <= 0) {
       res.status(400).json({ success: false, error: 'days é obrigatório e deve ser maior que 0' });
@@ -287,14 +316,16 @@ export class AdminController {
         return;
       }
 
+      const tier: 'premium' | 'master' = planTier === 'master' ? 'master' : 'premium';
       const until = new Date();
       until.setDate(until.getDate() + days);
       const premiumUntil = until.toISOString();
 
-      await pool.query(
-        `UPDATE users SET is_premium = true, premium_until = $1, premium_platform = 'manual' WHERE id = $2`,
-        [premiumUntil, id]
-      );
+      const updatedUser = await userRepo.updatePlanTier(id, tier, new Date(premiumUntil), 'manual');
+      if (!updatedUser) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
 
       // Send push notification to this specific user
       const tokenRepo = new PostgresPushTokenRepository();
@@ -314,6 +345,7 @@ export class AdminController {
         success: true,
         data: {
           premiumUntil,
+          planTier: tier,
           notificationSent: recipientsCount > 0,
           recipientsCount,
         },
@@ -337,6 +369,7 @@ export class AdminController {
             u.phone,
             u.created_at               AS "createdAt",
             u.is_premium               AS "isPremium",
+            u.plan_tier                AS "planTier",
             u.premium_until            AS "premiumUntil",
             u.premium_platform         AS "premiumPlatform",
             u.signup_platform          AS "signupPlatform",
