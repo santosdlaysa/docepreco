@@ -72,7 +72,21 @@ function tierBadgeLabel(planTier: AdminUser['planTier'], platform: string | null
   return label;
 }
 
-function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { userId: string; onClose: () => void; toast: ToastFn; onImpersonate?: (userId: string) => void; onWhatsApp: (phone: string, name: string) => void }) {
+function UserModal({
+  userId,
+  onClose,
+  toast,
+  onImpersonate,
+  onWhatsApp,
+  onUserUpdated,
+}: {
+  userId: string;
+  onClose: () => void;
+  toast: ToastFn;
+  onImpersonate?: (userId: string) => void;
+  onWhatsApp: (phone: string, name: string) => void;
+  onUserUpdated?: (user: AdminUserDetail) => void;
+}) {
   const [user, setUser] = useState<AdminUserDetail | null>(null);
   const [saving, setSaving] = useState(false);
   const [premiumDays, setPremiumDays] = useState('30');
@@ -159,6 +173,15 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
         premiumUntil: res.premiumUntil,
         premiumPlatform: res.premiumPlatform,
       } : prev);
+      if (user) {
+        onUserUpdated?.({
+          ...user,
+          isPremium: res.isPremium,
+          planTier: res.planTier,
+          premiumUntil: res.premiumUntil,
+          premiumPlatform: res.premiumPlatform,
+        });
+      }
       toast.success(msg);
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : 'Erro');
@@ -189,6 +212,15 @@ function UserModal({ userId, onClose, toast, onImpersonate, onWhatsApp }: { user
         premiumUntil: res.premiumUntil,
         premiumPlatform: 'manual',
       } : prev);
+      if (user) {
+        onUserUpdated?.({
+          ...user,
+          isPremium: true,
+          planTier: res.planTier,
+          premiumUntil: res.premiumUntil,
+          premiumPlatform: 'manual',
+        });
+      }
       const notifMsg = res.notificationSent
         ? ' Notificação enviada!'
         : ' (usuário sem token de push — notificação não enviada)';
@@ -758,6 +790,18 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     }
   }, [search, page, premiumFilter, signupPlatform, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
 
+  const updateUserInList = useCallback((updated: AdminUserDetail) => {
+    setUsers(prev => prev.map(u => (u.id === updated.id ? {
+      ...u,
+      isPremium: updated.isPremium,
+      planTier: updated.planTier,
+      premiumUntil: updated.premiumUntil,
+      premiumPlatform: updated.premiumPlatform,
+      signupPlatform: updated.signupPlatform,
+      isActive: updated.isActive,
+    } : u)));
+  }, []);
+
   useEffect(() => { load(); }, [load]);
 
   const handleSort = (key: SortKey) => {
@@ -1122,12 +1166,13 @@ export function UsersPage({ toast, onImpersonate }: Props) {
       </div>
 
       {selectedId && (
-        <UserModal
+      <UserModal
           userId={selectedId}
           onClose={() => { setSelectedId(null); load(); }}
           toast={toast}
           onImpersonate={onImpersonate}
           onWhatsApp={(phone, name) => setWhatsApp({ phone, name })}
+          onUserUpdated={updateUserInList}
         />
       )}
 
