@@ -81,6 +81,24 @@ export interface AdminMessage {
   createdAt: string;
 }
 
+type RawAdminConversation = Partial<AdminConversation> & {
+  company_name?: string;
+  user?: {
+    companyName?: string;
+    company_name?: string;
+    email?: string;
+  };
+};
+
+const normalizeConversation = (raw: RawAdminConversation): AdminConversation => ({
+  userId: raw.userId ?? '',
+  companyName: raw.companyName ?? raw.company_name ?? raw.user?.companyName ?? raw.user?.company_name ?? '',
+  email: raw.email ?? raw.user?.email ?? '',
+  lastMessage: raw.lastMessage ?? '',
+  lastMessageAt: raw.lastMessageAt ?? '',
+  unreadCount: raw.unreadCount ?? 0,
+});
+
 // ── API ──────────────────────────────────────────────────────────────────────
 
 export const adminApi = {
@@ -142,7 +160,10 @@ export const adminApi = {
 
   async getConversations(): Promise<AdminConversation[]> {
     const { data } = await adminClient.get('/support/admin/conversations');
-    return data.data ?? [];
+    const conversations: RawAdminConversation[] = Array.isArray(data.data)
+      ? data.data
+      : data.data?.conversations ?? [];
+    return conversations.map(normalizeConversation);
   },
 
   async getConversationMessages(userId: string): Promise<AdminMessage[]> {

@@ -44,29 +44,32 @@ export const AdminSupportScreen: React.FC = () => {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           contentContainerStyle={{ paddingBottom: 40 }}
           ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: colors.border, marginLeft: 72 }} />}
-          renderItem={({ item: c }) => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AdminSupportChat', { userId: c.userId, companyName: c.companyName })}
-              activeOpacity={0.75}
-              style={styles.row}
-            >
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>{(c.companyName?.[0] ?? '?').toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <Text style={styles.name} numberOfLines={1}>{c.companyName}</Text>
-                  <Text style={styles.time}>{new Date(c.lastMessageAt).toLocaleDateString('pt-BR')}</Text>
+          renderItem={({ item: c }) => {
+            const companyName = c.companyName.trim() || c.email.trim() || 'Empresa não identificada';
+            return (
+              <TouchableOpacity
+                onPress={() => navigation.navigate('AdminSupportChat', { userId: c.userId, companyName })}
+                activeOpacity={0.75}
+                style={styles.row}
+              >
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{companyName[0].toUpperCase()}</Text>
                 </View>
-                <Text style={styles.preview} numberOfLines={1}>{c.lastMessage}</Text>
-              </View>
-              {c.unreadCount > 0 && (
-                <View style={styles.unreadBadge}>
-                  <Text style={styles.unreadText}>{c.unreadCount}</Text>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <Text style={styles.name} numberOfLines={1}>{companyName}</Text>
+                    <Text style={styles.time}>{new Date(c.lastMessageAt).toLocaleDateString('pt-BR')}</Text>
+                  </View>
+                  <Text style={styles.preview} numberOfLines={1}>{c.lastMessage}</Text>
                 </View>
-              )}
-            </TouchableOpacity>
-          )}
+                {c.unreadCount > 0 && (
+                  <View style={styles.unreadBadge}>
+                    <Text style={styles.unreadText}>{c.unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          }}
           ListEmptyComponent={
             <View style={{ padding: 48, alignItems: 'center' }}>
               <Ionicons name="chatbubbles-outline" size={40} color={colors.textMuted} />
