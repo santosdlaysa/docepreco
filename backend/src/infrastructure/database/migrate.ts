@@ -587,6 +587,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'orders', 'payments', "JSONB NOT NULL DEFAULT '[]'::jsonb");
     await addColumnIfMissing(client, 'orders', 'items', "JSONB NOT NULL DEFAULT '[]'::jsonb");
     await addColumnIfMissing(client, 'orders', 'notes', 'TEXT');
+    await addColumnIfMissing(client, 'orders', 'source', "VARCHAR(20) NOT NULL DEFAULT 'manual'");
     // Versões antigas usavam "ready"; o app atual usa "done".
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check`);
     await client.query(`UPDATE orders SET status = 'done' WHERE status = 'ready'`);
