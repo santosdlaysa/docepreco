@@ -68,14 +68,14 @@ export class StoreController {
   async updateProduct(req: AuthRequest, res: Response): Promise<void> {
     try {
       const b = req.body ?? {};
-      const product = await repo.updateProduct(req.params.id, req.userId!, {
-        name:        b.name,
-        description: b.description,
-        photoUrl:    b.photoUrl,
-        publicPrice: b.publicPrice !== undefined ? Number(b.publicPrice) : undefined,
-        available:   b.available,
-        recipeId:    b.recipeId,
-      });
+      const patch: Record<string, unknown> = {};
+      if (b.name !== undefined)        patch.name        = b.name;
+      if ('description' in b)          patch.description = b.description ?? null;
+      if ('photoUrl' in b)             patch.photoUrl    = b.photoUrl ?? null;
+      if (b.publicPrice !== undefined) patch.publicPrice = Number(b.publicPrice);
+      if (b.available !== undefined)   patch.available   = b.available;
+      if ('recipeId' in b)             patch.recipeId    = b.recipeId ?? null;
+      const product = await repo.updateProduct(req.params.id, req.userId!, patch as any);
       if (!product) {
         res.status(404).json({ success: false, message: 'Produto não encontrado' });
         return;

@@ -28,7 +28,7 @@ export interface StoreProduct {
   updatedAt: string;
 }
 
-const BASE_URL = process.env.STORE_BASE_URL || 'https://docepreco.com/loja';
+const BASE_URL = process.env.STORE_BASE_URL || 'https://docepreco.site/loja';
 
 function slugify(text: string): string {
   return text

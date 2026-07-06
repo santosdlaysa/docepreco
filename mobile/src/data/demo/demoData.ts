@@ -247,7 +247,7 @@ export const demoStoreSettings: StoreSettings = {
   active: true,
   storeName: 'Doceria Demo',
   slug: 'doceria-demo',
-  storeLink: 'https://docepreco.com/loja/doceria-demo',
+  storeLink: 'https://docepreco.site/loja/doceria-demo',
   description: 'Confeitaria artesanal com produtos frescos!',
   acceptsDelivery: true,
   acceptsPickup: true,
