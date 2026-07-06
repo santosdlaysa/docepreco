@@ -158,6 +158,7 @@ export class PostgresOrderRepository {
       payments: (row.payments as OrderPayment[]) ?? [],
       items: (row.items as OrderItem[]) ?? [],
       notes: (row.notes as string) ?? null,
+      deliveryAddress: (row.delivery_address as string) ?? null,
       source: (row.source as 'manual' | 'online') ?? 'manual',
       createdAt: (row.created_at as Date).toISOString(),
     };

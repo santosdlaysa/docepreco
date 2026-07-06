@@ -157,10 +157,12 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
       const tokens = await tokenRepo.findByUserId(userId);
       if (tokens.length > 0) {
         const itemsSummary = items.map(i => `${i.quantity}x ${i.recipeName}`).join(', ');
+        const phoneInfo = b.clientPhone ? ` • ${String(b.clientPhone).trim()}` : '';
+        const addrInfo = isDelivery && b.deliveryAddress ? ` • ${String(b.deliveryAddress).trim()}` : '';
         await sendPushNotifications(
           tokens.map(t => t.token),
           '🛍️ Novo pedido recebido!',
-          `${b.clientName} pediu: ${itemsSummary}`,
+          `${b.clientName}${phoneInfo}: ${itemsSummary}${addrInfo}`,
           { type: 'new_order', orderId }
         );
       }

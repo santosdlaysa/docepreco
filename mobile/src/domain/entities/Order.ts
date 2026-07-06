@@ -34,6 +34,7 @@ export interface Order {
   payments?: OrderPayment[];
   items?: OrderItem[];
   notes?: string;
+  deliveryAddress?: string | null;
   source?: 'manual' | 'online';
   createdAt: string;
 }

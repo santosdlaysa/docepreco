@@ -108,6 +108,7 @@ export const CreateOrderScreen: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState('');
   const [showSaleConfirm, setShowSaleConfirm] = useState(false);
   const [pendingSale, setPendingSale] = useState<{ clientName: string; recipeName: string; totalPrice: number; recipeId?: string; quantity: number; unitPrice: number } | null>(null);
 
@@ -136,6 +137,7 @@ export const CreateOrderScreen: React.FC = () => {
         if (order.status === 'delivered' || order.status === 'cancelled') setIsLocked(true);
         setPayments(order.payments && order.payments.length > 0 ? order.payments : order.paidAmount && order.paidAmount > 0 ? [{ id: 'migrated', amount: order.paidAmount, method: 'cash', date: order.createdAt.split('T')[0] }] : []);
         setNotes(order.notes || '');
+        setDeliveryAddress(order.deliveryAddress || '');
       });
     }
   }, []);
@@ -452,6 +454,17 @@ export const CreateOrderScreen: React.FC = () => {
             </View>
           )}
 
+          {/* ── Endereço de entrega (pedidos online) ── */}
+          {deliveryAddress ? (
+            <View style={st.addressCard}>
+              <Ionicons name="location-outline" size={16} color="#1A6F96" />
+              <View style={{ flex: 1 }}>
+                <Text style={st.addressLabel}>Endereço de entrega</Text>
+                <Text style={st.addressText}>{deliveryAddress}</Text>
+              </View>
+            </View>
+          ) : null}
+
           {/* ── Observações ── */}
           <Text style={st.sec}>Observações</Text>
           <View style={[st.input, { alignItems: 'flex-start' }]}>
@@ -558,6 +571,14 @@ const st = StyleSheet.create({
   shH1: { fontSize: 22, fontWeight: '700', color: INK, lineHeight: 26 },
   actPill: { height: 38, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', ...SHADOW },
   actPillText: { color: '#fff', fontWeight: '700', fontSize: 13.5 },
+
+  addressCard: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    backgroundColor: '#EEF8FD', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#B8DDEF',
+  },
+  addressLabel: { fontSize: 11, fontWeight: '700', color: '#1A6F96', marginBottom: 2 },
+  addressText: { fontSize: 14, color: '#1A6F96', lineHeight: 20 },
 
   sec: { fontSize: 16, fontWeight: '700', color: INK, marginTop: 6, marginBottom: -2, marginLeft: 2 },
   field: { gap: 7 },
