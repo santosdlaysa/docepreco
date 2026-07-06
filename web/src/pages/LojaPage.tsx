@@ -199,6 +199,7 @@ export function LojaPage() {
 
   const handleSubmit = async () => {
     if (!form.clientName.trim()) { setError('Informe seu nome'); return; }
+    if (!form.clientPhone.trim()) { setError('Informe seu WhatsApp'); return; }
     if (form.deliveryType === 'delivery' && !form.deliveryAddress.trim()) {
       setError('Informe o endereço de entrega'); return;
     }
@@ -214,7 +215,7 @@ export function LojaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clientName: form.clientName.trim(),
-          clientPhone: form.clientPhone.trim() || undefined,
+          clientPhone: form.clientPhone.trim(),
           items,
           deliveryType: form.deliveryType,
           deliveryAddress: form.deliveryType === 'delivery' ? form.deliveryAddress.trim() : undefined,
@@ -526,7 +527,7 @@ export function LojaPage() {
             />
             <input
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#EA4B92] focus:ring-2 focus:ring-[#EA4B92]/10 transition-all placeholder:text-gray-300"
-              placeholder="WhatsApp (opcional)"
+              placeholder="WhatsApp *"
               type="tel"
               value={form.clientPhone}
               onChange={e => setForm(f => ({ ...f, clientPhone: e.target.value }))}
