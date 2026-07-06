@@ -127,6 +127,8 @@ export function LojaPage() {
   const [step, setStep] = useState<'catalog' | 'checkout' | 'success'>('catalog');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [orderId, setOrderId] = useState<string | null>(null);
+  const [orderStatus, setOrderStatus] = useState<string>('pending');
   const [form, setForm] = useState({
     clientName: '',
     clientPhone: '',
@@ -221,6 +223,8 @@ export function LojaPage() {
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error ?? 'Erro ao enviar pedido');
+      setOrderId(json.data.orderId);
+      setOrderStatus('pending');
       setStep('success');
     } catch (e: any) {
       setError(e.message);
@@ -339,7 +343,7 @@ export function LojaPage() {
           </div>
 
           {/* Card sobreposto */}
-          <div className="relative -mt-6 bg-white rounded-t-[28px] px-5 pt-5">
+          <div className="relative -mt-6 bg-white rounded-t-[28px] px-5 pt-5 pb-5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <h1 className="text-[22px] font-extrabold text-gray-900 leading-tight">
@@ -578,33 +582,144 @@ export function LojaPage() {
       </div>
     );
 
-  // ── Sucesso ──
+  // ── Polling de status ──
+  useEffect(() => {
+    if (step !== 'success' || !orderId || !slug) return;
+    if (orderStatus === 'delivered' || orderStatus === 'cancelled') return;
+    const poll = async () => {
+      try {
+        const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}`);
+        const j = await r.json();
+        if (j.success) setOrderStatus(j.data.status);
+      } catch {}
+    };
+    poll();
+    const id = setInterval(poll, 20000);
+    return () => clearInterval(id);
+  }, [step, orderId, slug, orderStatus]);
+
+  // ── Sucesso / Acompanhamento ──
+  const STATUS_STEPS: Array<{ key: string; label: string; icon: string }> = [
+    { key: 'pending',     label: 'Aguardando',  icon: '🕐' },
+    { key: 'in_progress', label: 'Produção',    icon: '👩‍🍳' },
+    { key: 'done',        label: 'Pronto',      icon: '✅' },
+    { key: 'delivered',   label: 'Entregue',    icon: '🎉' },
+  ];
+  const cancelledStatus = orderStatus === 'cancelled';
+  const currentIdx = cancelledStatus ? -1 : STATUS_STEPS.findIndex(s => s.key === orderStatus);
+  const activeIdx = currentIdx === -1 ? 0 : currentIdx;
+
   return (
-    <div className="min-h-screen bg-[#F5F5F7] flex flex-col items-center justify-center gap-6 p-6 text-center">
-      <div className="w-24 h-24 bg-gradient-to-br from-emerald-400 to-green-500 rounded-full flex items-center justify-center shadow-xl shadow-green-200">
-        <svg className="w-12 h-12 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-        </svg>
+    <div className="min-h-screen bg-[#F5F5F7]">
+      {/* Header */}
+      <div className="bg-gradient-to-r from-[#EA4B92] to-[#7C3AED] text-white px-5 py-5">
+        <div className="max-w-lg mx-auto text-center">
+          <p className="text-white/70 text-xs font-medium mb-1">{store.storeName}</p>
+          <h1 className="text-lg font-bold">Acompanhar pedido</h1>
+        </div>
       </div>
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Pedido recebido!</h1>
-        <p className="text-gray-400 mt-2 text-sm max-w-xs mx-auto leading-relaxed">
-          Aguarde o contato de <strong className="text-gray-700">{store.storeName}</strong> para combinar os detalhes.
+
+      <div className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-4">
+
+        {/* Card de confirmação */}
+        <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col items-center gap-3 text-center">
+          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-lg ${cancelledStatus ? 'bg-red-50' : 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-green-200'}`}>
+            {cancelledStatus ? '❌' : '✓'}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">
+              {cancelledStatus ? 'Pedido cancelado' : 'Pedido confirmado!'}
+            </h2>
+            <p className="text-gray-400 text-sm mt-1">
+              {cancelledStatus
+                ? 'Entre em contato com a loja para mais informações.'
+                : `Olá, ${form.clientName.split(' ')[0]}! Acompanhe o status abaixo.`}
+            </p>
+          </div>
+        </div>
+
+        {/* Tracker de status */}
+        {!cancelledStatus && (
+          <div className="bg-white rounded-2xl shadow-sm p-5">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-5">Status do pedido</p>
+            <div className="flex items-start justify-between relative">
+              {/* Linha de progresso */}
+              <div className="absolute top-5 left-5 right-5 h-0.5 bg-gray-100" />
+              <div
+                className="absolute top-5 left-5 h-0.5 bg-[#EA4B92] transition-all duration-700"
+                style={{ width: activeIdx === 0 ? '0%' : `${(activeIdx / (STATUS_STEPS.length - 1)) * 100}%` }}
+              />
+              {STATUS_STEPS.map((s, i) => {
+                const done = i < activeIdx;
+                const active = i === activeIdx;
+                return (
+                  <div key={s.key} className="flex flex-col items-center gap-2 z-10 flex-1">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all duration-500 ${
+                      done    ? 'bg-[#EA4B92] shadow-md shadow-pink-200' :
+                      active  ? 'bg-[#EA4B92] shadow-lg shadow-pink-300 scale-110 ring-4 ring-pink-100' :
+                                'bg-gray-100'
+                    }`}>
+                      {done ? (
+                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      ) : (
+                        <span className={active ? 'text-white' : 'text-gray-300'}>{s.icon}</span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] font-bold text-center leading-tight ${active ? 'text-[#EA4B92]' : done ? 'text-gray-500' : 'text-gray-300'}`}>
+                      {s.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-center text-xs text-gray-400 mt-5">
+              Atualiza automaticamente a cada 20 segundos
+            </p>
+          </div>
+        )}
+
+        {/* Resumo do pedido */}
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 pt-4 pb-3">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Seu pedido</p>
+            {Array.from(cart.entries()).map(([id, qty]) => {
+              const p = store.products.find(p => p.id === id);
+              if (!p) return null;
+              return (
+                <div key={id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0 text-sm text-gray-700">
+                  <div className="flex items-center gap-2">
+                    <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">{qty}</span>
+                    <span>{p.name}</span>
+                  </div>
+                  <span className="font-semibold ml-2">{fmt(p.price * qty)}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="bg-gray-50 px-4 py-3 flex justify-between items-center">
+            <span className="text-sm font-bold text-gray-700">Total</span>
+            <span className="text-[#EA4B92] font-bold">{fmt(totalPrice)}</span>
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            setCart(new Map());
+            setStep('catalog');
+            setOrderId(null);
+            setForm({ clientName: '', clientPhone: '', deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup', deliveryAddress: '', notes: '' });
+          }}
+          className="w-full border-2 border-[#EA4B92] text-[#EA4B92] font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-transform"
+        >
+          Fazer outro pedido
+        </button>
+
+        <p className="text-center text-[11px] text-gray-300">
+          Criado com <span className="text-[#EA4B92] font-semibold">DocePreço</span>
         </p>
       </div>
-      <button
-        onClick={() => {
-          setCart(new Map());
-          setStep('catalog');
-          setForm({ clientName: '', clientPhone: '', deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup', deliveryAddress: '', notes: '' });
-        }}
-        className="bg-[#EA4B92] text-white font-bold py-3 px-8 rounded-2xl shadow-lg shadow-pink-200/60 active:scale-[0.98] transition-transform"
-      >
-        Fazer outro pedido
-      </button>
-      <p className="text-[11px] text-gray-300">
-        Criado com <span className="text-[#EA4B92] font-semibold">DocePreço</span>
-      </p>
     </div>
   );
 }

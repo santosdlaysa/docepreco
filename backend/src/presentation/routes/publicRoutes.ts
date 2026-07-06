@@ -177,4 +177,44 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
   }
 });
 
+router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) => {
+  try {
+    const { slug, orderId } = req.params;
+    const storeResult = await pool.query(
+      'SELECT user_id FROM store_settings WHERE slug = $1 AND active = TRUE',
+      [slug]
+    );
+    if (storeResult.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'Loja não encontrada' });
+      return;
+    }
+    const userId = storeResult.rows[0].user_id;
+    const orderResult = await pool.query(
+      `SELECT id, client_name, status, total_price, items, delivery_address, source, created_at
+       FROM orders WHERE id = $1 AND user_id = $2`,
+      [orderId, userId]
+    );
+    if (orderResult.rows.length === 0) {
+      res.status(404).json({ success: false, error: 'Pedido não encontrado' });
+      return;
+    }
+    const o = orderResult.rows[0];
+    res.json({
+      success: true,
+      data: {
+        id: o.id,
+        clientName: o.client_name,
+        status: o.status,
+        totalPrice: Number(o.total_price),
+        items: o.items ?? [],
+        deliveryAddress: o.delivery_address ?? null,
+        createdAt: o.created_at,
+      },
+    });
+  } catch (error) {
+    console.error('[Public Store] order status error:', error);
+    res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+});
+
 export default router;
