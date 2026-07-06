@@ -11,6 +11,7 @@ export interface StoreSettings {
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue?: number | null;
+  deliveryFee?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -53,6 +54,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     acceptsDelivery: row.accepts_delivery as boolean,
     acceptsPickup: row.accepts_pickup as boolean,
     minOrderValue: row.min_order_value ? Number(row.min_order_value) : null,
+    deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -115,6 +117,7 @@ export class PostgresStoreRepository {
     acceptsDelivery: boolean;
     acceptsPickup: boolean;
     minOrderValue: number | null;
+    deliveryFee: number | null;
   }>): Promise<StoreSettings> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -126,6 +129,7 @@ export class PostgresStoreRepository {
     if (data.acceptsDelivery !== undefined) { fields.push(`accepts_delivery = $${idx++}`); values.push(data.acceptsDelivery); }
     if (data.acceptsPickup !== undefined)   { fields.push(`accepts_pickup = $${idx++}`);   values.push(data.acceptsPickup); }
     if ('minOrderValue' in data)           { fields.push(`min_order_value = $${idx++}`);  values.push(data.minOrderValue ?? null); }
+    if ('deliveryFee' in data)             { fields.push(`delivery_fee = $${idx++}`);     values.push(data.deliveryFee ?? null); }
 
     fields.push(`updated_at = NOW()`);
     values.push(userId);

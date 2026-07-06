@@ -52,6 +52,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         acceptsDelivery: s.accepts_delivery,
         acceptsPickup: s.accepts_pickup,
         minOrderValue: s.min_order_value ? Number(s.min_order_value) : null,
+        deliveryFee: s.delivery_fee ? Number(s.delivery_fee) : null,
         phone: u.phone ?? null,
         instagramHandle: u.instagram_handle ?? null,
         products: productsResult.rows.map(p => ({
@@ -82,14 +83,15 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
 
     // Buscar loja
     const settingsResult = await pool.query(
-      'SELECT user_id, store_name, min_order_value FROM store_settings WHERE slug = $1 AND active = TRUE',
+      'SELECT user_id, store_name, min_order_value, delivery_fee FROM store_settings WHERE slug = $1 AND active = TRUE',
       [slug]
     );
     if (settingsResult.rows.length === 0) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
       return;
     }
-    const { user_id: userId, store_name: storeName, min_order_value: minOrderValue } = settingsResult.rows[0];
+    const { user_id: userId, store_name: storeName, min_order_value: minOrderValue, delivery_fee: deliveryFeeRaw } = settingsResult.rows[0];
+    const deliveryFee = deliveryFeeRaw ? Number(deliveryFeeRaw) : 0;
 
     // Buscar preços dos produtos (nunca confiar no preço enviado pelo cliente)
     const productIds = b.items.map((i: any) => i.productId);
@@ -119,6 +121,11 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
       return;
     }
 
+    // Aplicar taxa de entrega quando o tipo for 'delivery'
+    const isDelivery = b.deliveryType === 'delivery';
+    const appliedDeliveryFee = isDelivery && deliveryFee > 0 ? deliveryFee : 0;
+    const totalWithFee = totalPrice + appliedDeliveryFee;
+
     // Criar pedido (delivery_date = hoje, pois não há data específica no pedido online)
     const deliveryDate = new Date().toISOString().split('T')[0];
     const firstItem = items[0];
@@ -135,7 +142,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         firstItem.recipeName,
         firstItem.quantity,
         firstItem.unitPrice,
-        totalPrice,
+        totalWithFee,
         deliveryDate,
         JSON.stringify(items.map(i => ({ recipeId: i.productId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice }))),
         b.notes ? String(b.notes).trim() : null,

@@ -19,6 +19,7 @@ interface StoreData {
   minOrderValue: number | null;
   phone: string | null;
   instagramHandle: string | null;
+  deliveryFee: number | null;
   products: StoreProduct[];
 }
 
@@ -150,12 +151,15 @@ export function LojaPage() {
   }, [slug]);
 
   const totalItems = Array.from(cart.values()).reduce((a, b) => a + b, 0);
-  const totalPrice = store
+  const subtotal = store
     ? Array.from(cart.entries()).reduce((acc, [id, qty]) => {
         const p = store.products.find(p => p.id === id);
         return acc + (p ? p.price * qty : 0);
       }, 0)
     : 0;
+  const appliedFee =
+    form.deliveryType === 'delivery' && store?.deliveryFee ? store.deliveryFee : 0;
+  const totalPrice = subtotal + appliedFee;
 
   useEffect(() => {
     if (totalItems > 0 && prevTotal.current === 0) setCartVisible(true);
@@ -413,14 +417,28 @@ export function LojaPage() {
                 );
               })}
             </div>
-            <div className="bg-gray-50 px-4 py-3 flex justify-between items-center">
-              <span className="text-sm font-semibold text-gray-500">Total</span>
-              <span className="text-[#EA4B92] font-bold text-lg">{fmt(totalPrice)}</span>
+            <div className="bg-gray-50 px-4 divide-y divide-gray-100">
+              {appliedFee > 0 && (
+                <div className="flex justify-between items-center py-2.5">
+                  <span className="text-sm text-gray-500">Subtotal</span>
+                  <span className="text-sm text-gray-700">{fmt(subtotal)}</span>
+                </div>
+              )}
+              {appliedFee > 0 && (
+                <div className="flex justify-between items-center py-2.5">
+                  <span className="text-sm text-gray-500">Taxa de entrega</span>
+                  <span className="text-sm text-gray-700">{fmt(appliedFee)}</span>
+                </div>
+              )}
+              <div className="flex justify-between items-center py-3">
+                <span className="text-sm font-bold text-gray-700">Total</span>
+                <span className="text-[#EA4B92] font-bold text-lg">{fmt(totalPrice)}</span>
+              </div>
             </div>
-            {store.minOrderValue && totalPrice < store.minOrderValue && (
+            {store.minOrderValue && subtotal < store.minOrderValue && (
               <div className="px-4 pb-3">
                 <p className="text-xs text-amber-700 bg-amber-50 rounded-xl px-3 py-2 border border-amber-100">
-                  Pedido mínimo de {fmt(store.minOrderValue)}. Faltam {fmt(store.minOrderValue - totalPrice)}.
+                  Pedido mínimo de {fmt(store.minOrderValue)}. Faltam {fmt(store.minOrderValue - subtotal)}.
                 </p>
               </div>
             )}
