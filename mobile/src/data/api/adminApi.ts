@@ -39,6 +39,7 @@ export interface AdminUser {
   email: string;
   phone: string | null;
   isPremium: boolean;
+  planTier?: 'free' | 'premium' | 'master';
   premiumUntil: string | null;
   premiumPlatform: string | null;
   isActive: boolean;
@@ -140,15 +141,20 @@ export const adminApi = {
     return data.data;
   },
 
-  // Backend espera { isPremium, premiumUntil }
-  async setPremium(userId: string, active: boolean, days?: number): Promise<void> {
+  // Backend espera { isPremium, premiumUntil, planTier }
+  async setPremium(
+    userId: string,
+    active: boolean,
+    days?: number,
+    planTier: 'premium' | 'master' = 'premium',
+  ): Promise<void> {
     let premiumUntil: string | null = null;
     if (active && days) {
       const d = new Date();
       d.setDate(d.getDate() + days);
       premiumUntil = d.toISOString();
     }
-    await adminClient.post(`/admin/users/${userId}/premium`, { isPremium: active, premiumUntil });
+    await adminClient.post(`/admin/users/${userId}/premium`, { isPremium: active, premiumUntil, planTier });
   },
 
   // Backend exige { days, notificationTitle, notificationBody }
