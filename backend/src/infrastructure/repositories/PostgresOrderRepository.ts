@@ -35,6 +35,7 @@ export interface Order {
   payments: OrderPayment[];
   items: OrderItem[];
   notes?: string | null;
+  source: 'manual' | 'online';
   createdAt: string;
 }
 
@@ -157,6 +158,7 @@ export class PostgresOrderRepository {
       payments: (row.payments as OrderPayment[]) ?? [],
       items: (row.items as OrderItem[]) ?? [],
       notes: (row.notes as string) ?? null,
+      source: (row.source as 'manual' | 'online') ?? 'manual',
       createdAt: (row.created_at as Date).toISOString(),
     };
   }
