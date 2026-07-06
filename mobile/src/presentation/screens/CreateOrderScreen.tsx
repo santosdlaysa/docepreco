@@ -105,6 +105,9 @@ export const CreateOrderScreen: React.FC = () => {
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
   const [showAddPayment, setShowAddPayment] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [deliveryModalMethod, setDeliveryModalMethod] = useState<PaymentMethodType>('pix');
+  const [deliveryModalAmount, setDeliveryModalAmount] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
@@ -207,6 +210,47 @@ export const CreateOrderScreen: React.FC = () => {
     }
     setPayments(prev => [...prev, { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount, method: newPaymentMethod, date: new Date().toISOString().split('T')[0] }]);
     setNewPaymentAmount(''); setNewPaymentMethod('pix'); setShowAddPayment(false);
+  };
+
+  const handleDeliveryConfirm = async () => {
+    if (!validate()) { setShowDeliveryModal(false); return; }
+    setLoading(true);
+    try {
+      const orderItems: OrderItem[] = items.map(i => ({
+        recipeId: i.recipeId, recipeName: i.recipeName.trim(),
+        quantity: num(i.quantity), unitPrice: num(i.unitPrice),
+      }));
+      let finalPayments = [...payments];
+      const modalAmount = num(deliveryModalAmount);
+      if (remaining > 0) {
+        if (modalAmount <= 0) { showToast('Informe o valor recebido', 'warning'); setLoading(false); return; }
+        finalPayments = [...payments, { id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6), amount: modalAmount, method: deliveryModalMethod, date: new Date().toISOString().split('T')[0] }];
+      }
+      const finalPaid = finalPayments.reduce((s, p) => s + p.amount, 0);
+      const data = {
+        clientName: clientName.trim(), clientPhone: clientPhone.trim() || undefined,
+        recipeId: orderItems[0]?.recipeId,
+        recipeName: orderItems[0]?.recipeName || '',
+        quantity: orderItems[0]?.quantity || 1,
+        unitPrice: orderItems[0]?.unitPrice || 0,
+        totalPrice, items: orderItems,
+        deliveryDate: toIso(deliveryDate.trim()), deliveryTime: deliveryTime.trim() || undefined,
+        status: 'delivered' as OrderStatus,
+        paid: true,
+        paidAmount: finalPaid,
+        payments: finalPayments,
+        notes: notes.trim() || undefined,
+      };
+      if (isEditing) await orderStorage.update(orderId!, data);
+      else await orderStorage.create({ ...data, source: 'manual' as const });
+      try {
+        await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
+        showToast('Entregue e venda registrada!', 'success');
+      } catch { showToast('Entregue, mas erro ao registrar venda', 'warning'); }
+      setShowDeliveryModal(false);
+      navigation.goBack();
+    } catch { showToast('Erro ao finalizar entrega', 'error'); }
+    finally { setLoading(false); }
   };
 
   const maskDate = (text: string) => {
@@ -375,9 +419,10 @@ export const CreateOrderScreen: React.FC = () => {
                 <TouchableOpacity key={s.key} activeOpacity={isLocked ? 1 : 0.8} disabled={isLocked}
                   style={[st.statusChip, { backgroundColor: s.bg }, on && { borderWidth: 2, borderColor: s.color }]}
                   onPress={() => {
-                    if (s.key === 'delivered' && payments.length === 0) {
-                      showToast('Registre o pagamento antes de marcar como Entregue', 'warning');
-                      setShowAddPayment(true);
+                    if (s.key === 'delivered') {
+                      setDeliveryModalAmount(remaining > 0 ? String(remaining).replace('.', ',') : '');
+                      setDeliveryModalMethod('pix');
+                      setShowDeliveryModal(true);
                       return;
                     }
                     setStatus(s.key);
@@ -490,6 +535,96 @@ export const CreateOrderScreen: React.FC = () => {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* ── Modal confirmar entrega ── */}
+      <Modal visible={showDeliveryModal} transparent animationType="fade">
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 }}>
+            {/* Título */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DCF6E5', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="checkmark-circle" size={22} color="#1F8A48" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>Confirmar entrega</Text>
+                <Text style={{ fontSize: 12, color: INK2, marginTop: 1 }}>de {clientName || 'cliente'}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowDeliveryModal(false)}>
+                <Ionicons name="close" size={22} color={INK2} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Resumo de pagamento */}
+            <View style={{ backgroundColor: '#F5F5F7', borderRadius: 14, padding: 14, gap: 6 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 13, color: INK2 }}>Total da encomenda</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: INK }}>R$ {totalPrice.toFixed(2).replace('.', ',')}</Text>
+              </View>
+              {totalPaid > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 13, color: INK2 }}>Já recebido</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>R$ {totalPaid.toFixed(2).replace('.', ',')}</Text>
+                </View>
+              )}
+              {remaining > 0 && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingTop: 6, marginTop: 2 }}>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: INK }}>Restante a receber</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: PINK }}>R$ {remaining.toFixed(2).replace('.', ',')}</Text>
+                </View>
+              )}
+              {remaining === 0 && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingTop: 6, marginTop: 2 }}>
+                  <Ionicons name="checkmark-circle" size={14} color="#1F8A48" />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>Pedido já quitado</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Registro de pagamento (só se houver restante) */}
+            {remaining > 0 && (
+              <>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: INK }}>Forma de pagamento</Text>
+                <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+                  {PAYMENT_METHODS.map(m => (
+                    <TouchableOpacity key={m.key} onPress={() => setDeliveryModalMethod(m.key)} activeOpacity={0.8}
+                      style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
+                        backgroundColor: deliveryModalMethod === m.key ? PINK : '#F5F5F7',
+                        borderWidth: deliveryModalMethod === m.key ? 0 : 1, borderColor: '#E5E5E5' }}>
+                      <Ionicons name={m.icon} size={15} color={deliveryModalMethod === m.key ? '#fff' : INK2} />
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: deliveryModalMethod === m.key ? '#fff' : INK2 }}>{m.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <View style={[st.input]}>
+                  <Ionicons name="cash-outline" size={18} color={INK3} />
+                  <TextInput style={st.inputText} value={deliveryModalAmount}
+                    onChangeText={setDeliveryModalAmount} keyboardType="decimal-pad"
+                    placeholder="Valor recebido" placeholderTextColor={INK3} />
+                </View>
+              </>
+            )}
+
+            {/* Botões */}
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
+              <TouchableOpacity onPress={() => setShowDeliveryModal(false)} activeOpacity={0.8}
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E5E5E5' }}>
+                <Text style={{ fontWeight: '600', color: INK2 }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleDeliveryConfirm} disabled={loading} activeOpacity={0.85} style={{ flex: 2 }}>
+                <LinearGradient colors={['#34D399', '#059669']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 14 }}>
+                  {loading ? <ActivityIndicator size="small" color="#fff" /> : (
+                    <>
+                      <Ionicons name="checkmark-circle" size={18} color="#fff" />
+                      <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Confirmar entrega</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ── Recipe picker ── */}
       <Modal visible={pickingItemIdx !== null} animationType="slide" presentationStyle="pageSheet">
