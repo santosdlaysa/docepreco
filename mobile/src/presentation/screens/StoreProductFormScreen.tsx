@@ -12,6 +12,7 @@ import {
   Platform,
   Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -92,6 +93,24 @@ export const StoreProductFormScreen: React.FC = () => {
         .finally(() => setLoading(false));
     }
   }, []);
+
+  const handlePickPhoto = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showToast('Permissão de galeria necessária', 'warning');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.6,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]?.base64) {
+      setPhotoUrl(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
 
   const handleSelectRecipe = (recipe: Recipe) => {
     setRecipeId(recipe.id);
@@ -186,29 +205,24 @@ export const StoreProductFormScreen: React.FC = () => {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={st.body}>
 
-          {/* ── Photo URL ── */}
+          {/* ── Foto ── */}
           <Text style={st.label}>Foto do produto</Text>
-          {photoUrl.trim() ? (
-            <View style={st.photoPreviewRow}>
-              <Image source={{ uri: photoUrl.trim() }} style={st.photoThumb} resizeMode="cover" />
-              <View style={{ flex: 1 }}>
-                <Text style={st.photoUrlLabel} numberOfLines={2}>{photoUrl.trim()}</Text>
-                <TouchableOpacity onPress={() => setPhotoUrl('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                  <Text style={st.photoRemove}>Remover foto</Text>
-                </TouchableOpacity>
+          <TouchableOpacity style={st.photoBox} onPress={handlePickPhoto} activeOpacity={0.8}>
+            {photoUrl ? (
+              <Image source={{ uri: photoUrl }} style={st.photoBoxImage} resizeMode="cover" />
+            ) : (
+              <View style={st.photoBoxEmpty}>
+                <Ionicons name="camera-outline" size={32} color={INK3} />
+                <Text style={st.photoBoxHint}>Toque para escolher da galeria</Text>
               </View>
-            </View>
+            )}
+          </TouchableOpacity>
+          {photoUrl ? (
+            <TouchableOpacity style={st.photoRemoveBtn} onPress={() => setPhotoUrl('')} activeOpacity={0.7}>
+              <Ionicons name="trash-outline" size={14} color="#C0392B" />
+              <Text style={st.photoRemoveText}>Remover foto</Text>
+            </TouchableOpacity>
           ) : null}
-          <TextInput
-            style={st.input}
-            value={photoUrl}
-            onChangeText={setPhotoUrl}
-            placeholder="Cole o link (URL) da foto"
-            placeholderTextColor={INK3}
-            autoCapitalize="none"
-            keyboardType="url"
-            returnKeyType="next"
-          />
 
           {/* ── Name ── */}
           <Text style={st.label}>Nome do produto *</Text>
@@ -346,14 +360,21 @@ const st = StyleSheet.create({
 
   body: { paddingHorizontal: 18, paddingBottom: 24, gap: 4 },
 
-  photoPreviewRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 14, padding: 12,
-    marginBottom: 8, ...SHADOW,
+  photoBox: {
+    width: '100%', height: 160, borderRadius: 16,
+    backgroundColor: '#fff', overflow: 'hidden', ...SHADOW,
   },
-  photoThumb: { width: 60, height: 60, borderRadius: 10 },
-  photoUrlLabel: { fontSize: 12, color: INK2, flex: 1, marginBottom: 4 },
-  photoRemove: { fontSize: 12, color: '#C0392B', fontWeight: '600' },
+  photoBoxImage: { width: '100%', height: '100%' },
+  photoBoxEmpty: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 2, borderColor: '#EDD9F0', borderStyle: 'dashed', borderRadius: 16,
+  },
+  photoBoxHint: { fontSize: 13, color: INK3, fontWeight: '500' },
+  photoRemoveBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-end', marginTop: 6, paddingVertical: 4, paddingHorizontal: 8,
+  },
+  photoRemoveText: { fontSize: 12, color: '#C0392B', fontWeight: '600' },
 
   label: { fontSize: 13, fontWeight: '700', color: INK, marginTop: 12, marginBottom: 6, marginLeft: 2 },
   input: {
