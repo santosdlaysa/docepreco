@@ -82,21 +82,35 @@ export interface AdminMessage {
 }
 
 type RawAdminConversation = Partial<AdminConversation> & {
+  user_id?: string;
   company_name?: string;
+  name?: string;
+  last_message?: string;
+  last_message_at?: string;
+  unread_count?: number;
   user?: {
+    id?: string;
     companyName?: string;
     company_name?: string;
+    name?: string;
     email?: string;
   };
 };
 
 const normalizeConversation = (raw: RawAdminConversation): AdminConversation => ({
-  userId: raw.userId ?? '',
-  companyName: raw.companyName ?? raw.company_name ?? raw.user?.companyName ?? raw.user?.company_name ?? '',
+  userId: raw.userId ?? raw.user_id ?? raw.user?.id ?? '',
+  companyName:
+    raw.companyName ??
+    raw.company_name ??
+    raw.name ??
+    raw.user?.companyName ??
+    raw.user?.company_name ??
+    raw.user?.name ??
+    '',
   email: raw.email ?? raw.user?.email ?? '',
-  lastMessage: raw.lastMessage ?? '',
-  lastMessageAt: raw.lastMessageAt ?? '',
-  unreadCount: raw.unreadCount ?? 0,
+  lastMessage: raw.lastMessage ?? raw.last_message ?? '',
+  lastMessageAt: raw.lastMessageAt ?? raw.last_message_at ?? '',
+  unreadCount: raw.unreadCount ?? raw.unread_count ?? 0,
 });
 
 // ── API ──────────────────────────────────────────────────────────────────────
