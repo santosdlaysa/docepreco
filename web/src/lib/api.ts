@@ -646,7 +646,7 @@ export interface AppNotification {
   title: string;
   body: string;
   dataJson: string | null;
-  target: 'all' | 'premium' | 'free';
+  target: 'all' | 'premium' | 'free' | 'master';
   scheduledAt: string | null;
   sentAt: string | null;
   status: 'pending' | 'scheduled' | 'sent' | 'failed';

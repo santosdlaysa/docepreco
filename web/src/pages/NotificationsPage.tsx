@@ -227,6 +227,7 @@ export function NotificationsPage({ toast }: Props) {
                 >
                   <option value="all">Todos</option>
                   <option value="premium">Premium</option>
+                  <option value="master">Master</option>
                   <option value="free">Gratuito</option>
                 </select>
               </div>

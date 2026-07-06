@@ -509,6 +509,12 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'pix_requests', 'product_type', "VARCHAR(20) NOT NULL DEFAULT 'subscription'");
     await addColumnIfMissing(client, 'pix_requests', 'ref_id', 'UUID NULL');
 
+    // Permite segmentar notificações para o público Master (além de all/premium/free).
+    await client.query(`ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_target_check`);
+    await client.query(
+      `ALTER TABLE notifications ADD CONSTRAINT notifications_target_check CHECK (target IN ('all', 'premium', 'free', 'master'))`
+    );
+
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');
     await addColumnIfMissing(client, 'users', 'phone', 'VARCHAR(20) NULL');

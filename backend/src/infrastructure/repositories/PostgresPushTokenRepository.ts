@@ -25,9 +25,17 @@ export class PostgresPushTokenRepository {
     return result.rows.map(this.mapRow);
   }
 
-  async findByTarget(target: 'all' | 'premium' | 'free'): Promise<PushToken[]> {
+  async findByTarget(target: 'all' | 'premium' | 'free' | 'master'): Promise<PushToken[]> {
     if (target === 'all') {
       return this.findAll();
+    }
+    if (target === 'master') {
+      const result = await pool.query(
+        `SELECT pt.* FROM push_tokens pt
+         JOIN users u ON u.id = pt.user_id
+         WHERE u.plan_tier = 'master'`
+      );
+      return result.rows.map(this.mapRow);
     }
     if (target === 'premium') {
       const result = await pool.query(
