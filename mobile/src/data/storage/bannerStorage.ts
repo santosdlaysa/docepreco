@@ -1,6 +1,28 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { CarouselBanner } from '../api/bannerApi';
 
 const KEY = '@docepreco_dismissed_banners';
+const CAROUSEL_KEY = '@docepreco_carousel_cache';
+
+/** Cache local dos banners patrocinados (com a imagem base64) para exibição
+ *  instantânea/offline, evitando rebaixar a arte toda vez que a Home abre. */
+export const carouselCache = {
+  get: async (): Promise<CarouselBanner[]> => {
+    try {
+      const json = await AsyncStorage.getItem(CAROUSEL_KEY);
+      return json ? JSON.parse(json) : [];
+    } catch {
+      return [];
+    }
+  },
+  set: async (banners: CarouselBanner[]): Promise<void> => {
+    try {
+      await AsyncStorage.setItem(CAROUSEL_KEY, JSON.stringify(banners));
+    } catch {
+      // ignore — cache é best-effort
+    }
+  },
+};
 
 export const bannerStorage = {
   getDismissedIds: async (): Promise<string[]> => {

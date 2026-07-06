@@ -7,6 +7,7 @@ import { UsersPage } from '../pages/UsersPage';
 import { LogsPage } from '../pages/LogsPage';
 import { RequestLogsPage } from '../pages/RequestLogsPage';
 import { BannersPage } from '../pages/BannersPage';
+import { AdsPage } from '../pages/AdsPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
 import { TipsPage } from '../pages/TipsPage';
 import { SettingsPage } from '../pages/SettingsPage';
@@ -66,11 +67,12 @@ import {
   QrCode,
   Gift,
   Database,
+  Store,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'subscriptions' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads';
 
 interface NavItem {
   id: Page;
@@ -92,6 +94,7 @@ const NAV: NavItem[] = [
   { id: 'onboarding', label: 'Onboarding', icon: Smartphone },
 
   { id: 'banners', label: 'Banners', icon: Megaphone, section: 'Comunicação' },
+  { id: 'ads', label: 'Anúncios', icon: Store },
   { id: 'notifications', label: 'Notificações', icon: Bell },
   { id: 'tips', label: 'Dicas', icon: Lightbulb },
   { id: 'feedbacks', label: 'Feedbacks', icon: MessageCircle },
@@ -439,6 +442,7 @@ export default function AdminApp() {
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
             {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} toast={toast} />}
             {page === 'banners' && <BannersPage toast={toast} />}
+            {page === 'ads' && <AdsPage toast={toast} />}
             {page === 'notifications' && <NotificationsPage toast={toast} />}
             {page === 'tips' && <TipsPage toast={toast} />}
             {page === 'logs' && <LogsPage />}

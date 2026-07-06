@@ -20,6 +20,17 @@ export interface PixConfig {
   masterAnnual: PixPlanConfig;
 }
 
+export interface AdBannerPeriod {
+  days: number;
+  amountCents: number;
+  priceLabel: string;
+}
+
+export interface AdBannerConfig {
+  enabled: boolean;
+  periods: AdBannerPeriod[];
+}
+
 interface PlanConfig {
   freeRecipeLimit: number;
   premiumPrice: number;
@@ -29,7 +40,9 @@ interface PlanConfig {
   masterPrice?: number;
   masterFeatures?: string[];
   masterFreeDays?: number;
+  newUserTrialTier?: 'free' | 'premium' | 'master';
   pix?: PixConfig;
+  adBanner?: AdBannerConfig;
 }
 
 export interface MasterInfo {
@@ -102,6 +115,19 @@ export const planConfigApi = {
         masterFreeDays: data.data.masterFreeDays ?? 3,
         newUserTrialTier: data.data.newUserTrialTier ?? 'master',
       };
+    } catch {
+      return null;
+    }
+  },
+
+  /** Config de venda de anúncios no carrossel (preços e períodos). */
+  async getAdBannerConfig(): Promise<AdBannerConfig | null> {
+    try {
+      const { data } = await axios.get<{ success: boolean; data: PlanConfig }>(
+        `${BASE_URL}/admin/settings/plans`,
+        { timeout: 10000 },
+      );
+      return data.data.adBanner ?? null;
     } catch {
       return null;
     }

@@ -6,9 +6,11 @@ import { AuthRequest } from '../middleware/authMiddleware';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { createMpPixPayment, getMpPaymentInfo } from '../../infrastructure/services/mercadoPagoService';
+import { PostgresBannerRepository } from '../../infrastructure/repositories/PostgresBannerRepository';
 
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
+const bannerRepo = new PostgresBannerRepository();
 
 export class PixController {
   /**
@@ -33,7 +35,7 @@ export class PixController {
     try {
       // Check if user already has a pending request
       const existing = await pool.query(
-        `SELECT id, status, mp_qr_code, mp_qr_code_base64 FROM pix_requests WHERE user_id = $1 AND status = 'pending' LIMIT 1`,
+        `SELECT id, status, mp_qr_code, mp_qr_code_base64 FROM pix_requests WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription' LIMIT 1`,
         [userId]
       );
       if (existing.rows.length > 0) {
@@ -144,7 +146,7 @@ export class PixController {
       const result = await pool.query(
         `SELECT id, status, plan_label, amount_cents, created_at, reviewed_at, mp_qr_code, mp_qr_code_base64
          FROM pix_requests
-         WHERE user_id = $1
+         WHERE user_id = $1 AND product_type = 'subscription'
          ORDER BY created_at DESC
          LIMIT 1`,
         [userId]
@@ -176,7 +178,8 @@ export class PixController {
                 u.company_name, u.email, u.phone, u.is_premium, u.premium_until
          FROM pix_requests pr
          JOIN users u ON u.id = pr.user_id
-         ${status !== 'all' ? 'WHERE pr.status = $1' : ''}
+         WHERE pr.product_type = 'subscription'
+         ${status !== 'all' ? 'AND pr.status = $1' : ''}
          ORDER BY pr.created_at DESC
          LIMIT 100`,
         status !== 'all' ? [status] : []
@@ -310,7 +313,7 @@ export class PixController {
 
       // Busca a pix_request correspondente
       const reqResult = await pool.query(
-        `SELECT id, user_id, status, plan_tier, amount_cents FROM pix_requests WHERE id = $1`,
+        `SELECT id, user_id, status, plan_tier, amount_cents, product_type, ref_id FROM pix_requests WHERE id = $1`,
         [pixRequestId]
       );
 
@@ -325,6 +328,32 @@ export class PixController {
       }
 
       const userId = reqResult.rows[0].user_id;
+
+      // Compra de anúncio no carrossel → ativa o banner e encerra aqui.
+      if (reqResult.rows[0].product_type === 'ad_banner') {
+        const bannerId = reqResult.rows[0].ref_id as string | null;
+        await pool.query(
+          `UPDATE pix_requests SET status = 'approved', reviewed_at = NOW(), reviewed_by = 'mercadopago' WHERE id = $1`,
+          [pixRequestId]
+        );
+        if (bannerId) {
+          const banner = await bannerRepo.findById(bannerId);
+          if (banner) await bannerRepo.activateSponsored(bannerId, banner.durationDays);
+        }
+        const tokens = await pushTokenRepo.findByUserId(userId);
+        if (tokens.length > 0) {
+          await sendPushNotifications(
+            tokens.map(t => t.token),
+            'Anúncio no ar! 🎉',
+            'Seu pagamento foi confirmado e seu banner já está aparecendo na Home do DocePreço.',
+            { screen: 'Home' }
+          );
+        }
+        console.log(`[PIX Webhook] Anúncio ${bannerId} ativado via MP (payment ${paymentId})`);
+        return;
+      }
+
+
       const tier: 'premium' | 'master' = reqResult.rows[0].plan_tier === 'master' ? 'master' : 'premium';
       const premiumDays = tier === 'master' ? 30 : 30;
       const premiumUntil = new Date();

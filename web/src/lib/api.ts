@@ -617,6 +617,13 @@ export interface Banner {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** 'notification' = aviso; 'carousel' = anúncio patrocinado de confeitaria. */
+  placement?: 'notification' | 'carousel';
+  imageUrl?: string | null;
+  companyId?: string | null;
+  priority?: number;
+  paidUntil?: string | null;
+  durationDays?: number;
 }
 
 export interface NotificationTemplate {
@@ -716,6 +723,17 @@ export interface PixConfig {
   masterAnnual: PixPlanConfig;
 }
 
+export interface AdBannerPeriod {
+  days: number;
+  amountCents: number;
+  priceLabel: string;
+}
+
+export interface AdBannerConfig {
+  enabled: boolean;
+  periods: AdBannerPeriod[];
+}
+
 export interface PlanConfig {
   freeRecipeLimit: number;
   premiumPrice: number;
@@ -727,6 +745,7 @@ export interface PlanConfig {
   masterFreeDays: number;
   newUserTrialTier: 'free' | 'premium' | 'master';
   pix: PixConfig;
+  adBanner: AdBannerConfig;
 }
 
 // ── Feature Flags ──

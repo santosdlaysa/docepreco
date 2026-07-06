@@ -11,6 +11,18 @@ export interface Banner {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  /** 'notification' = aviso no meio da Home; 'carousel' = anúncio patrocinado no topo. */
+  placement: 'notification' | 'carousel';
+  /** Arte do banner de carrossel (data URI base64). */
+  imageUrl: string | null;
+  /** Confeitaria anunciante (dono do banner de carrossel). */
+  companyId: string | null;
+  /** Ordem no carrossel (maior aparece primeiro). */
+  priority: number;
+  /** Até quando o anúncio está pago/ativo. */
+  paidUntil: string | null;
+  /** Duração contratada em dias — usada para calcular paidUntil ao confirmar o pagamento. */
+  durationDays: number;
 }
 
 export class PostgresBannerRepository {
@@ -25,9 +37,23 @@ export class PostgresBannerRepository {
     const result = await pool.query(
       `SELECT * FROM banners
        WHERE is_active = TRUE
+         AND placement = 'notification'
          AND starts_at <= NOW()
          AND (ends_at IS NULL OR ends_at >= NOW())
        ORDER BY created_at DESC`
+    );
+    return result.rows.map(this.mapRow);
+  }
+
+  /** Banners de carrossel patrocinados que estão ativos E com pagamento em dia. */
+  async findActiveCarousel(): Promise<Banner[]> {
+    const result = await pool.query(
+      `SELECT * FROM banners
+       WHERE is_active = TRUE
+         AND placement = 'carousel'
+         AND paid_until IS NOT NULL
+         AND paid_until >= NOW()
+       ORDER BY priority DESC, created_at DESC`
     );
     return result.rows.map(this.mapRow);
   }
@@ -59,6 +85,49 @@ export class PostgresBannerRepository {
         data.endsAt ?? null,
       ]
     );
+    return this.mapRow(result.rows[0]);
+  }
+
+  /** Cria um banner de carrossel patrocinado (inativo até o PIX confirmar). */
+  async createSponsored(data: {
+    title: string;
+    message: string;
+    actionUrl?: string | null;
+    imageUrl: string;
+    companyId: string;
+    durationDays: number;
+    priority?: number;
+  }): Promise<Banner> {
+    const result = await pool.query(
+      `INSERT INTO banners
+         (title, message, type, placement, action_url, image_url, company_id, duration_days, priority, is_active)
+       VALUES ($1, $2, 'promo', 'carousel', $3, $4, $5, $6, $7, FALSE)
+       RETURNING *`,
+      [
+        data.title,
+        data.message,
+        data.actionUrl ?? null,
+        data.imageUrl,
+        data.companyId,
+        data.durationDays,
+        data.priority ?? 0,
+      ]
+    );
+    return this.mapRow(result.rows[0]);
+  }
+
+  /** Ativa o anúncio após o pagamento confirmado: liga is_active e estende paid_until. */
+  async activateSponsored(id: string, durationDays: number): Promise<Banner | null> {
+    const result = await pool.query(
+      `UPDATE banners SET
+         is_active = TRUE,
+         paid_until = GREATEST(COALESCE(paid_until, NOW()), NOW()) + ($2 || ' days')::interval,
+         updated_at = NOW()
+       WHERE id = $1
+       RETURNING *`,
+      [id, String(durationDays)]
+    );
+    if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
   }
 
@@ -118,6 +187,12 @@ export class PostgresBannerRepository {
       isActive: row.is_active as boolean,
       createdAt: (row.created_at as Date).toISOString(),
       updatedAt: (row.updated_at as Date).toISOString(),
+      placement: ((row.placement as string) ?? 'notification') as Banner['placement'],
+      imageUrl: (row.image_url as string) ?? null,
+      companyId: (row.company_id as string) ?? null,
+      priority: (row.priority as number) ?? 0,
+      paidUntil: row.paid_until ? (row.paid_until as Date).toISOString() : null,
+      durationDays: (row.duration_days as number) ?? 0,
     };
   }
 }

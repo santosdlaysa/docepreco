@@ -119,6 +119,8 @@ export function BannersPage({ toast }: Props) {
     }
   };
 
+  const notificationBanners = banners.filter(b => b.placement !== 'carousel');
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
@@ -135,7 +137,7 @@ export function BannersPage({ toast }: Props) {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
         {loading ? (
           <TableSkeleton rows={4} cols={6} />
-        ) : banners.length === 0 ? (
+        ) : notificationBanners.length === 0 ? (
           <p className="text-center text-gray-400 py-10">Nenhum banner cadastrado</p>
         ) : (
           <table className="w-full text-sm min-w-[600px]">
@@ -150,7 +152,7 @@ export function BannersPage({ toast }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-              {banners.map(b => {
+              {notificationBanners.map(b => {
                 const typeCfg = TYPE_CONFIG[b.type];
                 const TypeIcon = typeCfg.icon;
                 const status = getStatus(b);

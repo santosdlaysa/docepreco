@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { DEFAULT_QR_MONTHLY, DEFAULT_QR_ANNUAL } from './pixQrDefaults';
+import { AdBannerConfig, DEFAULT_AD_BANNER } from './adBannerDefaults';
 
 interface PixPlanConfig {
   /** Valor em centavos (ex.: 1490 = R$ 14,90). */
@@ -31,6 +32,7 @@ interface PlanConfig {
   masterFreeDays: number;
   newUserTrialTier: 'free' | 'premium' | 'master';
   pix: PixConfig;
+  adBanner: AdBannerConfig;
 }
 
 const DEFAULT_PIX: PixConfig = {
@@ -73,6 +75,7 @@ const DEFAULTS: PlanConfig = {
   masterFreeDays: 3,
   newUserTrialTier: 'master',
   pix: DEFAULT_PIX,
+  adBanner: DEFAULT_AD_BANNER,
 };
 
 /** Faz merge raso de um PixPlanConfig parcial com o default correspondente. */
@@ -97,6 +100,7 @@ export class PlanConfigController {
       const storedPixAnnual = settings.plan_pix_annual ? JSON.parse(settings.plan_pix_annual) : undefined;
       const storedPixMasterMonthly = settings.plan_pix_monthly_master ? JSON.parse(settings.plan_pix_monthly_master) : undefined;
       const storedPixMasterAnnual = settings.plan_pix_annual_master ? JSON.parse(settings.plan_pix_annual_master) : undefined;
+      const storedAdBanner = settings.plan_ad_banner ? JSON.parse(settings.plan_ad_banner) : undefined;
 
       const config: PlanConfig = {
         freeRecipeLimit: settings.plan_free_recipe_limit ? parseInt(settings.plan_free_recipe_limit) : DEFAULTS.freeRecipeLimit,
@@ -114,6 +118,12 @@ export class PlanConfigController {
           masterMonthly: mergePixPlan(storedPixMasterMonthly, DEFAULT_PIX.masterMonthly),
           masterAnnual: mergePixPlan(storedPixMasterAnnual, DEFAULT_PIX.masterAnnual),
         },
+        adBanner: {
+          enabled: typeof storedAdBanner?.enabled === 'boolean' ? storedAdBanner.enabled : DEFAULT_AD_BANNER.enabled,
+          periods: Array.isArray(storedAdBanner?.periods) && storedAdBanner.periods.length > 0
+            ? storedAdBanner.periods
+            : DEFAULT_AD_BANNER.periods,
+        },
       };
       res.json({ success: true, data: config });
     } catch {
@@ -123,7 +133,11 @@ export class PlanConfigController {
 
   async update(req: Request, res: Response): Promise<void> {
     try {
-      const { freeRecipeLimit, premiumPrice, premiumFeatures, freeFeatures, premiumFreeDays, masterPrice, masterFeatures, masterFreeDays, newUserTrialTier, pix } = req.body as Partial<PlanConfig>;
+      const { freeRecipeLimit, premiumPrice, premiumFeatures, freeFeatures, premiumFreeDays, masterPrice, masterFeatures, masterFreeDays, newUserTrialTier, pix, adBanner } = req.body as Partial<PlanConfig>;
+      const adBannerConfig: AdBannerConfig = {
+        enabled: typeof adBanner?.enabled === 'boolean' ? adBanner.enabled : DEFAULT_AD_BANNER.enabled,
+        periods: Array.isArray(adBanner?.periods) && adBanner.periods.length > 0 ? adBanner.periods : DEFAULT_AD_BANNER.periods,
+      };
       const pixConfig: PixConfig = {
         monthly: mergePixPlan(pix?.monthly, DEFAULT_PIX.monthly),
         annual: mergePixPlan(pix?.annual, DEFAULT_PIX.annual),
@@ -144,6 +158,7 @@ export class PlanConfigController {
         ['plan_pix_annual', JSON.stringify(pixConfig.annual)],
         ['plan_pix_monthly_master', JSON.stringify(pixConfig.masterMonthly)],
         ['plan_pix_annual_master', JSON.stringify(pixConfig.masterAnnual)],
+        ['plan_ad_banner', JSON.stringify(adBannerConfig)],
       ];
       for (const [key, value] of pairs) {
         await pool.query(
@@ -163,6 +178,7 @@ export class PlanConfigController {
         masterFreeDays: masterFreeDays ?? DEFAULTS.masterFreeDays,
         newUserTrialTier: newUserTrialTier ?? DEFAULTS.newUserTrialTier,
         pix: pixConfig,
+        adBanner: adBannerConfig,
       };
       res.json({ success: true, data: config });
     } catch (error) {
