@@ -9,6 +9,7 @@ import {
   Dimensions,
   ActivityIndicator,
   Linking,
+  RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,8 +29,8 @@ import { usePaywall } from '../premium/usePaywall';
 import { AdBanner } from '../ads';
 import { SupportFab } from '../components/SupportFab';
 import { isGuideAvailable } from './BeginnerGuideScreen';
-import { bannerApi, Banner } from '../../data/api/bannerApi';
-import { bannerStorage } from '../../data/storage/bannerStorage';
+import { bannerApi, Banner, CarouselBanner } from '../../data/api/bannerApi';
+import { bannerStorage, carouselCache } from '../../data/storage/bannerStorage';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 import { planConfigApi } from '../../data/api/planConfigApi';
 
@@ -64,8 +65,10 @@ export const HomeScreen: React.FC = () => {
   const [stats, setStats] = useState<AppStats | null>(null);
   const [allSales, setAllSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [carouselBanners, setCarouselBanners] = useState<CarouselBanner[]>([]);
   const [planBannerIndex, setPlanBannerIndex] = useState(0);
   const [premiumPriceLabel, setPremiumPriceLabel] = useState('R$ 14,90');
   const [masterPriceLabel, setMasterPriceLabel] = useState('R$ 30,00');
@@ -81,38 +84,62 @@ export const HomeScreen: React.FC = () => {
     setBanners(prev => prev.filter(b => b.id !== id));
   };
 
-  useEffect(() => {
+  const loadData = async () => {
     isGuideAvailable().then(setShowGuide).catch(() => {});
     bannerApi.getActive().then(async active => {
       await bannerStorage.clearExpired(active.map(b => b.id));
       const dismissed = await bannerStorage.getDismissedIds();
       setBanners(active.filter(b => !dismissed.includes(b.id)));
     }).catch(() => {});
-    Promise.all([
+    // Banners patrocinados: mostra o cache local na hora, atualiza da rede em seguida.
+    carouselCache.get().then(cached => {
+      if (cached.length) setCarouselBanners(cached);
+    }).catch(() => {});
+    bannerApi.getCarousel().then(list => {
+      setCarouselBanners(list);
+      carouselCache.set(list);
+    }).catch(() => {});
+    await Promise.all([
       stApi.getStats().then(setStats).catch(() => {}),
       sApi.getAll().then(setAllSales).catch(() => {}),
-    ]).finally(() => setLoading(false));
+    ]);
+  };
+
+  useEffect(() => {
+    loadData().finally(() => setLoading(false));
   }, []);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
 
   useEffect(() => {
     if (isPremium && !isAdmin) return;
-
     planConfigApi.getPixConfig().then(config => {
       if (!config) return;
       setPremiumPriceLabel(config.monthly.priceLabel);
       setMasterPriceLabel(config.masterMonthly.priceLabel);
     }).catch(() => {});
+  }, [isPremium, isAdmin]);
 
+  // Nº de slides do carrossel = planos (só p/ não-premium) + patrocinados + slide "anuncie".
+  const planSlideCount = (!isPremium || isAdmin) ? 2 : 0;
+  const totalSlides = planSlideCount + carouselBanners.length + 1;
+
+  // Auto-rotação genérica entre todos os slides.
+  useEffect(() => {
+    if (totalSlides <= 1) return;
     const interval = setInterval(() => {
       setPlanBannerIndex(current => {
-        const next = current === 0 ? 1 : 0;
+        const next = (current + 1) % totalSlides;
         planBannerRef.current?.scrollTo({ x: next * PLAN_BANNER_WIDTH, animated: true });
         return next;
       });
     }, 4500);
-
     return () => clearInterval(interval);
-  }, [isPremium, isAdmin]);
+  }, [totalSlides]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -161,7 +188,14 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <SafeAreaView style={s.safeArea} edges={['top']}>
-      <ScrollView style={s.scroll} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 32 }}>
+      <ScrollView
+        style={s.scroll}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 32 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[PINK]} tintColor={PINK} />
+        }
+      >
 
         {/* ═══════ TOP BAR ═══════ */}
         <View style={s.topbar}>
@@ -218,8 +252,8 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
-        {/* ═══════ SUBSCRIPTION PLANS ═══════ */}
-        {(!isPremium || isAdmin) && (
+        {/* ═══════ SUBSCRIPTION PLANS + SPONSORED ═══════ */}
+        {totalSlides > 0 && (
           <View style={s.planBannerSection}>
             <ScrollView
               ref={planBannerRef}
@@ -230,10 +264,10 @@ export const HomeScreen: React.FC = () => {
               snapToInterval={PLAN_BANNER_WIDTH}
               onMomentumScrollEnd={event => {
                 const next = Math.round(event.nativeEvent.contentOffset.x / PLAN_BANNER_WIDTH);
-                setPlanBannerIndex(Math.min(1, Math.max(0, next)));
+                setPlanBannerIndex(Math.min(totalSlides - 1, Math.max(0, next)));
               }}
             >
-              {([
+              {(!isPremium || isAdmin) && ([
                 {
                   key: 'premium',
                   gradient: ['#FF8FC0', '#EA4B92', '#C42C74'] as const,
@@ -295,9 +329,50 @@ export const HomeScreen: React.FC = () => {
                   </LinearGradient>
                 </TouchableOpacity>
               ))}
+
+              {carouselBanners.map(banner => (
+                <TouchableOpacity
+                  key={banner.id}
+                  style={{ width: PLAN_BANNER_WIDTH }}
+                  activeOpacity={banner.actionUrl ? 0.9 : 1}
+                  disabled={!banner.actionUrl}
+                  onPress={() => { if (banner.actionUrl) Linking.openURL(banner.actionUrl).catch(() => {}); }}
+                >
+                  {banner.imageUrl ? (
+                    <Image source={{ uri: banner.imageUrl }} style={s.sponsoredBanner} resizeMode="cover" />
+                  ) : (
+                    <View style={[s.sponsoredBanner, s.sponsoredFallback]}>
+                      <Text style={s.sponsoredFallbackTitle} numberOfLines={2}>{banner.title}</Text>
+                      {!!banner.message && <Text style={s.sponsoredFallbackMsg} numberOfLines={2}>{banner.message}</Text>}
+                    </View>
+                  )}
+                  <View style={s.sponsoredTag}><Text style={s.sponsoredTagTxt}>Anúncio</Text></View>
+                </TouchableOpacity>
+              ))}
+
+              {/* Slide de convite: confeitaria anuncia no carrossel */}
+              <TouchableOpacity
+                style={{ width: PLAN_BANNER_WIDTH }}
+                activeOpacity={0.9}
+                onPress={() => navigation.navigate('AnnounceBanner')}
+              >
+                <View style={[s.planBanner, s.announceBanner]}>
+                  <View style={s.announceIconBox}>
+                    <Ionicons name="megaphone" size={24} color={PINK} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.announceEyebrow}>SUA CONFEITARIA AQUI</Text>
+                    <Text style={s.announceTitle}>Anuncie no carrossel da Home</Text>
+                    <View style={s.announceCtaPill}>
+                      <Text style={s.announceCtaTxt}>Quero anunciar</Text>
+                      <Ionicons name="arrow-forward" size={12} color="#fff" />
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
             </ScrollView>
             <View style={s.planBannerDots}>
-              {[0, 1].map(index => (
+              {Array.from({ length: totalSlides }).map((_, index) => (
                 <View key={index} style={[s.planBannerDot, index === planBannerIndex && s.planBannerDotActive]} />
               ))}
             </View>
@@ -664,6 +739,60 @@ const s = StyleSheet.create({
   planBannerDots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 9 },
   planBannerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E6CFDA' },
   planBannerDotActive: { width: 18, backgroundColor: PINK },
+
+  /* ── Sponsored (confeitaria) carousel banner ── */
+  sponsoredBanner: {
+    width: '100%',
+    height: 168,
+    borderRadius: 22,
+    backgroundColor: '#F1E2DA',
+    overflow: 'hidden',
+  },
+  sponsoredFallback: { alignItems: 'flex-start', justifyContent: 'center', padding: 18 },
+  sponsoredFallbackTitle: { fontSize: 17, fontWeight: '800', color: INK },
+  sponsoredFallbackMsg: { fontSize: 12.5, color: INK2, fontWeight: '500', marginTop: 6, lineHeight: 17 },
+  sponsoredTag: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 6,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  sponsoredTagTxt: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.3 },
+  announceBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingHorizontal: 18,
+    backgroundColor: '#FFF0F6',
+    borderWidth: 1.5,
+    borderColor: '#FFD6E9',
+    borderStyle: 'dashed',
+  },
+  announceIconBox: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  announceEyebrow: { fontSize: 9.5, fontWeight: '900', letterSpacing: 1, color: PINK },
+  announceTitle: { fontSize: 16, lineHeight: 19, fontWeight: '800', color: INK, marginTop: 4 },
+  announceCtaPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: PINK,
+  },
+  announceCtaTxt: { fontSize: 11, fontWeight: '800', color: '#fff' },
 
   /* ── Hero revenue ── */
   heroWrap: { paddingHorizontal: 18, marginBottom: 18 },
