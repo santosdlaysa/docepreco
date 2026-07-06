@@ -4,6 +4,7 @@ import { authApi, AuthUser, PremiumPlatform, PlanTier } from '../../data/api/aut
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { isDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { getActiveEntitlements, getActiveEntitlementExpiration, isRevenueCatConfigured } from '../../data/premium/revenueCat';
+import { ADMIN_EMAIL } from '../../data/api/adminApi';
 
 interface PremiumContextData {
   isPremium: boolean;
@@ -11,6 +12,8 @@ interface PremiumContextData {
   planTier: PlanTier;
   /** Convenience flag: the user has an active Master subscription. */
   isMaster: boolean;
+  /** Whether the current account has administrative access. */
+  isAdmin: boolean;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   daysLeft: number | null;
@@ -29,6 +32,7 @@ const defaultValue: PremiumContextData = {
   isPremium: false,
   planTier: 'free',
   isMaster: false,
+  isAdmin: false,
   premiumUntil: null,
   premiumPlatform: null,
   daysLeft: null,
@@ -49,8 +53,6 @@ const computeDaysLeft = (premiumUntil: string | null): number | null => {
   if (ms <= 0) return 0;
   return Math.ceil(ms / (1000 * 60 * 60 * 24));
 };
-
-const ADMIN_EMAIL = 'santosdlaysa@gmail.com';
 
 const isActive = (user: Pick<AuthUser, 'isPremium' | 'premiumUntil' | 'email'> | null): boolean => {
   if (!user) return false;
@@ -152,6 +154,7 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     isPremium: isActive(user),
     planTier: tier,
     isMaster: tier === 'master',
+    isAdmin: user?.email === ADMIN_EMAIL,
     premiumUntil: user?.premiumUntil ?? null,
     premiumPlatform: user?.premiumPlatform ?? null,
     daysLeft: computeDaysLeft(user?.premiumUntil ?? null),

@@ -224,12 +224,18 @@ export async function initializeNotifications(): Promise<void> {
       }),
     });
 
-    // Configura canal Android
+    // Configura canais Android
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'DocePreco',
         importance: Notifications.AndroidImportance.DEFAULT,
         vibrationPattern: [0, 250, 250, 250],
+      });
+      await Notifications.setNotificationChannelAsync('orders', {
+        name: 'Novas encomendas',
+        importance: Notifications.AndroidImportance.HIGH,
+        vibrationPattern: [0, 250, 500, 250],
+        sound: 'default',
       });
     }
 

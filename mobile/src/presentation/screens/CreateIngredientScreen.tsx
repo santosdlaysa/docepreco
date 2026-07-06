@@ -358,7 +358,7 @@ export const CreateIngredientScreen: React.FC = () => {
 
 /* ──────────────────────── STYLES ──────────────────────── */
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
 
   /* sub-screen header (.sh) */
   sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },

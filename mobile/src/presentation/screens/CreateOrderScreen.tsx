@@ -186,7 +186,7 @@ export const CreateOrderScreen: React.FC = () => {
         notes: notes.trim() || undefined,
       };
       if (isEditing) { await orderStorage.update(orderId!, data); showToast('Encomenda atualizada!', 'success'); }
-      else { await orderStorage.create(data); showToast('Encomenda criada!', 'success'); }
+      else { await orderStorage.create({ ...data, source: 'manual' as const }); showToast('Encomenda criada!', 'success'); }
       const isFullyPaid = totalPrice > 0 && toCents(totalPaid) >= toCents(totalPrice);
       if (isFullyPaid && status === 'delivered') {
         setPendingSale({ clientName: data.clientName, recipeName: data.recipeName, totalPrice: data.totalPrice, recipeId: data.recipeId, quantity: data.quantity, unitPrice: data.unitPrice });
@@ -474,7 +474,7 @@ export const CreateOrderScreen: React.FC = () => {
 
       {/* ── Recipe picker ── */}
       <Modal visible={pickingItemIdx !== null} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={{ flex: 1, backgroundColor: CREAM }}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
           <View style={st.modalHead}>
             <Text style={st.modalTitle}>Escolher receita</Text>
             <TouchableOpacity onPress={() => setPickingItemIdx(null)}><Ionicons name="close" size={24} color={INK} /></TouchableOpacity>
@@ -549,7 +549,7 @@ export const CreateOrderScreen: React.FC = () => {
 
 /* ──────────────────────── STYLES ──────────────────────── */
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   body: { flex: 1, paddingHorizontal: 18 },
 
   sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },

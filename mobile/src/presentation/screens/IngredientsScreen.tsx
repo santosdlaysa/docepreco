@@ -256,7 +256,7 @@ export const IngredientsScreen: React.FC = () => {
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: CREAM },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   body: { paddingHorizontal: 18, paddingBottom: 80, gap: 11 },
 
   /* ── Header ── */

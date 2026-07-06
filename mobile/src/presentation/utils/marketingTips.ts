@@ -50,6 +50,19 @@ export const MARKETING_TIPS: MarketingTip[] = [
     link: { url: 'https://canva.link/0e147tvm3mph6ls', label: 'Abrir template de Story no Canva' },
   },
 
+  {
+    id: 'ig-template-story-oferta', category: 'instagram', icon: 'color-palette-outline',
+    title: 'Template de Story OFERTA pronto no Canva',
+    body: 'Não sabe como deixar o Story bonito? Use um modelo pronto: é só trocar a foto e o texto pelo seu doce e publicar. Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.',
+    link: { url: 'https://canva.link/n8rnl24knb1gyyt', label: 'Abrir template de Story oferta no Canva' },
+  },
+
+  {
+    id: 'ig-template-logo-loja', category: 'instagram', icon: 'color-palette-outline',
+    title: 'Logo editável para sua loja',
+    body: 'Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.',
+    link: { url: 'https://canva.link/4iyz3dsd6ku103p', label: 'Abrir logo editável no Canva' },
+  },
   // ── Instagram / redes ──
   {
     id: 'ig-constancia', category: 'instagram', icon: 'repeat-outline',

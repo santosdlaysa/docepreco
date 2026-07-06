@@ -12,7 +12,10 @@ import {
   demoSales,
   demoStats,
   demoCalculations,
+  demoStoreProducts,
+  demoStoreSettings,
 } from './demoData';
+import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
 
 // Cópias mutáveis dos arrays (reset ao sair do demo mode)
 let ingredients = [...demoIngredients];
@@ -309,5 +312,41 @@ export const demoExpenseApi = {
       }, {})
     ).map(([category, total]) => ({ category, total }));
     return { totalExpenses, byCategory };
+  },
+};
+
+// ── Loja Online ──
+
+let storeProducts = [...demoStoreProducts];
+let storeSettings = { ...demoStoreSettings };
+
+export const demoStoreApi = {
+  getProducts: async (): Promise<StoreProduct[]> => {
+    await delay();
+    return [...storeProducts];
+  },
+  createProduct: async (data: Omit<StoreProduct, 'id' | 'createdAt' | 'updatedAt'>): Promise<StoreProduct> => {
+    await delay();
+    const p: StoreProduct = { ...data, id: genId(), createdAt: now(), updatedAt: now() };
+    storeProducts.push(p);
+    return p;
+  },
+  updateProduct: async (id: string, data: Partial<Omit<StoreProduct, 'id' | 'createdAt' | 'updatedAt'>>): Promise<StoreProduct> => {
+    await delay();
+    storeProducts = storeProducts.map(p => p.id === id ? { ...p, ...data, updatedAt: now() } : p);
+    return storeProducts.find(p => p.id === id)!;
+  },
+  deleteProduct: async (id: string): Promise<void> => {
+    await delay();
+    storeProducts = storeProducts.filter(p => p.id !== id);
+  },
+  getSettings: async (): Promise<StoreSettings> => {
+    await delay();
+    return { ...storeSettings };
+  },
+  updateSettings: async (data: Partial<StoreSettings>): Promise<StoreSettings> => {
+    await delay();
+    storeSettings = { ...storeSettings, ...data };
+    return { ...storeSettings };
   },
 };

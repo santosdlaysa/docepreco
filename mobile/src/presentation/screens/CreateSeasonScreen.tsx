@@ -228,7 +228,7 @@ export const CreateSeasonScreen: React.FC = () => {
 };
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   body: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 40, gap: 14 },
 
   /* ── Header ── */

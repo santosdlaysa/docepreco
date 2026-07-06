@@ -453,7 +453,7 @@ export const ReportsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',

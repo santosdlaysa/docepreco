@@ -629,7 +629,7 @@ export const RecipeDetailScreen: React.FC = () => {
 const { width: SCREEN_W } = Dimensions.get('window');
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: CREAM },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
 
   /* ── Hero ── */
   hero: {

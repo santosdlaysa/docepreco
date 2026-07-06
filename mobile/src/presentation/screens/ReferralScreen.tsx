@@ -204,7 +204,7 @@ export const ReferralScreen: React.FC = () => {
 };
 
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { alignItems: 'center', justifyContent: 'center' },
   body: { paddingHorizontal: 18, gap: 14 },
 

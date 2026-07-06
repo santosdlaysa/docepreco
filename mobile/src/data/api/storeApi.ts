@@ -1,0 +1,36 @@
+import { apiClient } from './client';
+import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
+
+type ProductInput = Omit<StoreProduct, 'id' | 'createdAt' | 'updatedAt'>;
+type SettingsInput = Partial<Pick<StoreSettings, 'active' | 'storeName' | 'description' | 'acceptsDelivery' | 'acceptsPickup' | 'minOrderValue'>>;
+
+export const storeApi = {
+  getProducts: async (): Promise<StoreProduct[]> => {
+    const res = await apiClient.get('/store/products');
+    return res.data.data;
+  },
+
+  createProduct: async (data: ProductInput): Promise<StoreProduct> => {
+    const res = await apiClient.post('/store/products', data);
+    return res.data.data;
+  },
+
+  updateProduct: async (id: string, data: Partial<ProductInput>): Promise<StoreProduct> => {
+    const res = await apiClient.put(`/store/products/${id}`, data);
+    return res.data.data;
+  },
+
+  deleteProduct: async (id: string): Promise<void> => {
+    await apiClient.delete(`/store/products/${id}`);
+  },
+
+  getSettings: async (): Promise<StoreSettings> => {
+    const res = await apiClient.get('/store/settings');
+    return res.data.data;
+  },
+
+  updateSettings: async (data: SettingsInput): Promise<StoreSettings> => {
+    const res = await apiClient.put('/store/settings', data);
+    return res.data.data;
+  },
+};

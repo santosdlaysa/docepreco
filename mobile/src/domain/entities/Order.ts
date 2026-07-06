@@ -20,6 +20,7 @@ export interface Order {
   id: string;
   clientName: string;
   clientPhone?: string;
+  clientEmail?: string;
   recipeId?: string;
   recipeName: string;
   quantity: number;
@@ -33,5 +34,6 @@ export interface Order {
   payments?: OrderPayment[];
   items?: OrderItem[];
   notes?: string;
+  source?: 'manual' | 'online';
   createdAt: string;
 }

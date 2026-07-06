@@ -285,7 +285,7 @@ export const PaywallScreen: React.FC = () => {
 
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: CREAM }} edges={['bottom']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
 
         {/* ── Hero (pink gradient) ── */}

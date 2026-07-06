@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -96,7 +96,11 @@ export const SalesScreen: React.FC = () => {
   };
 
   useFocusEffect(useCallback(() => { setLoading(true); loadSales(); }, []));
-  useEffect(() => { setLoading(true); loadSales(); }, [period]);
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    loadSales();
+  }, [period]);
 
   const handleDelete = (sale: Sale) => {
     if (!guardAction()) return;
@@ -162,7 +166,7 @@ export const SalesScreen: React.FC = () => {
           <>
             {/* ── Hero summary ── */}
             <LinearGradient
-              colors={['#FF6AAE', PINK, '#C7367A']}
+              colors={['#FFB6D5', '#FF93C1', '#F56FAC']}
               locations={[0, 0.52, 1]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -200,8 +204,9 @@ export const SalesScreen: React.FC = () => {
             <Text style={st.secHeadTotal}>{fmtCurrency(section.total)}</Text>
           </View>
         )}
+        ItemSeparatorComponent={() => <View style={st.sep} />}
         renderItem={({ item }) => (
-          <TouchableOpacity activeOpacity={0.85} onLongPress={() => handleDelete(item)}>
+          <TouchableOpacity activeOpacity={0.6} onLongPress={() => handleDelete(item)}>
             <View style={st.row}>
               <View style={st.gi}>
                 <Ionicons name="cash-outline" size={18} color={GREEN} />
@@ -248,7 +253,7 @@ export const SalesScreen: React.FC = () => {
 
 /* ──────────────────────── STYLES ──────────────────────── */
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
 
   /* header (.sh) */
   sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 18, paddingVertical: 10 },
@@ -272,7 +277,7 @@ const st = StyleSheet.create({
 
   /* segmented (.seg) */
   seg: {
-    flexDirection: 'row', backgroundColor: '#FCEFE6', borderRadius: 13,
+    flexDirection: 'row', backgroundColor: '#F2F3F5', borderRadius: 13,
     padding: 4, gap: 3, marginBottom: 14,
   },
   segOpt: { flex: 1, alignItems: 'center', paddingVertical: 8, borderRadius: 10 },
@@ -283,17 +288,17 @@ const st = StyleSheet.create({
   /* section header */
   secHead: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    marginTop: 4, marginBottom: 9, paddingHorizontal: 4,
+    marginTop: 20, marginBottom: 2, paddingHorizontal: 2,
   },
   secHeadLabel: { fontSize: 13, fontWeight: '700', color: INK2, textTransform: 'uppercase', letterSpacing: 0.4 },
   secHeadTotal: { fontSize: 13, fontWeight: '700', color: GREEN },
 
-  /* sale rows (.gcard + .grow) */
+  /* sale rows — listagem */
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: '#fff', borderRadius: 18, padding: 13, paddingHorizontal: 15,
-    marginBottom: 1, ...SHADOW,
+    paddingVertical: 12, paddingHorizontal: 2,
   },
+  sep: { height: 1, backgroundColor: LINE, marginLeft: 52 },
   gi: {
     width: 40, height: 40, borderRadius: 12, backgroundColor: '#DCF6E5',
     alignItems: 'center', justifyContent: 'center',

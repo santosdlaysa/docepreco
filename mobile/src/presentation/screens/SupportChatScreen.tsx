@@ -308,7 +308,7 @@ const SHADOW = {
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: CREAM },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   flex: { flex: 1 },
 
   /* ── Header ── */

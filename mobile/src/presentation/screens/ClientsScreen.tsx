@@ -251,7 +251,7 @@ export const ClientsScreen: React.FC = () => {
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: CREAM },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   body: { paddingHorizontal: 18, gap: 12, paddingBottom: 20 },
 
   /* ── Header ── */

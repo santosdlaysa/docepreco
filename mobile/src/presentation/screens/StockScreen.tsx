@@ -316,7 +316,7 @@ const StockModal: React.FC<{
 };
 
 const s = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
@@ -348,7 +348,7 @@ const s = StyleSheet.create({
   emptyDesc: { fontSize: 13, color: INK2, textAlign: 'center', lineHeight: 19 },
 
   /* modal */
-  modalSafe: { flex: 1, backgroundColor: CREAM },
+  modalSafe: { flex: 1, backgroundColor: '#FFFFFF' },
   modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: LINE, backgroundColor: '#fff' },
   modalTitle: { fontSize: 19, fontWeight: '700', color: INK, flex: 1, marginRight: 12 },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: INK, marginBottom: 7, marginLeft: 2 },

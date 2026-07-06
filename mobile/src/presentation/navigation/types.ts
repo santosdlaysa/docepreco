@@ -22,7 +22,7 @@ export type RootStackParamList = {
   PrivacyPolicy: undefined;
   Paywall: { trigger?: PaywallTrigger } | undefined;
   PixPayment: { plan?: 'monthly' | 'annual'; tier?: 'premium' | 'master' } | undefined;
-  Orders: undefined;
+  Orders: { initialFilter?: 'online' } | undefined;
   CreateOrder: undefined;
   EditOrder: { orderId: string };
   Clients: undefined;
@@ -51,4 +51,7 @@ export type RootStackParamList = {
   AdminSupportChat: { userId: string; companyName: string };
   PricingTutorial: undefined;
   RecipeTutorial: undefined;
+  Store: undefined;
+  StoreProductForm: { productId?: string } | undefined;
+  StoreSettings: undefined;
 };

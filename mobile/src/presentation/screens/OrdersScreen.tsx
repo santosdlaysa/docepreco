@@ -17,11 +17,12 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Order, OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
+import { saleApi } from '../../data/api/saleApi';
 import { recipeApi } from '../../data/api/recipeApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { applySaleDeduction } from '../../data/stock/stockStorage';
@@ -34,6 +35,7 @@ import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type RouteProps = RouteProp<RootStackParamList, 'Orders'>;
 
 /* ─── Design tokens ─── */
 const INK = '#3D2233';
@@ -73,8 +75,11 @@ const STATUS_STAGES: { key: OrderStatus; label: string }[] = [
   { key: 'delivered', label: 'Entregue' },
 ];
 
-const FILTER_ALL: { key: OrderStatus | 'all'; label: string }[] = [
+type FilterKey = OrderStatus | 'all' | 'online';
+
+const FILTER_ALL: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'Todos' },
+  { key: 'online', label: '🔗 Online' },
   { key: 'pending', label: 'Pendente' },
   { key: 'in_progress', label: 'Produção' },
   { key: 'done', label: 'Pronto' },
@@ -83,6 +88,7 @@ const FILTER_ALL: { key: OrderStatus | 'all'; label: string }[] = [
 
 export const OrdersScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
   const { guardScreen } = usePaywall();
   const { showToast } = useToast();
   const { t } = useTranslation();
@@ -90,7 +96,7 @@ export const OrdersScreen: React.FC = () => {
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
   const [orders, setOrders] = useState<Order[]>([]);
-  const [filter, setFilter] = useState<OrderStatus | 'all'>('all');
+  const [filter, setFilter] = useState<FilterKey>(route.params?.initialFilter ?? 'all');
   const [loading, setLoading] = useState(true);
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
@@ -124,7 +130,11 @@ export const OrdersScreen: React.FC = () => {
     finally { setLoading(false); }
   };
 
-  const filtered = filter === 'all' ? orders : orders.filter(o => o.status === filter);
+  const filtered = filter === 'all'
+    ? orders
+    : filter === 'online'
+      ? orders.filter(o => o.source === 'online')
+      : orders.filter(o => o.status === (filter as OrderStatus));
 
   const sections: Section[] = (() => {
     const map = new Map<string, Order[]>();
@@ -178,6 +188,20 @@ export const OrdersScreen: React.FC = () => {
     loadOrders();
   };
 
+  const registerSale = async (order: Order) => {
+    try {
+      const items = order.items && order.items.length > 0 ? order.items : [{ recipeId: order.recipeId, recipeName: order.recipeName, quantity: order.quantity, unitPrice: order.unitPrice }];
+      const today = new Date().toISOString().split('T')[0];
+      for (const item of items) {
+        if (!item.recipeId) continue;
+        await saleApi.create({ recipeId: item.recipeId, quantitySold: item.quantity, salePrice: item.unitPrice, saleDate: today });
+      }
+      showToast('Venda registrada!', 'success');
+    } catch {
+      showToast('Erro ao registrar venda', 'error');
+    }
+  };
+
   const handleAddPayment = async () => {
     if (!paymentModalOrder) return;
     const amount = parseMoney(newPaymentAmount);
@@ -227,9 +251,16 @@ export const OrdersScreen: React.FC = () => {
           {/* Top: name + total */}
           <View style={st.cardTop}>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={st.cardRecipe}>
-                {item.items && item.items.length > 1 ? `${item.items[0].recipeName} +${item.items.length - 1}` : item.recipeName}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={st.cardRecipe}>
+                  {item.items && item.items.length > 1 ? `${item.items[0].recipeName} +${item.items.length - 1}` : item.recipeName}
+                </Text>
+                {item.source === 'online' && (
+                  <View style={st.onlineBadge}>
+                    <Text style={st.onlineBadgeText}>Online</Text>
+                  </View>
+                )}
+              </View>
               <Text style={st.cardClient}>
                 {item.clientName} · {item.items && item.items.length > 1 ? `${item.items.length} produtos` : `${item.quantity} un × ${fmtCurrency(item.unitPrice)}`}
               </Text>
@@ -461,7 +492,7 @@ export const OrdersScreen: React.FC = () => {
 
 /* ──────────────────────── STYLES ──────────────────────── */
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
 
   /* header */
   sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
@@ -494,6 +525,8 @@ const st = StyleSheet.create({
   badgeGreen: { backgroundColor: '#DCF6E5' },
   badgeYellow: { backgroundColor: '#FFF1CE' },
   badgeText: { fontSize: 11, fontWeight: '700' },
+  onlineBadge: { backgroundColor: '#EDE4FB', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+  onlineBadgeText: { fontSize: 10, fontWeight: '700', color: '#7C3AED' },
 
   /* partial payments */
   partialRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 8, flexWrap: 'wrap' },

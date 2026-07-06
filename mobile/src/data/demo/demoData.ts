@@ -3,6 +3,7 @@ import { Recipe } from '../../domain/entities/Recipe';
 import { Sale } from '../../domain/entities/Sale';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { AppStats } from '../api/statsApi';
+import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
 import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 
 const now = new Date().toISOString();
@@ -232,4 +233,23 @@ export const demoStats: AppStats = {
     totalRevenue: s.totalRevenue,
     saleDate: s.saleDate,
   })),
+};
+
+// ── Loja Online ──
+
+export const demoStoreProducts: StoreProduct[] = [
+  { id: 'demo-prod-1', name: 'Brigadeiro Gourmet', description: 'Caixinha com 9 unidades', publicPrice: 45.00, available: true, recipeId: 'demo-rec-1', photoUrl: undefined, createdAt: now, updatedAt: now },
+  { id: 'demo-prod-2', name: 'Bolo de Pote', description: 'Sabores variados', publicPrice: 25.00, available: true, recipeId: undefined, photoUrl: undefined, createdAt: now, updatedAt: now },
+  { id: 'demo-prod-3', name: 'Trufas Sortidas', description: 'Caixa com 12 unidades', publicPrice: 60.00, available: false, recipeId: undefined, photoUrl: undefined, createdAt: now, updatedAt: now },
+];
+
+export const demoStoreSettings: StoreSettings = {
+  active: true,
+  storeName: 'Doceria Demo',
+  slug: 'doceria-demo',
+  storeLink: 'https://docepreco.com/loja/doceria-demo',
+  description: 'Confeitaria artesanal com produtos frescos!',
+  acceptsDelivery: true,
+  acceptsPickup: true,
+  minOrderValue: 30,
 };

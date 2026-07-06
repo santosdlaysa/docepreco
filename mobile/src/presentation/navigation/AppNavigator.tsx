@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, NavigationContainerRef, useNavigationState } from '@react-navigation/native';
@@ -51,6 +51,9 @@ import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
 import { AdminPixScreen } from '../screens/admin/AdminPixScreen';
 import { AdminSupportScreen } from '../screens/admin/AdminSupportScreen';
 import { AdminSupportChatScreen } from '../screens/admin/AdminSupportChatScreen';
+import { StoreScreen } from '../screens/StoreScreen';
+import { StoreProductFormScreen } from '../screens/StoreProductFormScreen';
+import { StoreSettingsScreen } from '../screens/StoreSettingsScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { authApi } from '../../data/api/authApi';
@@ -59,6 +62,7 @@ import { colors } from '../theme/colors';
 import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { identifyRevenueCatUser, logoutRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { registerPushToken } from '../utils/notifications';
+import * as Notifications from 'expo-notifications';
 import { requestAdConsent } from '../ads';
 import { initializeMobileAds } from '../ads/initMobileAds';
 import { usePremium } from '../context/PremiumContext';
@@ -232,6 +236,32 @@ export function AppNavigator() {
         });
       }
     }
+  }, [authState]);
+
+  useEffect(() => {
+    if (authState !== 'app') return;
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data as Record<string, unknown>;
+      if (data?.type === 'new_order') {
+        navigationRef.current?.navigate('Orders', { initialFilter: 'online' });
+      }
+    });
+    const foregroundSub = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data as Record<string, unknown>;
+      if (data?.type !== 'new_order') return;
+      Alert.alert(
+        '🛍️ Novo pedido recebido!',
+        notification.request.content.body ?? 'Um cliente fez um pedido na sua loja.',
+        [
+          { text: 'Ver depois', style: 'cancel' },
+          { text: 'Ver pedido', onPress: () => navigationRef.current?.navigate('Orders', { initialFilter: 'online' }) },
+        ]
+      );
+    });
+    return () => {
+      sub.remove();
+      foregroundSub.remove();
+    };
   }, [authState]);
 
   const handleSetCompanyLogo = async (logo: string | null) => {
@@ -445,6 +475,9 @@ export function AppNavigator() {
           <Stack.Screen name="AdminPix" component={AdminPixScreen} />
           <Stack.Screen name="AdminSupport" component={AdminSupportScreen} />
           <Stack.Screen name="AdminSupportChat" component={AdminSupportChatScreen} />
+          <Stack.Screen name="Store" component={StoreScreen} />
+          <Stack.Screen name="StoreProductForm" component={StoreProductFormScreen} />
+          <Stack.Screen name="StoreSettings" component={StoreSettingsScreen} />
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}

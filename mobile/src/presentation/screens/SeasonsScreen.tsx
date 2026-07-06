@@ -184,7 +184,7 @@ export const SeasonsScreen: React.FC = () => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: CREAM },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { padding: 20, paddingBottom: 40, flexGrow: 1 },
 
   /* ── Header ── */

@@ -378,7 +378,7 @@ export const ProfileScreen: React.FC = () => {
 
 /* ──────────────────────── STYLES ──────────────────────── */
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
   body: { paddingHorizontal: 18, gap: 14 },
 
   /* back */

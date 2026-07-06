@@ -281,7 +281,7 @@ export const CreateSaleScreen: React.FC = () => {
 
 /* ──────────────────────── STYLES ──────────────────────── */
 const st = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: CREAM },
+  safe: { flex: 1, backgroundColor: '#FFFFFF' },
 
   /* header (.sh) */
   sh: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
@@ -331,7 +331,7 @@ const st = StyleSheet.create({
   btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 
   /* modal */
-  modalSafe: { flex: 1, backgroundColor: CREAM },
+  modalSafe: { flex: 1, backgroundColor: '#FFFFFF' },
   modalHead: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     padding: 18, borderBottomWidth: 1, borderBottomColor: LINE, backgroundColor: '#fff',

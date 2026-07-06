@@ -238,7 +238,7 @@ export const resetGuide = async (): Promise<void> => {
 };
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: CREAM },
+  container: { flex: 1, backgroundColor: '#FFFFFF' },
   body: { paddingHorizontal: 18, gap: 16 },
 
   /* ── Header ── */

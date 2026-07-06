@@ -281,7 +281,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
 };
 
 const st = StyleSheet.create({
-  root: { flex: 1, backgroundColor: CREAM },
+  root: { flex: 1, backgroundColor: '#FFFFFF' },
 
   // gradient header
   gradient:    { paddingTop: Platform.OS === 'ios' ? 8 : 16, paddingBottom: 28, paddingHorizontal: 20 },

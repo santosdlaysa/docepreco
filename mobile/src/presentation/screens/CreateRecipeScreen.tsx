@@ -722,7 +722,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
   if (loadingData) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: CREAM2 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SH }}>
             <Ionicons name="arrow-back" size={20} color={INK} />
@@ -764,7 +764,7 @@ export const CreateRecipeScreen: React.FC = () => {
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: CREAM2 }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
       {/* ── Header ── */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SH }}>

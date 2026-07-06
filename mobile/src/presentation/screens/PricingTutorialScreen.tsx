@@ -335,7 +335,7 @@ export const PricingTutorialScreen: React.FC = () => {
 const s = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: CREAM,
+    backgroundColor: '#FFFFFF',
   },
   header: {
     flexDirection: 'row',

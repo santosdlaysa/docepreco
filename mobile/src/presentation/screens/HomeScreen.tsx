@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
   Text,
@@ -31,17 +31,17 @@ import { isGuideAvailable } from './BeginnerGuideScreen';
 import { bannerApi, Banner } from '../../data/api/bannerApi';
 import { bannerStorage } from '../../data/storage/bannerStorage';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { planConfigApi } from '../../data/api/planConfigApi';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const PLAN_BANNER_WIDTH = SCREEN_WIDTH - 36;
 
 // ── Design tokens (from reference) ──
 const INK = '#3D2233';
 const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
 const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
 const PINK = '#EA4B92';
 const GREEN = '#43BE6E';
 
@@ -52,13 +52,12 @@ const BANNER_CONFIG: Record<Banner['type'], { bg: string; border: string; icon: 
   update:  { bg: '#DCF6E5', border: '#A8E6C0', icon: 'arrow-up-circle-outline',    iconColor: GREEN },
 };
 
-const THUMB_COLORS = ['#5E3A23', '#EA4B92', '#FFB01F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4', '#FF9F43'];
 const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { companyName, companyLogo } = useAuth();
-  const { isPremium, isMaster, isInTrial, daysLeft } = usePremium();
+  const { isPremium, isMaster, isAdmin, isInTrial, daysLeft } = usePremium();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { requirePremium } = usePaywall();
 
@@ -67,6 +66,10 @@ export const HomeScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showGuide, setShowGuide] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [planBannerIndex, setPlanBannerIndex] = useState(0);
+  const [premiumPriceLabel, setPremiumPriceLabel] = useState('R$ 14,90');
+  const [masterPriceLabel, setMasterPriceLabel] = useState('R$ 30,00');
+  const planBannerRef = useRef<ScrollView>(null);
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const stApi = isDemoMode() ? demoStatsApi : statsApi;
@@ -90,6 +93,26 @@ export const HomeScreen: React.FC = () => {
       sApi.getAll().then(setAllSales).catch(() => {}),
     ]).finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (isPremium && !isAdmin) return;
+
+    planConfigApi.getPixConfig().then(config => {
+      if (!config) return;
+      setPremiumPriceLabel(config.monthly.priceLabel);
+      setMasterPriceLabel(config.masterMonthly.priceLabel);
+    }).catch(() => {});
+
+    const interval = setInterval(() => {
+      setPlanBannerIndex(current => {
+        const next = current === 0 ? 1 : 0;
+        planBannerRef.current?.scrollTo({ x: next * PLAN_BANNER_WIDTH, animated: true });
+        return next;
+      });
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [isPremium, isAdmin]);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -119,14 +142,6 @@ export const HomeScreen: React.FC = () => {
   }, []);
 
   const maxWeekly = Math.max(...weeklyData, 1);
-
-  const recentSales = useMemo(
-    () => [...allSales].sort((a, b) => {
-      const dc = b.saleDate.localeCompare(a.saleDate);
-      return dc !== 0 ? dc : b.createdAt.localeCompare(a.createdAt);
-    }).slice(0, 3),
-    [allSales],
-  );
 
   const now = new Date();
   const weekday = now.toLocaleDateString('pt-BR', { weekday: 'long' });
@@ -203,33 +218,120 @@ export const HomeScreen: React.FC = () => {
           </View>
         )}
 
+        {/* ═══════ SUBSCRIPTION PLANS ═══════ */}
+        {(!isPremium || isAdmin) && (
+          <View style={s.planBannerSection}>
+            <ScrollView
+              ref={planBannerRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              decelerationRate="fast"
+              snapToInterval={PLAN_BANNER_WIDTH}
+              onMomentumScrollEnd={event => {
+                const next = Math.round(event.nativeEvent.contentOffset.x / PLAN_BANNER_WIDTH);
+                setPlanBannerIndex(Math.min(1, Math.max(0, next)));
+              }}
+            >
+              {([
+                {
+                  key: 'premium',
+                  gradient: ['#FF8FC0', '#EA4B92', '#C42C74'] as const,
+                  accent: PINK,
+                  titleColor: '#FFFFFF',
+                  eyebrowColor: 'rgba(255,255,255,0.85)',
+                  blob: 'rgba(255,255,255,0.16)',
+                  icon: 'diamond' as const,
+                  eyebrow: 'PLANO PREMIUM',
+                  title: 'Faça sua confeitaria crescer',
+                  price: premiumPriceLabel,
+                  link: 'Ver benefícios',
+                  trigger: { kind: 'manual' as const },
+                },
+                {
+                  key: 'master',
+                  gradient: ['#A97BF0', '#7C3AED', '#5B21B6'] as const,
+                  accent: '#7C3AED',
+                  titleColor: '#FFFFFF',
+                  eyebrowColor: 'rgba(255,255,255,0.85)',
+                  blob: 'rgba(255,255,255,0.16)',
+                  icon: 'trophy' as const,
+                  eyebrow: 'PLANO MASTER',
+                  title: 'Controle total do seu negócio',
+                  price: masterPriceLabel,
+                  link: 'Conhecer o Master',
+                  trigger: { kind: 'master' as const },
+                },
+              ]).map(plan => (
+                <TouchableOpacity
+                  key={plan.key}
+                  style={{ width: PLAN_BANNER_WIDTH }}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('Paywall', { trigger: plan.trigger })}
+                >
+                  <LinearGradient
+                    colors={plan.gradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.planBanner}
+                  >
+                    {/* Decoração de fundo */}
+                    <View style={[s.planBlob, s.planBlobOne, { backgroundColor: plan.blob }]} />
+                    <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: plan.blob }]} />
+                    <Ionicons name={plan.icon} size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
+
+                    <View style={s.planBannerOverlay}>
+                      <View style={s.planIconBox}><Ionicons name={plan.icon} size={22} color={plan.accent} /></View>
+                      <View style={s.planBannerContent}>
+                        <Text style={[s.planBannerEyebrow, { color: plan.eyebrowColor }]}>{plan.eyebrow}</Text>
+                        <Text style={[s.planBannerTitle, { color: plan.titleColor }]}>{plan.title}</Text>
+                        <Text style={[s.planBannerPrice, { color: '#FFFFFF' }]}>{plan.price}<Text style={s.planBannerPeriod}>/mês</Text></Text>
+                        <View style={s.planBannerLink}>
+                          <Text style={[s.planBannerLinkText, { color: plan.accent }]}>{plan.link}</Text>
+                          <Ionicons name="arrow-forward" size={12} color={plan.accent} />
+                        </View>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View style={s.planBannerDots}>
+              {[0, 1].map(index => (
+                <View key={index} style={[s.planBannerDot, index === planBannerIndex && s.planBannerDotActive]} />
+              ))}
+            </View>
+          </View>
+        )}
+
         {/* ═══════ HERO REVENUE ═══════ */}
         <View style={s.heroWrap}>
           <LinearGradient
-            colors={['#FF6AAE', PINK, '#C7367A']}
+            colors={['#E23B87', '#EA4B92', '#F56FAC']}
             locations={[0, 0.52, 1]}
             start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+            end={{ x: 1, y: 0 }}
             style={s.hero}
           >
-            <Text style={s.heroLabel}>Faturamento de hoje</Text>
-            <Text style={s.heroBig}>{formatCurrency(todayRevenue)}</Text>
-            <Text style={s.heroSub}>
-              {todaySales.length} venda{todaySales.length !== 1 ? 's' : ''} · lucro estimado {formatCurrency(todayProfit)}
-            </Text>
+            <View style={s.heroTopRow}>
+              <Text style={s.heroLabel}>Faturamento de hoje</Text>
+              <View style={s.heroSalesPill}>
+                <Ionicons name="cart" size={12} color="#fff" />
+                <Text style={s.heroSalesPillTxt}>{todaySales.length} venda{todaySales.length !== 1 ? 's' : ''}</Text>
+              </View>
+            </View>
 
-            <View style={s.heroStats}>
-              <View style={s.heroStat}>
-                <Text style={s.heroStatVal}>{formatCurrency(stats?.monthlyRevenue ?? 0)}</Text>
-                <Text style={s.heroStatLbl}>no mês</Text>
+            <Text style={s.heroBig} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{formatCurrency(todayRevenue)}</Text>
+
+            <View style={s.heroFooter}>
+              <View style={s.heroFooterItem}>
+                <Text style={s.heroFooterLbl}>Lucro estimado hoje</Text>
+                <Text style={s.heroFooterVal}>{formatCurrency(todayProfit)}</Text>
               </View>
-              <View style={s.heroStat}>
-                <Text style={s.heroStatVal}>58%</Text>
-                <Text style={s.heroStatLbl}>margem{'\n'}média</Text>
-              </View>
-              <View style={s.heroStat}>
-                <Text style={s.heroStatVal}>{stats?.monthlySalesCount ?? 0}</Text>
-                <Text style={s.heroStatLbl}>vendas</Text>
+              <View style={s.heroFooterDivider} />
+              <View style={s.heroFooterItem}>
+                <Text style={s.heroFooterLbl}>Faturamento no mês</Text>
+                <Text style={s.heroFooterVal}>{formatCurrency(stats?.monthlyRevenue ?? 0)}</Text>
               </View>
             </View>
           </LinearGradient>
@@ -364,45 +466,6 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
-        {/* ═══════ RECENT SALES ═══════ */}
-        <View style={s.secHeader}>
-          <Text style={s.secTitle}>Vendas recentes</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Sales' as never)} activeOpacity={0.7}>
-            <Text style={s.secLink}>Ver todas</Text>
-          </TouchableOpacity>
-        </View>
-
-        {recentSales.length === 0 ? (
-          <View style={s.emptyBox}>
-            <Ionicons name="receipt-outline" size={28} color={INK3} />
-            <Text style={s.emptyTxt}>Nenhuma venda registrada</Text>
-          </View>
-        ) : (
-          <View style={s.salesCard}>
-            {recentSales.map((sale, idx) => {
-              const initials = sale.recipeName.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('');
-              const bgColor = THUMB_COLORS[idx % THUMB_COLORS.length];
-              const isToday2 = sale.saleDate === today;
-              const meta = isToday2
-                ? `${sale.quantitySold} un · ${new Date(sale.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
-                : `${sale.quantitySold} un · ${sale.saleDate === new Date(Date.now() - 86400000).toISOString().split('T')[0] ? 'ontem' : new Date(sale.saleDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
-
-              return (
-                <View key={sale.id} style={[s.saleRow, idx > 0 && s.saleRowBorder]}>
-                  <View style={[s.saleThumb, { backgroundColor: bgColor }]}>
-                    <Text style={s.saleThumbTxt}>{initials}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.saleName} numberOfLines={1}>{sale.recipeName}</Text>
-                    <Text style={s.saleMeta}>{meta}</Text>
-                  </View>
-                  <Text style={s.saleAmt}>+ {formatCurrency(sale.totalRevenue)}</Text>
-                </View>
-              );
-            })}
-          </View>
-        )}
-
         {/* ═══════ FEATURES GRID (free + premium) ═══════ */}
         <View style={[s.secHeader, { marginTop: 20 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -417,6 +480,7 @@ export const HomeScreen: React.FC = () => {
 
         <View style={s.proGrid}>
           {([
+            { icon: 'storefront-outline' as const, bg: '#EDE4FB', ic: '#7C3AED', title: 'Loja Online', sub: 'Link de pedidos para clientes', route: 'Store', master: true },
             { icon: 'bar-chart-outline' as const, bg: '#FFF0F6', ic: PINK, title: 'Relatórios', sub: 'Gráficos e análises', route: 'Reports' },
             { icon: 'people-outline' as const, bg: '#EEF8FD', ic: '#2BA7DD', title: 'Clientes', sub: 'Contatos e aniversários', route: 'Clients' },
             { icon: 'clipboard-outline' as const, bg: '#DCF6E5', ic: GREEN, title: 'Encomendas', sub: 'Entregas e pagamento', route: 'Orders' },
@@ -498,7 +562,7 @@ const SHADOW = {
 };
 
 const s = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: CREAM },
+  safeArea: { flex: 1, backgroundColor: '#FFFFFF' },
   scroll: { flex: 1 },
 
   /* ── Top bar ── */
@@ -549,28 +613,98 @@ const s = StyleSheet.create({
   },
   profileImg: { width: 46, height: 46, borderRadius: 23 },
 
+  /* ── Subscription plans carousel ── */
+  planBannerSection: { marginHorizontal: 18, marginBottom: 14 },
+  planBanner: {
+    height: 168,
+    borderRadius: 22,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 14,
+    shadowColor: INK,
+    elevation: 5,
+  },
+  planBlob: { position: 'absolute', borderRadius: 999 },
+  planBlobOne: { width: 180, height: 180, top: -70, right: -40 },
+  planBlobTwo: { width: 120, height: 120, bottom: -50, right: 60 },
+  planWatermark: { position: 'absolute', right: -14, bottom: -18, transform: [{ rotate: '-12deg' }] },
+  planBannerOverlay: { width: '80%', paddingHorizontal: 18, flexDirection: 'row', alignItems: 'center', gap: 13 },
+  planIconBox: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.95)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: INK,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  planBannerContent: { flex: 1 },
+  planBannerEyebrow: { fontSize: 9.5, fontWeight: '900', letterSpacing: 1 },
+  planBannerTitle: { fontSize: 16, lineHeight: 19, fontWeight: '800', marginTop: 4 },
+  planBannerPrice: { fontSize: 18, fontWeight: '800', marginTop: 5 },
+  planBannerPeriod: { fontSize: 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  planBannerLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 4,
+    marginTop: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 11,
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+  },
+  planBannerLinkText: { fontSize: 10.5, fontWeight: '800' },
+  planBannerDots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 9 },
+  planBannerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#E6CFDA' },
+  planBannerDotActive: { width: 18, backgroundColor: PINK },
+
   /* ── Hero revenue ── */
   heroWrap: { paddingHorizontal: 18, marginBottom: 18 },
   hero: {
     borderRadius: 26,
     padding: 18,
     paddingBottom: 16,
+    shadowColor: '#D8377F',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 5,
   },
-  heroLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.92)', letterSpacing: 0.2 },
-  heroBig: { fontSize: 38, fontWeight: '800', color: '#fff', marginTop: 6, letterSpacing: 0.3 },
-  heroSub: { fontSize: 13, color: 'rgba(255,255,255,0.9)', marginTop: 7, fontWeight: '500', marginBottom: 16 },
-  heroStats: { flexDirection: 'row', gap: 10 },
-  heroStat: {
-    flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.16)',
+  heroTopRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  heroLabel: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.95)', letterSpacing: 0.2 },
+  heroSalesPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 999,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+  },
+  heroSalesPillTxt: { fontSize: 11.5, fontWeight: '700', color: '#fff' },
+  heroBig: { fontSize: 38, fontWeight: '800', color: '#fff', marginTop: 6, letterSpacing: 0.1 },
+  heroFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 18,
+    backgroundColor: 'rgba(255,255,255,0.18)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.22)',
-    borderRadius: 15,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
+    borderColor: 'rgba(255,255,255,0.25)',
+    borderRadius: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
-  heroStatVal: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  heroStatLbl: { fontSize: 11.5, color: 'rgba(255,255,255,0.92)', marginTop: 4, fontWeight: '500', lineHeight: 14 },
+  heroFooterItem: { flex: 1 },
+  heroFooterDivider: { width: 1, alignSelf: 'stretch', backgroundColor: 'rgba(255,255,255,0.3)', marginHorizontal: 14 },
+  heroFooterLbl: { fontSize: 11.5, color: 'rgba(255,255,255,0.9)', fontWeight: '500' },
+  heroFooterVal: { fontSize: 18, fontWeight: '800', color: '#fff', marginTop: 3 },
 
   /* ── Quick actions (2×2 grid) ── */
   qaGrid: {
@@ -645,49 +779,6 @@ const s = StyleSheet.create({
   chartValLabel: { fontSize: 8.5, color: INK2, fontWeight: '600', marginBottom: 3 },
   chartBar: { width: 20, borderTopLeftRadius: 7, borderTopRightRadius: 7, borderBottomLeftRadius: 4, borderBottomRightRadius: 4, marginBottom: 7 },
   chartLbl: { fontSize: 10.5, color: INK2, fontWeight: '600' },
-
-  /* ── Recent sales ── */
-  salesCard: {
-    marginHorizontal: 18,
-    backgroundColor: '#fff',
-    borderRadius: 22,
-    paddingHorizontal: 16,
-    paddingVertical: 4,
-    marginBottom: 8,
-    ...SHADOW,
-  },
-  saleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-  },
-  saleRowBorder: {
-    borderTopWidth: 1,
-    borderTopColor: LINE,
-  },
-  saleThumb: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-  },
-  saleThumbTxt: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  saleName: { fontSize: 14.5, fontWeight: '700', color: INK },
-  saleMeta: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
-  saleAmt: { fontSize: 15.5, fontWeight: '700', color: GREEN, marginLeft: 8 },
-  emptyBox: {
-    alignItems: 'center',
-    paddingVertical: 28,
-    marginHorizontal: 18,
-    backgroundColor: '#fff',
-    borderRadius: 22,
-    gap: 8,
-    marginBottom: 8,
-    ...SHADOW,
-  },
-  emptyTxt: { fontSize: 13, color: INK3 },
 
   /* ── PRO section ── */
   premBadge: {
