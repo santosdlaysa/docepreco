@@ -617,8 +617,14 @@ export interface Banner {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  /** 'notification' = aviso; 'carousel' = anúncio patrocinado de confeitaria. */
-  placement?: 'notification' | 'carousel';
+  /** 'notification' = aviso; 'carousel' = anúncio patrocinado; 'plan' = banner institucional do carrossel. */
+  placement?: 'notification' | 'carousel' | 'plan';
+  /** Público-alvo dos banners 'plan'. */
+  audience?: 'all' | 'non_master' | 'master';
+  /** Texto pequeno acima do título (banners 'plan'). */
+  eyebrow?: string | null;
+  /** Rótulo do botão (banners 'plan'). */
+  ctaLabel?: string | null;
   imageUrl?: string | null;
   companyId?: string | null;
   priority?: number;

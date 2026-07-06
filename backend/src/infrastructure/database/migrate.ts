@@ -505,6 +505,11 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'banners', 'priority', 'INTEGER NOT NULL DEFAULT 0');
     await addColumnIfMissing(client, 'banners', 'paid_until', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'banners', 'duration_days', 'INTEGER NOT NULL DEFAULT 0');
+    // Banners institucionais do carrossel (placement='plan'): divulgam features por
+    // público (audience) — ex.: upsell da Loja Online p/ não-Master e aviso p/ Master.
+    await addColumnIfMissing(client, 'banners', 'audience', "VARCHAR(20) NOT NULL DEFAULT 'all'");
+    await addColumnIfMissing(client, 'banners', 'eyebrow', 'VARCHAR(60) NULL');
+    await addColumnIfMissing(client, 'banners', 'cta_label', 'VARCHAR(40) NULL');
     // pix_requests genérico: 'subscription' (assinatura) | 'ad_banner' (compra de anúncio).
     await addColumnIfMissing(client, 'pix_requests', 'product_type', "VARCHAR(20) NOT NULL DEFAULT 'subscription'");
     await addColumnIfMissing(client, 'pix_requests', 'ref_id', 'UUID NULL');
@@ -678,6 +683,28 @@ export async function runMigrations() {
       for (const msg of tips) {
         await client.query('INSERT INTO motivational_tips (message) VALUES ($1)', [msg]);
       }
+    }
+
+    // Seed dos banners de plano do carrossel (Loja Online) — só se ainda não houver nenhum.
+    const planBannerCount = await client.query("SELECT COUNT(*) FROM banners WHERE placement = 'plan'");
+    if (parseInt(planBannerCount.rows[0].count) === 0) {
+      console.log('Seeding plan carousel banners...');
+      await client.query(
+        `INSERT INTO banners (title, message, type, placement, audience, eyebrow, cta_label, action_url, is_active)
+         VALUES
+           ($1,$2,'promo','plan','non_master',$3,$4,'app://Store',TRUE),
+           ($5,$6,'promo','plan','master',$7,$8,'app://Store',TRUE)`,
+        [
+          'Receba pedidos pelo seu link',
+          'Catálogo com fotos e preços, entrega ou retirada, e o pedido cai na hora aqui no app.',
+          'SUA LOJA ONLINE',
+          'Conhecer o Master',
+          'Sua Loja Online chegou!',
+          'Compartilhe seu link, receba pedidos pelo catálogo e acompanhe tudo aqui no app.',
+          'NOVA FUNCIONALIDADE',
+          'Abrir minha loja',
+        ]
+      );
     }
 
     // Seed notification templates (only if table is empty)

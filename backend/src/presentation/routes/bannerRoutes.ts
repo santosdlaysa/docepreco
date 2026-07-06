@@ -9,6 +9,7 @@ const controller = new BannerController();
 // Public (mobile)
 router.get('/active', (req, res) => controller.getActive(req, res));
 router.get('/carousel', (req, res) => controller.getCarousel(req, res));
+router.get('/plan', (req, res) => controller.getPlan(req, res));
 
 // Confeitaria compra anúncio (JWT-authenticated)
 router.post('/purchase', authMiddleware, (req, res) => controller.purchase(req as any, res));

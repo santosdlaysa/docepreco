@@ -42,6 +42,23 @@ const EMPTY: Omit<Banner, 'id' | 'createdAt' | 'updatedAt'> = {
   isActive: true,
 };
 
+type Audience = 'all' | 'non_master' | 'master';
+
+const AUDIENCE_LABEL: Record<Audience, string> = {
+  all: 'Todos',
+  non_master: 'Não-Master (Free e Premium)',
+  master: 'Master',
+};
+
+const EMPTY_PLAN = {
+  eyebrow: '',
+  title: '',
+  message: '',
+  ctaLabel: '',
+  audience: 'non_master' as Audience,
+  isActive: true,
+};
+
 export function BannersPage({ toast }: Props) {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +66,9 @@ export function BannersPage({ toast }: Props) {
   const [editing, setEditing] = useState<Banner | null>(null);
   const [form, setForm] = useState(EMPTY);
   const [confirmDelete, setConfirmDelete] = useState<Banner | null>(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<Banner | null>(null);
+  const [planForm, setPlanForm] = useState(EMPTY_PLAN);
 
   const load = async () => {
     try {
@@ -119,7 +139,59 @@ export function BannersPage({ toast }: Props) {
     }
   };
 
-  const notificationBanners = banners.filter(b => b.placement !== 'carousel');
+  const openNewPlan = () => {
+    setEditingPlan(null);
+    setPlanForm(EMPTY_PLAN);
+    setShowPlanModal(true);
+  };
+
+  const openEditPlan = (b: Banner) => {
+    setEditingPlan(b);
+    setPlanForm({
+      eyebrow: b.eyebrow ?? '',
+      title: b.title,
+      message: b.message,
+      ctaLabel: b.ctaLabel ?? '',
+      audience: b.audience ?? 'non_master',
+      isActive: b.isActive,
+    });
+    setShowPlanModal(true);
+  };
+
+  const savePlan = async () => {
+    try {
+      if (editingPlan) {
+        await api.updateBanner(editingPlan.id, {
+          title: planForm.title,
+          message: planForm.message,
+          eyebrow: planForm.eyebrow || null,
+          ctaLabel: planForm.ctaLabel || null,
+          audience: planForm.audience,
+          isActive: planForm.isActive,
+        });
+        toast.success('Banner do carrossel atualizado!');
+      } else {
+        await api.createBanner({
+          title: planForm.title,
+          message: planForm.message,
+          type: 'promo',
+          eyebrow: planForm.eyebrow || null,
+          ctaLabel: planForm.ctaLabel || null,
+          audience: planForm.audience,
+          placement: 'plan',
+          isActive: planForm.isActive,
+        } as any);
+        toast.success('Banner do carrossel criado!');
+      }
+      setShowPlanModal(false);
+      load();
+    } catch (e: any) {
+      toast.error(e.message);
+    }
+  };
+
+  const notificationBanners = banners.filter(b => b.placement !== 'carousel' && b.placement !== 'plan');
+  const planBanners = banners.filter(b => b.placement === 'plan');
 
   return (
     <div className="space-y-4">
@@ -186,6 +258,88 @@ export function BannersPage({ toast }: Props) {
                       </button>
                       <button
                         onClick={() => openEdit(b)}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                      >
+                        <Pencil size={12} />
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => setConfirmDelete(b)}
+                        className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-red-50 dark:bg-red-900/20 text-red-600 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                      >
+                        <Trash2 size={12} />
+                        Excluir
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* ── Banners do carrossel (Loja Online / planos) ── */}
+      <div className="flex items-center justify-between flex-wrap gap-2 pt-4">
+        <div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">Banners do carrossel</h2>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Aparecem no carrossel da Home do app, por público. Ao tocar, abrem a Loja Online.</p>
+        </div>
+        <button
+          onClick={openNewPlan}
+          className="flex items-center gap-1.5 text-sm bg-primary-500 hover:bg-primary-600 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+        >
+          <Plus size={16} />
+          Novo banner do carrossel
+        </button>
+      </div>
+
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden overflow-x-auto">
+        {loading ? (
+          <TableSkeleton rows={2} cols={4} />
+        ) : planBanners.length === 0 ? (
+          <p className="text-center text-gray-400 py-10">Nenhum banner do carrossel cadastrado</p>
+        ) : (
+          <table className="w-full text-sm min-w-[600px]">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-700 text-left text-gray-500 dark:text-gray-400 text-xs uppercase">
+                <th className="px-5 py-3">Título</th>
+                <th className="px-3 py-3">Público</th>
+                <th className="px-3 py-3">Status</th>
+                <th className="px-3 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+              {planBanners.map(b => {
+                const status = getStatus(b);
+                return (
+                  <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                    <td className="px-5 py-3">
+                      <div className="font-medium text-gray-900 dark:text-white">{b.title}</div>
+                      {b.eyebrow && <div className="text-[11px] uppercase tracking-wide text-gray-400">{b.eyebrow}</div>}
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-900/20 text-teal-700 border border-teal-200">
+                        {AUDIENCE_LABEL[b.audience ?? 'all']}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded ${status.color}`}>{status.label}</span>
+                    </td>
+                    <td className="px-3 py-3 text-right space-x-2">
+                      <button
+                        onClick={() => toggleActive(b)}
+                        className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors ${
+                          b.isActive
+                            ? 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-900/30'
+                            : 'bg-green-50 dark:bg-green-900/20 text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30'
+                        }`}
+                      >
+                        <Power size={12} />
+                        {b.isActive ? 'Desativar' : 'Ativar'}
+                      </button>
+                      <button
+                        onClick={() => openEditPlan(b)}
                         className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded bg-blue-50 dark:bg-blue-900/20 text-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
                       >
                         <Pencil size={12} />
@@ -301,6 +455,93 @@ export function BannersPage({ toast }: Props) {
                 className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium"
               >
                 {editing ? 'Salvar' : 'Criar'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* Modal — Banner do carrossel */}
+      {showPlanModal && (
+        <ModalOverlay onClose={() => setShowPlanModal(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">
+              {editingPlan ? 'Editar banner do carrossel' : 'Novo banner do carrossel'}
+            </h3>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Chamada (texto pequeno acima)</label>
+                <input
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                  value={planForm.eyebrow}
+                  onChange={e => setPlanForm({ ...planForm, eyebrow: e.target.value })}
+                  placeholder="Ex: NOVA FUNCIONALIDADE"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Título</label>
+                <input
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                  value={planForm.title}
+                  onChange={e => setPlanForm({ ...planForm, title: e.target.value })}
+                  placeholder="Ex: Receba pedidos pelo seu link"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Descrição</label>
+                <textarea
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                  rows={3}
+                  value={planForm.message}
+                  onChange={e => setPlanForm({ ...planForm, message: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Texto do botão</label>
+                  <input
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                    value={planForm.ctaLabel}
+                    onChange={e => setPlanForm({ ...planForm, ctaLabel: e.target.value })}
+                    placeholder="Ex: Conhecer o Master"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Público</label>
+                  <select
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
+                    value={planForm.audience}
+                    onChange={e => setPlanForm({ ...planForm, audience: e.target.value as Audience })}
+                  >
+                    <option value="all">Todos</option>
+                    <option value="non_master">Não-Master (Free e Premium)</option>
+                    <option value="master">Master</option>
+                  </select>
+                </div>
+              </div>
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={planForm.isActive}
+                  onChange={e => setPlanForm({ ...planForm, isActive: e.target.checked })}
+                  className="rounded"
+                />
+                Ativo
+              </label>
+            </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowPlanModal(false)}
+                className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={savePlan}
+                disabled={!planForm.title || !planForm.message}
+                className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium"
+              >
+                {editingPlan ? 'Salvar' : 'Criar'}
               </button>
             </div>
           </div>

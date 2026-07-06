@@ -39,6 +39,16 @@ export class BannerController {
     }
   }
 
+  /** Público (mobile): banners institucionais do carrossel (por público-alvo). */
+  async getPlan(_req: Request, res: Response): Promise<void> {
+    try {
+      const banners = await repo.findActivePlan();
+      res.json({ success: true, data: banners });
+    } catch {
+      res.status(500).json({ success: false, error: 'Erro ao buscar banners do carrossel' });
+    }
+  }
+
   /**
    * Confeitaria compra um espaço no carrossel (mobile, autenticado).
    * Cria o banner inativo + uma pix_request 'ad_banner' e devolve o QR do Mercado Pago.
@@ -164,16 +174,34 @@ export class BannerController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { title, message, type, actionUrl, startsAt, endsAt } = req.body;
-      if (!title || !message || !type) {
-        res.status(400).json({ success: false, error: 'title, message e type são obrigatórios' });
+      const { title, message, type, actionUrl, startsAt, endsAt, placement, audience, eyebrow, ctaLabel } = req.body;
+      if (!title || !message) {
+        res.status(400).json({ success: false, error: 'title e message são obrigatórios' });
         return;
       }
-      if (!['info', 'warning', 'promo', 'update'].includes(type)) {
+      const isPlan = placement === 'plan';
+      // Banners de plano são sempre 'promo' e levam à Loja Online (ação fixa).
+      const finalType = type || (isPlan ? 'promo' : undefined);
+      if (!finalType || !['info', 'warning', 'promo', 'update'].includes(finalType)) {
         res.status(400).json({ success: false, error: 'type inválido' });
         return;
       }
-      const banner = await repo.create({ title, message, type, actionUrl, startsAt, endsAt });
+      if (isPlan && audience && !['all', 'non_master', 'master'].includes(audience)) {
+        res.status(400).json({ success: false, error: 'audience inválido' });
+        return;
+      }
+      const banner = await repo.create({
+        title,
+        message,
+        type: finalType,
+        actionUrl: isPlan ? 'app://Store' : actionUrl,
+        startsAt,
+        endsAt,
+        placement: isPlan ? 'plan' : undefined,
+        audience: isPlan ? (audience ?? 'all') : undefined,
+        eyebrow: isPlan ? (eyebrow ?? null) : undefined,
+        ctaLabel: isPlan ? (ctaLabel ?? null) : undefined,
+      });
       res.status(201).json({ success: true, data: banner });
     } catch {
       res.status(500).json({ success: false, error: 'Erro ao criar banner' });
@@ -183,8 +211,12 @@ export class BannerController {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { title, message, type, actionUrl, startsAt, endsAt, isActive } = req.body;
-      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive });
+      const { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, eyebrow, ctaLabel } = req.body;
+      if (audience && !['all', 'non_master', 'master'].includes(audience)) {
+        res.status(400).json({ success: false, error: 'audience inválido' });
+        return;
+      }
+      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, eyebrow, ctaLabel });
       if (!banner) {
         res.status(404).json({ success: false, error: 'Banner não encontrado' });
         return;

@@ -21,6 +21,16 @@ export interface CarouselBanner {
   paidUntil: string | null;
 }
 
+/** Banner institucional do carrossel (Loja Online), gerenciável pelo painel admin. */
+export interface PlanBanner {
+  id: string;
+  eyebrow: string | null;
+  title: string;
+  message: string;
+  ctaLabel: string | null;
+  audience: 'all' | 'non_master' | 'master';
+}
+
 export interface BannerPurchase {
   pixRequestId: string;
   bannerId: string;
@@ -39,6 +49,12 @@ export const bannerApi = {
   /** Banners patrocinados ativos para o carrossel. */
   getCarousel: async (): Promise<CarouselBanner[]> => {
     const response = await apiClient.get('/banners/carousel');
+    return response.data.data;
+  },
+
+  /** Banners institucionais do carrossel (Loja Online), por público-alvo. */
+  getPlan: async (): Promise<PlanBanner[]> => {
+    const response = await apiClient.get('/banners/plan');
     return response.data.data;
   },
 

@@ -11,8 +11,14 @@ export interface Banner {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
-  /** 'notification' = aviso no meio da Home; 'carousel' = anúncio patrocinado no topo. */
-  placement: 'notification' | 'carousel';
+  /** 'notification' = aviso no meio da Home; 'carousel' = anúncio patrocinado; 'plan' = banner institucional do carrossel. */
+  placement: 'notification' | 'carousel' | 'plan';
+  /** Público-alvo dos banners 'plan': 'all' | 'non_master' | 'master'. */
+  audience: 'all' | 'non_master' | 'master';
+  /** Texto pequeno acima do título (banners 'plan'). */
+  eyebrow: string | null;
+  /** Rótulo do botão (banners 'plan'). */
+  ctaLabel: string | null;
   /** Arte do banner de carrossel (data URI base64). */
   imageUrl: string | null;
   /** Confeitaria anunciante (dono do banner de carrossel). */
@@ -58,6 +64,19 @@ export class PostgresBannerRepository {
     return result.rows.map(this.mapRow);
   }
 
+  /** Banners institucionais do carrossel (placement='plan') ativos, para o mobile. */
+  async findActivePlan(): Promise<Banner[]> {
+    const result = await pool.query(
+      `SELECT * FROM banners
+       WHERE is_active = TRUE
+         AND placement = 'plan'
+         AND starts_at <= NOW()
+         AND (ends_at IS NULL OR ends_at >= NOW())
+       ORDER BY priority DESC, created_at ASC`
+    );
+    return result.rows.map(this.mapRow);
+  }
+
   async findById(id: string): Promise<Banner | null> {
     const result = await pool.query('SELECT * FROM banners WHERE id = $1', [id]);
     if (result.rows.length === 0) return null;
@@ -71,10 +90,14 @@ export class PostgresBannerRepository {
     actionUrl?: string;
     startsAt?: string;
     endsAt?: string;
+    placement?: string;
+    audience?: string;
+    eyebrow?: string | null;
+    ctaLabel?: string | null;
   }): Promise<Banner> {
     const result = await pool.query(
-      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at, placement, audience, eyebrow, cta_label)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
       [
         data.title,
@@ -83,6 +106,10 @@ export class PostgresBannerRepository {
         data.actionUrl ?? null,
         data.startsAt ?? new Date().toISOString(),
         data.endsAt ?? null,
+        data.placement ?? 'notification',
+        data.audience ?? 'all',
+        data.eyebrow ?? null,
+        data.ctaLabel ?? null,
       ]
     );
     return this.mapRow(result.rows[0]);
@@ -141,6 +168,9 @@ export class PostgresBannerRepository {
       startsAt?: string;
       endsAt?: string | null;
       isActive?: boolean;
+      audience?: string;
+      eyebrow?: string | null;
+      ctaLabel?: string | null;
     }
   ): Promise<Banner | null> {
     const result = await pool.query(
@@ -152,6 +182,9 @@ export class PostgresBannerRepository {
         starts_at = COALESCE($6, starts_at),
         ends_at = COALESCE($7, ends_at),
         is_active = COALESCE($8, is_active),
+        audience = COALESCE($9, audience),
+        eyebrow = COALESCE($10, eyebrow),
+        cta_label = COALESCE($11, cta_label),
         updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -164,6 +197,9 @@ export class PostgresBannerRepository {
         data.startsAt ?? null,
         data.endsAt !== undefined ? data.endsAt : null,
         data.isActive ?? null,
+        data.audience ?? null,
+        data.eyebrow !== undefined ? data.eyebrow : null,
+        data.ctaLabel !== undefined ? data.ctaLabel : null,
       ]
     );
     if (result.rows.length === 0) return null;
@@ -188,6 +224,9 @@ export class PostgresBannerRepository {
       createdAt: (row.created_at as Date).toISOString(),
       updatedAt: (row.updated_at as Date).toISOString(),
       placement: ((row.placement as string) ?? 'notification') as Banner['placement'],
+      audience: ((row.audience as string) ?? 'all') as Banner['audience'],
+      eyebrow: (row.eyebrow as string) ?? null,
+      ctaLabel: (row.cta_label as string) ?? null,
       imageUrl: (row.image_url as string) ?? null,
       companyId: (row.company_id as string) ?? null,
       priority: (row.priority as number) ?? 0,
