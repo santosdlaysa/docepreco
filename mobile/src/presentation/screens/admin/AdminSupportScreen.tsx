@@ -17,7 +17,21 @@ export const AdminSupportScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
-    try { setConvs(await adminApi.getConversations()); } catch {}
+    try {
+      const conversations = await adminApi.getConversations();
+      const hasMissingName = conversations.some(c => !c.companyName.trim());
+      if (hasMissingName) {
+        const users = await adminApi.listUsers();
+        const userMap = new Map(users.map(u => [u.id, u]));
+        setConvs(conversations.map(c => {
+          if (c.companyName.trim()) return c;
+          const u = userMap.get(c.userId);
+          return { ...c, companyName: u?.companyName ?? '', email: u?.email ?? c.email };
+        }));
+      } else {
+        setConvs(conversations);
+      }
+    } catch {}
   }, []);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
