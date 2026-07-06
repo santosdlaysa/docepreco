@@ -71,7 +71,7 @@ type Section = { title: string; data: Order[] };
 const STATUS_STAGES: { key: OrderStatus; label: string }[] = [
   { key: 'pending', label: 'Pendente' },
   { key: 'in_progress', label: 'Produção' },
-  { key: 'done', label: 'Pronto' },
+  { key: 'done', label: 'Saiu p/ entrega' },
   { key: 'delivered', label: 'Entregue' },
 ];
 
@@ -82,7 +82,7 @@ const FILTER_ALL: { key: FilterKey; label: string }[] = [
   { key: 'online', label: '🔗 Online' },
   { key: 'pending', label: 'Pendente' },
   { key: 'in_progress', label: 'Produção' },
-  { key: 'done', label: 'Pronto' },
+  { key: 'done', label: 'Saiu p/ entrega' },
   { key: 'delivered', label: 'Entregue' },
 ];
 

@@ -38,7 +38,7 @@ type StoreTab = 'catalog' | 'orders' | 'settings';
 const ORDER_STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
   pending:     { label: 'Pendente',    color: '#C8870B', bg: '#FFF1CE' },
   in_progress: { label: 'Em preparo',  color: '#7C3AED', bg: '#EDE4FB' },
-  done:        { label: 'Pronto',      color: '#1A6F96', bg: '#EEF8FD' },
+  done:        { label: 'Saiu para entrega', color: '#BC2A6C', bg: '#FFE3EF' },
   delivered:   { label: 'Entregue',    color: '#2E9E5B', bg: '#DCF6E5' },
   cancelled:   { label: 'Cancelado',   color: '#C0392B', bg: '#FBE4E0' },
 };
