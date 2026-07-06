@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   ScrollView,
+  RefreshControl,
   TouchableOpacity,
   Alert,
   Share,
@@ -290,7 +291,18 @@ export const StoreScreen: React.FC = () => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 40 }}
+        refreshControl={
+          <RefreshControl
+            refreshing={loading}
+            onRefresh={() => { load(); loadOrders(); }}
+            colors={['#EA4B92']}
+            tintColor="#EA4B92"
+          />
+        }
+      >
 
         {/* ── Status card ── */}
         <LinearGradient
