@@ -32,6 +32,12 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
       return;
     }
     const s = settingsResult.rows[0];
+    // Buscar info de contato do dono da loja
+    const userResult = await pool.query(
+      'SELECT phone, instagram_handle FROM users WHERE id = $1',
+      [s.user_id]
+    );
+    const u = userResult.rows[0] ?? {};
     // Buscar produtos disponíveis
     const productsResult = await pool.query(
       'SELECT id, name, description, photo_url, public_price FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
@@ -46,6 +52,8 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         acceptsDelivery: s.accepts_delivery,
         acceptsPickup: s.accepts_pickup,
         minOrderValue: s.min_order_value ? Number(s.min_order_value) : null,
+        phone: u.phone ?? null,
+        instagramHandle: u.instagram_handle ?? null,
         products: productsResult.rows.map(p => ({
           id: p.id,
           name: p.name,
