@@ -17,7 +17,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import * as ImagePicker from 'expo-image-picker';
 import { RootStackParamList } from '../navigation/types';
 import { StoreProduct } from '../../domain/entities/StoreProduct';
 import { storeApi } from '../../data/api/storeApi';
@@ -68,7 +67,7 @@ export const StoreProductFormScreen: React.FC = () => {
   const [description, setDescription] = useState('');
   const [priceText, setPriceText] = useState('');
   const [available, setAvailable] = useState(true);
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string>('');
   const [recipeId, setRecipeId] = useState<string | undefined>(undefined);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [showRecipePicker, setShowRecipePicker] = useState(false);
@@ -86,30 +85,13 @@ export const StoreProductFormScreen: React.FC = () => {
           setDescription(found.description ?? '');
           setPriceText(formatMoney(found.publicPrice));
           setAvailable(found.available);
-          setPhotoUri(found.photoUrl ?? null);
+          setPhotoUrl(found.photoUrl ?? '');
           setRecipeId(found.recipeId);
         })
         .catch(() => showToast('Erro ao carregar produto', 'error'))
         .finally(() => setLoading(false));
     }
   }, []);
-
-  const handlePickPhoto = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      showToast('Permissão de galeria necessária', 'warning');
-      return;
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.7,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setPhotoUri(result.assets[0].uri);
-    }
-  };
 
   const handleSelectRecipe = (recipe: Recipe) => {
     setRecipeId(recipe.id);
@@ -136,8 +118,7 @@ export const StoreProductFormScreen: React.FC = () => {
         publicPrice: price,
         available,
         recipeId,
-        // photoUrl é reservado para quando o backend tiver endpoint de upload
-        photoUrl: undefined as string | undefined,
+        photoUrl: photoUrl.trim() || undefined,
       };
 
       if (isEditing && productId) {
@@ -205,17 +186,29 @@ export const StoreProductFormScreen: React.FC = () => {
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={st.body}>
 
-          {/* ── Photo ── */}
-          <TouchableOpacity style={st.photoBox} onPress={handlePickPhoto} activeOpacity={0.8}>
-            {photoUri ? (
-              <Image source={{ uri: photoUri }} style={st.photoPreview} />
-            ) : (
-              <View style={st.photoPlaceholder}>
-                <Ionicons name="camera-outline" size={30} color={INK3} />
-                <Text style={st.photoHint}>Adicionar foto</Text>
+          {/* ── Photo URL ── */}
+          <Text style={st.label}>Foto do produto</Text>
+          {photoUrl.trim() ? (
+            <View style={st.photoPreviewRow}>
+              <Image source={{ uri: photoUrl.trim() }} style={st.photoThumb} resizeMode="cover" />
+              <View style={{ flex: 1 }}>
+                <Text style={st.photoUrlLabel} numberOfLines={2}>{photoUrl.trim()}</Text>
+                <TouchableOpacity onPress={() => setPhotoUrl('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                  <Text style={st.photoRemove}>Remover foto</Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </TouchableOpacity>
+            </View>
+          ) : null}
+          <TextInput
+            style={st.input}
+            value={photoUrl}
+            onChangeText={setPhotoUrl}
+            placeholder="Cole o link (URL) da foto"
+            placeholderTextColor={INK3}
+            autoCapitalize="none"
+            keyboardType="url"
+            returnKeyType="next"
+          />
 
           {/* ── Name ── */}
           <Text style={st.label}>Nome do produto *</Text>
@@ -353,14 +346,14 @@ const st = StyleSheet.create({
 
   body: { paddingHorizontal: 18, paddingBottom: 24, gap: 4 },
 
-  photoBox: { alignSelf: 'center', marginBottom: 16, marginTop: 8 },
-  photoPreview: { width: 120, height: 120, borderRadius: 20 },
-  photoPlaceholder: {
-    width: 120, height: 120, borderRadius: 20,
-    backgroundColor: '#F0EAF8', alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 2, borderColor: '#D8C8F0', borderStyle: 'dashed',
+  photoPreviewRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', borderRadius: 14, padding: 12,
+    marginBottom: 8, ...SHADOW,
   },
-  photoHint: { fontSize: 12, color: INK3, fontWeight: '600' },
+  photoThumb: { width: 60, height: 60, borderRadius: 10 },
+  photoUrlLabel: { fontSize: 12, color: INK2, flex: 1, marginBottom: 4 },
+  photoRemove: { fontSize: 12, color: '#C0392B', fontWeight: '600' },
 
   label: { fontSize: 13, fontWeight: '700', color: INK, marginTop: 12, marginBottom: 6, marginLeft: 2 },
   input: {
