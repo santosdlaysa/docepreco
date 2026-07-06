@@ -116,7 +116,6 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   client_name VARCHAR(255) NOT NULL,
   client_phone VARCHAR(40),
-  client_cpf VARCHAR(14),
   recipe_id UUID,
   recipe_name VARCHAR(255) NOT NULL,
   quantity DECIMAL(10,3) NOT NULL DEFAULT 1,
@@ -576,7 +575,6 @@ export async function runMigrations() {
     // Encomendas (orders) — garante colunas em tabelas criadas em versões anteriores
     await addColumnIfMissing(client, 'orders', 'client_name', "VARCHAR(255) NOT NULL DEFAULT ''");
     await addColumnIfMissing(client, 'orders', 'client_phone', 'VARCHAR(40)');
-    await addColumnIfMissing(client, 'orders', 'client_cpf', 'VARCHAR(14)');
     await addColumnIfMissing(client, 'orders', 'recipe_id', 'UUID');
     await addColumnIfMissing(client, 'orders', 'recipe_name', "VARCHAR(255) NOT NULL DEFAULT ''");
     await addColumnIfMissing(client, 'orders', 'quantity', 'DECIMAL(10,3) NOT NULL DEFAULT 1');

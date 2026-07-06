@@ -340,7 +340,7 @@ export const HomeScreen: React.FC = () => {
                   onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'master', feature: 'Loja Online' } })}
                 >
                   <LinearGradient
-                    colors={['#A97BF0', '#7C3AED', '#5B21B6']}
+                    colors={['#2DD4BF', '#0D9488', '#0F766E']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={s.planBanner}
@@ -349,14 +349,14 @@ export const HomeScreen: React.FC = () => {
                     <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: 'rgba(255,255,255,0.16)' }]} />
                     <Ionicons name="storefront" size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
                     <View style={s.planBannerOverlay}>
-                      <View style={s.planIconBox}><Ionicons name="storefront" size={22} color="#7C3AED" /></View>
+                      <View style={s.planIconBox}><Ionicons name="storefront" size={22} color="#0D9488" /></View>
                       <View style={s.planBannerContent}>
                         <Text style={[s.planBannerEyebrow, { color: 'rgba(255,255,255,0.85)' }]}>SUA LOJA ONLINE</Text>
                         <Text style={[s.planBannerTitle, { color: '#FFFFFF' }]}>Receba pedidos pelo seu link</Text>
                         <Text style={s.planBannerDesc} numberOfLines={2}>Catálogo com fotos e preços, entrega ou retirada, e o pedido cai na hora aqui no app.</Text>
                         <View style={s.planBannerLink}>
-                          <Text style={[s.planBannerLinkText, { color: '#7C3AED' }]}>Conhecer o Master</Text>
-                          <Ionicons name="arrow-forward" size={12} color="#7C3AED" />
+                          <Text style={[s.planBannerLinkText, { color: '#0D9488' }]}>Conhecer o Master</Text>
+                          <Ionicons name="arrow-forward" size={12} color="#0D9488" />
                         </View>
                       </View>
                     </View>
