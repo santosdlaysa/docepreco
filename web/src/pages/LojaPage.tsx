@@ -133,7 +133,7 @@ const ORDERS_KEY   = (slug: string) => `dpeco_orders_${slug}`;
 const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
   pending:     { label: 'Aguardando', color: '#D97706', bg: '#FEF3C7' },
   in_progress: { label: 'Em produção', color: '#7C3AED', bg: '#EDE9FE' },
-  done:        { label: 'Pronto',     color: '#059669', bg: '#D1FAE5' },
+  done:        { label: 'Saiu para entrega', color: '#7C3AED', bg: '#EDE9FE' },
   delivered:   { label: 'Entregue',   color: '#059669', bg: '#D1FAE5' },
   cancelled:   { label: 'Cancelado',  color: '#DC2626', bg: '#FEE2E2' },
 };
@@ -800,11 +800,11 @@ export function LojaPage() {
     },
     {
       key: 'done',
-      label: 'Pronto!',
-      sub: 'Pedido finalizado e pronto para entrega ou retirada',
+      label: 'Saiu para entrega',
+      sub: 'Seu pedido está a caminho!',
       icon: (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 104 0m-4 0a2 2 0 114 0m6 0a2 2 0 104 0m-4 0a2 2 0 114 0" />
         </svg>
       ),
     },

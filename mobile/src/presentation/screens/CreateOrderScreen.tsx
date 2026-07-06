@@ -66,7 +66,7 @@ const toCents = (value: number) => Math.round(value * 100);
 const STATUS_OPTIONS: { key: OrderStatus; label: string; bg: string; color: string }[] = [
   { key: 'pending', label: 'Pendente', bg: '#FFF1CE', color: '#8A5A00' },
   { key: 'in_progress', label: 'Produção', bg: '#DCF1FB', color: '#1A6F96' },
-  { key: 'done', label: 'Pronto', bg: '#FFE3EF', color: '#BC2A6C' },
+  { key: 'done', label: 'Saiu para entrega', bg: '#FFE3EF', color: '#BC2A6C' },
   { key: 'delivered', label: 'Entregue', bg: '#DCF6E5', color: '#1F8A48' },
   { key: 'cancelled', label: 'Cancelado', bg: '#FBE0E0', color: '#C0392B' },
 ];

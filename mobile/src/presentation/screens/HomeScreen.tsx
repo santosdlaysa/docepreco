@@ -124,9 +124,11 @@ export const HomeScreen: React.FC = () => {
     }).catch(() => {});
   }, [isPremium, isAdmin]);
 
-  // Nº de slides do carrossel = planos (só p/ não-premium) + patrocinados + slide "anuncie".
+  // Nº de slides do carrossel = planos (só p/ não-premium) + Loja Online (só p/
+  // não-Master, como upsell do Master) + patrocinados + slide "anuncie".
   const planSlideCount = (!isPremium || isAdmin) ? 2 : 0;
-  const totalSlides = planSlideCount + carouselBanners.length + 1;
+  const lojaSlideCount = (!isMaster || isAdmin) ? 1 : 0;
+  const totalSlides = planSlideCount + lojaSlideCount + carouselBanners.length + 1;
 
   // Auto-rotação genérica entre todos os slides.
   useEffect(() => {
@@ -330,6 +332,38 @@ export const HomeScreen: React.FC = () => {
                 </TouchableOpacity>
               ))}
 
+              {/* Loja Online: upsell do Master p/ quem ainda não é Master (free e premium) */}
+              {(!isMaster || isAdmin) && (
+                <TouchableOpacity
+                  style={{ width: PLAN_BANNER_WIDTH }}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'master', feature: 'Loja Online' } })}
+                >
+                  <LinearGradient
+                    colors={['#A97BF0', '#7C3AED', '#5B21B6']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.planBanner}
+                  >
+                    <View style={[s.planBlob, s.planBlobOne, { backgroundColor: 'rgba(255,255,255,0.16)' }]} />
+                    <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: 'rgba(255,255,255,0.16)' }]} />
+                    <Ionicons name="storefront" size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
+                    <View style={s.planBannerOverlay}>
+                      <View style={s.planIconBox}><Ionicons name="storefront" size={22} color="#7C3AED" /></View>
+                      <View style={s.planBannerContent}>
+                        <Text style={[s.planBannerEyebrow, { color: 'rgba(255,255,255,0.85)' }]}>SUA LOJA ONLINE</Text>
+                        <Text style={[s.planBannerTitle, { color: '#FFFFFF' }]}>Receba pedidos pelo seu link</Text>
+                        <Text style={s.planBannerDesc} numberOfLines={2}>Catálogo com fotos e preços, entrega ou retirada, e o pedido cai na hora aqui no app.</Text>
+                        <View style={s.planBannerLink}>
+                          <Text style={[s.planBannerLinkText, { color: '#7C3AED' }]}>Conhecer o Master</Text>
+                          <Ionicons name="arrow-forward" size={12} color="#7C3AED" />
+                        </View>
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
               {carouselBanners.map(banner => (
                 <TouchableOpacity
                   key={banner.id}
@@ -417,16 +451,7 @@ export const HomeScreen: React.FC = () => {
           const cfg = BANNER_CONFIG[banner.type];
           const hasLink = !!(banner.actionUrl && banner.actionUrl.trim());
           const openLink = () => {
-            const url = banner.actionUrl?.trim();
-            if (!url) return;
-            // Deep-link interno app://<Rota> abre a tela no app; a própria tela
-            // cuida do gate de plano (ex.: Store redireciona ao paywall Master).
-            const internal = url.match(/^app:\/\/(.+)$/i);
-            if (internal) {
-              navigation.navigate(internal[1] as never);
-              return;
-            }
-            Linking.openURL(url).catch(() => {});
+            if (banner.actionUrl) Linking.openURL(banner.actionUrl).catch(() => {});
           };
           return (
             <View key={banner.id} style={[s.notifBanner, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
@@ -732,6 +757,7 @@ const s = StyleSheet.create({
   planBannerEyebrow: { fontSize: 9.5, fontWeight: '900', letterSpacing: 1 },
   planBannerTitle: { fontSize: 16, lineHeight: 19, fontWeight: '800', marginTop: 4 },
   planBannerPrice: { fontSize: 18, fontWeight: '800', marginTop: 5 },
+  planBannerDesc: { fontSize: 11.5, lineHeight: 15, fontWeight: '600', color: 'rgba(255,255,255,0.92)', marginTop: 5 },
   planBannerPeriod: { fontSize: 9.5, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
   planBannerLink: {
     flexDirection: 'row',

@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS orders (
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   client_name VARCHAR(255) NOT NULL,
   client_phone VARCHAR(40),
+  client_cpf VARCHAR(14),
   recipe_id UUID,
   recipe_name VARCHAR(255) NOT NULL,
   quantity DECIMAL(10,3) NOT NULL DEFAULT 1,
@@ -575,6 +576,7 @@ export async function runMigrations() {
     // Encomendas (orders) — garante colunas em tabelas criadas em versões anteriores
     await addColumnIfMissing(client, 'orders', 'client_name', "VARCHAR(255) NOT NULL DEFAULT ''");
     await addColumnIfMissing(client, 'orders', 'client_phone', 'VARCHAR(40)');
+    await addColumnIfMissing(client, 'orders', 'client_cpf', 'VARCHAR(14)');
     await addColumnIfMissing(client, 'orders', 'recipe_id', 'UUID');
     await addColumnIfMissing(client, 'orders', 'recipe_name', "VARCHAR(255) NOT NULL DEFAULT ''");
     await addColumnIfMissing(client, 'orders', 'quantity', 'DECIMAL(10,3) NOT NULL DEFAULT 1');
@@ -672,23 +674,6 @@ export async function runMigrations() {
       for (const msg of tips) {
         await client.query('INSERT INTO motivational_tips (message) VALUES ($1)', [msg]);
       }
-    }
-
-    // Seed do banner institucional da Loja Online (idempotente pelo action_url).
-    // Ao tocar, abre a tela Store; para quem não é Master, o guard leva ao paywall.
-    const lojaBannerCount = await client.query(
-      "SELECT COUNT(*) FROM banners WHERE action_url = 'app://Store' AND placement = 'notification'"
-    );
-    if (parseInt(lojaBannerCount.rows[0].count) === 0) {
-      console.log('Seeding Loja Online banner...');
-      await client.query(
-        `INSERT INTO banners (title, message, type, action_url, is_active, placement)
-         VALUES ($1, $2, 'promo', 'app://Store', TRUE, 'notification')`,
-        [
-          'Tenha sua Loja Online 🛍️',
-          'Um link exclusivo com seu catálogo de produtos (foto, descrição e preço) onde os clientes montam o pedido pelo celular, escolhem entrega ou retirada, e cada pedido cai na hora aqui no app — sem precisar de aplicativo pra eles.',
-        ]
-      );
     }
 
     // Seed notification templates (only if table is empty)

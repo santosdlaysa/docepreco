@@ -22,6 +22,7 @@ export interface Order {
   userId: string;
   clientName: string;
   clientPhone?: string | null;
+  clientCpf?: string | null;
   recipeId?: string | null;
   recipeName: string;
   quantity: number;
@@ -64,14 +65,15 @@ export class PostgresOrderRepository {
   async create(userId: string, d: OrderInput): Promise<Order> {
     const result = await pool.query(
       `INSERT INTO orders
-        (user_id, client_name, client_phone, recipe_id, recipe_name, quantity, unit_price,
+        (user_id, client_name, client_phone, client_cpf, recipe_id, recipe_name, quantity, unit_price,
          total_price, delivery_date, delivery_time, status, paid, paid_amount, payments, items, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
        RETURNING *`,
       [
         userId,
         d.clientName,
         d.clientPhone ?? null,
+        d.clientCpf ?? null,
         isUuid(d.recipeId) ? d.recipeId : null,
         d.recipeName,
         d.quantity ?? 1,
