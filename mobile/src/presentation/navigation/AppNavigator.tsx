@@ -244,7 +244,7 @@ export function AppNavigator() {
     const sub = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data as Record<string, unknown>;
       if (data?.type === 'new_order') {
-        navigationRef.current?.navigate('Orders', { initialFilter: 'online' });
+        navigationRef.current?.navigate('Store', { initialTab: 'orders' });
       }
     });
     const foregroundSub = Notifications.addNotificationReceivedListener(notification => {
@@ -255,7 +255,7 @@ export function AppNavigator() {
         notification.request.content.body ?? 'Um cliente fez um pedido na sua loja.',
         [
           { text: 'Ver depois', style: 'cancel' },
-          { text: 'Ver pedido', onPress: () => navigationRef.current?.navigate('Orders', { initialFilter: 'online' }) },
+          { text: 'Ver pedido', onPress: () => navigationRef.current?.navigate('Store', { initialTab: 'orders' }) },
         ]
       );
     });

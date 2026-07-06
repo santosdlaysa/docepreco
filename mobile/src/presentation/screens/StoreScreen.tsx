@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,20 @@ import {
   ActivityIndicator,
   Switch,
   Image,
+  Modal,
+  Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Clipboard from 'expo-clipboard';
 import { RootStackParamList } from '../navigation/types';
 import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
+import { Order, OrderStatus } from '../../domain/entities/Order';
 import { storeApi } from '../../data/api/storeApi';
+import { orderApi } from '../../data/api/orderApi';
 import { demoStoreApi } from '../../data/demo/demoApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { useToast } from '../context/ToastContext';
@@ -27,6 +31,24 @@ import { usePaywall } from '../premium/usePaywall';
 import { Skeleton } from '../components/Skeleton';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+type RouteProps = RouteProp<RootStackParamList, 'Store'>;
+type StoreTab = 'catalog' | 'orders' | 'settings';
+
+const ORDER_STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
+  pending:     { label: 'Pendente',    color: '#C8870B', bg: '#FFF1CE' },
+  in_progress: { label: 'Em preparo',  color: '#7C3AED', bg: '#EDE4FB' },
+  done:        { label: 'Pronto',      color: '#1A6F96', bg: '#EEF8FD' },
+  delivered:   { label: 'Entregue',    color: '#2E9E5B', bg: '#DCF6E5' },
+  cancelled:   { label: 'Cancelado',   color: '#C0392B', bg: '#FBE4E0' },
+};
+
+// Etapas do fluxo de um pedido e a ação que leva à próxima etapa.
+const ORDER_STAGES: OrderStatus[] = ['pending', 'in_progress', 'done', 'delivered'];
+const NEXT_ACTION: Partial<Record<OrderStatus, { next: OrderStatus; label: string; icon: keyof typeof Ionicons.glyphMap }>> = {
+  pending:     { next: 'in_progress', label: 'Confirmar pedido',      icon: 'checkmark-circle-outline' },
+  in_progress: { next: 'done',        label: 'Marcar como pronto',    icon: 'cube-outline' },
+  done:        { next: 'delivered',   label: 'Marcar como entregue',  icon: 'bag-check-outline' },
+};
 
 const INK = '#3D2233';
 const INK2 = '#9A7E8C';
@@ -46,8 +68,24 @@ const SHADOW = {
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const SettingsRow: React.FC<{
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  last?: boolean;
+}> = ({ icon, label, value, last }) => (
+  <View style={[st.settingsRow, last && { borderBottomWidth: 0 }]}>
+    <View style={st.settingsRowLeft}>
+      <Ionicons name={icon} size={17} color={PINK} />
+      <Text style={st.settingsLabel}>{label}</Text>
+    </View>
+    <Text style={st.settingsValue} numberOfLines={1}>{value}</Text>
+  </View>
+);
+
 export const StoreScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
+  const route = useRoute<RouteProps>();
   const { guardMaster } = usePaywall();
   const { showToast } = useToast();
 
@@ -59,11 +97,63 @@ export const StoreScreen: React.FC = () => {
   const [backendReady, setBackendReady] = useState(true);
   const [togglingActive, setTogglingActive] = useState(false);
   const [togglingProduct, setTogglingProduct] = useState<string | null>(null);
+  const [tab, setTab] = useState<StoreTab>(route.params?.initialTab ?? 'catalog');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
 
   useFocusEffect(useCallback(() => {
     if (!guardMaster()) return;
     load();
+    if (tab === 'orders') loadOrders();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []));
+
+  const loadOrders = async () => {
+    setOrdersLoading(true);
+    try {
+      const all = await orderApi.getAll();
+      setOrders(all.filter(o => o.source === 'online'));
+    } catch {
+      setOrders([]);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const selectTab = (next: StoreTab) => {
+    setTab(next);
+    if (next === 'orders') loadOrders();
+  };
+
+  // Notificação de pedido pode chegar com a tela já aberta → troca para a aba Pedidos.
+  useEffect(() => {
+    if (route.params?.initialTab) selectTab(route.params.initialTab);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [route.params?.initialTab]);
+
+  const changeOrderStatus = async (order: Order, newStatus: OrderStatus) => {
+    setUpdatingStatus(true);
+    try {
+      await orderApi.update(order.id, { status: newStatus });
+      setSelectedOrder(prev => (prev && prev.id === order.id ? { ...prev, status: newStatus } : prev));
+      setOrders(prev => prev.map(o => (o.id === order.id ? { ...o, status: newStatus } : o)));
+      const meta = ORDER_STATUS_META[newStatus];
+      showToast(`Pedido: ${meta.label.toLowerCase()}`, 'success');
+    } catch {
+      showToast('Erro ao atualizar o pedido', 'error');
+    } finally {
+      setUpdatingStatus(false);
+    }
+  };
+
+  const confirmCancelOrder = (order: Order) => {
+    Alert.alert('Recusar pedido?', `O pedido de "${order.clientName}" será marcado como cancelado.`, [
+      { text: 'Voltar', style: 'cancel' },
+      { text: 'Recusar', style: 'destructive', onPress: () => changeOrderStatus(order, 'cancelled') },
+    ]);
+  };
 
   const load = async () => {
     setLoading(true);
@@ -272,80 +362,210 @@ export const StoreScreen: React.FC = () => {
           </View>
         )}
 
-        {/* ── Products section ── */}
-        <View style={st.secRow}>
-          <Text style={st.secTitle}>Produtos do catálogo</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('StoreProductForm')}
-            style={st.addBtn}
-            activeOpacity={0.8}
-          >
-            <Ionicons name="add" size={16} color="#fff" />
-            <Text style={st.addBtnText}>Adicionar</Text>
-          </TouchableOpacity>
+        {/* ── Menu de abas ── */}
+        <View style={st.tabs}>
+          {([
+            { key: 'catalog',  label: 'Catálogo',   icon: 'bag-outline' },
+            { key: 'orders',   label: 'Pedidos',    icon: 'receipt-outline' },
+            { key: 'settings', label: 'Configuração', icon: 'settings-outline' },
+          ] as const).map(t => {
+            const active = tab === t.key;
+            return (
+              <TouchableOpacity
+                key={t.key}
+                style={[st.tab, active && st.tabActive]}
+                onPress={() => selectTab(t.key)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name={t.icon} size={17} color={active ? '#fff' : INK2} />
+                <Text style={[st.tabText, active && st.tabTextActive]}>{t.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
         </View>
 
-        {products.length === 0 ? (
-          <View style={st.empty}>
-            <View style={st.emptyIcon}>
-              <Ionicons name="bag-outline" size={34} color={PINK} />
+        {/* ══ CATÁLOGO ══ */}
+        {tab === 'catalog' && (
+          <>
+            <View style={st.secRow}>
+              <Text style={st.secTitle}>Produtos do catálogo</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('StoreProductForm')}
+                style={st.addBtn}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={st.addBtnText}>Adicionar</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={st.emptyTitle}>Nenhum produto ainda</Text>
-            <Text style={st.emptyDesc}>
-              Adicione os produtos que você vende para que clientes possam fazer pedidos pelo link.
-            </Text>
-            <TouchableOpacity
-              onPress={() => navigation.navigate('StoreProductForm')}
-              activeOpacity={0.85}
-            >
-              <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.emptyBtn}>
-                <Text style={st.emptyBtnText}>Adicionar primeiro produto</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={{ gap: 10 }}>
-            {products.map(product => (
-              <View key={product.id} style={st.productCard}>
+
+            {products.length === 0 ? (
+              <View style={st.empty}>
+                <View style={st.emptyIcon}>
+                  <Ionicons name="bag-outline" size={34} color={PINK} />
+                </View>
+                <Text style={st.emptyTitle}>Nenhum produto ainda</Text>
+                <Text style={st.emptyDesc}>
+                  Adicione os produtos que você vende para que clientes possam fazer pedidos pelo link.
+                </Text>
                 <TouchableOpacity
-                  style={st.productMain}
-                  onPress={() => navigation.navigate('StoreProductForm', { productId: product.id })}
-                  onLongPress={() => handleDeleteProduct(product)}
+                  onPress={() => navigation.navigate('StoreProductForm')}
                   activeOpacity={0.85}
                 >
-                  {product.photoUrl ? (
-                    <Image source={{ uri: product.photoUrl }} style={st.productThumb} />
-                  ) : (
-                    <View style={[st.productThumb, st.productThumbPlaceholder]}>
-                      <Ionicons name="image-outline" size={22} color={INK3} />
-                    </View>
-                  )}
-                  <View style={{ flex: 1, minWidth: 0 }}>
-                    <Text style={st.productName} numberOfLines={1}>{product.name}</Text>
-                    {product.description ? (
-                      <Text style={st.productDesc} numberOfLines={1}>{product.description}</Text>
-                    ) : null}
-                    <Text style={st.productPrice}>{fmtCurrency(product.publicPrice)}</Text>
-                  </View>
+                  <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.emptyBtn}>
+                    <Text style={st.emptyBtnText}>Adicionar primeiro produto</Text>
+                  </LinearGradient>
                 </TouchableOpacity>
-                <View style={st.productRight}>
-                  <Switch
-                    value={product.available}
-                    onValueChange={() => toggleProductAvailable(product)}
-                    disabled={togglingProduct === product.id}
-                  />
-                  <Text style={[st.productAvailLabel, { color: product.available ? GREEN : INK3 }]}>
-                    {product.available ? 'Ativo' : 'Oculto'}
-                  </Text>
-                </View>
               </View>
-            ))}
-          </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {products.map(product => (
+                  <View key={product.id} style={st.productCard}>
+                    <TouchableOpacity
+                      style={st.productMain}
+                      onPress={() => navigation.navigate('StoreProductForm', { productId: product.id })}
+                      onLongPress={() => handleDeleteProduct(product)}
+                      activeOpacity={0.85}
+                    >
+                      {product.photoUrl ? (
+                        <Image source={{ uri: product.photoUrl }} style={st.productThumb} />
+                      ) : (
+                        <View style={[st.productThumb, st.productThumbPlaceholder]}>
+                          <Ionicons name="image-outline" size={22} color={INK3} />
+                        </View>
+                      )}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={st.productName} numberOfLines={1}>{product.name}</Text>
+                        {product.description ? (
+                          <Text style={st.productDesc} numberOfLines={1}>{product.description}</Text>
+                        ) : null}
+                        <Text style={st.productPrice}>{fmtCurrency(product.publicPrice)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                    <View style={st.productRight}>
+                      <Switch
+                        value={product.available}
+                        onValueChange={() => toggleProductAvailable(product)}
+                        disabled={togglingProduct === product.id}
+                      />
+                      <Text style={[st.productAvailLabel, { color: product.available ? GREEN : INK3 }]}>
+                        {product.available ? 'Ativo' : 'Oculto'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+                <Text style={st.hint}>Pressione e segure um produto para excluí-lo.</Text>
+              </View>
+            )}
+          </>
         )}
 
-        <Text style={st.hint}>
-          Pressione e segure um produto para excluí-lo.
-        </Text>
+        {/* ══ PEDIDOS ══ */}
+        {tab === 'orders' && (
+          <>
+            <View style={st.secRow}>
+              <Text style={st.secTitle}>Pedidos online</Text>
+              <TouchableOpacity onPress={loadOrders} style={st.refreshBtn} activeOpacity={0.7}>
+                <Ionicons name="refresh-outline" size={16} color={PINK} />
+              </TouchableOpacity>
+            </View>
+
+            {ordersLoading ? (
+              <View style={{ gap: 10 }}>
+                {[0, 1, 2].map(i => <Skeleton key={i} width="100%" height={92} borderRadius={14} />)}
+              </View>
+            ) : orders.length === 0 ? (
+              <View style={st.empty}>
+                <View style={st.emptyIcon}>
+                  <Ionicons name="receipt-outline" size={34} color={PINK} />
+                </View>
+                <Text style={st.emptyTitle}>Nenhum pedido ainda</Text>
+                <Text style={st.emptyDesc}>
+                  Os pedidos feitos pelos clientes no link da sua loja aparecerão aqui.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {orders.map(order => {
+                  const meta = ORDER_STATUS_META[order.status];
+                  const summary = order.items?.length
+                    ? order.items.map(i => `${i.quantity}x ${i.recipeName}`).join(', ')
+                    : `${order.quantity}x ${order.recipeName}`;
+                  return (
+                    <TouchableOpacity
+                      key={order.id}
+                      style={st.orderCard}
+                      onPress={() => setSelectedOrder(order)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={st.orderTop}>
+                        <Text style={st.orderClient} numberOfLines={1}>{order.clientName}</Text>
+                        <View style={[st.orderBadge, { backgroundColor: meta.bg }]}>
+                          <Text style={[st.orderBadgeText, { color: meta.color }]}>{meta.label}</Text>
+                        </View>
+                      </View>
+                      <Text style={st.orderItems} numberOfLines={2}>{summary}</Text>
+                      <View style={st.orderBottom}>
+                        {order.deliveryAddress ? (
+                          <View style={st.orderMeta}>
+                            <Ionicons name="location-outline" size={13} color={INK3} />
+                            <Text style={st.orderMetaText} numberOfLines={1}>{order.deliveryAddress}</Text>
+                          </View>
+                        ) : (
+                          <View style={st.orderMeta}>
+                            <Ionicons name="bag-handle-outline" size={13} color={INK3} />
+                            <Text style={st.orderMetaText}>Retirada</Text>
+                          </View>
+                        )}
+                        <Text style={st.orderTotal}>{fmtCurrency(order.totalPrice)}</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+          </>
+        )}
+
+        {/* ══ CONFIGURAÇÃO ══ */}
+        {tab === 'settings' && (
+          <>
+            <Text style={[st.secTitle, { marginBottom: 12 }]}>Configuração da loja</Text>
+            <View style={st.settingsCard}>
+              <SettingsRow icon="pricetag-outline" label="Nome" value={settings?.storeName || '—'} />
+              <SettingsRow
+                icon="bicycle-outline"
+                label="Entrega"
+                value={settings?.acceptsDelivery ? 'Ativada' : 'Desativada'}
+              />
+              <SettingsRow
+                icon="bag-outline"
+                label="Retirada"
+                value={settings?.acceptsPickup ? 'Ativada' : 'Desativada'}
+              />
+              <SettingsRow
+                icon="cash-outline"
+                label="Pedido mínimo"
+                value={settings?.minOrderValue ? fmtCurrency(settings.minOrderValue) : 'Sem mínimo'}
+              />
+              <SettingsRow
+                icon="car-outline"
+                label="Taxa de entrega"
+                value={settings?.deliveryFee ? fmtCurrency(settings.deliveryFee) : 'Grátis'}
+                last
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => navigation.navigate('StoreSettings')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.editSettingsBtn}>
+                <Ionicons name="create-outline" size={18} color="#fff" />
+                <Text style={st.editSettingsText}>Editar configurações</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -398,6 +618,59 @@ const st = StyleSheet.create({
     borderWidth: 1.5, borderColor: PINK,
   },
   linkBtnText: { fontSize: 13, fontWeight: '700' },
+
+  // Menu de abas
+  tabs: {
+    flexDirection: 'row', backgroundColor: '#F3EEF1', borderRadius: 14,
+    padding: 4, marginBottom: 18, gap: 4,
+  },
+  tab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 5, paddingVertical: 9, borderRadius: 10,
+  },
+  tabActive: { backgroundColor: PINK, ...SHADOW },
+  tabText: { fontSize: 12.5, fontWeight: '700', color: INK2 },
+  tabTextActive: { color: '#fff' },
+
+  refreshBtn: {
+    width: 34, height: 34, borderRadius: 10,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW,
+  },
+
+  // Cards de pedido
+  orderCard: { backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 8, ...SHADOW },
+  orderTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  orderClient: { flex: 1, fontSize: 15, fontWeight: '700', color: INK },
+  orderBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  orderBadgeText: { fontSize: 11, fontWeight: '700' },
+  orderItems: { fontSize: 13, color: INK2, fontWeight: '500', lineHeight: 18 },
+  orderBottom: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 8, marginTop: 2, paddingTop: 8, borderTopWidth: 1, borderTopColor: '#F3EEF1',
+  },
+  orderMeta: { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1, minWidth: 0 },
+  orderMetaText: { fontSize: 12, color: INK3, fontWeight: '500', flex: 1 },
+  orderTotal: { fontSize: 15, fontWeight: '800', color: PINK },
+  manageBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    paddingVertical: 12, marginTop: 2,
+  },
+  manageBtnText: { fontSize: 14, fontWeight: '700', color: PINK },
+
+  // Configuração
+  settingsCard: { backgroundColor: '#fff', borderRadius: 16, paddingHorizontal: 14, ...SHADOW, marginBottom: 16 },
+  settingsRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: 12, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F3EEF1',
+  },
+  settingsRowLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  settingsLabel: { fontSize: 14, fontWeight: '600', color: INK },
+  settingsValue: { flex: 1, textAlign: 'right', fontSize: 14, color: INK2, fontWeight: '600' },
+  editSettingsBtn: {
+    height: 50, borderRadius: 14, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 8,
+  },
+  editSettingsText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   secRow: {
     flexDirection: 'row', alignItems: 'center',

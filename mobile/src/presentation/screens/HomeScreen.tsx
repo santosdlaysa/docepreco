@@ -417,7 +417,16 @@ export const HomeScreen: React.FC = () => {
           const cfg = BANNER_CONFIG[banner.type];
           const hasLink = !!(banner.actionUrl && banner.actionUrl.trim());
           const openLink = () => {
-            if (banner.actionUrl) Linking.openURL(banner.actionUrl).catch(() => {});
+            const url = banner.actionUrl?.trim();
+            if (!url) return;
+            // Deep-link interno app://<Rota> abre a tela no app; a própria tela
+            // cuida do gate de plano (ex.: Store redireciona ao paywall Master).
+            const internal = url.match(/^app:\/\/(.+)$/i);
+            if (internal) {
+              navigation.navigate(internal[1] as never);
+              return;
+            }
+            Linking.openURL(url).catch(() => {});
           };
           return (
             <View key={banner.id} style={[s.notifBanner, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>

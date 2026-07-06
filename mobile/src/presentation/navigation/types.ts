@@ -51,7 +51,7 @@ export type RootStackParamList = {
   AdminSupportChat: { userId: string; companyName: string };
   PricingTutorial: undefined;
   RecipeTutorial: undefined;
-  Store: undefined;
+  Store: { initialTab?: 'catalog' | 'orders' | 'settings' } | undefined;
   StoreProductForm: { productId?: string } | undefined;
   StoreSettings: undefined;
   AnnounceBanner: undefined;
