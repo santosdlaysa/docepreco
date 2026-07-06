@@ -119,17 +119,38 @@ function ProductRow({
   );
 }
 
+interface SavedOrder {
+  orderId: string;
+  items: Array<{ name: string; qty: number; price: number }>;
+  total: number;
+  deliveryFee: number;
+  createdAt: string;
+}
+
+const CUSTOMER_KEY = (slug: string) => `dpeco_customer_${slug}`;
+const ORDERS_KEY   = (slug: string) => `dpeco_orders_${slug}`;
+
+const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
+  pending:     { label: 'Aguardando', color: '#D97706', bg: '#FEF3C7' },
+  in_progress: { label: 'Em produção', color: '#7C3AED', bg: '#EDE9FE' },
+  done:        { label: 'Pronto',     color: '#059669', bg: '#D1FAE5' },
+  delivered:   { label: 'Entregue',   color: '#059669', bg: '#D1FAE5' },
+  cancelled:   { label: 'Cancelado',  color: '#DC2626', bg: '#FEE2E2' },
+};
+
 export function LojaPage() {
   const { slug } = useParams<{ slug: string }>();
   const [loading, setLoading] = useState(true);
   const [store, setStore] = useState<StoreData | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [cart, setCart] = useState<Map<string, number>>(new Map());
-  const [step, setStep] = useState<'catalog' | 'checkout' | 'success'>('catalog');
+  const [step, setStep] = useState<'catalog' | 'checkout' | 'success' | 'history'>('catalog');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>('pending');
+  const [savedOrders, setSavedOrders] = useState<SavedOrder[]>([]);
+  const [historyStatuses, setHistoryStatuses] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
     clientName: '',
     clientPhone: '',
@@ -163,7 +184,16 @@ export function LojaPage() {
       .then(json => {
         if (json.success) {
           setStore(json.data);
-          setForm(f => ({ ...f, deliveryType: json.data.acceptsDelivery ? 'delivery' : 'pickup' }));
+          const defaultType = json.data.acceptsDelivery ? 'delivery' : 'pickup';
+          try {
+            const saved = localStorage.getItem(CUSTOMER_KEY(slug!));
+            const customer = saved ? JSON.parse(saved) : null;
+            setForm(f => ({ ...f, deliveryType: defaultType, clientName: customer?.name ?? '', clientPhone: customer?.phone ?? '' }));
+            const orders = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
+            setSavedOrders(orders);
+          } catch {
+            setForm(f => ({ ...f, deliveryType: defaultType }));
+          }
         } else setNotFound(true);
       })
       .catch(() => setNotFound(true))
@@ -186,6 +216,18 @@ export function LojaPage() {
     if (totalItems === 0) setCartVisible(false);
     prevTotal.current = totalItems;
   }, [totalItems]);
+
+  // Buscar status de todos os pedidos ao abrir histórico
+  useEffect(() => {
+    if (step !== 'history' || !slug || savedOrders.length === 0) return;
+    savedOrders.forEach(async o => {
+      try {
+        const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${o.orderId}`);
+        const j = await r.json();
+        if (j.success) setHistoryStatuses(prev => ({ ...prev, [o.orderId]: j.data.status }));
+      } catch {}
+    });
+  }, [step, slug, savedOrders]);
 
   // Polling de status do pedido — deve estar aqui (antes de qualquer return condicional)
   useEffect(() => {
@@ -243,6 +285,24 @@ export function LojaPage() {
       if (!res.ok) throw new Error(json.error ?? 'Erro ao enviar pedido');
       setOrderId(json.data.orderId);
       setOrderStatus('pending');
+      // Salvar cliente e pedido no localStorage
+      try {
+        localStorage.setItem(CUSTOMER_KEY(slug!), JSON.stringify({ name: form.clientName.trim(), phone: form.clientPhone.trim() }));
+        const newOrder: SavedOrder = {
+          orderId: json.data.orderId,
+          items: Array.from(cart.entries()).map(([id, qty]) => {
+            const p = store!.products.find(p => p.id === id)!;
+            return { name: p.name, qty, price: p.price };
+          }),
+          total: totalPrice,
+          deliveryFee: appliedFee,
+          createdAt: new Date().toISOString(),
+        };
+        const existing: SavedOrder[] = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
+        const updated = [newOrder, ...existing].slice(0, 20);
+        localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated));
+        setSavedOrders(updated);
+      } catch {}
       setStep('success');
     } catch (e: any) {
       setError(e.message);
@@ -421,6 +481,29 @@ export function LojaPage() {
           </div>
         </div>
 
+        {/* Banner de histórico */}
+        {savedOrders.length > 0 && (
+          <div className="max-w-lg mx-auto px-4 pt-4">
+            <button
+              onClick={() => setStep('history')}
+              className="w-full bg-white rounded-2xl shadow-sm px-4 py-3.5 flex items-center gap-3 active:scale-[0.98] transition-transform"
+            >
+              <div className="w-9 h-9 bg-rose-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-[#EA4B92]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <div className="flex-1 text-left">
+                <p className="text-sm font-bold text-gray-800">Meus pedidos</p>
+                <p className="text-xs text-gray-400">{savedOrders.length} {savedOrders.length === 1 ? 'pedido anterior' : 'pedidos anteriores'}</p>
+              </div>
+              <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
+        )}
+
         {/* Produtos */}
         <div className="max-w-lg mx-auto px-4 pt-5 pb-40">
           {store.products.length === 0 ? (
@@ -476,6 +559,84 @@ export function LojaPage() {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    );
+
+  // ── Histórico ──
+  if (step === 'history')
+    return (
+      <div className="min-h-screen bg-[#F5F5F7]">
+        <div className="bg-gradient-to-r from-[#EA4B92] to-[#7C3AED] text-white px-5 py-5">
+          <div className="max-w-lg mx-auto flex items-center gap-3">
+            <button
+              onClick={() => setStep('catalog')}
+              className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+            >
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div>
+              <h1 className="text-lg font-bold">Meus pedidos</h1>
+              <p className="text-white/60 text-xs">{store.storeName}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-lg mx-auto px-4 py-5 flex flex-col gap-3">
+          {savedOrders.map(o => {
+            const st = historyStatuses[o.orderId];
+            const badge = st ? STATUS_LABEL[st] : null;
+            const date = new Date(o.createdAt);
+            const dateStr = date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+            const timeStr = date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            return (
+              <div key={o.orderId} className="bg-white rounded-2xl shadow-sm overflow-hidden">
+                <div className="px-4 pt-4 pb-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs text-gray-400">{dateStr} às {timeStr}</p>
+                    </div>
+                    {badge ? (
+                      <span className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ color: badge.color, backgroundColor: badge.bg }}>
+                        {badge.label}
+                      </span>
+                    ) : (
+                      <span className="w-16 h-5 bg-gray-100 rounded-full animate-pulse" />
+                    )}
+                  </div>
+                  {o.items.map((item, i) => (
+                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">{item.qty}</span>
+                        <span>{item.name}</span>
+                      </div>
+                      <span className="font-medium text-gray-600">{fmt(item.price * item.qty)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
+                  <span className="text-sm font-bold text-gray-700">Total: <span className="text-[#EA4B92]">{fmt(o.total)}</span></span>
+                  {st !== 'delivered' && st !== 'cancelled' && (
+                    <button
+                      onClick={() => { setOrderId(o.orderId); setOrderStatus(st ?? 'pending'); setStep('success'); }}
+                      className="text-xs font-bold text-[#EA4B92] bg-rose-50 px-3 py-1.5 rounded-xl active:scale-95 transition-transform"
+                    >
+                      Acompanhar
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          <button
+            onClick={() => setStep('catalog')}
+            className="w-full bg-[#EA4B92] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-pink-200/60 active:scale-[0.98] transition-transform mt-2"
+          >
+            Fazer novo pedido
+          </button>
         </div>
       </div>
     );
