@@ -616,11 +616,47 @@ export function LojaPage() {
     );
 
   // ── Sucesso / Acompanhamento ──
-  const STATUS_STEPS: Array<{ key: string; label: string; icon: string }> = [
-    { key: 'pending',     label: 'Aguardando',  icon: '🕐' },
-    { key: 'in_progress', label: 'Produção',    icon: '👩‍🍳' },
-    { key: 'done',        label: 'Pronto',      icon: '✅' },
-    { key: 'delivered',   label: 'Entregue',    icon: '🎉' },
+  const STATUS_STEPS: Array<{ key: string; label: string; sub: string; icon: JSX.Element }> = [
+    {
+      key: 'pending',
+      label: 'Aguardando confirmação',
+      sub: 'Seu pedido foi recebido pela loja',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'in_progress',
+      label: 'Em produção',
+      sub: 'A loja está preparando seu pedido',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'done',
+      label: 'Pronto!',
+      sub: 'Pedido finalizado e pronto para entrega ou retirada',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'delivered',
+      label: 'Entregue 🎉',
+      sub: 'Pedido entregue com sucesso!',
+      icon: (
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+        </svg>
+      ),
+    },
   ];
   const cancelledStatus = orderStatus === 'cancelled';
   const currentIdx = cancelledStatus ? -1 : STATUS_STEPS.findIndex(s => s.key === orderStatus);
@@ -629,95 +665,116 @@ export function LojaPage() {
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
       {/* Header */}
-      <div className="bg-gradient-to-r from-[#EA4B92] to-[#7C3AED] text-white px-5 py-5">
-        <div className="max-w-lg mx-auto text-center">
-          <p className="text-white/70 text-xs font-medium mb-1">{store.storeName}</p>
-          <h1 className="text-lg font-bold">Acompanhar pedido</h1>
+      <div className="bg-gradient-to-r from-[#EA4B92] to-[#7C3AED] px-5 pt-12 pb-8 text-white">
+        <div className="max-w-lg mx-auto">
+          <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">{store.storeName}</p>
+          <h1 className="text-2xl font-bold">
+            {cancelledStatus ? 'Pedido cancelado' : orderStatus === 'delivered' ? 'Pedido entregue! 🎉' : 'Acompanhar pedido'}
+          </h1>
+          <p className="text-white/70 text-sm mt-1">
+            {cancelledStatus
+              ? 'Entre em contato com a loja.'
+              : orderStatus === 'delivered'
+              ? `Obrigada pela preferência, ${form.clientName.split(' ')[0]}!`
+              : `Olá, ${form.clientName.split(' ')[0]}! Seu pedido está a caminho.`}
+          </p>
         </div>
       </div>
 
-      <div className="max-w-lg mx-auto px-4 py-6 flex flex-col gap-4">
+      <div className="max-w-lg mx-auto px-4 -mt-4 pb-10 flex flex-col gap-4">
 
-        {/* Card de confirmação */}
-        <div className="bg-white rounded-2xl shadow-sm p-5 flex flex-col items-center gap-3 text-center">
-          <div className={`w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-lg ${cancelledStatus ? 'bg-red-50' : 'bg-gradient-to-br from-emerald-400 to-green-500 shadow-green-200'}`}>
-            {cancelledStatus ? '❌' : '✓'}
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">
-              {cancelledStatus ? 'Pedido cancelado' : 'Pedido confirmado!'}
-            </h2>
-            <p className="text-gray-400 text-sm mt-1">
-              {cancelledStatus
-                ? 'Entre em contato com a loja para mais informações.'
-                : `Olá, ${form.clientName.split(' ')[0]}! Acompanhe o status abaixo.`}
-            </p>
-          </div>
-        </div>
-
-        {/* Tracker de status */}
+        {/* Timeline vertical */}
         {!cancelledStatus && (
-          <div className="bg-white rounded-2xl shadow-sm p-5">
+          <div className="bg-white rounded-2xl shadow-sm px-5 pt-5 pb-4">
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-5">Status do pedido</p>
-            <div className="flex items-start justify-between relative">
-              {/* Linha de progresso */}
-              <div className="absolute top-5 left-5 right-5 h-0.5 bg-gray-100" />
-              <div
-                className="absolute top-5 left-5 h-0.5 bg-[#EA4B92] transition-all duration-700"
-                style={{ width: activeIdx === 0 ? '0%' : `${(activeIdx / (STATUS_STEPS.length - 1)) * 100}%` }}
-              />
+            <div className="flex flex-col">
               {STATUS_STEPS.map((s, i) => {
                 const done = i < activeIdx;
                 const active = i === activeIdx;
+                const pending = i > activeIdx;
+                const isLast = i === STATUS_STEPS.length - 1;
                 return (
-                  <div key={s.key} className="flex flex-col items-center gap-2 z-10 flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-all duration-500 ${
-                      done    ? 'bg-[#EA4B92] shadow-md shadow-pink-200' :
-                      active  ? 'bg-[#EA4B92] shadow-lg shadow-pink-300 scale-110 ring-4 ring-pink-100' :
-                                'bg-gray-100'
-                    }`}>
-                      {done ? (
-                        <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      ) : (
-                        <span className={active ? 'text-white' : 'text-gray-300'}>{s.icon}</span>
+                  <div key={s.key} className="flex gap-4">
+                    {/* Coluna esquerda: ícone + linha */}
+                    <div className="flex flex-col items-center">
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
+                        done    ? 'bg-[#EA4B92] text-white shadow-md shadow-pink-200' :
+                        active  ? 'bg-[#EA4B92] text-white shadow-lg shadow-pink-300 ring-4 ring-pink-100' :
+                                  'bg-gray-100 text-gray-300'
+                      }`}>
+                        {done ? (
+                          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </svg>
+                        ) : s.icon}
+                      </div>
+                      {!isLast && (
+                        <div className={`w-0.5 flex-1 my-1 min-h-[28px] rounded-full transition-colors duration-500 ${done ? 'bg-[#EA4B92]' : 'bg-gray-100'}`} />
                       )}
                     </div>
-                    <span className={`text-[10px] font-bold text-center leading-tight ${active ? 'text-[#EA4B92]' : done ? 'text-gray-500' : 'text-gray-300'}`}>
-                      {s.label}
-                    </span>
+                    {/* Coluna direita: texto */}
+                    <div className={`pb-6 pt-2 ${isLast ? 'pb-1' : ''}`}>
+                      <p className={`font-bold text-[15px] leading-tight transition-colors duration-300 ${active ? 'text-[#EA4B92]' : done ? 'text-gray-700' : 'text-gray-300'}`}>
+                        {s.label}
+                        {active && (
+                          <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold bg-pink-50 text-[#EA4B92] px-2 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 bg-[#EA4B92] rounded-full animate-pulse" />
+                            agora
+                          </span>
+                        )}
+                      </p>
+                      <p className={`text-xs mt-0.5 leading-relaxed ${active ? 'text-gray-500' : done ? 'text-gray-400' : 'text-gray-200'}`}>
+                        {s.sub}
+                      </p>
+                    </div>
                   </div>
                 );
               })}
             </div>
-            <p className="text-center text-xs text-gray-400 mt-5">
-              Atualiza automaticamente a cada 20 segundos
-            </p>
+            <div className="mt-2 pt-3 border-t border-gray-50 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-pulse" />
+              <p className="text-[11px] text-gray-300">Atualiza a cada 20 segundos</p>
+            </div>
+          </div>
+        )}
+
+        {cancelledStatus && (
+          <div className="bg-red-50 border border-red-100 rounded-2xl p-5 flex items-center gap-4">
+            <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0 text-xl">❌</div>
+            <div>
+              <p className="font-bold text-red-700">Pedido cancelado</p>
+              <p className="text-sm text-red-400 mt-0.5">Entre em contato com {store.storeName} para mais informações.</p>
+            </div>
           </div>
         )}
 
         {/* Resumo do pedido */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <div className="px-4 pt-4 pb-3">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Seu pedido</p>
+          <div className="px-4 pt-4 pb-2">
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Resumo do pedido</p>
             {Array.from(cart.entries()).map(([id, qty]) => {
               const p = store.products.find(p => p.id === id);
               if (!p) return null;
               return (
-                <div key={id} className="flex justify-between items-center py-2 border-b border-gray-50 last:border-0 text-sm text-gray-700">
-                  <div className="flex items-center gap-2">
-                    <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">{qty}</span>
-                    <span>{p.name}</span>
+                <div key={id} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-rose-50 text-[#EA4B92] text-[11px] font-bold flex items-center justify-center flex-shrink-0">{qty}</span>
+                    <span className="font-medium">{p.name}</span>
                   </div>
-                  <span className="font-semibold ml-2">{fmt(p.price * qty)}</span>
+                  <span className="font-semibold ml-2 text-gray-800">{fmt(p.price * qty)}</span>
                 </div>
               );
             })}
           </div>
-          <div className="bg-gray-50 px-4 py-3 flex justify-between items-center">
+          {appliedFee > 0 && (
+            <div className="px-4 py-2 flex justify-between text-sm text-gray-400 border-t border-gray-50">
+              <span>Taxa de entrega</span>
+              <span>{fmt(appliedFee)}</span>
+            </div>
+          )}
+          <div className="bg-gray-50 px-4 py-3.5 flex justify-between items-center">
             <span className="text-sm font-bold text-gray-700">Total</span>
-            <span className="text-[#EA4B92] font-bold">{fmt(totalPrice)}</span>
+            <span className="text-[#EA4B92] font-bold text-lg">{fmt(totalPrice)}</span>
           </div>
         </div>
 
@@ -728,12 +785,12 @@ export function LojaPage() {
             setOrderId(null);
             setForm({ clientName: '', clientPhone: '', deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup', deliveryAddress: '', notes: '' });
           }}
-          className="w-full border-2 border-[#EA4B92] text-[#EA4B92] font-bold py-3.5 rounded-2xl active:scale-[0.98] transition-transform"
+          className="w-full bg-white border-2 border-[#EA4B92] text-[#EA4B92] font-bold py-3.5 rounded-2xl shadow-sm active:scale-[0.98] transition-transform"
         >
           Fazer outro pedido
         </button>
 
-        <p className="text-center text-[11px] text-gray-300">
+        <p className="text-center text-[11px] text-gray-300 pb-2">
           Criado com <span className="text-[#EA4B92] font-semibold">DocePreço</span>
         </p>
       </div>
