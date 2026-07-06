@@ -252,4 +252,5 @@ export const demoStoreSettings: StoreSettings = {
   acceptsDelivery: true,
   acceptsPickup: true,
   minOrderValue: 30,
+  deliveryFee: 5,
 };

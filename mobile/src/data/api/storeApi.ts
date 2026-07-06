@@ -2,7 +2,7 @@ import { apiClient } from './client';
 import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
 
 type ProductInput = Omit<StoreProduct, 'id' | 'createdAt' | 'updatedAt'>;
-type SettingsInput = Partial<Pick<StoreSettings, 'active' | 'storeName' | 'description' | 'acceptsDelivery' | 'acceptsPickup' | 'minOrderValue'>>;
+type SettingsInput = Partial<Pick<StoreSettings, 'active' | 'storeName' | 'description' | 'acceptsDelivery' | 'acceptsPickup' | 'minOrderValue' | 'deliveryFee'>>;
 
 export const storeApi = {
   getProducts: async (): Promise<StoreProduct[]> => {

@@ -62,6 +62,7 @@ export const StoreSettingsScreen: React.FC = () => {
   const [acceptsDelivery, setAcceptsDelivery] = useState(true);
   const [acceptsPickup, setAcceptsPickup] = useState(true);
   const [minOrderText, setMinOrderText] = useState('');
+  const [deliveryFeeText, setDeliveryFeeText] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -74,6 +75,7 @@ export const StoreSettingsScreen: React.FC = () => {
         setAcceptsDelivery(s.acceptsDelivery);
         setAcceptsPickup(s.acceptsPickup);
         setMinOrderText(formatMoney(s.minOrderValue ?? 0));
+        setDeliveryFeeText(formatMoney(s.deliveryFee ?? 0));
       })
       .catch(() => showToast('Erro ao carregar configurações', 'error'))
       .finally(() => setLoading(false));
@@ -93,6 +95,7 @@ export const StoreSettingsScreen: React.FC = () => {
         acceptsDelivery,
         acceptsPickup,
         minOrderValue: parseMoney(minOrderText) || undefined,
+        deliveryFee: parseMoney(deliveryFeeText) || undefined,
       });
       showToast('Configurações salvas!', 'success');
       navigation.goBack();
@@ -180,6 +183,23 @@ export const StoreSettingsScreen: React.FC = () => {
               <View style={[st.thumb, acceptsDelivery && st.thumbOn]} />
             </View>
           </TouchableOpacity>
+
+          {acceptsDelivery && (
+            <>
+              <Text style={st.label}>Taxa de entrega (opcional)</Text>
+              <View style={st.priceInput}>
+                <Text style={st.pricePre}>R$</Text>
+                <TextInput
+                  style={st.priceField}
+                  value={deliveryFeeText}
+                  onChangeText={setDeliveryFeeText}
+                  placeholder="0,00 — grátis se vazio"
+                  placeholderTextColor={INK3}
+                  keyboardType="decimal-pad"
+                />
+              </View>
+            </>
+          )}
 
           <TouchableOpacity style={st.toggleRow} onPress={() => setAcceptsPickup(v => !v)} activeOpacity={0.7}>
             <View style={st.toggleLeft}>

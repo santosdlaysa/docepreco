@@ -19,4 +19,5 @@ export interface StoreSettings {
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue?: number;
+  deliveryFee?: number;
 }
