@@ -132,8 +132,8 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
     const result = await pool.query(
       `INSERT INTO orders
         (user_id, client_name, client_phone, recipe_name, quantity, unit_price, total_price,
-         delivery_date, status, paid, paid_amount, payments, items, notes, source)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online')
+         delivery_date, status, paid, paid_amount, payments, items, notes, source, delivery_address)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online',$11)
        RETURNING id`,
       [
         userId,
@@ -146,6 +146,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         deliveryDate,
         JSON.stringify(items.map(i => ({ recipeId: i.productId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice }))),
         b.notes ? String(b.notes).trim() : null,
+        b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
       ]
     );
     const orderId = result.rows[0].id;
