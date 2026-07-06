@@ -32,6 +32,7 @@ export function SupportChatPage({ toast }: Props) {
   const [newMessage, setNewMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [selectedImageName, setSelectedImageName] = useState('');
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
@@ -44,6 +45,17 @@ export function SupportChatPage({ toast }: Props) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!expandedImage) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setExpandedImage(null);
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [expandedImage]);
   const messagesPollRef = useRef<ReturnType<typeof setInterval>>();
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const lastTypingSentRef = useRef(0);
@@ -366,7 +378,8 @@ export function SupportChatPage({ toast }: Props) {
                             <img
                               src={msg.imageUrl}
                               alt="Imagem enviada no chat"
-                              className="mb-1.5 max-h-72 max-w-full rounded-xl object-cover"
+                              className="mb-1.5 max-h-72 max-w-full cursor-zoom-in rounded-xl object-cover"
+                              onClick={() => setExpandedImage(msg.imageUrl)}
                             />
                           )}
                           {msg.message && <p className="text-sm whitespace-pre-wrap">{msg.message}</p>}
@@ -381,6 +394,31 @@ export function SupportChatPage({ toast }: Props) {
                   )}
                   <div ref={messagesEndRef} />
                 </div>
+
+                {expandedImage && (
+                  <div
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Visualização ampliada da imagem"
+                    onClick={() => setExpandedImage(null)}
+                  >
+                    <button
+                      type="button"
+                      className="absolute right-5 top-5 rounded-full bg-black/50 p-2 text-white transition hover:bg-black/70"
+                      onClick={() => setExpandedImage(null)}
+                      aria-label="Fechar imagem"
+                    >
+                      <X size={24} />
+                    </button>
+                    <img
+                      src={expandedImage}
+                      alt="Imagem ampliada do chat"
+                      className="max-h-[90vh] max-w-[95vw] rounded-lg object-contain shadow-2xl"
+                      onClick={event => event.stopPropagation()}
+                    />
+                  </div>
+                )}
 
                 {/* Input */}
                 <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
