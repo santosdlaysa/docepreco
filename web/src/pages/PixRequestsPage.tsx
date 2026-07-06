@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, PixRequestItem } from '../lib/api';
 import { TableSkeleton, ConfirmModal, ToastFn } from '../components';
-import { CheckCircle, XCircle, Clock, RefreshCw, QrCode } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, RefreshCw, QrCode, Megaphone } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -66,10 +66,15 @@ export function PixRequestsPage({ toast }: Props) {
   const handleApprove = async (item: PixRequestItem) => {
     setApproving(item.id);
     try {
-      const premiumDays = item.planLabel === 'Anual' ? 365 : 30;
-      await api.approvePixRequest(item.id, premiumDays, item.planTier);
-      const tierLabel = item.planTier === 'master' ? 'Master' : 'Premium';
-      toast.success(`${tierLabel} liberado para ${item.companyName}!`);
+      if (item.productType === 'ad_banner') {
+        await api.approvePixRequest(item.id);
+        toast.success(`Anúncio de ${item.companyName} publicado!`);
+      } else {
+        const premiumDays = item.planLabel === 'Anual' ? 365 : 30;
+        await api.approvePixRequest(item.id, premiumDays, item.planTier);
+        const tierLabel = item.planTier === 'master' ? 'Master' : 'Premium';
+        toast.success(`${tierLabel} liberado para ${item.companyName}!`);
+      }
       load();
     } catch (e: any) {
       toast.error(e.message || 'Erro ao aprovar');
@@ -147,6 +152,7 @@ export function PixRequestsPage({ toast }: Props) {
           {requests.map(req => {
             const st = STATUS_MAP[req.status] ?? STATUS_MAP.pending;
             const StIcon = st.icon;
+            const isAd = req.productType === 'ad_banner';
             return (
               <div
                 key={req.id}
@@ -158,13 +164,21 @@ export function PixRequestsPage({ toast }: Props) {
               >
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      req.status === 'pending' ? 'bg-yellow-100' : req.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
-                    }`}>
-                      <StIcon size={18} className={
-                        req.status === 'pending' ? 'text-yellow-600' : req.status === 'approved' ? 'text-green-600' : 'text-red-500'
-                      } />
-                    </div>
+                    {isAd && req.bannerImageUrl ? (
+                      <img
+                        src={req.bannerImageUrl}
+                        alt={req.companyName}
+                        className="w-16 h-10 rounded-lg object-cover shrink-0 border border-gray-200 dark:border-gray-700"
+                      />
+                    ) : (
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                        req.status === 'pending' ? 'bg-yellow-100' : req.status === 'approved' ? 'bg-green-100' : 'bg-red-100'
+                      }`}>
+                        <StIcon size={18} className={
+                          req.status === 'pending' ? 'text-yellow-600' : req.status === 'approved' ? 'text-green-600' : 'text-red-500'
+                        } />
+                      </div>
+                    )}
                     <div className="min-w-0">
                       <p className="font-semibold text-gray-900 dark:text-white text-sm truncate">{req.companyName}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">{req.email}</p>
@@ -173,15 +187,24 @@ export function PixRequestsPage({ toast }: Props) {
 
                   <div className="flex items-center gap-4 text-sm">
                     <div className="text-center">
-                      <p className="text-xs text-gray-400">Plano</p>
-                      <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 justify-center">
-                        {req.planLabel}
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
-                          req.planTier === 'master' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'
-                        }`}>
-                          {req.planTier === 'master' ? 'Master' : 'Premium'}
-                        </span>
-                      </p>
+                      <p className="text-xs text-gray-400">{isAd ? 'Tipo' : 'Plano'}</p>
+                      {isAd ? (
+                        <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 justify-center">
+                          <span className="px-1.5 py-0.5 rounded text-[10px] font-bold uppercase bg-pink-100 text-pink-700 inline-flex items-center gap-1">
+                            <Megaphone size={11} /> Anúncio
+                          </span>
+                          {req.bannerDurationDays ? `${req.bannerDurationDays}d` : ''}
+                        </p>
+                      ) : (
+                        <p className="font-semibold text-gray-900 dark:text-white flex items-center gap-1.5 justify-center">
+                          {req.planLabel}
+                          <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                            req.planTier === 'master' ? 'bg-purple-100 text-purple-700' : 'bg-amber-100 text-amber-700'
+                          }`}>
+                            {req.planTier === 'master' ? 'Master' : 'Premium'}
+                          </span>
+                        </p>
+                      )}
                     </div>
                     <div className="text-center">
                       <p className="text-xs text-gray-400">Valor</p>
@@ -230,8 +253,14 @@ export function PixRequestsPage({ toast }: Props) {
       {/* Approve modal */}
       <ConfirmModal
         open={!!confirmApprove}
-        title="Aprovar pagamento PIX"
-        message={confirmApprove ? `Confirma a liberação do ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'} para ${confirmApprove.companyName} (${confirmApprove.planLabel} - ${fmtMoney(confirmApprove.amountCents)})? O usuário receberá ${confirmApprove.planLabel === 'Anual' ? '365' : '30'} dias de ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'}.` : ''}
+        title={confirmApprove?.productType === 'ad_banner' ? 'Aprovar anúncio' : 'Aprovar pagamento PIX'}
+        message={
+          confirmApprove
+            ? confirmApprove.productType === 'ad_banner'
+              ? `Confirma a publicação do anúncio de ${confirmApprove.companyName} (${confirmApprove.bannerDurationDays ?? '?'} dias - ${fmtMoney(confirmApprove.amountCents)})? O banner ficará ativo no carrossel da Home.`
+              : `Confirma a liberação do ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'} para ${confirmApprove.companyName} (${confirmApprove.planLabel} - ${fmtMoney(confirmApprove.amountCents)})? O usuário receberá ${confirmApprove.planLabel === 'Anual' ? '365' : '30'} dias de ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'}.`
+            : ''
+        }
         confirmLabel="Aprovar"
         confirmColor="primary"
         onConfirm={() => confirmApprove && handleApprove(confirmApprove)}
@@ -242,7 +271,13 @@ export function PixRequestsPage({ toast }: Props) {
       <ConfirmModal
         open={!!confirmReject}
         title="Rejeitar solicitação"
-        message={confirmReject ? `Rejeitar o pagamento PIX de ${confirmReject.companyName}? O usuário será notificado.` : ''}
+        message={
+          confirmReject
+            ? confirmReject.productType === 'ad_banner'
+              ? `Rejeitar o anúncio de ${confirmReject.companyName}? O banner pendente será removido e o usuário notificado.`
+              : `Rejeitar o pagamento PIX de ${confirmReject.companyName}? O usuário será notificado.`
+            : ''
+        }
         confirmLabel="Rejeitar"
         confirmColor="red"
         onConfirm={() => confirmReject && handleReject(confirmReject)}
