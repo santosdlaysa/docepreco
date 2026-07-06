@@ -20,4 +20,5 @@ export interface StoreSettings {
   acceptsPickup: boolean;
   minOrderValue?: number;
   deliveryFee?: number;
+  coverImageUrl?: string;
 }

@@ -590,6 +590,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'orders', 'source', "VARCHAR(20) NOT NULL DEFAULT 'manual'");
     await addColumnIfMissing(client, 'orders', 'delivery_address', 'TEXT');
     await addColumnIfMissing(client, 'store_settings', 'delivery_fee', 'DECIMAL(10,2) DEFAULT 0');
+    await addColumnIfMissing(client, 'store_settings', 'cover_image_url', 'TEXT');
     // Versões antigas usavam "ready"; o app atual usa "done".
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check`);
     await client.query(`UPDATE orders SET status = 'done' WHERE status = 'ready'`);
@@ -955,6 +956,7 @@ export async function runMigrations() {
         accepts_delivery BOOLEAN NOT NULL DEFAULT TRUE,
         accepts_pickup BOOLEAN NOT NULL DEFAULT TRUE,
         min_order_value DECIMAL(10,2) NULL,
+        cover_image_url TEXT NULL,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )

@@ -306,45 +306,39 @@ export const StoreScreen: React.FC = () => {
         ) : (
           <View style={{ gap: 10 }}>
             {products.map(product => (
-              <TouchableOpacity
-                key={product.id}
-                style={st.productCard}
-                onPress={() => navigation.navigate('StoreProductForm', { productId: product.id })}
-                onLongPress={() => handleDeleteProduct(product)}
-                activeOpacity={0.85}
-              >
-                {product.photoUrl ? (
-                  <Image source={{ uri: product.photoUrl }} style={st.productThumb} />
-                ) : (
-                  <View style={[st.productThumb, st.productThumbPlaceholder]}>
-                    <Ionicons name="image-outline" size={22} color={INK3} />
-                  </View>
-                )}
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={st.productName} numberOfLines={1}>{product.name}</Text>
-                  {product.description ? (
-                    <Text style={st.productDesc} numberOfLines={1}>{product.description}</Text>
-                  ) : null}
-                  <Text style={st.productPrice}>{fmtCurrency(product.publicPrice)}</Text>
-                </View>
-                <View
-                  style={st.productRight}
-                  onStartShouldSetResponder={() => true}
-                  onResponderRelease={e => e.stopPropagation()}
+              <View key={product.id} style={st.productCard}>
+                <TouchableOpacity
+                  style={st.productMain}
+                  onPress={() => navigation.navigate('StoreProductForm', { productId: product.id })}
+                  onLongPress={() => handleDeleteProduct(product)}
+                  activeOpacity={0.85}
                 >
-                  {togglingProduct === product.id ? (
-                    <ActivityIndicator size="small" color={PINK} />
+                  {product.photoUrl ? (
+                    <Image source={{ uri: product.photoUrl }} style={st.productThumb} />
                   ) : (
-                    <Switch
-                      value={product.available}
-                      onValueChange={() => toggleProductAvailable(product)}
-                    />
+                    <View style={[st.productThumb, st.productThumbPlaceholder]}>
+                      <Ionicons name="image-outline" size={22} color={INK3} />
+                    </View>
                   )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={st.productName} numberOfLines={1}>{product.name}</Text>
+                    {product.description ? (
+                      <Text style={st.productDesc} numberOfLines={1}>{product.description}</Text>
+                    ) : null}
+                    <Text style={st.productPrice}>{fmtCurrency(product.publicPrice)}</Text>
+                  </View>
+                </TouchableOpacity>
+                <View style={st.productRight}>
+                  <Switch
+                    value={product.available}
+                    onValueChange={() => toggleProductAvailable(product)}
+                    disabled={togglingProduct === product.id}
+                  />
                   <Text style={[st.productAvailLabel, { color: product.available ? GREEN : INK3 }]}>
                     {product.available ? 'Ativo' : 'Oculto'}
                   </Text>
                 </View>
-              </TouchableOpacity>
+              </View>
             ))}
           </View>
         )}
@@ -420,6 +414,10 @@ const st = StyleSheet.create({
   productCard: {
     backgroundColor: '#fff', borderRadius: 14, padding: 12,
     flexDirection: 'row', alignItems: 'center', gap: 12, ...SHADOW,
+  },
+  productMain: {
+    flex: 1, minWidth: 0,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
   },
   productThumb: { width: 56, height: 56, borderRadius: 12 },
   productThumbPlaceholder: {

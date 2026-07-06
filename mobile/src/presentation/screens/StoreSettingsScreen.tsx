@@ -9,7 +9,9 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Image,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -64,6 +66,7 @@ export const StoreSettingsScreen: React.FC = () => {
   const [acceptsPickup, setAcceptsPickup] = useState(true);
   const [minOrderText, setMinOrderText] = useState('');
   const [deliveryFeeText, setDeliveryFeeText] = useState('');
+  const [coverImageUrl, setCoverImageUrl] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -77,10 +80,29 @@ export const StoreSettingsScreen: React.FC = () => {
         setAcceptsPickup(s.acceptsPickup);
         setMinOrderText(formatMoney(s.minOrderValue ?? 0));
         setDeliveryFeeText(formatMoney(s.deliveryFee ?? 0));
+        setCoverImageUrl(s.coverImageUrl ?? '');
       })
       .catch(() => showToast('Erro ao carregar configurações', 'error'))
       .finally(() => setLoading(false));
   }, []);
+
+  const handlePickCover = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      showToast('Permissão de galeria necessária', 'warning');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [16, 9],
+      quality: 0.6,
+      base64: true,
+    });
+    if (!result.canceled && result.assets[0]?.base64) {
+      setCoverImageUrl(`data:image/jpeg;base64,${result.assets[0].base64}`);
+    }
+  };
 
   const handleSave = async () => {
     if (!storeName.trim()) {
@@ -97,6 +119,7 @@ export const StoreSettingsScreen: React.FC = () => {
         acceptsPickup,
         minOrderValue: parseMoney(minOrderText) || undefined,
         deliveryFee: parseMoney(deliveryFeeText) || undefined,
+        coverImageUrl: coverImageUrl || undefined,
       });
       showToast('Configurações salvas!', 'success');
       navigation.goBack();
@@ -130,6 +153,25 @@ export const StoreSettingsScreen: React.FC = () => {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={st.body}>
+
+          {/* ── Imagem de capa ── */}
+          <Text style={st.label}>Imagem de capa</Text>
+          <TouchableOpacity style={st.coverBox} onPress={handlePickCover} activeOpacity={0.85}>
+            {coverImageUrl ? (
+              <Image source={{ uri: coverImageUrl }} style={st.coverImage} resizeMode="cover" />
+            ) : (
+              <View style={st.coverEmpty}>
+                <Ionicons name="image-outline" size={30} color={INK3} />
+                <Text style={st.coverHint}>Toque para escolher a imagem do topo da loja</Text>
+              </View>
+            )}
+          </TouchableOpacity>
+          {coverImageUrl ? (
+            <TouchableOpacity style={st.coverRemoveBtn} onPress={() => setCoverImageUrl('')} activeOpacity={0.7}>
+              <Ionicons name="trash-outline" size={14} color="#C0392B" />
+              <Text style={st.coverRemoveText}>Remover imagem</Text>
+            </TouchableOpacity>
+          ) : null}
 
           {/* ── Store name ── */}
           <Text style={st.label}>Nome da loja *</Text>
@@ -264,6 +306,23 @@ const st = StyleSheet.create({
   headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: INK, textAlign: 'center' },
 
   body: { paddingHorizontal: 18, paddingBottom: 24, gap: 4 },
+
+  coverBox: {
+    width: '100%', height: 150, borderRadius: 16,
+    backgroundColor: '#fff', overflow: 'hidden', ...SHADOW,
+  },
+  coverImage: { width: '100%', height: '100%' },
+  coverEmpty: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderWidth: 2, borderColor: '#FFD9EC', borderStyle: 'dashed', borderRadius: 16,
+    paddingHorizontal: 24,
+  },
+  coverHint: { fontSize: 13, color: INK3, fontWeight: '500', textAlign: 'center' },
+  coverRemoveBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-end', marginTop: 6, paddingVertical: 4, paddingHorizontal: 8,
+  },
+  coverRemoveText: { fontSize: 12, color: '#C0392B', fontWeight: '600' },
 
   label: { fontSize: 13, fontWeight: '700', color: INK, marginTop: 12, marginBottom: 6, marginLeft: 2 },
   input: {

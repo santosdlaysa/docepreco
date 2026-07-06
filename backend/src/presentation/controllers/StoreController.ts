@@ -26,6 +26,7 @@ export class StoreController {
         acceptsPickup:   b.acceptsPickup,
         minOrderValue:   b.minOrderValue,
         deliveryFee:     b.deliveryFee,
+        coverImageUrl:   b.coverImageUrl,
       });
       res.json({ success: true, data: settings });
     } catch (error) {

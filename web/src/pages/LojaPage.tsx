@@ -20,6 +20,7 @@ interface StoreData {
   phone: string | null;
   instagramHandle: string | null;
   deliveryFee: number | null;
+  coverImageUrl: string | null;
   products: StoreProduct[];
 }
 
@@ -309,9 +310,24 @@ export function LojaPage() {
         <div className="max-w-lg mx-auto">
           {/* Banner */}
           <div className="relative h-40 bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] overflow-hidden">
-            {/* brilho decorativo */}
-            <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full" />
-            <div className="absolute top-16 -left-8 w-28 h-28 bg-white/10 rounded-full" />
+            {store.coverImageUrl ? (
+              <>
+                {/* Imagem de capa da loja */}
+                <img
+                  src={store.coverImageUrl}
+                  alt={store.storeName}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                {/* escurecimento p/ legibilidade dos botões */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-black/10" />
+              </>
+            ) : (
+              <>
+                {/* brilho decorativo (sem imagem) */}
+                <div className="absolute -top-10 -right-10 w-40 h-40 bg-white/10 rounded-full" />
+                <div className="absolute top-16 -left-8 w-28 h-28 bg-white/10 rounded-full" />
+              </>
+            )}
 
             {/* Botões flutuantes */}
             <div className="absolute top-0 left-0 right-0 pt-11 px-4 flex items-center justify-end gap-2">
