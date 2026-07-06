@@ -35,7 +35,8 @@ const INK = '#3D2233';
 const INK2 = '#9A7E8C';
 const INK3 = '#C4B0BB';
 const CREAM = '#FFF6F0';
-const PURPLE = '#7C3AED';
+const PINK = '#EA4B92';
+const PINK_LIGHT = '#FF6AAE';
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -179,7 +180,7 @@ export const StoreProductFormScreen: React.FC = () => {
     return (
       <SafeAreaView style={st.safe}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={PURPLE} />
+          <ActivityIndicator size="large" color={PINK} />
         </View>
       </SafeAreaView>
     );
@@ -265,8 +266,8 @@ export const StoreProductFormScreen: React.FC = () => {
           <TouchableOpacity style={st.recipeSelect} onPress={() => setShowRecipePicker(true)} activeOpacity={0.7}>
             {linkedRecipe ? (
               <>
-                <Ionicons name="book-outline" size={18} color={PURPLE} />
-                <Text style={[st.recipeSelectText, { color: PURPLE }]} numberOfLines={1}>
+                <Ionicons name="book-outline" size={18} color={PINK} />
+                <Text style={[st.recipeSelectText, { color: PINK }]} numberOfLines={1}>
                   {linkedRecipe.name}
                 </Text>
                 <TouchableOpacity onPress={() => setRecipeId(undefined)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
@@ -314,7 +315,7 @@ export const StoreProductFormScreen: React.FC = () => {
                     onPress={() => handleSelectRecipe(r)}
                     activeOpacity={0.7}
                   >
-                    <Ionicons name="book-outline" size={16} color={PURPLE} />
+                    <Ionicons name="book-outline" size={16} color={PINK} />
                     <Text style={st.recipePickerItemText}>{r.name}</Text>
                   </TouchableOpacity>
                 ))
@@ -327,7 +328,7 @@ export const StoreProductFormScreen: React.FC = () => {
         {/* ── Save button ── */}
         <View style={st.footer}>
           <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85}>
-            <LinearGradient colors={['#9B5DE5', PURPLE]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saveBtn}>
+            <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saveBtn}>
               {saving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -367,7 +368,7 @@ const st = StyleSheet.create({
   photoBoxImage: { width: '100%', height: '100%' },
   photoBoxEmpty: {
     flex: 1, alignItems: 'center', justifyContent: 'center', gap: 8,
-    borderWidth: 2, borderColor: '#EDD9F0', borderStyle: 'dashed', borderRadius: 16,
+    borderWidth: 2, borderColor: '#FFD9EC', borderStyle: 'dashed', borderRadius: 16,
   },
   photoBoxHint: { fontSize: 13, color: INK3, fontWeight: '500' },
   photoRemoveBtn: {
@@ -405,7 +406,7 @@ const st = StyleSheet.create({
     width: 46, height: 26, borderRadius: 13,
     backgroundColor: '#D0C8D8', justifyContent: 'center', paddingHorizontal: 3,
   },
-  toggleTrackOn: { backgroundColor: PURPLE },
+  toggleTrackOn: { backgroundColor: PINK },
   toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
   toggleThumbOn: { alignSelf: 'flex-end' },
 
@@ -425,7 +426,7 @@ const st = StyleSheet.create({
   saveBtn: {
     height: 52, borderRadius: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    shadowColor: PINK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   saveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });

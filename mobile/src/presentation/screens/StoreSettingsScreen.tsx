@@ -29,7 +29,8 @@ const INK = '#3D2233';
 const INK2 = '#9A7E8C';
 const INK3 = '#C4B0BB';
 const CREAM = '#FFF6F0';
-const PURPLE = '#7C3AED';
+const PINK = '#EA4B92';
+const PINK_LIGHT = '#FF6AAE';
 const GREEN = '#43BE6E';
 const SHADOW = {
   shadowColor: INK,
@@ -110,7 +111,7 @@ export const StoreSettingsScreen: React.FC = () => {
     return (
       <SafeAreaView style={st.safe}>
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-          <ActivityIndicator size="large" color={PURPLE} />
+          <ActivityIndicator size="large" color={PINK} />
         </View>
       </SafeAreaView>
     );
@@ -171,8 +172,8 @@ export const StoreSettingsScreen: React.FC = () => {
 
           <TouchableOpacity style={st.toggleRow} onPress={() => setAcceptsDelivery(v => !v)} activeOpacity={0.7}>
             <View style={st.toggleLeft}>
-              <View style={[st.toggleIcon, { backgroundColor: acceptsDelivery ? '#EDE4FB' : '#F5F5F5' }]}>
-                <Ionicons name="bicycle-outline" size={20} color={acceptsDelivery ? PURPLE : INK3} />
+              <View style={[st.toggleIcon, { backgroundColor: acceptsDelivery ? '#FFE3EF' : '#F5F5F5' }]}>
+                <Ionicons name="bicycle-outline" size={20} color={acceptsDelivery ? PINK : INK3} />
               </View>
               <View>
                 <Text style={st.toggleLabel}>Entrega</Text>
@@ -203,8 +204,8 @@ export const StoreSettingsScreen: React.FC = () => {
 
           <TouchableOpacity style={st.toggleRow} onPress={() => setAcceptsPickup(v => !v)} activeOpacity={0.7}>
             <View style={st.toggleLeft}>
-              <View style={[st.toggleIcon, { backgroundColor: acceptsPickup ? '#EDE4FB' : '#F5F5F5' }]}>
-                <Ionicons name="bag-outline" size={20} color={acceptsPickup ? PURPLE : INK3} />
+              <View style={[st.toggleIcon, { backgroundColor: acceptsPickup ? '#FFE3EF' : '#F5F5F5' }]}>
+                <Ionicons name="bag-outline" size={20} color={acceptsPickup ? PINK : INK3} />
               </View>
               <View>
                 <Text style={st.toggleLabel}>Retirada</Text>
@@ -231,7 +232,7 @@ export const StoreSettingsScreen: React.FC = () => {
         {/* ── Save button ── */}
         <View style={st.footer}>
           <TouchableOpacity onPress={handleSave} disabled={saving} activeOpacity={0.85}>
-            <LinearGradient colors={['#9B5DE5', PURPLE]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saveBtn}>
+            <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saveBtn}>
               {saving ? (
                 <ActivityIndicator color="#fff" />
               ) : (
@@ -286,7 +287,7 @@ const st = StyleSheet.create({
   toggleLabel: { fontSize: 14.5, fontWeight: '700', color: INK },
   toggleSub: { fontSize: 12, color: INK2, marginTop: 2 },
   track: { width: 46, height: 26, borderRadius: 13, backgroundColor: '#D0C8D8', justifyContent: 'center', paddingHorizontal: 3 },
-  trackOn: { backgroundColor: PURPLE },
+  trackOn: { backgroundColor: PINK },
   thumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
   thumbOn: { alignSelf: 'flex-end' },
 
@@ -301,7 +302,7 @@ const st = StyleSheet.create({
   saveBtn: {
     height: 52, borderRadius: 16,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    shadowColor: PURPLE, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
+    shadowColor: PINK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
   saveBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
 });
