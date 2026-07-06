@@ -109,8 +109,6 @@ export const CreateOrderScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [showSaleConfirm, setShowSaleConfirm] = useState(false);
-  const [pendingSale, setPendingSale] = useState<{ clientName: string; recipeName: string; totalPrice: number; recipeId?: string; quantity: number; unitPrice: number } | null>(null);
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -191,11 +189,12 @@ export const CreateOrderScreen: React.FC = () => {
       else { await orderStorage.create({ ...data, source: 'manual' as const }); showToast('Encomenda criada!', 'success'); }
       const isFullyPaid = totalPrice > 0 && toCents(totalPaid) >= toCents(totalPrice);
       if (isFullyPaid && status === 'delivered') {
-        setPendingSale({ clientName: data.clientName, recipeName: data.recipeName, totalPrice: data.totalPrice, recipeId: data.recipeId, quantity: data.quantity, unitPrice: data.unitPrice });
-        setShowSaleConfirm(true);
-      } else {
-        navigation.goBack();
+        try {
+          await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
+          showToast('Encomenda entregue e venda registrada!', 'success');
+        } catch { showToast('Encomenda salva, mas erro ao registrar venda', 'warning'); }
       }
+      navigation.goBack();
     } catch { showToast('Erro ao salvar', 'error'); }
     finally { setLoading(false); }
   };
@@ -520,49 +519,6 @@ export const CreateOrderScreen: React.FC = () => {
         </SafeAreaView>
       </Modal>
 
-      {/* ── Sale confirmation modal ── */}
-      <Modal visible={showSaleConfirm} animationType="fade" transparent statusBarTranslucent>
-        <View style={st.saleOverlay}>
-          <View style={st.saleCard}>
-            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleIconGrad}>
-              <Ionicons name="storefront-outline" size={32} color="#fff" />
-            </LinearGradient>
-            <Text style={st.saleTitle}>Lançar nas vendas do dia?</Text>
-            <Text style={st.saleDesc}>O pagamento foi concluído. Deseja registrar esta encomenda como uma venda do dia também?</Text>
-            {pendingSale && (
-              <View style={st.saleInfoRow}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={st.saleInfoName} numberOfLines={1}>{pendingSale.recipeName}</Text>
-                  <Text style={st.saleInfoClient}>{pendingSale.clientName}</Text>
-                </View>
-                <Text style={st.saleInfoValue}>{pendingSale.totalPrice.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</Text>
-              </View>
-            )}
-            <View style={st.saleBtns}>
-              <TouchableOpacity style={st.saleBtnNo} activeOpacity={0.7}
-                onPress={() => { setShowSaleConfirm(false); navigation.goBack(); }}>
-                <Text style={st.saleBtnNoText}>Agora não</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.85}
-                onPress={async () => {
-                  if (pendingSale) {
-                    try {
-                      await sApi.create({ recipeId: pendingSale.recipeId || '', quantitySold: pendingSale.quantity, salePrice: pendingSale.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${pendingSale.clientName}` });
-                      showToast('Venda registrada!', 'success');
-                    } catch { showToast('Erro ao registrar venda', 'warning'); }
-                  }
-                  setShowSaleConfirm(false);
-                  navigation.goBack();
-                }}>
-                <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleBtnYes}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-                  <Text style={st.saleBtnYesText}>Sim, registrar</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 };
