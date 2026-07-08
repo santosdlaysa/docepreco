@@ -172,6 +172,16 @@ export interface AdminUserDetail extends AdminUser {
     totalRevenue: number;
     saleDate: string;
   }>;
+  storeName: string | null;
+  storeSlug: string | null;
+  storeActive: boolean | null;
+  storeDescription: string | null;
+  storeAcceptsDelivery: boolean | null;
+  storeAcceptsPickup: boolean | null;
+  storeMinOrderValue: number | null;
+  storeDeliveryFee: number | null;
+  storeCoverImageUrl: string | null;
+  storeProductCount: number;
 }
 
 export interface UsersResponse {

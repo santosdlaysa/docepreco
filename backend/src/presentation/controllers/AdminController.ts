@@ -379,8 +379,20 @@ export class AdminController {
             (SELECT COUNT(*)::int FROM recipes    r WHERE r.user_id = u.id) AS "recipeCount",
             (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
             (SELECT COUNT(*)::int FROM sales      s WHERE s.user_id = u.id) AS "saleCount",
-            (SELECT COALESCE(SUM(s.total_revenue),0)::float FROM sales s WHERE s.user_id = u.id) AS "totalRevenue"
-          FROM users u WHERE u.id = $1`,
+            (SELECT COALESCE(SUM(s.total_revenue),0)::float FROM sales s WHERE s.user_id = u.id) AS "totalRevenue",
+            ss.store_name              AS "storeName",
+            ss.slug                    AS "storeSlug",
+            ss.active                  AS "storeActive",
+            ss.description             AS "storeDescription",
+            ss.accepts_delivery        AS "storeAcceptsDelivery",
+            ss.accepts_pickup          AS "storeAcceptsPickup",
+            ss.min_order_value::float  AS "storeMinOrderValue",
+            ss.delivery_fee::float     AS "storeDeliveryFee",
+            ss.cover_image_url         AS "storeCoverImageUrl",
+            (SELECT COUNT(*)::int FROM store_products sp WHERE sp.user_id = u.id) AS "storeProductCount"
+          FROM users u
+          LEFT JOIN store_settings ss ON ss.user_id = u.id
+          WHERE u.id = $1`,
           [id]
         ),
         pool.query(

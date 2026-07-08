@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck, RefreshCw } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -483,6 +483,70 @@ function UserModal({
                 </div>
               ))}
             </div>
+
+            {user.storeName ? (
+              <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl p-4 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Store size={16} className="text-purple-600" />
+                    <p className="text-sm font-medium text-purple-800 dark:text-purple-200">Loja online</p>
+                  </div>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    user.storeActive
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'
+                  }`}>
+                    {user.storeActive ? 'Publicada' : 'Não publicada'}
+                  </span>
+                </div>
+                <p className="font-semibold text-gray-900 dark:text-white">{user.storeName}</p>
+                {user.storeDescription && (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{user.storeDescription}</p>
+                )}
+                {user.storeSlug && (
+                  <a
+                    href={`/loja/${user.storeSlug}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"
+                  >
+                    <ExternalLink size={13} />
+                    /loja/{user.storeSlug}
+                  </a>
+                )}
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <div>
+                    <p className="text-xs text-gray-400">Produtos no cardápio</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">{user.storeProductCount}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Atendimento</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {[user.storeAcceptsDelivery && 'Entrega', user.storeAcceptsPickup && 'Retirada']
+                        .filter(Boolean)
+                        .join(' e ') || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Pedido mínimo</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {user.storeMinOrderValue != null ? fmtCurrency(user.storeMinOrderValue) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Taxa de entrega</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {user.storeDeliveryFee != null ? fmtCurrency(user.storeDeliveryFee) : '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-xl p-4 flex items-center gap-2">
+                <Store size={16} className="text-gray-400" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">Loja online não configurada</p>
+              </div>
+            )}
 
             <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2">
