@@ -881,26 +881,40 @@ export function LojaPage() {
   const currentIdx = cancelledStatus ? -1 : STATUS_STEPS.findIndex(s => s.key === orderStatus);
   const activeIdx = currentIdx === -1 ? 0 : currentIdx;
 
+  // Ao acompanhar pelo histórico o carrinho já foi limpo,
+  // então o resumo sai do pedido salvo no localStorage.
+  const trackedOrder = orderId ? savedOrders.find(o => o.orderId === orderId) ?? null : null;
+  const summaryItems: Array<{ name: string; qty: number; price: number }> = trackedOrder
+    ? trackedOrder.items ?? []
+    : Array.from(cart.entries()).flatMap(([id, qty]) => {
+        const p = store.products.find(p => p.id === id);
+        return p ? [{ name: p.name, qty, price: p.price }] : [];
+      });
+  const summaryFee = trackedOrder ? trackedOrder.deliveryFee : appliedFee;
+  const summaryTotal = trackedOrder ? trackedOrder.total : totalPrice;
+  const summaryPayment = trackedOrder ? trackedOrder.paymentMethod ?? '' : form.paymentMethod;
+  const summaryChange = trackedOrder
+    ? trackedOrder.changeFor
+      ? fmt(trackedOrder.changeFor)
+      : ''
+    : form.changeFor;
+
   const sendOrderWhatsApp = () => {
     if (!store.phone) return;
-    const summary = Array.from(cart.entries())
-      .map(([id, qty]) => {
-        const p = store.products.find(p => p.id === id);
-        return p ? `• ${qty}x ${p.name} — ${fmt(p.price * qty)}` : null;
-      })
-      .filter(Boolean)
+    const summary = summaryItems
+      .map(item => `• ${item.qty}x ${item.name} — ${fmt(item.price * item.qty)}`)
       .join('\n');
     const msg = [
       `Olá, *${store.storeName}*! Segue meu pedido:`,
       '',
       summary,
       '',
-      ...(appliedFee > 0 ? [`Taxa de entrega: ${fmt(appliedFee)}`] : []),
-      `*Total: ${fmt(totalPrice)}*`,
+      ...(summaryFee > 0 ? [`Taxa de entrega: ${fmt(summaryFee)}`] : []),
+      `*Total: ${fmt(summaryTotal)}*`,
       '',
       `Nome: ${form.clientName}`,
       form.deliveryType === 'delivery' ? `Endereço: ${form.deliveryAddress}` : 'Retirada no local',
-      ...(form.paymentMethod ? [`Pagamento: ${PAYMENT_LABEL[form.paymentMethod] ?? form.paymentMethod}${form.paymentMethod === 'cash' && form.changeFor ? ` (troco para ${form.changeFor})` : ''}`] : []),
+      ...(summaryPayment ? [`Pagamento: ${PAYMENT_LABEL[summaryPayment] ?? summaryPayment}${summaryPayment === 'cash' && summaryChange ? ` (troco para ${summaryChange})` : ''}`] : []),
       ...(form.notes ? [`Obs.: ${form.notes}`] : []),
     ].join('\n');
     const url = `https://wa.me/${store.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
@@ -997,42 +1011,38 @@ export function LojaPage() {
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 pt-4 pb-2">
             <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Resumo do pedido</p>
-            {Array.from(cart.entries()).map(([id, qty]) => {
-              const p = store.products.find(p => p.id === id);
-              if (!p) return null;
-              return (
-                <div key={id} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
-                  <div className="flex items-center gap-2.5">
-                    <span className="w-6 h-6 rounded-full bg-rose-50 text-[#EA4B92] text-[11px] font-bold flex items-center justify-center flex-shrink-0">{qty}</span>
-                    <span className="font-medium">{p.name}</span>
-                  </div>
-                  <span className="font-semibold ml-2 text-gray-800">{fmt(p.price * qty)}</span>
+            {summaryItems.map((item, i) => (
+              <div key={i} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
+                <div className="flex items-center gap-2.5">
+                  <span className="w-6 h-6 rounded-full bg-rose-50 text-[#EA4B92] text-[11px] font-bold flex items-center justify-center flex-shrink-0">{item.qty}</span>
+                  <span className="font-medium">{item.name}</span>
                 </div>
-              );
-            })}
+                <span className="font-semibold ml-2 text-gray-800">{fmt(item.price * item.qty)}</span>
+              </div>
+            ))}
           </div>
-          {appliedFee > 0 && (
+          {summaryFee > 0 && (
             <div className="px-4 py-2 flex justify-between text-sm text-gray-400 border-t border-gray-50">
               <span>Taxa de entrega</span>
-              <span>{fmt(appliedFee)}</span>
+              <span>{fmt(summaryFee)}</span>
             </div>
           )}
-          {form.paymentMethod && (
+          {summaryPayment && (
             <div className="px-4 py-2 flex justify-between text-sm text-gray-400 border-t border-gray-50">
               <span>Pagamento</span>
               <span>
-                {PAYMENT_LABEL[form.paymentMethod] ?? form.paymentMethod}
-                {form.paymentMethod === 'cash' && form.changeFor ? ` · troco p/ ${form.changeFor}` : ''}
+                {PAYMENT_LABEL[summaryPayment] ?? summaryPayment}
+                {summaryPayment === 'cash' && summaryChange ? ` · troco p/ ${summaryChange}` : ''}
               </span>
             </div>
           )}
           <div className="bg-gray-50 px-4 py-3.5 flex justify-between items-center">
             <span className="text-sm font-bold text-gray-700">Total</span>
-            <span className="text-[#EA4B92] font-bold text-lg">{fmt(totalPrice)}</span>
+            <span className="text-[#EA4B92] font-bold text-lg">{fmt(summaryTotal)}</span>
           </div>
         </div>
 
-        {store.phone && cart.size > 0 && (
+        {store.phone && summaryItems.length > 0 && (
           <button
             onClick={sendOrderWhatsApp}
             className="w-full bg-[#25D366] text-white font-bold py-3.5 rounded-2xl shadow-md shadow-green-200/60 flex items-center justify-center gap-2 active:scale-[0.98] transition-transform"
