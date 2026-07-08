@@ -112,6 +112,8 @@ export const CreateOrderScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [orderPaymentMethod, setOrderPaymentMethod] = useState<PaymentMethodType | null>(null);
+  const [orderChangeFor, setOrderChangeFor] = useState<number | null>(null);
 
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -139,6 +141,9 @@ export const CreateOrderScreen: React.FC = () => {
         setPayments(order.payments && order.payments.length > 0 ? order.payments : order.paidAmount && order.paidAmount > 0 ? [{ id: 'migrated', amount: order.paidAmount, method: 'cash', date: order.createdAt.split('T')[0] }] : []);
         setNotes(order.notes || '');
         setDeliveryAddress(order.deliveryAddress || '');
+        setOrderPaymentMethod(order.paymentMethod ?? null);
+        setOrderChangeFor(order.changeFor ?? null);
+        if (order.paymentMethod) setNewPaymentMethod(order.paymentMethod);
       });
     }
   }, []);
@@ -512,6 +517,20 @@ export const CreateOrderScreen: React.FC = () => {
               <View style={{ flex: 1 }}>
                 <Text style={st.addressLabel}>Endereço de entrega</Text>
                 <Text style={st.addressText}>{deliveryAddress}</Text>
+              </View>
+            </View>
+          ) : null}
+
+          {/* ── Forma de pagamento escolhida pelo cliente (pedidos online) ── */}
+          {orderPaymentMethod ? (
+            <View style={st.addressCard}>
+              <Ionicons name={PAYMENT_METHODS.find(m => m.key === orderPaymentMethod)?.icon ?? 'wallet-outline'} size={16} color="#1A6F96" />
+              <View style={{ flex: 1 }}>
+                <Text style={st.addressLabel}>Forma de pagamento escolhida</Text>
+                <Text style={st.addressText}>
+                  {PAYMENT_METHODS.find(m => m.key === orderPaymentMethod)?.label ?? orderPaymentMethod}
+                  {orderPaymentMethod === 'cash' && orderChangeFor ? ` · troco para ${fmtCurrency(orderChangeFor)}` : ''}
+                </Text>
               </View>
             </View>
           ) : null}
