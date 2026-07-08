@@ -780,7 +780,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
-  const [premiumFilter, setPremiumFilter] = useState<boolean | null>(null);
+  const [planTierFilter, setPlanTierFilter] = useState<'free' | 'premium' | 'master' | null>(null);
   const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | undefined>();
   const [hasPhone, setHasPhone] = useState<boolean | null>(null);
   const [hasInstagram, setHasInstagram] = useState<boolean | null>(null);
@@ -797,7 +797,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [whatsApp, setWhatsApp] = useState<{ phone: string; name: string } | null>(null);
 
   const activeFilterCount = [
-    premiumFilter !== null,
+    planTierFilter !== null,
     signupPlatform !== undefined,
     hasPhone !== null,
     hasInstagram !== null,
@@ -810,7 +810,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   ].filter(Boolean).length;
 
   const clearAllFilters = () => {
-    setPremiumFilter(null);
+    setPlanTierFilter(null);
     setSignupPlatform(undefined);
     setHasPhone(null);
     setHasInstagram(null);
@@ -838,7 +838,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     try {
       const res = await api.listUsers({
         search, page, sortBy,
-        isPremium: premiumFilter ?? undefined,
+        planTier: planTierFilter ?? undefined,
         signupPlatform,
         hasPhone: hasPhone ?? undefined,
         hasInstagram: hasInstagram ?? undefined,
@@ -852,7 +852,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [search, page, premiumFilter, signupPlatform, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
+  }, [search, page, planTierFilter, signupPlatform, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
 
   const updateUserInList = useCallback((updated: AdminUserDetail) => {
     setUsers(prev => prev.map(u => (u.id === updated.id ? {
@@ -961,13 +961,14 @@ export function UsersPage({ toast, onImpersonate }: Props) {
           <div>
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Plano</label>
             <select
-              value={premiumFilter === null ? '' : String(premiumFilter)}
-              onChange={e => { setPremiumFilter(e.target.value === '' ? null : e.target.value === 'true'); setPage(1); }}
+              value={planTierFilter ?? ''}
+              onChange={e => { setPlanTierFilter((e.target.value || null) as 'free' | 'premium' | 'master' | null); setPage(1); }}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
-              <option value="true">Premium</option>
-              <option value="false">Gratuito</option>
+              <option value="free">Gratuito</option>
+              <option value="premium">Premium</option>
+              <option value="master">Master</option>
             </select>
           </div>
           <div>

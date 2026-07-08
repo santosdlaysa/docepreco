@@ -102,6 +102,7 @@ export class AdminController {
     const page = Math.max(1, parseInt((req.query.page as string) || '1'));
     const limit = Math.min(50, parseInt((req.query.limit as string) || '20'));
     const isPremiumFilter = req.query.isPremium;
+    const planTierFilter = req.query.planTier as string | undefined;
     const signupPlatform = req.query.signupPlatform as string | undefined;
     const hasPhone = req.query.hasPhone as string | undefined;
     const hasInstagram = req.query.hasInstagram as string | undefined;
@@ -135,6 +136,9 @@ export class AdminController {
     }
     if (isPremiumFilter === 'true') conditions.push(`u.is_premium = TRUE`);
     else if (isPremiumFilter === 'false') conditions.push(`u.is_premium = FALSE`);
+    if (planTierFilter === 'free') conditions.push(`u.is_premium = FALSE`);
+    else if (planTierFilter === 'premium') conditions.push(`(u.is_premium = TRUE AND u.plan_tier <> 'master')`);
+    else if (planTierFilter === 'master') conditions.push(`(u.is_premium = TRUE AND u.plan_tier = 'master')`);
     if (signupPlatform === 'ios' || signupPlatform === 'android') {
       conditions.push(`u.signup_platform = $${idx}`);
       params.push(signupPlatform);

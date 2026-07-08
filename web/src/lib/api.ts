@@ -306,6 +306,7 @@ export const api = {
 
   listUsers: (params: {
     search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;
+    planTier?: 'free' | 'premium' | 'master';
     signupPlatform?: 'ios' | 'android';
     hasPhone?: boolean | null; hasInstagram?: boolean | null;
     minRecipes?: number; minIngredients?: number; minSales?: number; minRevenue?: number;
@@ -315,6 +316,7 @@ export const api = {
     if (params.search) q.set('search', params.search);
     if (params.page) q.set('page', String(params.page));
     if (params.isPremium != null) q.set('isPremium', String(params.isPremium));
+    if (params.planTier) q.set('planTier', params.planTier);
     if (params.sortBy) q.set('sortBy', params.sortBy);
     if (params.signupPlatform) q.set('signupPlatform', params.signupPlatform);
     if (params.hasPhone != null) q.set('hasPhone', String(params.hasPhone));
