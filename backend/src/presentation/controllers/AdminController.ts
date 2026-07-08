@@ -396,7 +396,7 @@ export class AdminController {
           [id]
         ),
         pool.query(
-          `SELECT s.id, r.name AS "recipeName", s.quantity_sold AS "quantitySold",
+          `SELECT s.id, COALESCE(r.name, s.product_name) AS "recipeName", s.quantity_sold AS "quantitySold",
                   s.total_revenue AS "totalRevenue", s.sale_date AS "saleDate"
            FROM sales s
            LEFT JOIN recipes r ON r.id = s.recipe_id
@@ -464,7 +464,7 @@ export class AdminController {
 
           SELECT
             'sale'               AS type,
-            r.name               AS label,
+            COALESCE(r.name, s.product_name) AS label,
             u.company_name       AS detail,
             s.created_at         AS ts
           FROM sales s
@@ -590,7 +590,7 @@ export class AdminController {
           [id]
         ),
         pool.query(
-          `SELECT s.id, r.name AS "recipeName", s.quantity_sold::int AS "quantitySold",
+          `SELECT s.id, COALESCE(r.name, s.product_name) AS "recipeName", s.quantity_sold::int AS "quantitySold",
                   s.sale_price::float AS "salePrice", s.total_revenue::float AS "totalRevenue",
                   s.sale_date AS "saleDate", s.notes, s.created_at AS "createdAt"
            FROM sales s

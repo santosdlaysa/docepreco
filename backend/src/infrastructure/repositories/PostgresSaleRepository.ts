@@ -11,9 +11,9 @@ export class PostgresSaleRepository implements ISaleRepository {
       whereClause += ` AND s.sale_date >= $2`;
     }
     const result = await pool.query(`
-      SELECT s.*, r.name AS recipe_name
+      SELECT s.*, COALESCE(r.name, s.product_name) AS recipe_name
       FROM sales s
-      JOIN recipes r ON r.id = s.recipe_id
+      LEFT JOIN recipes r ON r.id = s.recipe_id
       ${whereClause}
       ORDER BY s.sale_date DESC, s.created_at DESC
     `, params);
@@ -22,9 +22,9 @@ export class PostgresSaleRepository implements ISaleRepository {
 
   async findById(id: string, userId: string): Promise<Sale | null> {
     const result = await pool.query(`
-      SELECT s.*, r.name AS recipe_name
+      SELECT s.*, COALESCE(r.name, s.product_name) AS recipe_name
       FROM sales s
-      JOIN recipes r ON r.id = s.recipe_id
+      LEFT JOIN recipes r ON r.id = s.recipe_id
       WHERE s.id = $1 AND s.user_id = $2
     `, [id, userId]);
     if (result.rows.length === 0) return null;
@@ -32,15 +32,19 @@ export class PostgresSaleRepository implements ISaleRepository {
   }
 
   async create(data: CreateSaleDTO, userId: string): Promise<Sale> {
-    // A venda exige uma receita cadastrada. Pedidos da loja online podem
-    // referenciar um produto sem receita vinculada; validamos aqui para
-    // devolver um erro claro em vez do erro cru de foreign key.
-    const recipe = await pool.query(
-      'SELECT 1 FROM recipes WHERE id = $1 AND user_id = $2',
-      [data.recipeId, userId]
-    );
-    if (recipe.rows.length === 0) {
-      throw new Error('Receita não encontrada — este item não tem receita cadastrada e não pode virar venda.');
+    // Venda com receita: valida a receita para devolver um erro claro em vez
+    // do erro cru de foreign key. Venda sem receita (produto da loja online
+    // não vinculado) exige o nome do produto para exibição.
+    if (data.recipeId) {
+      const recipe = await pool.query(
+        'SELECT 1 FROM recipes WHERE id = $1 AND user_id = $2',
+        [data.recipeId, userId]
+      );
+      if (recipe.rows.length === 0) {
+        throw new Error('Receita não encontrada.');
+      }
+    } else if (!data.productName?.trim()) {
+      throw new Error('Informe a receita ou o nome do produto da venda.');
     }
     const totalRevenue = data.quantitySold * data.salePrice;
     // Vincula a venda ao caixa aberto do usuário (se houver)
@@ -50,10 +54,10 @@ export class PostgresSaleRepository implements ISaleRepository {
     );
     const sessionId = openSession.rows[0]?.id ?? null;
     const result = await pool.query(`
-      INSERT INTO sales (user_id, recipe_id, quantity_sold, sale_price, total_revenue, sale_date, notes, payment_method, session_id, order_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO sales (user_id, recipe_id, product_name, quantity_sold, sale_price, total_revenue, sale_date, notes, payment_method, session_id, order_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
       RETURNING *
-    `, [userId, data.recipeId, data.quantitySold, data.salePrice, totalRevenue, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId, data.orderId || null]);
+    `, [userId, data.recipeId || null, data.productName?.trim() || null, data.quantitySold, data.salePrice, totalRevenue, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId, data.orderId || null]);
     return this.findById(result.rows[0].id, userId) as Promise<Sale>;
   }
 
@@ -81,9 +85,9 @@ export class PostgresSaleRepository implements ISaleRepository {
    */
   async findRecentOrderLinkedDuplicate(recipeId: string, notes: string, userId: string): Promise<Sale | null> {
     const result = await pool.query(`
-      SELECT s.*, r.name AS recipe_name
+      SELECT s.*, COALESCE(r.name, s.product_name) AS recipe_name
       FROM sales s
-      JOIN recipes r ON r.id = s.recipe_id
+      LEFT JOIN recipes r ON r.id = s.recipe_id
       WHERE s.user_id = $1 AND s.recipe_id = $2 AND s.notes = $3
         AND s.order_id IS NOT NULL
         AND s.created_at > NOW() - INTERVAL '10 minutes'
@@ -105,8 +109,8 @@ export class PostgresSaleRepository implements ISaleRepository {
   private mapRow(row: Record<string, unknown>): Sale {
     return {
       id: row.id as string,
-      recipeId: row.recipe_id as string,
-      recipeName: row.recipe_name as string,
+      recipeId: (row.recipe_id as string) ?? null,
+      recipeName: (row.recipe_name as string) ?? 'Produto da loja',
       quantitySold: Number(row.quantity_sold),
       salePrice: parseFloat(row.sale_price as string),
       totalRevenue: parseFloat(row.total_revenue as string),

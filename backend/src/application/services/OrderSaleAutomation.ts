@@ -8,7 +8,9 @@ const saleRepo = new PostgresSaleRepository();
 /** Traduz o método de pagamento da encomenda para o vocabulário das vendas. */
 function salePaymentMethod(order: Order): PaymentMethod | null {
   const last = (order.payments ?? [])[order.payments.length - 1];
-  switch (last?.method) {
+  // Sem pagamento registrado, usa a forma escolhida pelo cliente no pedido online
+  const method = last?.method ?? order.paymentMethod;
+  switch (method) {
     case 'pix': return 'pix';
     case 'cash': return 'dinheiro';
     case 'credit':
@@ -52,12 +54,33 @@ export async function registerSalesForDeliveredOrder(order: Order): Promise<bool
   let created = false;
   for (const item of items) {
     const recipeId = await resolveRecipeId(order.userId, item.recipeId, item.recipeName);
-    if (!recipeId) continue; // produto avulso sem receita cadastrada — não vira venda
+    if (!recipeId && !item.recipeName?.trim()) continue; // item sem receita e sem nome
+    // Sem receita cadastrada, a venda é registrada com o nome do produto
     await saleRepo.create({
       recipeId,
+      productName: recipeId ? null : item.recipeName,
       // sales.quantity_sold é INTEGER; encomendas aceitam fração
       quantitySold: Math.max(1, Math.round(item.quantity)),
       salePrice: item.unitPrice,
+      saleDate: order.deliveryDate,
+      notes: `Encomenda de ${order.clientName}`,
+      paymentMethod,
+      orderId: order.id,
+    }, order.userId);
+    created = true;
+  }
+
+  // Taxa de entrega (pedidos online): o total do pedido inclui a taxa, mas as
+  // vendas são registradas por item. A diferença vira um lançamento próprio
+  // para o faturamento bater com o valor cobrado do cliente.
+  const itemsTotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const fee = Math.round((order.totalPrice - itemsTotal) * 100) / 100;
+  if (fee > 0) {
+    await saleRepo.create({
+      recipeId: null,
+      productName: 'Taxa de entrega',
+      quantitySold: 1,
+      salePrice: fee,
       saleDate: order.deliveryDate,
       notes: `Encomenda de ${order.clientName}`,
       paymentMethod,

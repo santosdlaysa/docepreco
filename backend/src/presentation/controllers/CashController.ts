@@ -8,7 +8,7 @@ async function buildSessionSummary(row: Record<string, any>, includeSales: boole
 
   const salesRes = await pool.query(
     `SELECT s.id, s.quantity_sold, s.total_revenue, s.payment_method, s.created_at,
-            r.name AS recipe_name
+            COALESCE(r.name, s.product_name) AS recipe_name
        FROM sales s
        LEFT JOIN recipes r ON r.id = s.recipe_id
       WHERE s.session_id = $1

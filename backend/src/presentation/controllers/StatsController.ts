@@ -19,9 +19,10 @@ export class StatsController {
       ]);
 
       const recentSales = await pool.query(`
-        SELECT s.id, s.quantity_sold, s.sale_price, s.total_revenue, s.sale_date, r.name as recipe_name
+        SELECT s.id, s.quantity_sold, s.sale_price, s.total_revenue, s.sale_date,
+               COALESCE(r.name, s.product_name) as recipe_name
         FROM sales s
-        JOIN recipes r ON r.id = s.recipe_id
+        LEFT JOIN recipes r ON r.id = s.recipe_id
         WHERE s.user_id = $1
         ORDER BY s.sale_date DESC, s.created_at DESC
         LIMIT 5

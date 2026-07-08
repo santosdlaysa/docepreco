@@ -72,7 +72,8 @@ CREATE TABLE IF NOT EXISTS recipe_sub_recipes (
 CREATE TABLE IF NOT EXISTS sales (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  recipe_id UUID NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+  recipe_id UUID REFERENCES recipes(id) ON DELETE CASCADE,
+  product_name VARCHAR(255),
   quantity_sold INTEGER NOT NULL,
   sale_price DECIMAL(10,2) NOT NULL,
   total_revenue DECIMAL(10,2) NOT NULL,
@@ -977,6 +978,10 @@ export async function runMigrations() {
     // Integra encomendas e vendas: ao marcar uma encomenda como entregue,
     // a venda é registrada automaticamente e fica vinculada pela order_id.
     await addColumnIfMissing(client, 'sales', 'order_id', 'UUID NULL REFERENCES orders(id) ON DELETE SET NULL');
+    // Vendas de produtos da loja sem receita vinculada: recipe_id vira opcional
+    // e o nome do produto fica registrado em product_name.
+    await addColumnIfMissing(client, 'sales', 'product_name', 'VARCHAR(255) NULL');
+    await client.query(`ALTER TABLE sales ALTER COLUMN recipe_id DROP NOT NULL`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_sales_order ON sales (order_id)`);
 
     // Índices para acelerar listagem/carregamento de receitas e suas relações

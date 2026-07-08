@@ -2,7 +2,8 @@ export type PaymentMethod = 'dinheiro' | 'cartao' | 'pix';
 
 export interface Sale {
   id: string;
-  recipeId: string;
+  recipeId: string | null;
+  /** Nome exibido: nome da receita ou, na falta dela, o nome do produto da loja. */
   recipeName: string;
   quantitySold: number;
   salePrice: number;
@@ -15,7 +16,9 @@ export interface Sale {
 }
 
 export interface CreateSaleDTO {
-  recipeId: string;
+  recipeId: string | null;
+  /** Obrigatório quando não há receita (produto da loja sem receita vinculada). */
+  productName?: string | null;
   quantitySold: number;
   salePrice: number;
   saleDate: string;
