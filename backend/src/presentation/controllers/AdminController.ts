@@ -20,6 +20,7 @@ export class AdminController {
           SELECT
             (SELECT COUNT(*)::int FROM users)                                                        AS "totalUsers",
             (SELECT COUNT(*)::int FROM users WHERE is_premium = TRUE)                               AS "premiumUsers",
+            (SELECT COUNT(*)::int FROM users WHERE is_premium = TRUE AND plan_tier = 'master')      AS "masterUsers",
             (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '7 days')         AS "newUsersWeek",
             (SELECT COUNT(*)::int FROM users WHERE created_at >= NOW() - INTERVAL '1 day')          AS "newUsersToday",
             (SELECT COUNT(*)::int FROM users WHERE created_at >= date_trunc('month', NOW()))     AS "newUsersMonth",
@@ -60,7 +61,8 @@ export class AdminController {
             u.company_name   AS "companyName",
             u.email,
             u.premium_platform AS "premiumPlatform",
-            u.premium_until    AS "premiumUntil"
+            u.premium_until    AS "premiumUntil",
+            u.plan_tier        AS "planTier"
           FROM users u
           WHERE u.is_premium = TRUE OR (u.premium_until IS NOT NULL AND u.premium_until < NOW())
           ORDER BY u.premium_until ASC NULLS LAST

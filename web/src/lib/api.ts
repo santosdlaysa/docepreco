@@ -62,11 +62,13 @@ export interface PremiumSubscriber {
   email: string;
   premiumPlatform: string | null;
   premiumUntil: string | null;
+  planTier?: 'free' | 'premium' | 'master' | null;
 }
 
 export interface Stats {
   totalUsers: number;
   premiumUsers: number;
+  masterUsers?: number;
   newUsersWeek: number;
   newUsersToday: number;
   newUsersMonth: number;

@@ -392,6 +392,16 @@ function NewUsersCard({ users, newToday }: { users: RecentUser[]; newToday: numb
 }
 
 /* ─── Subscriber tables ─── */
+function PlanBadge({ planTier }: { planTier?: string | null }) {
+  if (planTier === 'master') {
+    return <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 uppercase">Master</span>;
+  }
+  if (planTier === 'premium') {
+    return <span className="inline-block text-[10px] font-bold px-1.5 py-0.5 rounded bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 uppercase">Premium</span>;
+  }
+  return null;
+}
+
 function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
   const [page, setPage] = useState(1);
   const [platform, setPlatform] = useState<string | null>(null);
@@ -442,7 +452,7 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
                       <div className="flex items-center gap-3">
                         <Avatar name={s.companyName} index={i} />
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
+                          <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">{s.companyName} <PlanBadge planTier={s.planTier} /></p>
                           <p className="text-xs text-gray-400">{s.email}</p>
                         </div>
                       </div>
@@ -493,7 +503,7 @@ function ExpiredSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
                     <div className="flex items-center gap-3">
                       <Avatar name={s.companyName} index={i + 4} />
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{s.companyName}</p>
+                        <p className="font-medium text-gray-900 dark:text-white flex items-center gap-1.5">{s.companyName} <PlanBadge planTier={s.planTier} /></p>
                         <p className="text-xs text-gray-400">{s.email}</p>
                       </div>
                     </div>
@@ -608,8 +618,14 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
   if (error) return <p className="text-red-600 p-4">{error}</p>;
   if (!stats) return <DashboardSkeleton />;
 
-  const premiumPct = stats.totalUsers > 0 ? ((stats.premiumUsers / stats.totalUsers) * 100).toFixed(1) : '0';
+  const masterUsers = stats.masterUsers ?? 0;
+  const premiumOnlyUsers = Math.max(0, stats.premiumUsers - masterUsers);
   const freeUsers = stats.totalUsers - stats.premiumUsers;
+  const pctOfTotal = (n: number) => (stats.totalUsers > 0 ? ((n / stats.totalUsers) * 100).toFixed(1) : '0');
+  const premiumPct = pctOfTotal(stats.premiumUsers);
+  const premiumOnlyPct = pctOfTotal(premiumOnlyUsers);
+  const masterPct = pctOfTotal(masterUsers);
+  const freePct = pctOfTotal(freeUsers);
 
   const activeSubscribers = stats.premiumSubscribers.filter(s => {
     if (s.email === 'santosdlaysa@gmail.com') return false;
@@ -652,7 +668,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
       {/* KPI row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard label="Total de Usuarios" value={stats.totalUsers} sub={`+${stats.newUsersToday} hoje`} color="text-blue-600" data={spark1} />
-        <StatCard label="Premium" value={stats.premiumUsers} sub={`${premiumPct}% conversao`} color="text-primary-600" data={spark2} />
+        <StatCard label="Assinantes" value={stats.premiumUsers} sub={`${premiumPct}% conversao · ${premiumOnlyUsers} Premium · ${masterUsers} Master`} color="text-primary-600" data={spark2} />
         <StatCard label="Vendas do Mes" value={fmt(stats.revenueThisMonth)} sub="confeiteiras" color="text-emerald-600" data={spark3} />
         <StatCard label="Vendas Totais" value={fmt(stats.totalRevenue)} sub="confeiteiras" color="text-violet-600" />
       </div>
@@ -720,24 +736,33 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
           <div className="flex items-center gap-6">
             <ResponsiveContainer width={130} height={130}>
               <PieChart>
-                <Pie data={[{ v: stats.premiumUsers }, { v: freeUsers }]} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="v" strokeWidth={0}>
+                <Pie data={[{ v: masterUsers }, { v: premiumOnlyUsers }, { v: freeUsers }]} cx="50%" cy="50%" innerRadius={40} outerRadius={60} dataKey="v" strokeWidth={0}>
+                  <Cell fill="#7C3AED" />
                   <Cell fill="#e91e8c" />
                   <Cell fill="#e5e7eb" />
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-            <div className="space-y-3">
+            <div className="space-y-3 flex-1">
+              <div className="flex items-center gap-2.5">
+                <span className="w-3 h-3 rounded" style={{ background: '#7C3AED' }} />
+                <span className="text-sm text-gray-600 dark:text-gray-300">Master</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white ml-auto">{masterUsers}</span>
+                <span className="text-xs text-gray-400 w-12 text-right">{masterPct}%</span>
+              </div>
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded bg-primary-500" />
                 <span className="text-sm text-gray-600 dark:text-gray-300">Premium</span>
-                <span className="text-sm font-bold text-gray-900 dark:text-white ml-auto">{stats.premiumUsers}</span>
+                <span className="text-sm font-bold text-gray-900 dark:text-white ml-auto">{premiumOnlyUsers}</span>
+                <span className="text-xs text-gray-400 w-12 text-right">{premiumOnlyPct}%</span>
               </div>
               <div className="flex items-center gap-2.5">
                 <span className="w-3 h-3 rounded bg-gray-300" />
                 <span className="text-sm text-gray-600 dark:text-gray-300">Gratuito</span>
                 <span className="text-sm font-bold text-gray-900 dark:text-white ml-auto">{freeUsers}</span>
+                <span className="text-xs text-gray-400 w-12 text-right">{freePct}%</span>
               </div>
-              <p className="text-xs text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700">Conversao: {premiumPct}%</p>
+              <p className="text-xs text-gray-400 pt-1 border-t border-gray-100 dark:border-gray-700">Conversao total: {premiumPct}%</p>
             </div>
           </div>
         </div>
