@@ -16,11 +16,13 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
 
   const token = authHeader.split(' ')[1];
   try {
-    const payload = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as { userId: string };
+    const payload = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as { userId: string; imp?: boolean };
     req.userId = payload.userId;
 
-    // Fire-and-forget: update last_seen_at
-    pool.query('UPDATE users SET last_seen_at = NOW() WHERE id = $1', [payload.userId]).catch(() => {});
+    // Fire-and-forget: update last_seen_at (sessões impersonadas pelo admin não contam)
+    if (!payload.imp) {
+      pool.query('UPDATE users SET last_seen_at = NOW() WHERE id = $1', [payload.userId]).catch(() => {});
+    }
 
     next();
   } catch {

@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { adminApi, AdminUser } from '../../../data/api/adminApi';
+import { useAuth } from '../../../context/AuthContext';
 import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
 
@@ -45,6 +46,7 @@ export const AdminUserDetailScreen: React.FC = () => {
   const navigation = useNavigation();
   const route = useRoute<Route>();
   const { userId } = route.params;
+  const { startImpersonation } = useAuth();
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
@@ -72,6 +74,28 @@ export const AdminUserDetailScreen: React.FC = () => {
     user?.isActive ? 'Desativar este usuário?' : 'Reativar este usuário?',
     () => adminApi.toggleActive(userId, user?.isActive ?? true),
   );
+
+  const handleImpersonate = () => {
+    Alert.alert(
+      'Ver como empresa',
+      `Entrar no app como "${user?.companyName}"? Você verá tudo como este usuário vê. Use "Voltar ao admin" no topo da tela para sair.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Entrar',
+          onPress: async () => {
+            setActing(true);
+            try {
+              await startImpersonation(userId);
+            } catch (e: any) {
+              Alert.alert('Erro', e?.message ?? 'Não foi possível entrar como este usuário');
+              setActing(false);
+            }
+          },
+        },
+      ],
+    );
+  };
 
   if (loading) return (
     <SafeAreaView style={styles.root}>
@@ -145,6 +169,7 @@ export const AdminUserDetailScreen: React.FC = () => {
             <ActivityIndicator color={colors.primary} style={{ margin: 20 }} />
           ) : (
             <>
+              <ActionBtn label="Ver como empresa" icon="eye-outline" color={colors.primary} onPress={handleImpersonate} />
               {!user.isPremium && (
                 <ActionBtn label="Conceder Premium (30d)" icon="star" color="#D97706" onPress={handleGrantPremium} />
               )}

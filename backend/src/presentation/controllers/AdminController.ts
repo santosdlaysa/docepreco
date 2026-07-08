@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 import { pool } from '../../infrastructure/database/connection';
+import { getJwtSecret } from '../../config/secrets';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
@@ -360,6 +362,27 @@ export class AdminController {
       });
     } catch (error) {
       console.error('[Admin] grantTrial error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  // Impersonação: emite um JWT curto do usuário-alvo para o admin navegar o app
+  // como a empresa. O claim `imp` marca a sessão como impersonada (não atualiza
+  // last_seen_at e permite auditoria futura).
+  async impersonateUser(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    try {
+      const user = await userRepo.findById(id);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+      const token = jwt.sign({ userId: user.id, imp: true }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '4h' });
+      console.log(`[Admin] Impersonation token issued for ${user.email} (${user.companyName})`);
+      res.json({ success: true, data: { token, user } });
+    } catch (error) {
+      console.error('[Admin] impersonateUser error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }

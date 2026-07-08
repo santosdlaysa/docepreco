@@ -141,6 +141,12 @@ export const adminApi = {
     return data.data;
   },
 
+  // Emite um token curto do usuário-alvo para o admin "ver como empresa"
+  async impersonate(userId: string): Promise<{ token: string; user: any }> {
+    const { data } = await adminClient.post(`/admin/users/${userId}/impersonate`, {});
+    return data.data;
+  },
+
   // Backend espera { isPremium, premiumUntil, planTier }
   async setPremium(
     userId: string,

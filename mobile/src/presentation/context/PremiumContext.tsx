@@ -2,6 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import { Platform } from 'react-native';
 import { authApi, AuthUser, PremiumPlatform, PlanTier } from '../../data/api/authApi';
 import { tokenStorage } from '../../data/storage/tokenStorage';
+import { impersonationStorage } from '../../data/storage/impersonationStorage';
 import { isDemoMode, loadDemoMode } from '../../data/demo/demoMode';
 import { getActiveEntitlements, getActiveEntitlementExpiration, isRevenueCatConfigured } from '../../data/premium/revenueCat';
 import { ADMIN_EMAIL } from '../../data/api/adminApi';
@@ -113,6 +114,9 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
    */
   const syncIfNeeded = useCallback(async (backendUser: AuthUser) => {
     if (isDemoMode() || !isRevenueCatConfigured()) return;
+    // Admin "vendo como empresa": entitlements do RevenueCat são do device do
+    // admin — sincronizar marcaria premium na conta do usuário-alvo por engano
+    if (await impersonationStorage.isActive()) return;
     // Backend already shows active premium — nothing to sync
     if (isActive(backendUser)) return;
 

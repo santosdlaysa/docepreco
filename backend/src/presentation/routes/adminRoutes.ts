@@ -16,6 +16,7 @@ router.get('/request-logs', (req, res) => controller.getRequestLogs(req, res));
 router.post('/users/:id/premium', (req, res) => controller.setPremium(req, res));
 router.patch('/users/:id/signup-platform', (req, res) => controller.setSignupPlatform(req, res));
 router.post('/users/:id/grant-trial', (req, res) => controller.grantTrial(req, res));
+router.post('/users/:id/impersonate', (req, res) => controller.impersonateUser(req, res));
 router.get('/users/:id/data', (req, res) => controller.getUserData(req, res));
 router.put('/users/:id/ingredients/:ingredientId', (req, res) => controller.updateUserIngredient(req, res));
 router.put('/users/:id/recipes/:recipeId', (req, res) => controller.updateUserRecipe(req, res));

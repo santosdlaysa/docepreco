@@ -57,7 +57,9 @@ import { StoreProductFormScreen } from '../screens/StoreProductFormScreen';
 import { StoreSettingsScreen } from '../screens/StoreSettingsScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
+import { impersonationStorage } from '../../data/storage/impersonationStorage';
 import { authApi } from '../../data/api/authApi';
+import { adminApi } from '../../data/api/adminApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
 import { setDemoMode, loadDemoMode } from '../../data/demo/demoMode';
@@ -152,6 +154,36 @@ function TabNavigator() {
   );
 }
 
+// Barra fixa exibida enquanto o admin navega o app como outra empresa
+function ImpersonationBanner({ company, onExit }: { company: string; onExit: () => void }) {
+  const insets = useSafeAreaInsets();
+  return (
+    <View style={[bannerStyles.wrap, { paddingTop: insets.top + 6 }]}>
+      <Ionicons name="eye" size={14} color="#fff" />
+      <Text style={bannerStyles.text} numberOfLines={1}>
+        Vendo como <Text style={{ fontWeight: '800' }}>{company}</Text>
+      </Text>
+      <TouchableOpacity onPress={onExit} style={bannerStyles.btn} activeOpacity={0.8}>
+        <Text style={bannerStyles.btnText}>Voltar ao admin</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
+const bannerStyles = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#7C3AED',
+    paddingHorizontal: 14,
+    paddingBottom: 8,
+  },
+  text: { flex: 1, color: '#fff', fontSize: 13, fontWeight: '600' },
+  btn: { backgroundColor: 'rgba(255,255,255,0.22)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  btnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+});
+
 const tabStyles = StyleSheet.create({
   centerBtn: {
     top: -18,
@@ -187,6 +219,10 @@ export function AppNavigator() {
   const [companyName, setCompanyName] = useState('');
   const [companyLogo, setCompanyLogoState] = useState<string | null>(null);
   const [demoMode, setDemoModeState] = useState(false);
+  // Modo "ver como empresa": nome da empresa impersonada (null = sessão normal).
+  // sessionKey força a remontagem do NavigationContainer ao trocar de sessão.
+  const [impersonatedCompany, setImpersonatedCompany] = useState<string | null>(null);
+  const [sessionKey, setSessionKey] = useState(0);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
   const { reset: resetPremium, refresh: refreshPremium } = usePremium();
@@ -205,9 +241,13 @@ export function AppNavigator() {
         if (savedLogo) setCompanyLogoState(savedLogo);
         if (token) {
           const user = await tokenStorage.getUser();
+          const impersonating = await impersonationStorage.isActive();
+          if (impersonating) setImpersonatedCompany(user?.companyName || 'empresa');
           setCompanyName(user?.companyName || '');
           setDemoModeState(isDemo);
-          if (!isDemo && user?.id) {
+          // Em impersonação não identifica o RevenueCat com o usuário-alvo
+          // (senão compras/atributos do device do admin iriam para a conta dele)
+          if (!isDemo && user?.id && !impersonating) {
             void identifyRevenueCatUser(user.id);
             void setRevenueCatLocationAttributes();
           }
@@ -227,7 +267,10 @@ export function AppNavigator() {
   useEffect(() => {
     if (authState === 'app') {
       if (!demoMode) {
-        void registerPushToken();
+        // Não registra o push token do device do admin na conta impersonada
+        void impersonationStorage.isActive().then((active) => {
+          if (!active) void registerPushToken();
+        });
       }
       if (!companyName) {
         tokenStorage.getUser().then(user => {
@@ -276,7 +319,44 @@ export function AppNavigator() {
     }
   };
 
+  // Admin entra no app como o usuário-alvo: emite o token impersonado (ainda
+  // autenticado como admin), guarda a sessão admin e ativa a sessão do alvo.
+  const startImpersonation = async (userId: string) => {
+    const { token, user } = await adminApi.impersonate(userId);
+    const adminToken = await tokenStorage.getToken();
+    const adminUser = await tokenStorage.getUser();
+    if (!adminToken || !adminUser) throw new Error('Sessão admin não encontrada');
+    await impersonationStorage.saveAdminSession(adminToken, adminUser);
+    await tokenStorage.saveToken(token);
+    await tokenStorage.saveUser(user);
+    setCompanyName(user?.companyName || '');
+    setCompanyLogoState(null);
+    setImpersonatedCompany(user?.companyName || 'empresa');
+    await refreshPremium();
+    setSessionKey((k) => k + 1);
+  };
+
+  // Restaura a sessão admin guardada e sai do modo "ver como empresa"
+  const stopImpersonation = async () => {
+    const session = await impersonationStorage.getAdminSession();
+    await impersonationStorage.clear();
+    setImpersonatedCompany(null);
+    if (!session) return;
+    await tokenStorage.saveToken(session.token);
+    await tokenStorage.saveUser(session.user);
+    setCompanyName(session.user?.companyName || '');
+    const savedLogo = await companyLogoStorage.get();
+    setCompanyLogoState(savedLogo);
+    await refreshPremium();
+    setSessionKey((k) => k + 1);
+  };
+
   const logout = async () => {
+    // Em modo "ver como empresa", sair volta para a sessão admin em vez de deslogar
+    if (await impersonationStorage.isActive()) {
+      await stopImpersonation();
+      return;
+    }
     await setDemoMode(false);
     setDemoModeState(false);
     await authApi.logout();
@@ -290,6 +370,10 @@ export function AppNavigator() {
   useEffect(() => { setForceLogout(logout); }, []);
 
   const deleteAccount = async () => {
+    // Proteção: impede o admin de excluir a conta do usuário sem querer
+    if (await impersonationStorage.isActive()) {
+      throw new Error('Você está no modo "ver como empresa". Volte ao admin antes de excluir uma conta.');
+    }
     await authApi.deleteAccount();
     await setDemoMode(false);
     setDemoModeState(false);
@@ -302,6 +386,11 @@ export function AppNavigator() {
   };
 
   const goToRegister = async () => {
+    // Em impersonação, apenas restaura a sessão admin (não desloga o admin)
+    if (await impersonationStorage.isActive()) {
+      await stopImpersonation();
+      return;
+    }
     await setDemoMode(false);
     setDemoModeState(false);
     await authApi.logout();
@@ -384,7 +473,7 @@ export function AppNavigator() {
 
   if (authState === 'beginnerGuide') {
     return (
-      <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
+      <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo, impersonatedCompany, startImpersonation, stopImpersonation }}>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false }}>
             <Stack.Screen name="BeginnerGuide">
@@ -418,8 +507,13 @@ export function AppNavigator() {
   }
 
   return (
-    <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo }}>
+    <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo, impersonatedCompany, startImpersonation, stopImpersonation }}>
+      <View style={{ flex: 1 }}>
+      {impersonatedCompany !== null && (
+        <ImpersonationBanner company={impersonatedCompany} onExit={() => void stopImpersonation()} />
+      )}
       <NavigationContainer
+        key={sessionKey}
         ref={navigationRef}
         onReady={() => {
           if (pendingPaywall.current) {
@@ -496,6 +590,7 @@ export function AppNavigator() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+      </View>
     </AuthContext.Provider>
   );
 }
