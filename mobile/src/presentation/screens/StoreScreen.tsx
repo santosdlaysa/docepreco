@@ -616,6 +616,11 @@ export const StoreScreen: React.FC = () => {
             <View style={st.settingsCard}>
               <SettingsRow icon="pricetag-outline" label="Nome" value={settings?.storeName || '—'} />
               <SettingsRow
+                icon="location-outline"
+                label="Endereço"
+                value={settings?.address || 'Não informado'}
+              />
+              <SettingsRow
                 icon="bicycle-outline"
                 label="Entrega"
                 value={settings?.acceptsDelivery ? 'Ativada' : 'Desativada'}
