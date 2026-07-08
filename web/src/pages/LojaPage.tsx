@@ -130,6 +130,7 @@ function ProductRow({
 
 interface SavedOrder {
   orderId: string;
+  orderNumber?: number | null;
   items: Array<{ name: string; qty: number; price: number }>;
   total: number;
   deliveryFee: number;
@@ -239,7 +240,17 @@ export function LojaPage() {
       try {
         const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${o.orderId}`);
         const j = await r.json();
-        if (j.success) setHistoryStatuses(prev => ({ ...prev, [o.orderId]: j.data.status }));
+        if (j.success) {
+          setHistoryStatuses(prev => ({ ...prev, [o.orderId]: j.data.status }));
+          // Pedidos salvos antes do número existir ganham o número vindo da API
+          if (j.data.orderNumber != null && o.orderNumber !== j.data.orderNumber) {
+            setSavedOrders(prev => {
+              const updated = prev.map(s => (s.orderId === o.orderId ? { ...s, orderNumber: j.data.orderNumber } : s));
+              try { localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+          }
+        }
       } catch {}
     });
   }, [step, slug, savedOrders]);
@@ -252,7 +263,19 @@ export function LojaPage() {
       try {
         const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}`);
         const j = await r.json();
-        if (j.success) setOrderStatus(j.data.status);
+        if (j.success) {
+          setOrderStatus(j.data.status);
+          // Pedidos salvos antes do número existir ganham o número vindo da API
+          if (j.data.orderNumber != null) {
+            setSavedOrders(prev => {
+              const cur = prev.find(o => o.orderId === orderId);
+              if (!cur || cur.orderNumber === j.data.orderNumber) return prev;
+              const updated = prev.map(o => (o.orderId === orderId ? { ...o, orderNumber: j.data.orderNumber } : o));
+              try { localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated)); } catch {}
+              return updated;
+            });
+          }
+        }
       } catch {}
     };
     poll();
@@ -314,6 +337,7 @@ export function LojaPage() {
         localStorage.setItem(CUSTOMER_KEY(slug!), JSON.stringify({ name: form.clientName.trim(), phone: form.clientPhone.trim(), address: form.deliveryAddress.trim() }));
         const newOrder: SavedOrder = {
           orderId: json.data.orderId,
+          orderNumber: json.data.orderNumber ?? null,
           items: Array.from(cart.entries()).map(([id, qty]) => {
             const p = store!.products.find(p => p.id === id)!;
             return { name: p.name, qty, price: p.price };
@@ -622,6 +646,9 @@ export function LojaPage() {
                 <div className="px-4 pt-4 pb-3">
                   <div className="flex items-center justify-between mb-3">
                     <div>
+                      {o.orderNumber != null && (
+                        <p className="text-sm font-bold text-gray-700">Pedido #{o.orderNumber}</p>
+                      )}
                       <p className="text-xs text-gray-400">{dateStr} às {timeStr}</p>
                     </div>
                     {badge ? (
@@ -898,6 +925,7 @@ export function LojaPage() {
       ? fmt(trackedOrder.changeFor)
       : ''
     : form.changeFor;
+  const summaryNumber = trackedOrder?.orderNumber ?? null;
 
   const sendOrderWhatsApp = () => {
     if (!store.phone) return;
@@ -905,7 +933,7 @@ export function LojaPage() {
       .map(item => `• ${item.qty}x ${item.name} — ${fmt(item.price * item.qty)}`)
       .join('\n');
     const msg = [
-      `Olá, *${store.storeName}*! Segue meu pedido:`,
+      `Olá, *${store.storeName}*! Segue meu pedido${summaryNumber != null ? ` *#${summaryNumber}*` : ''}:`,
       '',
       summary,
       '',
@@ -929,6 +957,7 @@ export function LojaPage() {
           <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">{store.storeName}</p>
           <h1 className="text-2xl font-bold">
             {cancelledStatus ? 'Pedido cancelado' : orderStatus === 'delivered' ? 'Pedido entregue! 🎉' : 'Acompanhar pedido'}
+            {summaryNumber != null && <span className="ml-2 text-white/80 text-xl font-semibold">#{summaryNumber}</span>}
           </h1>
           <p className="text-white/70 text-sm mt-1">
             {cancelledStatus
@@ -1010,7 +1039,9 @@ export function LojaPage() {
         {/* Resumo do pedido */}
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           <div className="px-4 pt-4 pb-2">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Resumo do pedido</p>
+            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+              Resumo do pedido{summaryNumber != null ? ` #${summaryNumber}` : ''}
+            </p>
             {summaryItems.map((item, i) => (
               <div key={i} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
                 <div className="flex items-center gap-2.5">

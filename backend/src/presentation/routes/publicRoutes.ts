@@ -145,9 +145,10 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
       `INSERT INTO orders
         (user_id, client_name, client_phone, recipe_name, quantity, unit_price, total_price,
          delivery_date, status, paid, paid_amount, payments, items, notes, source, delivery_address,
-         payment_method, change_for)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online',$11,$12,$13)
-       RETURNING id`,
+         payment_method, change_for, order_number)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online',$11,$12,$13,
+         (SELECT COALESCE(MAX(order_number), 0) + 1 FROM orders WHERE user_id = $1))
+       RETURNING id, order_number`,
       [
         userId,
         String(b.clientName).trim(),
@@ -165,6 +166,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
       ]
     );
     const orderId = result.rows[0].id;
+    const orderNumber = result.rows[0].order_number != null ? Number(result.rows[0].order_number) : null;
 
     // Push notification para o dono da loja (fire-and-forget)
     try {
@@ -179,7 +181,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         const payInfo = paymentMethod ? ` • ${methodLabels[paymentMethod] ?? paymentMethod}${changeInfo}` : '';
         await sendPushNotifications(
           tokens.map(t => t.token),
-          '🛍️ Novo pedido recebido!',
+          `🛍️ Novo pedido${orderNumber ? ` #${orderNumber}` : ''} recebido!`,
           `${b.clientName}${phoneInfo}: ${itemsSummary}${addrInfo}${payInfo}`,
           { type: 'new_order', orderId }
         );
@@ -188,7 +190,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
       console.error('[Public Store] push error:', pushErr);
     }
 
-    res.status(201).json({ success: true, data: { orderId } });
+    res.status(201).json({ success: true, data: { orderId, orderNumber } });
   } catch (error) {
     console.error('[Public Store] order error:', error);
     res.status(500).json({ success: false, error: 'Erro ao criar pedido' });
@@ -208,7 +210,7 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
     }
     const userId = storeResult.rows[0].user_id;
     const orderResult = await pool.query(
-      `SELECT id, client_name, status, total_price, items, delivery_address, source, payment_method, change_for, created_at
+      `SELECT id, client_name, status, total_price, items, delivery_address, source, payment_method, change_for, order_number, created_at
        FROM orders WHERE id = $1 AND user_id = $2`,
       [orderId, userId]
     );
@@ -228,6 +230,7 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
         deliveryAddress: o.delivery_address ?? null,
         paymentMethod: o.payment_method ?? null,
         changeFor: o.change_for != null ? Number(o.change_for) : null,
+        orderNumber: o.order_number != null ? Number(o.order_number) : null,
         createdAt: o.created_at,
       },
     });

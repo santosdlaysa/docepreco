@@ -132,7 +132,8 @@ export const StoreScreen: React.FC = () => {
     setOrdersLoading(true);
     try {
       const all = await orderApi.getAll();
-      setOrders(all.filter(o => o.source === 'online'));
+      // Pedido mais recente primeiro — a aba funciona como caixa de entrada de pedidos online
+      setOrders(all.filter(o => o.source === 'online').sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
     } catch {
       setOrders([]);
     } finally {

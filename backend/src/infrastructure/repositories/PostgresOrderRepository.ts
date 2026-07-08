@@ -38,11 +38,12 @@ export interface Order {
   deliveryAddress?: string | null;
   paymentMethod?: PaymentMethodType | null;
   changeFor?: number | null;
+  orderNumber?: number | null;
   source: 'manual' | 'online';
   createdAt: string;
 }
 
-export type OrderInput = Omit<Order, 'id' | 'userId' | 'createdAt'>;
+export type OrderInput = Omit<Order, 'id' | 'userId' | 'orderNumber' | 'createdAt'>;
 
 const isUuid = (v: unknown): v is string =>
   typeof v === 'string' &&
@@ -68,8 +69,9 @@ export class PostgresOrderRepository {
       `INSERT INTO orders
         (user_id, client_name, client_phone, recipe_id, recipe_name, quantity, unit_price,
          total_price, delivery_date, delivery_time, status, paid, paid_amount, payments, items, notes,
-         payment_method, change_for)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+         payment_method, change_for, order_number)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+         (SELECT COALESCE(MAX(order_number), 0) + 1 FROM orders WHERE user_id = $1))
        RETURNING *`,
       [
         userId,
@@ -171,6 +173,7 @@ export class PostgresOrderRepository {
       deliveryAddress: (row.delivery_address as string) ?? null,
       paymentMethod: (row.payment_method as PaymentMethodType) ?? null,
       changeFor: row.change_for != null ? parseFloat(row.change_for as string) : null,
+      orderNumber: row.order_number != null ? Number(row.order_number) : null,
       source: (row.source as 'manual' | 'online') ?? 'manual',
       createdAt: (row.created_at as Date).toISOString(),
     };

@@ -131,6 +131,7 @@ CREATE TABLE IF NOT EXISTS orders (
   notes TEXT,
   payment_method VARCHAR(20),
   change_for DECIMAL(10,2),
+  order_number INTEGER,
   created_at TIMESTAMP DEFAULT NOW()
 );
 
@@ -604,6 +605,13 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'orders', 'delivery_address', 'TEXT');
     await addColumnIfMissing(client, 'orders', 'payment_method', 'VARCHAR(20)');
     await addColumnIfMissing(client, 'orders', 'change_for', 'DECIMAL(10,2)');
+    await addColumnIfMissing(client, 'orders', 'order_number', 'INTEGER');
+    // Numera pedidos antigos por usuário na ordem de criação
+    await client.query(`
+      UPDATE orders o SET order_number = t.rn
+      FROM (SELECT id, ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY created_at, id) AS rn FROM orders) t
+      WHERE o.id = t.id AND o.order_number IS NULL
+    `);
     await addColumnIfMissing(client, 'store_settings', 'delivery_fee', 'DECIMAL(10,2) DEFAULT 0');
     await addColumnIfMissing(client, 'store_settings', 'cover_image_url', 'TEXT');
     await addColumnIfMissing(client, 'store_settings', 'payment_methods', `JSONB NOT NULL DEFAULT '["pix","cash","credit","debit"]'::jsonb`);

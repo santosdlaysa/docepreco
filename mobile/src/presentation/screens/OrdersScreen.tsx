@@ -140,7 +140,13 @@ export const OrdersScreen: React.FC = () => {
     const map = new Map<string, Order[]>();
     const sorted = [...filtered].sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
     for (const o of sorted) { if (!map.has(o.deliveryDate)) map.set(o.deliveryDate, []); map.get(o.deliveryDate)!.push(o); }
-    return Array.from(map.entries()).map(([date, data]) => ({ title: formatDate(date), data }));
+    // Hoje e entregas futuras primeiro (ordem de urgência); datas passadas por último, da mais recente para a mais antiga
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const entries = Array.from(map.entries());
+    const upcoming = entries.filter(([d]) => d >= todayStr);
+    const past = entries.filter(([d]) => d < todayStr).reverse();
+    return [...upcoming, ...past].map(([date, data]) => ({ title: formatDate(date), data }));
   })();
 
   const handleCancel = (order: Order) => {
