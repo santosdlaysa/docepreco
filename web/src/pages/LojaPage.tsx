@@ -21,8 +21,17 @@ interface StoreData {
   instagramHandle: string | null;
   deliveryFee: number | null;
   coverImageUrl: string | null;
+  paymentMethods: string[];
   products: StoreProduct[];
 }
+
+const PAYMENT_METHODS: Array<{ key: string; label: string; emoji: string }> = [
+  { key: 'pix', label: 'Pix', emoji: '💠' },
+  { key: 'cash', label: 'Dinheiro', emoji: '💵' },
+  { key: 'credit', label: 'Crédito', emoji: '💳' },
+  { key: 'debit', label: 'Débito', emoji: '💳' },
+];
+const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };
 
 const fmt = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -124,6 +133,8 @@ interface SavedOrder {
   items: Array<{ name: string; qty: number; price: number }>;
   total: number;
   deliveryFee: number;
+  paymentMethod?: string;
+  changeFor?: number | null;
   createdAt: string;
 }
 
@@ -157,6 +168,8 @@ export function LojaPage() {
     deliveryType: 'pickup' as 'delivery' | 'pickup',
     deliveryAddress: '',
     notes: '',
+    paymentMethod: '',
+    changeFor: '',
   });
   const prevTotal = useRef(0);
   const [cartVisible, setCartVisible] = useState(false);
@@ -185,14 +198,16 @@ export function LojaPage() {
         if (json.success) {
           setStore(json.data);
           const defaultType = json.data.acceptsDelivery ? 'delivery' : 'pickup';
+          const methods: string[] = json.data.paymentMethods ?? [];
+          const defaultPayment = methods.length === 1 ? methods[0] : '';
           try {
             const saved = localStorage.getItem(CUSTOMER_KEY(slug!));
             const customer = saved ? JSON.parse(saved) : null;
-            setForm(f => ({ ...f, deliveryType: defaultType, clientName: customer?.name ?? '', clientPhone: customer?.phone ?? '', deliveryAddress: customer?.address ?? '' }));
+            setForm(f => ({ ...f, deliveryType: defaultType, paymentMethod: defaultPayment, clientName: customer?.name ?? '', clientPhone: customer?.phone ?? '', deliveryAddress: customer?.address ?? '' }));
             const orders = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
             setSavedOrders(orders);
           } catch {
-            setForm(f => ({ ...f, deliveryType: defaultType }));
+            setForm(f => ({ ...f, deliveryType: defaultType, paymentMethod: defaultPayment }));
           }
         } else setNotFound(true);
       })
@@ -262,11 +277,18 @@ export function LojaPage() {
     if (form.deliveryType === 'delivery' && !form.deliveryAddress.trim()) {
       setError('Informe o endereço de entrega'); return;
     }
+    if ((store?.paymentMethods?.length ?? 0) > 0 && !form.paymentMethod) {
+      setError('Escolha a forma de pagamento'); return;
+    }
     if (store?.minOrderValue && subtotal < store.minOrderValue) {
       setError(`Pedido mínimo de ${fmt(store.minOrderValue)}`); return;
     }
     setError(null);
     setSubmitting(true);
+    const changeForNum = form.paymentMethod === 'cash'
+      ? parseFloat(form.changeFor.replace(/[^\d,.]/g, '').replace(',', '.'))
+      : NaN;
+    const changeFor = Number.isFinite(changeForNum) && changeForNum > 0 ? changeForNum : undefined;
     try {
       const items = Array.from(cart.entries()).map(([productId, quantity]) => ({ productId, quantity }));
       const res = await fetch(`${API_BASE}/public/store/${slug}/orders`, {
@@ -279,6 +301,8 @@ export function LojaPage() {
           deliveryType: form.deliveryType,
           deliveryAddress: form.deliveryType === 'delivery' ? form.deliveryAddress.trim() : undefined,
           notes: form.notes.trim() || undefined,
+          paymentMethod: form.paymentMethod || undefined,
+          changeFor,
         }),
       });
       const json = await res.json();
@@ -296,6 +320,8 @@ export function LojaPage() {
           }),
           total: totalPrice,
           deliveryFee: appliedFee,
+          paymentMethod: form.paymentMethod || undefined,
+          changeFor: changeFor ?? null,
           createdAt: new Date().toISOString(),
         };
         const existing: SavedOrder[] = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
@@ -617,7 +643,12 @@ export function LojaPage() {
                   ))}
                 </div>
                 <div className="bg-gray-50 px-4 py-3 flex items-center justify-between">
-                  <span className="text-sm font-bold text-gray-700">Total: <span className="text-[#EA4B92]">{fmt(o.total)}</span></span>
+                  <span className="text-sm font-bold text-gray-700">
+                    Total: <span className="text-[#EA4B92]">{fmt(o.total)}</span>
+                    {o.paymentMethod && (
+                      <span className="text-xs font-medium text-gray-400"> · {PAYMENT_LABEL[o.paymentMethod] ?? o.paymentMethod}</span>
+                    )}
+                  </span>
                   {st !== 'delivered' && st !== 'cancelled' && (
                     <button
                       onClick={() => { setOrderId(o.orderId); setOrderStatus(st ?? 'pending'); setStep('success'); }}
@@ -749,6 +780,33 @@ export function LojaPage() {
                 onChange={e => setForm(f => ({ ...f, deliveryAddress: e.target.value }))}
               />
             )}
+            {(store.paymentMethods?.length ?? 0) > 0 && (
+              <>
+                <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">Forma de pagamento</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {PAYMENT_METHODS.filter(m => store.paymentMethods.includes(m.key)).map(m => (
+                    <button
+                      key={m.key}
+                      onClick={() => setForm(f => ({ ...f, paymentMethod: m.key }))}
+                      className={`py-3 rounded-xl text-sm font-semibold border-2 transition-all flex items-center justify-center gap-1.5 ${form.paymentMethod === m.key ? 'border-[#EA4B92] bg-rose-50 text-[#EA4B92]' : 'border-gray-100 bg-gray-50 text-gray-400'}`}
+                    >
+                      <span>{m.emoji}</span>
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+                {form.paymentMethod === 'cash' && (
+                  <input
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#EA4B92] focus:ring-2 focus:ring-[#EA4B92]/10 transition-all placeholder:text-gray-300"
+                    placeholder="Troco para quanto? (opcional)"
+                    type="text"
+                    inputMode="decimal"
+                    value={form.changeFor}
+                    onChange={e => setForm(f => ({ ...f, changeFor: e.target.value }))}
+                  />
+                )}
+              </>
+            )}
             <textarea
               className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#EA4B92] focus:ring-2 focus:ring-[#EA4B92]/10 transition-all resize-none placeholder:text-gray-300"
               placeholder="Observações (opcional)"
@@ -842,6 +900,7 @@ export function LojaPage() {
       '',
       `Nome: ${form.clientName}`,
       form.deliveryType === 'delivery' ? `Endereço: ${form.deliveryAddress}` : 'Retirada no local',
+      ...(form.paymentMethod ? [`Pagamento: ${PAYMENT_LABEL[form.paymentMethod] ?? form.paymentMethod}${form.paymentMethod === 'cash' && form.changeFor ? ` (troco para ${form.changeFor})` : ''}`] : []),
       ...(form.notes ? [`Obs.: ${form.notes}`] : []),
     ].join('\n');
     const url = `https://wa.me/${store.phone.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`;
@@ -958,6 +1017,15 @@ export function LojaPage() {
               <span>{fmt(appliedFee)}</span>
             </div>
           )}
+          {form.paymentMethod && (
+            <div className="px-4 py-2 flex justify-between text-sm text-gray-400 border-t border-gray-50">
+              <span>Pagamento</span>
+              <span>
+                {PAYMENT_LABEL[form.paymentMethod] ?? form.paymentMethod}
+                {form.paymentMethod === 'cash' && form.changeFor ? ` · troco p/ ${form.changeFor}` : ''}
+              </span>
+            </div>
+          )}
           <div className="bg-gray-50 px-4 py-3.5 flex justify-between items-center">
             <span className="text-sm font-bold text-gray-700">Total</span>
             <span className="text-[#EA4B92] font-bold text-lg">{fmt(totalPrice)}</span>
@@ -989,6 +1057,8 @@ export function LojaPage() {
               deliveryType: store.acceptsDelivery ? 'delivery' : 'pickup',
               deliveryAddress: customer?.address ?? '',
               notes: '',
+              paymentMethod: store.paymentMethods?.length === 1 ? store.paymentMethods[0] : '',
+              changeFor: '',
             });
           }}
           className="w-full bg-white border-2 border-[#EA4B92] text-[#EA4B92] font-bold py-3.5 rounded-2xl shadow-sm active:scale-[0.98] transition-transform"

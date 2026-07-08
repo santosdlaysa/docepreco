@@ -1,3 +1,5 @@
+import { PaymentMethodType } from './Order';
+
 export interface StoreProduct {
   id: string;
   name: string;
@@ -21,4 +23,5 @@ export interface StoreSettings {
   minOrderValue?: number;
   deliveryFee?: number;
   coverImageUrl?: string;
+  paymentMethods: PaymentMethodType[];
 }

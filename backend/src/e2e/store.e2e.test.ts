@@ -8,7 +8,12 @@ jest.mock('../infrastructure/database/connection', () => ({
   pool: { query: (...args: unknown[]) => mockQuery(...args) },
 }));
 
+jest.mock('../infrastructure/services/pushService', () => ({
+  sendPushNotifications: jest.fn().mockResolvedValue(undefined),
+}));
+
 import storeRoutes from '../presentation/routes/storeRoutes';
+import publicRoutes from '../presentation/routes/publicRoutes';
 import { authMiddleware } from '../presentation/middleware/authMiddleware';
 
 const JWT_SECRET = 'store-e2e-secret';
@@ -51,6 +56,13 @@ function createApp() {
   const app = express();
   app.use(express.json());
   app.use('/store', authMiddleware, storeRoutes);
+  return app;
+}
+
+function createPublicApp() {
+  const app = express();
+  app.use(express.json());
+  app.use('/public', publicRoutes);
   return app;
 }
 
@@ -402,5 +414,96 @@ describe('DELETE /store/products/:id', () => {
     });
     const res = await auth('delete', `/store/products/${PROD_ID}`);
     expect(res.status).toBe(500);
+  });
+});
+
+// ─── POST /public/store/:slug/orders — forma de pagamento ─────────────────
+
+describe('POST /public/store/:slug/orders — forma de pagamento', () => {
+  const ORDER_ID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+
+  function mockPublicOrderFlow(paymentMethods: string[]) {
+    mockQuery.mockImplementation((sql: string) => {
+      const q = String(sql);
+      if (q.includes('FROM store_settings WHERE slug')) {
+        return Promise.resolve({
+          rows: [{
+            user_id: USER_ID,
+            store_name: 'Doceria Teste',
+            min_order_value: null,
+            delivery_fee: null,
+            payment_methods: paymentMethods,
+          }],
+        });
+      }
+      if (q.includes('FROM store_products WHERE id = ANY')) {
+        return Promise.resolve({ rows: [{ id: PROD_ID, name: 'Brigadeiro Gourmet', public_price: '45.00', recipe_id: null }] });
+      }
+      if (q.includes('INSERT INTO orders')) {
+        return Promise.resolve({ rows: [{ id: ORDER_ID }] });
+      }
+      if (q.includes('FROM push_tokens')) return Promise.resolve({ rows: [] });
+      return Promise.resolve({ rows: [], rowCount: 0 });
+    });
+  }
+
+  const baseOrder = {
+    clientName: 'Cliente Teste',
+    clientPhone: '95999990000',
+    items: [{ productId: PROD_ID, quantity: 2 }],
+    deliveryType: 'pickup',
+  };
+
+  it('cria pedido com forma de pagamento aceita e persiste payment_method', async () => {
+    mockPublicOrderFlow(['pix', 'cash']);
+    const res = await request(createPublicApp())
+      .post('/public/store/doceria-teste/orders')
+      .send({ ...baseOrder, paymentMethod: 'pix' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.orderId).toBe(ORDER_ID);
+    const insertCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO orders'));
+    expect(insertCall?.[1]).toEqual(expect.arrayContaining(['pix']));
+  });
+
+  it('retorna 400 quando a forma não é aceita pela loja', async () => {
+    mockPublicOrderFlow(['pix']);
+    const res = await request(createPublicApp())
+      .post('/public/store/doceria-teste/orders')
+      .send({ ...baseOrder, paymentMethod: 'credit' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error).toContain('Forma de pagamento');
+  });
+
+  it('persiste troco (change_for) quando pagamento em dinheiro', async () => {
+    mockPublicOrderFlow(['pix', 'cash']);
+    const res = await request(createPublicApp())
+      .post('/public/store/doceria-teste/orders')
+      .send({ ...baseOrder, paymentMethod: 'cash', changeFor: 100 });
+
+    expect(res.status).toBe(201);
+    const insertCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO orders'));
+    expect(insertCall?.[1]).toEqual(expect.arrayContaining(['cash', 100]));
+  });
+
+  it('ignora troco quando a forma não é dinheiro', async () => {
+    mockPublicOrderFlow(['pix', 'cash']);
+    const res = await request(createPublicApp())
+      .post('/public/store/doceria-teste/orders')
+      .send({ ...baseOrder, paymentMethod: 'pix', changeFor: 100 });
+
+    expect(res.status).toBe(201);
+    const insertCall = mockQuery.mock.calls.find(([sql]) => String(sql).includes('INSERT INTO orders'));
+    expect(insertCall?.[1]).not.toEqual(expect.arrayContaining([100]));
+  });
+
+  it('aceita pedido sem forma de pagamento (compatibilidade)', async () => {
+    mockPublicOrderFlow(['pix']);
+    const res = await request(createPublicApp())
+      .post('/public/store/doceria-teste/orders')
+      .send(baseOrder);
+
+    expect(res.status).toBe(201);
   });
 });

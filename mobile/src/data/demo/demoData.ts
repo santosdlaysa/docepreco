@@ -253,4 +253,5 @@ export const demoStoreSettings: StoreSettings = {
   acceptsPickup: true,
   minOrderValue: 30,
   deliveryFee: 5,
+  paymentMethods: ['pix', 'cash', 'credit', 'debit'],
 };

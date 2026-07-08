@@ -15,6 +15,8 @@ const STATUS: { value: OrderStatus; label: string; cls: string }[] = [
 ];
 const statusInfo = (s: OrderStatus) => STATUS.find(x => x.value === s) ?? STATUS[0];
 
+const PAYMENT_METHOD_LABEL: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };
+
 export function OrdersPage({ toast }: { toast: ToastFn }) {
   const [orders, setOrders] = useState<Order[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -112,6 +114,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
                     </div>
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {o.recipeName} · {o.quantity}× · {formatBRL(o.totalPrice)}
+                      {o.paymentMethod ? ` · ${PAYMENT_METHOD_LABEL[o.paymentMethod] ?? o.paymentMethod}${o.paymentMethod === 'cash' && o.changeFor ? ` (troco p/ ${formatBRL(o.changeFor)})` : ''}` : ''}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5">
                       <CalendarClock size={12} /> {formatDate(o.deliveryDate)}

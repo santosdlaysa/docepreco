@@ -315,9 +315,20 @@ export const OrdersScreen: React.FC = () => {
             </Text>
           </View>
 
+          {/* Payment method (chosen by online customer) */}
+          {item.paymentMethod && (
+            <View style={st.deliveryRow}>
+              <Ionicons name={PAYMENT_METHODS.find(m => m.key === item.paymentMethod)?.icon ?? 'wallet-outline'} size={15} color={INK2} />
+              <Text style={st.deliveryText}>
+                Pagamento: {PAYMENT_METHODS.find(m => m.key === item.paymentMethod)?.label ?? item.paymentMethod}
+                {item.paymentMethod === 'cash' && item.changeFor ? ` · troco p/ ${fmtCurrency(item.changeFor)}` : ''}
+              </Text>
+            </View>
+          )}
+
           {/* Add payment button */}
           {!isCancelled && remaining > 0 && (
-            <TouchableOpacity style={st.addPayBtn} onPress={(event) => { event.stopPropagation(); setPaymentModalOrder(item); }} activeOpacity={0.7}>
+            <TouchableOpacity style={st.addPayBtn} onPress={(event) => { event.stopPropagation(); setNewPaymentMethod(item.paymentMethod ?? 'pix'); setPaymentModalOrder(item); }} activeOpacity={0.7}>
               <Ionicons name="add-circle-outline" size={16} color={PINK} />
               <Text style={st.addPayText}>Adicionar pagamento</Text>
             </TouchableOpacity>

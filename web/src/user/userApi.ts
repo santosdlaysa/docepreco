@@ -255,6 +255,8 @@ export interface Order {
   paidAmount: number;
   payments: OrderPayment[];
   notes?: string | null;
+  paymentMethod?: OrderPaymentMethod | null;
+  changeFor?: number | null;
   createdAt: string;
   /** Transiente: retornado por create/update quando a venda foi registrada automaticamente. */
   saleRegistered?: boolean;

@@ -19,6 +19,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { StoreSettings } from '../../domain/entities/StoreProduct';
+import { PaymentMethodType } from '../../domain/entities/Order';
 import { storeApi } from '../../data/api/storeApi';
 import { demoStoreApi } from '../../data/demo/demoApi';
 import { isDemoMode } from '../../data/demo/demoMode';
@@ -50,6 +51,13 @@ const parseMoney = (raw: string): number => {
 const formatMoney = (n: number): string =>
   n > 0 ? n.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '';
 
+const ALL_PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string; sub: string }[] = [
+  { key: 'pix', icon: 'qr-code-outline', label: 'Pix', sub: 'Transferência instantânea' },
+  { key: 'cash', icon: 'cash-outline', label: 'Dinheiro', sub: 'Pagamento na entrega/retirada' },
+  { key: 'credit', icon: 'card-outline', label: 'Cartão de crédito', sub: 'Na maquininha' },
+  { key: 'debit', icon: 'card-outline', label: 'Cartão de débito', sub: 'Na maquininha' },
+];
+
 export const StoreSettingsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { showToast } = useToast();
@@ -67,6 +75,7 @@ export const StoreSettingsScreen: React.FC = () => {
   const [minOrderText, setMinOrderText] = useState('');
   const [deliveryFeeText, setDeliveryFeeText] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
+  const [paymentMethods, setPaymentMethods] = useState<PaymentMethodType[]>(['pix', 'cash', 'credit', 'debit']);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -81,6 +90,7 @@ export const StoreSettingsScreen: React.FC = () => {
         setMinOrderText(formatMoney(s.minOrderValue ?? 0));
         setDeliveryFeeText(formatMoney(s.deliveryFee ?? 0));
         setCoverImageUrl(s.coverImageUrl ?? '');
+        setPaymentMethods(s.paymentMethods?.length ? s.paymentMethods : ['pix', 'cash', 'credit', 'debit']);
       })
       .catch(() => showToast('Erro ao carregar configurações', 'error'))
       .finally(() => setLoading(false));
@@ -104,9 +114,19 @@ export const StoreSettingsScreen: React.FC = () => {
     }
   };
 
+  const togglePaymentMethod = (key: PaymentMethodType) => {
+    setPaymentMethods(prev =>
+      prev.includes(key) ? prev.filter(m => m !== key) : [...prev, key]
+    );
+  };
+
   const handleSave = async () => {
     if (!storeName.trim()) {
       showToast('Informe o nome da loja', 'warning');
+      return;
+    }
+    if (paymentMethods.length === 0) {
+      showToast('Selecione ao menos uma forma de pagamento', 'warning');
       return;
     }
 
@@ -120,6 +140,7 @@ export const StoreSettingsScreen: React.FC = () => {
         minOrderValue: parseMoney(minOrderText) || undefined,
         deliveryFee: parseMoney(deliveryFeeText) || undefined,
         coverImageUrl: coverImageUrl || undefined,
+        paymentMethods,
       });
       showToast('Configurações salvas!', 'success');
       navigation.goBack();
@@ -258,6 +279,28 @@ export const StoreSettingsScreen: React.FC = () => {
               <View style={[st.thumb, acceptsPickup && st.thumbOn]} />
             </View>
           </TouchableOpacity>
+
+          {/* ── Payment methods ── */}
+          <Text style={[st.label, { marginTop: 20 }]}>Formas de pagamento</Text>
+          {ALL_PAYMENT_METHODS.map(m => {
+            const on = paymentMethods.includes(m.key);
+            return (
+              <TouchableOpacity key={m.key} style={st.toggleRow} onPress={() => togglePaymentMethod(m.key)} activeOpacity={0.7}>
+                <View style={st.toggleLeft}>
+                  <View style={[st.toggleIcon, { backgroundColor: on ? '#FFE3EF' : '#F5F5F5' }]}>
+                    <Ionicons name={m.icon} size={20} color={on ? PINK : INK3} />
+                  </View>
+                  <View>
+                    <Text style={st.toggleLabel}>{m.label}</Text>
+                    <Text style={st.toggleSub}>{m.sub}</Text>
+                  </View>
+                </View>
+                <View style={[st.track, on && st.trackOn]}>
+                  <View style={[st.thumb, on && st.thumbOn]} />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
 
           {/* ── Slug info ── */}
           {settings?.slug && (
