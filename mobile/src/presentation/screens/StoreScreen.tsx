@@ -171,7 +171,7 @@ export const StoreScreen: React.FC = () => {
     const paid = order.paidAmount ?? 0;
     const remaining = Math.max(order.totalPrice - paid, 0);
     setDeliveryOrder(order);
-    setDeliveryModalMethod('pix');
+    setDeliveryModalMethod(order.paymentMethod ?? 'pix');
     setDeliveryModalAmount(remaining > 0 ? String(remaining).replace('.', ',') : '');
   };
 
@@ -729,6 +729,17 @@ export const StoreScreen: React.FC = () => {
                         {o.deliveryAddress ? o.deliveryAddress : 'Retirada no local'}
                       </Text>
                     </View>
+
+                    {/* Forma de pagamento escolhida pelo cliente */}
+                    {o.paymentMethod ? (
+                      <View style={st.modalRow}>
+                        <Ionicons name={PAYMENT_METHODS.find(m => m.key === o.paymentMethod)?.icon ?? 'wallet-outline'} size={17} color={INK2} />
+                        <Text style={st.modalRowText}>
+                          Pagamento: {PAYMENT_METHODS.find(m => m.key === o.paymentMethod)?.label ?? o.paymentMethod}
+                          {o.paymentMethod === 'cash' && o.changeFor ? ` · troco para ${fmtCurrency(o.changeFor)}` : ''}
+                        </Text>
+                      </View>
+                    ) : null}
 
                     {/* Itens */}
                     <View style={st.modalItems}>
