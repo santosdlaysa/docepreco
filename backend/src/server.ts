@@ -51,6 +51,7 @@ import { PostgresNotificationRepository } from './infrastructure/repositories/Po
 import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from './infrastructure/services/pushService';
 import { checkManualRenewals } from './infrastructure/services/renewalNotificationService';
+import { sendDailySalesSummary, SalesSummarySlot } from './infrastructure/services/dailySalesNotificationService';
 import { setupSwagger } from './swagger';
 import { assertRequiredSecrets } from './config/secrets';
 
@@ -260,6 +261,22 @@ async function bootstrap() {
         console.error('[Cron] Erro ao verificar renovações manuais:', err);
       }
     }, { timezone: 'America/Sao_Paulo' });
+
+    // Cron: resumo de vendas do dia por push às 12h, 17h e 19h
+    const salesSummarySlots: Array<[string, SalesSummarySlot]> = [
+      ['0 12 * * *', 'midday'],
+      ['0 17 * * *', 'afternoon'],
+      ['0 19 * * *', 'evening'],
+    ];
+    for (const [expr, slot] of salesSummarySlots) {
+      cron.schedule(expr, async () => {
+        try {
+          await sendDailySalesSummary(slot);
+        } catch (err) {
+          console.error(`[Cron] Erro no resumo de vendas (${slot}):`, err);
+        }
+      }, { timezone: 'America/Sao_Paulo' });
+    }
 
     // Cron: desativa premium de usuários cuja assinatura expirou (a cada hora)
     cron.schedule('0 * * * *', async () => {
