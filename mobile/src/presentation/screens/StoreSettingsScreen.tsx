@@ -70,6 +70,7 @@ export const StoreSettingsScreen: React.FC = () => {
   const [settings, setSettings] = useState<StoreSettings | null>(null);
   const [storeName, setStoreName] = useState('');
   const [description, setDescription] = useState('');
+  const [address, setAddress] = useState('');
   const [acceptsDelivery, setAcceptsDelivery] = useState(true);
   const [acceptsPickup, setAcceptsPickup] = useState(true);
   const [minOrderText, setMinOrderText] = useState('');
@@ -85,6 +86,7 @@ export const StoreSettingsScreen: React.FC = () => {
         setSettings(s);
         setStoreName(s.storeName);
         setDescription(s.description ?? '');
+        setAddress(s.address ?? '');
         setAcceptsDelivery(s.acceptsDelivery);
         setAcceptsPickup(s.acceptsPickup);
         setMinOrderText(formatMoney(s.minOrderValue ?? 0));
@@ -135,6 +137,7 @@ export const StoreSettingsScreen: React.FC = () => {
       await sApi.updateSettings({
         storeName: storeName.trim(),
         description: description.trim() || undefined,
+        address: address.trim() || undefined,
         acceptsDelivery,
         acceptsPickup,
         minOrderValue: parseMoney(minOrderText) || undefined,
@@ -214,6 +217,17 @@ export const StoreSettingsScreen: React.FC = () => {
             placeholder="Uma frase sobre sua confeitaria"
             placeholderTextColor={INK3}
             multiline
+          />
+
+          {/* ── Address ── */}
+          <Text style={st.label}>Endereço da loja (opcional)</Text>
+          <TextInput
+            style={st.input}
+            value={address}
+            onChangeText={setAddress}
+            placeholder="Ex: Rua das Flores, 123 — Centro"
+            placeholderTextColor={INK3}
+            returnKeyType="next"
           />
 
           {/* ── Min order ── */}

@@ -55,6 +55,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         deliveryFee: s.delivery_fee ? Number(s.delivery_fee) : null,
         coverImageUrl: s.cover_image_url ?? null,
         paymentMethods: s.payment_methods ?? ['pix', 'cash', 'credit', 'debit'],
+        address: s.address ?? null,
         phone: u.phone ?? null,
         instagramHandle: u.instagram_handle ?? null,
         products: productsResult.rows.map(p => ({

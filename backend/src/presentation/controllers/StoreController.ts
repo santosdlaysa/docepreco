@@ -28,6 +28,7 @@ export class StoreController {
         deliveryFee:     b.deliveryFee,
         coverImageUrl:   b.coverImageUrl,
         paymentMethods:  Array.isArray(b.paymentMethods) ? b.paymentMethods : undefined,
+        address:         b.address,
       });
       res.json({ success: true, data: settings });
     } catch (error) {

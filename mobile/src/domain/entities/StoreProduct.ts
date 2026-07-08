@@ -24,4 +24,5 @@ export interface StoreSettings {
   deliveryFee?: number;
   coverImageUrl?: string;
   paymentMethods: PaymentMethodType[];
+  address?: string;
 }

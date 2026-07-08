@@ -254,4 +254,5 @@ export const demoStoreSettings: StoreSettings = {
   minOrderValue: 30,
   deliveryFee: 5,
   paymentMethods: ['pix', 'cash', 'credit', 'debit'],
+  address: 'Rua das Flores, 123 — Centro',
 };

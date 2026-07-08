@@ -14,6 +14,7 @@ export interface StoreSettings {
   deliveryFee?: number | null;
   coverImageUrl?: string | null;
   paymentMethods: string[];
+  address?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -59,6 +60,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
     paymentMethods: (row.payment_methods as string[] | null) ?? ['pix', 'cash', 'credit', 'debit'],
+    address: (row.address as string | null) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -124,6 +126,7 @@ export class PostgresStoreRepository {
     deliveryFee: number | null;
     coverImageUrl: string | null;
     paymentMethods: string[];
+    address: string | null;
   }>): Promise<StoreSettings> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -138,6 +141,7 @@ export class PostgresStoreRepository {
     if ('deliveryFee' in data)             { fields.push(`delivery_fee = $${idx++}`);     values.push(data.deliveryFee ?? null); }
     if ('coverImageUrl' in data)           { fields.push(`cover_image_url = $${idx++}`); values.push(data.coverImageUrl ?? null); }
     if (data.paymentMethods !== undefined)  { fields.push(`payment_methods = $${idx++}`); values.push(JSON.stringify(data.paymentMethods)); }
+    if ('address' in data)                 { fields.push(`address = $${idx++}`);          values.push(data.address ?? null); }
 
     fields.push(`updated_at = NOW()`);
     values.push(userId);

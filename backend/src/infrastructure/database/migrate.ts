@@ -615,6 +615,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_settings', 'delivery_fee', 'DECIMAL(10,2) DEFAULT 0');
     await addColumnIfMissing(client, 'store_settings', 'cover_image_url', 'TEXT');
     await addColumnIfMissing(client, 'store_settings', 'payment_methods', `JSONB NOT NULL DEFAULT '["pix","cash","credit","debit"]'::jsonb`);
+    await addColumnIfMissing(client, 'store_settings', 'address', 'TEXT');
     // Versões antigas usavam "ready"; o app atual usa "done".
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check`);
     await client.query(`UPDATE orders SET status = 'done' WHERE status = 'ready'`);
@@ -1004,6 +1005,7 @@ export async function runMigrations() {
         min_order_value DECIMAL(10,2) NULL,
         cover_image_url TEXT NULL,
         payment_methods JSONB NOT NULL DEFAULT '["pix","cash","credit","debit"]'::jsonb,
+        address TEXT NULL,
         created_at TIMESTAMP DEFAULT NOW(),
         updated_at TIMESTAMP DEFAULT NOW()
       )
