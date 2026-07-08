@@ -54,6 +54,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         minOrderValue: s.min_order_value ? Number(s.min_order_value) : null,
         deliveryFee: s.delivery_fee ? Number(s.delivery_fee) : null,
         coverImageUrl: s.cover_image_url ?? null,
+        paymentMethods: s.payment_methods ?? ['pix', 'cash', 'credit', 'debit'],
         phone: u.phone ?? null,
         instagramHandle: u.instagram_handle ?? null,
         products: productsResult.rows.map(p => ({
@@ -84,15 +85,25 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
 
     // Buscar loja
     const settingsResult = await pool.query(
-      'SELECT user_id, store_name, min_order_value, delivery_fee FROM store_settings WHERE slug = $1 AND active = TRUE',
+      'SELECT user_id, store_name, min_order_value, delivery_fee, payment_methods FROM store_settings WHERE slug = $1 AND active = TRUE',
       [slug]
     );
     if (settingsResult.rows.length === 0) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
       return;
     }
-    const { user_id: userId, store_name: storeName, min_order_value: minOrderValue, delivery_fee: deliveryFeeRaw } = settingsResult.rows[0];
+    const { user_id: userId, store_name: storeName, min_order_value: minOrderValue, delivery_fee: deliveryFeeRaw, payment_methods: paymentMethodsRaw } = settingsResult.rows[0];
     const deliveryFee = deliveryFeeRaw ? Number(deliveryFeeRaw) : 0;
+    const acceptedMethods: string[] = Array.isArray(paymentMethodsRaw) ? paymentMethodsRaw : ['pix', 'cash', 'credit', 'debit'];
+
+    // Forma de pagamento escolhida pelo cliente (opcional para compatibilidade com páginas antigas em cache)
+    const paymentMethod: string | null = b.paymentMethod ? String(b.paymentMethod) : null;
+    if (paymentMethod && !acceptedMethods.includes(paymentMethod)) {
+      res.status(400).json({ success: false, error: 'Forma de pagamento não aceita pela loja' });
+      return;
+    }
+    const changeForNum = Number(b.changeFor);
+    const changeFor = paymentMethod === 'cash' && Number.isFinite(changeForNum) && changeForNum > 0 ? changeForNum : null;
 
     // Buscar preços dos produtos (nunca confiar no preço enviado pelo cliente)
     const productIds = b.items.map((i: any) => i.productId);
@@ -133,8 +144,9 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
     const result = await pool.query(
       `INSERT INTO orders
         (user_id, client_name, client_phone, recipe_name, quantity, unit_price, total_price,
-         delivery_date, status, paid, paid_amount, payments, items, notes, source, delivery_address)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online',$11)
+         delivery_date, status, paid, paid_amount, payments, items, notes, source, delivery_address,
+         payment_method, change_for)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online',$11,$12,$13)
        RETURNING id`,
       [
         userId,
@@ -148,6 +160,8 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice }))),
         b.notes ? String(b.notes).trim() : null,
         b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
+        paymentMethod,
+        changeFor,
       ]
     );
     const orderId = result.rows[0].id;
@@ -160,10 +174,13 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         const itemsSummary = items.map(i => `${i.quantity}x ${i.recipeName}`).join(', ');
         const phoneInfo = b.clientPhone ? ` • ${String(b.clientPhone).trim()}` : '';
         const addrInfo = isDelivery && b.deliveryAddress ? ` • ${String(b.deliveryAddress).trim()}` : '';
+        const methodLabels: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };
+        const changeInfo = changeFor ? ` (troco p/ R$ ${changeFor.toFixed(2).replace('.', ',')})` : '';
+        const payInfo = paymentMethod ? ` • ${methodLabels[paymentMethod] ?? paymentMethod}${changeInfo}` : '';
         await sendPushNotifications(
           tokens.map(t => t.token),
           '🛍️ Novo pedido recebido!',
-          `${b.clientName}${phoneInfo}: ${itemsSummary}${addrInfo}`,
+          `${b.clientName}${phoneInfo}: ${itemsSummary}${addrInfo}${payInfo}`,
           { type: 'new_order', orderId }
         );
       }
@@ -191,7 +208,7 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
     }
     const userId = storeResult.rows[0].user_id;
     const orderResult = await pool.query(
-      `SELECT id, client_name, status, total_price, items, delivery_address, source, created_at
+      `SELECT id, client_name, status, total_price, items, delivery_address, source, payment_method, change_for, created_at
        FROM orders WHERE id = $1 AND user_id = $2`,
       [orderId, userId]
     );
@@ -209,6 +226,8 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
         totalPrice: Number(o.total_price),
         items: o.items ?? [],
         deliveryAddress: o.delivery_address ?? null,
+        paymentMethod: o.payment_method ?? null,
+        changeFor: o.change_for != null ? Number(o.change_for) : null,
         createdAt: o.created_at,
       },
     });

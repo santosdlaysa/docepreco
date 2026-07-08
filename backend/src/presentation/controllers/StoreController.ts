@@ -27,6 +27,7 @@ export class StoreController {
         minOrderValue:   b.minOrderValue,
         deliveryFee:     b.deliveryFee,
         coverImageUrl:   b.coverImageUrl,
+        paymentMethods:  Array.isArray(b.paymentMethods) ? b.paymentMethods : undefined,
       });
       res.json({ success: true, data: settings });
     } catch (error) {

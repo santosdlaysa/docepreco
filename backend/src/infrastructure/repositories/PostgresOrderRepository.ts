@@ -36,6 +36,8 @@ export interface Order {
   items: OrderItem[];
   notes?: string | null;
   deliveryAddress?: string | null;
+  paymentMethod?: PaymentMethodType | null;
+  changeFor?: number | null;
   source: 'manual' | 'online';
   createdAt: string;
 }
@@ -65,8 +67,9 @@ export class PostgresOrderRepository {
     const result = await pool.query(
       `INSERT INTO orders
         (user_id, client_name, client_phone, recipe_id, recipe_name, quantity, unit_price,
-         total_price, delivery_date, delivery_time, status, paid, paid_amount, payments, items, notes)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+         total_price, delivery_date, delivery_time, status, paid, paid_amount, payments, items, notes,
+         payment_method, change_for)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING *`,
       [
         userId,
@@ -85,6 +88,8 @@ export class PostgresOrderRepository {
         JSON.stringify(d.payments ?? []),
         JSON.stringify(d.items ?? []),
         d.notes ?? null,
+        d.paymentMethod ?? null,
+        d.changeFor ?? null,
       ]
     );
     return this.mapRow(result.rows[0]);
@@ -107,7 +112,9 @@ export class PostgresOrderRepository {
         paid_amount   = COALESCE($14, paid_amount),
         payments      = COALESCE($15, payments),
         items         = COALESCE($16, items),
-        notes         = COALESCE($17, notes)
+        notes         = COALESCE($17, notes),
+        payment_method = COALESCE($18, payment_method),
+        change_for    = COALESCE($19, change_for)
        WHERE id = $1 AND user_id = $2
        RETURNING *`,
       [
@@ -128,6 +135,8 @@ export class PostgresOrderRepository {
         d.payments !== undefined ? JSON.stringify(d.payments) : null,
         d.items !== undefined ? JSON.stringify(d.items) : null,
         d.notes ?? null,
+        d.paymentMethod ?? null,
+        d.changeFor ?? null,
       ]
     );
     if (result.rows.length === 0) return null;
@@ -160,6 +169,8 @@ export class PostgresOrderRepository {
       items: (row.items as OrderItem[]) ?? [],
       notes: (row.notes as string) ?? null,
       deliveryAddress: (row.delivery_address as string) ?? null,
+      paymentMethod: (row.payment_method as PaymentMethodType) ?? null,
+      changeFor: row.change_for != null ? parseFloat(row.change_for as string) : null,
       source: (row.source as 'manual' | 'online') ?? 'manual',
       createdAt: (row.created_at as Date).toISOString(),
     };

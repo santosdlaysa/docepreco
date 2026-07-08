@@ -13,6 +13,7 @@ export interface StoreSettings {
   minOrderValue?: number | null;
   deliveryFee?: number | null;
   coverImageUrl?: string | null;
+  paymentMethods: string[];
   createdAt: string;
   updatedAt: string;
 }
@@ -57,6 +58,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     minOrderValue: row.min_order_value ? Number(row.min_order_value) : null,
     deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
+    paymentMethods: (row.payment_methods as string[] | null) ?? ['pix', 'cash', 'credit', 'debit'],
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -121,6 +123,7 @@ export class PostgresStoreRepository {
     minOrderValue: number | null;
     deliveryFee: number | null;
     coverImageUrl: string | null;
+    paymentMethods: string[];
   }>): Promise<StoreSettings> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -134,6 +137,7 @@ export class PostgresStoreRepository {
     if ('minOrderValue' in data)           { fields.push(`min_order_value = $${idx++}`);  values.push(data.minOrderValue ?? null); }
     if ('deliveryFee' in data)             { fields.push(`delivery_fee = $${idx++}`);     values.push(data.deliveryFee ?? null); }
     if ('coverImageUrl' in data)           { fields.push(`cover_image_url = $${idx++}`); values.push(data.coverImageUrl ?? null); }
+    if (data.paymentMethods !== undefined)  { fields.push(`payment_methods = $${idx++}`); values.push(JSON.stringify(data.paymentMethods)); }
 
     fields.push(`updated_at = NOW()`);
     values.push(userId);
