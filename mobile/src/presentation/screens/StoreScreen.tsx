@@ -170,9 +170,12 @@ export const StoreScreen: React.FC = () => {
   const openDeliveryModal = (order: Order) => {
     const paid = order.paidAmount ?? 0;
     const remaining = Math.max(order.totalPrice - paid, 0);
-    setDeliveryOrder(order);
     setDeliveryModalMethod(order.paymentMethod ?? 'pix');
     setDeliveryModalAmount(remaining > 0 ? String(remaining).replace('.', ',') : '');
+    // Dois <Modal> visíveis ao mesmo tempo não são apresentados na nova arquitetura:
+    // fecha o modal de detalhes e só abre o de entrega após a animação de saída.
+    setSelectedOrder(null);
+    setTimeout(() => setDeliveryOrder(order), 350);
   };
 
   const handleDeliveryConfirm = async () => {
@@ -820,7 +823,7 @@ export const StoreScreen: React.FC = () => {
         </View>
       </Modal>
       {/* ── Modal confirmar entrega ── */}
-      <Modal visible={!!deliveryOrder} transparent animationType="fade">
+      <Modal visible={!!deliveryOrder} transparent animationType="fade" onRequestClose={() => setDeliveryOrder(null)}>
         <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 }}>
             {/* Título */}

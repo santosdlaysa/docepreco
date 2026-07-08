@@ -4,17 +4,34 @@ import {
   Cake, ChefHat, Calculator, FileText, BarChart3, Users,
   ShoppingBag, Check, Smartphone, Star, Sparkles, Heart,
   TrendingUp, Shield, Zap, ArrowRight, Play, LogIn, Home,
+  Store, ClipboardList, CalendarDays, Wallet, Package, Lightbulb,
+  Link2, Bell, CreditCard, Truck, MessageCircle,
 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
 const FEATURES = [
-  { icon: ShoppingBag, title: 'Ingredientes', desc: 'Cadastre ingredientes com precos atualizados e unidades de medida.', color: 'from-pink-500 to-rose-500', bg: 'bg-pink-50 dark:bg-pink-900/10' },
-  { icon: ChefHat, title: 'Receitas', desc: 'Monte receitas com calculo automatico do custo por unidade.', color: 'from-violet-500 to-purple-500', bg: 'bg-violet-50 dark:bg-violet-900/10' },
-  { icon: Calculator, title: 'Precificacao', desc: 'Defina margens, mao de obra e embalagem para o preco ideal.', color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-900/10' },
-  { icon: FileText, title: 'PDF Profissional', desc: 'Gere fichas tecnicas e orcamentos em PDF prontos para enviar.', color: 'from-emerald-500 to-green-500', bg: 'bg-emerald-50 dark:bg-emerald-900/10' },
-  { icon: BarChart3, title: 'Dashboard', desc: 'Acompanhe vendas, lucro e produtos mais rentaveis.', color: 'from-blue-500 to-cyan-500', bg: 'bg-blue-50 dark:bg-blue-900/10' },
-  { icon: Users, title: 'Clientes', desc: 'Gerencie sua carteira de clientes e historico de pedidos.', color: 'from-primary-500 to-pink-500', bg: 'bg-primary-50 dark:bg-primary-900/10' },
+  { icon: ShoppingBag, title: 'Ingredientes', desc: 'Cadastre ingredientes com preços atualizados, unidades de medida e histórico de preços.', iconColor: '#ec4899', bg: 'bg-pink-50 dark:bg-pink-900/10', master: false },
+  { icon: ChefHat, title: 'Receitas', desc: 'Monte receitas com cálculo automático do custo por unidade.', iconColor: '#8b5cf6', bg: 'bg-violet-50 dark:bg-violet-900/10', master: false },
+  { icon: Calculator, title: 'Precificação', desc: 'Defina margens, mão de obra e embalagem para o preço ideal.', iconColor: '#f59e0b', bg: 'bg-amber-50 dark:bg-amber-900/10', master: false },
+  { icon: FileText, title: 'PDF Profissional', desc: 'Gere fichas técnicas e orçamentos em PDF com seu logo, prontos para enviar.', iconColor: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-900/10', master: false },
+  { icon: BarChart3, title: 'Relatórios', desc: 'Acompanhe vendas, lucro e produtos mais rentáveis com gráficos e análises.', iconColor: '#3b82f6', bg: 'bg-blue-50 dark:bg-blue-900/10', master: false },
+  { icon: Users, title: 'Clientes', desc: 'Gerencie sua carteira de clientes, aniversários e histórico de pedidos.', iconColor: '#e91e8c', bg: 'bg-primary-50 dark:bg-primary-900/10', master: false },
+  { icon: ClipboardList, title: 'Encomendas', desc: 'Controle entregas com número de pedido, status de acompanhamento e pagamento.', iconColor: '#22c55e', bg: 'bg-green-50 dark:bg-green-900/10', master: false },
+  { icon: CalendarDays, title: 'Épocas', desc: 'Ajuste sazonal de preços para datas especiais como Páscoa e Natal.', iconColor: '#c8870b', bg: 'bg-yellow-50 dark:bg-yellow-900/10', master: false },
+  { icon: Store, title: 'Loja Online', desc: 'Cardápio digital com link compartilhável para receber pedidos dos seus clientes.', iconColor: '#7c3aed', bg: 'bg-violet-50 dark:bg-violet-900/10', master: true },
+  { icon: Package, title: 'Estoque', desc: 'Controle de estoque com baixa automática a cada venda registrada.', iconColor: '#2ba7dd', bg: 'bg-sky-50 dark:bg-sky-900/10', master: true },
+  { icon: Wallet, title: 'Financeiro', desc: 'Resultado do negócio e DRE completa com receitas e despesas.', iconColor: '#7c3aed', bg: 'bg-purple-50 dark:bg-purple-900/10', master: true },
+  { icon: Lightbulb, title: 'Dicas de vendas', desc: 'Precificação inteligente e modelos de story prontos para o Instagram.', iconColor: '#d99a00', bg: 'bg-amber-50 dark:bg-amber-900/10', master: true },
+];
+
+const STORE_HIGHLIGHTS = [
+  { icon: Link2, title: 'Link compartilhável', desc: 'Sua loja com endereço próprio para divulgar no WhatsApp e Instagram.' },
+  { icon: Smartphone, title: 'Pedido pelo navegador', desc: 'Cliente escolhe os produtos e pede direto do celular, sem instalar nada.' },
+  { icon: Bell, title: 'Notificação na hora', desc: 'Você recebe um push no app assim que um novo pedido chega.' },
+  { icon: Truck, title: 'Acompanhamento de entrega', desc: 'Timeline do pedido: recebido, em preparo, saiu para entrega e entregue.' },
+  { icon: CreditCard, title: 'Pagamento na entrega', desc: 'Dinheiro com troco, PIX ou cartão — o cliente escolhe ao fechar o pedido.' },
+  { icon: TrendingUp, title: 'Venda automática', desc: 'Pedido entregue e pago vira venda registrada, com baixa no estoque.' },
 ];
 
 const STEPS = [
@@ -37,12 +54,12 @@ const PLANS = [
   },
   {
     name: 'Premium', price: 'R$ 14,90', priceAnnual: 'R$ 120,00', period: '/mes', desc: 'Para quem quer crescer',
-    features: ['Receitas ilimitadas', 'Ingredientes ilimitados', 'Dashboard completo', 'Gestao de clientes', 'Relatorios avancados', 'Suporte prioritario'],
+    features: ['Receitas e ingredientes ilimitados', 'Seu logo personalizado no PDF', 'Relatórios avançados com gráficos', 'Gestão de clientes e aniversários', 'Sistema de encomendas e entregas', 'Precificação sazonal avançada', 'Histórico de preços de ingredientes', 'Suporte prioritário'],
     highlighted: true,
   },
   {
     name: 'Master', price: 'R$ 30,00', priceAnnual: 'R$ 200,00', period: '/mes', desc: 'Solucao completa para seu negocio',
-    features: ['Tudo do Premium', 'Controle de estoque avancado', 'Gestao de financeiro', 'DRE completa', 'Dicas personalizadas', 'API para integrações', 'Suporte premium 24/7'],
+    features: ['Tudo do Premium', 'Loja online com link compartilhável', 'Pedidos com notificação em tempo real', 'Controle de estoque com baixa automática', 'Gestão financeira completa (DRE)', 'Dicas de vendas e precificação', 'Suporte premium'],
     highlighted: false,
   },
 ];
@@ -95,6 +112,7 @@ export function LandingPage() {
           </div>
           <nav className="flex items-center gap-8">
             <a href="#funcionalidades" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Funcionalidades</a>
+            <a href="#loja-online" className="hidden md:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Loja Online</a>
             <a href="#planos" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Planos</a>
             <Link to="/app"
               className="inline-flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
@@ -368,12 +386,55 @@ export function LandingPage() {
             {FEATURES.map((f, i) => {
               const Icon = f.icon;
               return (
-                <div key={i} className="bg-white dark:bg-gray-800/80 rounded-2xl p-7 border border-gray-100 dark:border-gray-700/50 hover:shadow-xl hover:shadow-gray-200/40 dark:hover:shadow-none transition-all duration-300 group hover:-translate-y-1 hover:border-gray-200 dark:hover:border-gray-600">
+                <div key={i} className="relative bg-white dark:bg-gray-800/80 rounded-2xl p-7 border border-gray-100 dark:border-gray-700/50 hover:shadow-xl hover:shadow-gray-200/40 dark:hover:shadow-none transition-all duration-300 group hover:-translate-y-1 hover:border-gray-200 dark:hover:border-gray-600">
+                  {f.master && (
+                    <span className="absolute top-5 right-5 inline-flex items-center gap-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">
+                      <Sparkles size={10} />
+                      Master
+                    </span>
+                  )}
                   <div className={`w-12 h-12 rounded-2xl ${f.bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon size={22} className={`bg-gradient-to-br ${f.color} bg-clip-text`} style={{ color: i === 0 ? '#ec4899' : i === 1 ? '#8b5cf6' : i === 2 ? '#f59e0b' : i === 3 ? '#10b981' : i === 4 ? '#3b82f6' : '#e91e8c' }} />
+                    <Icon size={22} style={{ color: f.iconColor }} />
                   </div>
                   <h3 className="font-bold text-gray-900 dark:text-white text-base">{f.title}</h3>
                   <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Loja Online ── */}
+      <section id="loja-online" className="py-24 sm:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-b from-white dark:from-gray-950 to-violet-50/60 dark:to-violet-950/20" />
+        <div className="absolute top-40 left-[-5%] w-[400px] h-[400px] bg-violet-200/30 dark:bg-violet-500/10 rounded-full blur-[120px]" />
+
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="text-center mb-16">
+            <span className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
+              <Sparkles size={14} />
+              Novidade · Plano Master
+            </span>
+            <h2 className="mt-6 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Sua loja online com pedidos direto no app
+            </h2>
+            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-2xl mx-auto">
+              Monte seu cardápio digital, compartilhe o link com seus clientes e gerencie os pedidos
+              do recebimento até a entrega — tudo pelo DocePreco.
+            </p>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            {STORE_HIGHLIGHTS.map((h, i) => {
+              const Icon = h.icon;
+              return (
+                <div key={i} className="bg-white dark:bg-gray-800/80 rounded-2xl p-7 border border-violet-100 dark:border-violet-900/40 hover:shadow-xl hover:shadow-violet-100/50 dark:hover:shadow-none transition-all duration-300 group hover:-translate-y-1">
+                  <div className="w-12 h-12 rounded-2xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
+                    <Icon size={22} className="text-violet-600 dark:text-violet-400" />
+                  </div>
+                  <h3 className="font-bold text-gray-900 dark:text-white text-base">{h.title}</h3>
+                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{h.desc}</p>
                 </div>
               );
             })}
