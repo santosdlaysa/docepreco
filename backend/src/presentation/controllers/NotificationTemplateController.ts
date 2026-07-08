@@ -3,6 +3,7 @@ import { PostgresNotificationTemplateRepository } from '../../infrastructure/rep
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { PostgresNotificationRepository } from '../../infrastructure/repositories/PostgresNotificationRepository';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
+import { isSalesSummarySlug, sendDailySalesSummary } from '../../infrastructure/services/dailySalesNotificationService';
 
 const repo = new PostgresNotificationTemplateRepository();
 const tokenRepo = new PostgresPushTokenRepository();
@@ -55,6 +56,15 @@ export class NotificationTemplateController {
       const template = templates.find(t => t.id === id);
       if (!template) {
         res.status(404).json({ success: false, error: 'Template não encontrado' });
+        return;
+      }
+
+      // Resumos de vendas são personalizados por usuário (placeholders {nome},
+      // {vendas}, {valor}) — dispara o fluxo real em vez do texto cru
+      if (isSalesSummarySlug(template.slug)) {
+        const { notificationId } = await sendDailySalesSummary(template);
+        const record = await notifRepo.findById(notificationId);
+        res.json({ success: true, data: record });
         return;
       }
 

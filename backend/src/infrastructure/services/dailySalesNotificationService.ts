@@ -2,36 +2,42 @@ import { pool } from '../database/connection';
 import { PostgresNotificationRepository } from '../repositories/PostgresNotificationRepository';
 import { sendPushNotifications } from './pushService';
 
-export type SalesSummarySlot = 'midday' | 'afternoon' | 'evening';
+const TZ = 'America/Sao_Paulo';
 
-const SLOT_LABELS: Record<SalesSummarySlot, string> = {
-  midday: '12h',
-  afternoon: '17h',
-  evening: '19h',
-};
+export const SALES_SUMMARY_SLUGS = [
+  'sales_summary_midday',
+  'sales_summary_afternoon',
+  'sales_summary_evening',
+] as const;
+
+export type SalesSummarySlug = (typeof SALES_SUMMARY_SLUGS)[number];
+
+export function isSalesSummarySlug(slug: string): slug is SalesSummarySlug {
+  return (SALES_SUMMARY_SLUGS as readonly string[]).includes(slug);
+}
 
 const fmtBRL = (v: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v);
 
-function buildMessage(
-  slot: SalesSummarySlot,
-  companyName: string,
-  saleCount: number,
-  revenue: number
-): { title: string; body: string } {
-  const vendas = saleCount === 1 ? '1 venda' : `${saleCount} vendas`;
-  const valor = fmtBRL(revenue);
+function fillPlaceholders(
+  text: string,
+  values: { nome: string; vendas: string; valor: string }
+): string {
+  return text
+    .replace(/\{nome\}/g, values.nome)
+    .replace(/\{vendas\}/g, values.vendas)
+    .replace(/\{valor\}/g, values.valor);
+}
 
-  if (slot === 'evening') {
-    return {
-      title: 'Resumo de vendas de hoje 🎉',
-      body: `${companyName}, você registrou ${vendas} hoje, somando ${valor}. Ótimo trabalho!`,
-    };
-  }
-  return {
-    title: `Parcial de vendas — ${SLOT_LABELS[slot]} 🧁`,
-    body: `${companyName}, até agora você registrou ${vendas} hoje, somando ${valor}. Continue assim!`,
-  };
+function nowInSaoPaulo(): { hour: number; minute: number } {
+  const parts = new Intl.DateTimeFormat('pt-BR', {
+    timeZone: TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const get = (type: string) => parseInt(parts.find(p => p.type === type)?.value ?? '0');
+  return { hour: get('hour'), minute: get('minute') };
 }
 
 /**
@@ -39,8 +45,15 @@ function buildMessage(
  * que registrou pelo menos uma venda hoje e possui token de push.
  * Usuários sem vendas no dia não recebem nada (evita spam de "R$ 0,00" —
  * o lembrete local das 19h já cobre quem não registrou vendas).
+ *
+ * O título e o corpo vêm do template (editável no painel admin) e aceitam
+ * os placeholders {nome}, {vendas} e {valor}.
  */
-export async function sendDailySalesSummary(slot: SalesSummarySlot): Promise<void> {
+export async function sendDailySalesSummary(template: {
+  slug: string;
+  title: string;
+  body: string;
+}): Promise<{ notificationId: string; users: number; devices: number }> {
   const result = await pool.query(
     `SELECT u.id,
             u.company_name          AS "companyName",
@@ -53,37 +66,62 @@ export async function sendDailySalesSummary(slot: SalesSummarySlot): Promise<voi
               COUNT(*)::int AS sale_count
        FROM sales s
        WHERE s.user_id = u.id
-         AND s.sale_date = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+         AND s.sale_date = (NOW() AT TIME ZONE '${TZ}')::date
      ) t ON t.sale_count > 0
      JOIN push_tokens pt ON pt.user_id = u.id
      WHERE COALESCE(u.is_active, TRUE)
      GROUP BY u.id, u.company_name, t.revenue, t.sale_count`
   );
 
-  if (result.rows.length === 0) {
-    console.log(`[SalesSummary ${SLOT_LABELS[slot]}] Nenhum usuário com vendas hoje`);
-    return;
-  }
-
   let sentCount = 0;
   for (const row of result.rows) {
-    const { title, body } = buildMessage(slot, row.companyName, row.saleCount, row.revenue);
-    sentCount += await sendPushNotifications(row.tokens, title, body, {
-      type: 'daily_sales_summary',
-      slot,
-    });
+    const values = {
+      nome: row.companyName as string,
+      vendas: row.saleCount === 1 ? '1 venda' : `${row.saleCount} vendas`,
+      valor: fmtBRL(row.revenue),
+    };
+    sentCount += await sendPushNotifications(
+      row.tokens,
+      fillPlaceholders(template.title, values),
+      fillPlaceholders(template.body, values),
+      { type: 'daily_sales_summary', slug: template.slug }
+    );
   }
 
   // Registro agregado para aparecer no painel admin (uma linha por disparo)
   const notifRepo = new PostgresNotificationRepository();
   const notif = await notifRepo.create({
-    title: `Resumo de vendas (${SLOT_LABELS[slot]})`,
-    body: `Parcial de vendas do dia enviada para ${result.rows.length} usuário(s).`,
-    dataJson: JSON.stringify({ type: 'daily_sales_summary', slot }),
+    title: template.title,
+    body: `Resumo de vendas do dia enviado para ${result.rows.length} usuário(s) com vendas hoje.`,
+    dataJson: JSON.stringify({ type: 'daily_sales_summary', slug: template.slug }),
     target: 'all',
     status: 'sent',
   });
   await notifRepo.markSent(notif.id, sentCount);
 
-  console.log(`[SalesSummary ${SLOT_LABELS[slot]}] ${result.rows.length} usuário(s), ${sentCount} dispositivo(s)`);
+  console.log(
+    `[SalesSummary ${template.slug}] ${result.rows.length} usuário(s), ${sentCount} dispositivo(s)`
+  );
+  return { notificationId: notif.id, users: result.rows.length, devices: sentCount };
+}
+
+/**
+ * Roda a cada minuto: dispara os resumos de vendas cujos templates estão
+ * ativos e agendados para o horário atual (fuso America/Sao_Paulo).
+ * Horário e textos são configuráveis no painel admin (Dicas & Notificações).
+ */
+export async function checkSalesSummarySchedules(): Promise<void> {
+  const { hour, minute } = nowInSaoPaulo();
+  const result = await pool.query(
+    `SELECT slug, title, body
+     FROM notification_templates
+     WHERE slug = ANY($1)
+       AND is_active = TRUE
+       AND schedule_hour = $2
+       AND COALESCE(schedule_minute, 0) = $3`,
+    [[...SALES_SUMMARY_SLUGS], hour, minute]
+  );
+  for (const template of result.rows) {
+    await sendDailySalesSummary(template);
+  }
 }

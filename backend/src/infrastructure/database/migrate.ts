@@ -631,6 +631,22 @@ export async function runMigrations() {
     await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 120 WHERE slug = 'inactivity_5d' AND schedule_hour IS NULL`);
     await client.query(`UPDATE notification_templates SET schedule_type = 'daily', schedule_hour = 19, schedule_minute = 0 WHERE slug = 'daily_sales' AND schedule_hour IS NULL`);
     await client.query(`UPDATE notification_templates SET schedule_type = 'weekly', schedule_hour = 9, schedule_minute = 0, schedule_weekday = 2 WHERE slug = 'weekly_reminder' AND schedule_hour IS NULL`);
+
+    // Templates dos resumos de vendas por push (12h/17h/19h) — enviados pelo servidor
+    const salesSummaryTemplates = [
+      { slug: 'sales_summary_midday', title: 'Parcial de vendas — 12h 🧁', body: '{nome}, até agora você registrou {vendas} hoje, somando {valor}. Continue assim!', hour: 12 },
+      { slug: 'sales_summary_afternoon', title: 'Parcial de vendas — 17h 🧁', body: '{nome}, até agora você registrou {vendas} hoje, somando {valor}. Continue assim!', hour: 17 },
+      { slug: 'sales_summary_evening', title: 'Resumo de vendas de hoje 🎉', body: '{nome}, você registrou {vendas} hoje, somando {valor}. Ótimo trabalho!', hour: 19 },
+    ];
+    for (const t of salesSummaryTemplates) {
+      await client.query(
+        `INSERT INTO notification_templates (slug, title, body, schedule_type, schedule_hour, schedule_minute)
+         VALUES ($1, $2, $3, 'daily', $4, 0)
+         ON CONFLICT (slug) DO NOTHING`,
+        [t.slug, t.title, t.body, t.hour]
+      );
+    }
+
     await addColumnIfMissing(client, 'telegram_alerts', 'message_template', "TEXT");
     await addColumnIfMissing(client, 'telegram_alerts', 'schedule_cron', "VARCHAR(30)");
     await addColumnIfMissing(client, 'telegram_alerts', 'schedule_description', "VARCHAR(100)");

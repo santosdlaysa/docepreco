@@ -18,8 +18,10 @@ import {
   DollarSign,
   ChevronDown,
   ChevronUp,
+  ExternalLink,
   Pencil,
   Plus,
+  Store,
   X,
 } from 'lucide-react';
 
@@ -29,7 +31,7 @@ interface Props {
   toast: ToastFn;
 }
 
-type Tab = 'recipes' | 'ingredients' | 'sales';
+type Tab = 'recipes' | 'ingredients' | 'sales' | 'store';
 
 function PremiumBadge({ isPremium, platform }: { isPremium: boolean; platform: string | null }) {
   if (!isPremium) return <span className="text-xs text-gray-400">Gratuito</span>;
@@ -127,13 +129,14 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
     );
   }
 
-  const { user, recipes, ingredients, sales } = data;
+  const { user, recipes, ingredients, sales, store, storeProducts } = data;
   const totalRevenue = sales.reduce((sum, s) => sum + Number(s.totalRevenue || 0), 0);
 
   const tabs: Array<{ id: Tab; label: string; count: number; icon: typeof CakeSlice }> = [
     { id: 'recipes', label: 'Receitas', count: recipes.length, icon: CakeSlice },
     { id: 'ingredients', label: 'Ingredientes', count: ingredients.length, icon: ShoppingBasket },
     { id: 'sales', label: 'Vendas', count: sales.length, icon: DollarSign },
+    { id: 'store', label: 'Loja', count: storeProducts.length, icon: Store },
   ];
 
   return (
@@ -390,6 +393,113 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )
+        )}
+
+        {tab === 'store' && (
+          !store ? (
+            <p className="text-center py-12 text-gray-400">Loja online não configurada</p>
+          ) : (
+            <div>
+              <div className="p-4 border-b border-gray-100 dark:border-gray-700 space-y-2">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <p className="font-semibold text-gray-900 dark:text-white">{store.storeName}</p>
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    store.active
+                      ? 'bg-green-100 text-green-700'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'
+                  }`}>
+                    {store.active ? 'Publicada' : 'Não publicada'}
+                  </span>
+                </div>
+                {store.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-300">{store.description}</p>
+                )}
+                <a
+                  href={`/loja/${store.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"
+                >
+                  <ExternalLink size={13} />
+                  /loja/{store.slug}
+                </a>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-1">
+                  <div>
+                    <p className="text-xs text-gray-400">Atendimento</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {[store.acceptsDelivery && 'Entrega', store.acceptsPickup && 'Retirada']
+                        .filter(Boolean)
+                        .join(' e ') || '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Pedido mínimo</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {store.minOrderValue != null ? fmtCurrency(store.minOrderValue) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Taxa de entrega</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {store.deliveryFee != null ? fmtCurrency(store.deliveryFee) : '—'}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-400">Endereço</p>
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white truncate" title={store.address ?? undefined}>
+                      {store.address || '—'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              {storeProducts.length === 0 ? (
+                <p className="text-center py-12 text-gray-400">Nenhum produto no cardápio</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Produto</th>
+                        <th className="text-right px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Preço</th>
+                        <th className="text-center px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Atualizado</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+                      {storeProducts.map(p => (
+                        <tr key={p.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              {p.photoUrl && (
+                                <img src={p.photoUrl} alt={p.name} className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                              )}
+                              <div className="min-w-0">
+                                <p className="font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
+                                {p.description && (
+                                  <p className="text-xs text-gray-400 truncate max-w-[280px]">{p.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">{fmtCurrency(p.publicPrice)}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                              p.available
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'
+                            }`}>
+                              {p.available ? 'Disponível' : 'Indisponível'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-500 dark:text-gray-400">{fmtDate(p.updatedAt)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )
         )}

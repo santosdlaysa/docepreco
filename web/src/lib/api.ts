@@ -290,6 +290,33 @@ export interface UserData {
   recipes: UserRecipe[];
   ingredients: UserIngredient[];
   sales: UserSale[];
+  store: UserStore | null;
+  storeProducts: UserStoreProduct[];
+}
+
+export interface UserStore {
+  storeName: string;
+  slug: string;
+  active: boolean;
+  description: string | null;
+  acceptsDelivery: boolean;
+  acceptsPickup: boolean;
+  minOrderValue: number | null;
+  deliveryFee: number | null;
+  coverImageUrl: string | null;
+  address: string | null;
+  updatedAt: string;
+}
+
+export interface UserStoreProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  photoUrl: string | null;
+  publicPrice: number;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 // ── Endpoints ─────────────────────────────────────────────────────────────

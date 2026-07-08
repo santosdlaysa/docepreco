@@ -9,8 +9,10 @@ import { PostgresIngredientRepository } from '../../infrastructure/repositories/
 import { UpdateRecipeUseCase } from '../../application/use-cases/recipe/UpdateRecipeUseCase';
 import { PostgresRecipeRepository } from '../../infrastructure/repositories/PostgresRecipeRepository';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
+import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
 
 const userRepo = new PostgresUserRepository();
+const storeRepo = new PostgresStoreRepository();
 
 export class AdminController {
   async getStats(req: Request, res: Response): Promise<void> {
@@ -417,7 +419,24 @@ export class AdminController {
         return;
       }
 
-      res.json({ success: true, data: { ...userRes.rows[0], recentSales: salesRes.rows } });
+      const userData = userRes.rows[0];
+
+      // Usuário master ainda sem loja: cria a configuração inicial (despublicada)
+      // para o link já aparecer no painel, igual quando ele abre a aba Loja no app.
+      if (userData.planTier === 'master' && userData.isPremium && !userData.storeName) {
+        const settings = await storeRepo.getSettings(id);
+        userData.storeName = settings.storeName;
+        userData.storeSlug = settings.slug;
+        userData.storeActive = settings.active;
+        userData.storeDescription = settings.description ?? null;
+        userData.storeAcceptsDelivery = settings.acceptsDelivery;
+        userData.storeAcceptsPickup = settings.acceptsPickup;
+        userData.storeMinOrderValue = settings.minOrderValue ?? null;
+        userData.storeDeliveryFee = settings.deliveryFee ?? null;
+        userData.storeCoverImageUrl = settings.coverImageUrl ?? null;
+      }
+
+      res.json({ success: true, data: { ...userData, recentSales: salesRes.rows } });
     } catch (error) {
       console.error('[Admin] getUser error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
@@ -561,7 +580,7 @@ export class AdminController {
   async getUserData(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     try {
-      const [userRes, recipesRes, ingredientsRes, salesRes] = await Promise.all([
+      const [userRes, recipesRes, ingredientsRes, salesRes, storeRes, storeProductsRes] = await Promise.all([
         pool.query(
           `SELECT u.id, u.company_name AS "companyName", u.email,
                   u.created_at AS "createdAt", u.is_premium AS "isPremium",
@@ -604,6 +623,25 @@ export class AdminController {
            WHERE s.user_id = $1
            ORDER BY s.sale_date DESC
            LIMIT 100`,
+          [id]
+        ),
+        pool.query(
+          `SELECT ss.store_name AS "storeName", ss.slug, ss.active,
+                  ss.description, ss.accepts_delivery AS "acceptsDelivery",
+                  ss.accepts_pickup AS "acceptsPickup",
+                  ss.min_order_value::float AS "minOrderValue",
+                  ss.delivery_fee::float AS "deliveryFee",
+                  ss.cover_image_url AS "coverImageUrl",
+                  ss.address, ss.updated_at AS "updatedAt"
+           FROM store_settings ss WHERE ss.user_id = $1`,
+          [id]
+        ),
+        pool.query(
+          `SELECT sp.id, sp.name, sp.description, sp.photo_url AS "photoUrl",
+                  sp.public_price::float AS "publicPrice", sp.available,
+                  sp.created_at AS "createdAt", sp.updated_at AS "updatedAt"
+           FROM store_products sp WHERE sp.user_id = $1
+           ORDER BY sp.name ASC`,
           [id]
         ),
       ]);
@@ -741,6 +779,8 @@ export class AdminController {
           recipes: recipesWithIngredients,
           ingredients: ingredientsRes.rows,
           sales: salesRes.rows,
+          store: storeRes.rows[0] ?? null,
+          storeProducts: storeProductsRes.rows,
         },
       });
     } catch (error) {

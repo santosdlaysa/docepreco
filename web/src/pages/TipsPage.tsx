@@ -12,7 +12,13 @@ const SLUG_LABELS: Record<string, string> = {
   inactivity_5d: 'Inatividade 5 dias',
   daily_sales: 'Vendas diárias',
   weekly_reminder: 'Lembrete semanal',
+  sales_summary_midday: 'Resumo de vendas (1ª parcial)',
+  sales_summary_afternoon: 'Resumo de vendas (2ª parcial)',
+  sales_summary_evening: 'Resumo de vendas (dia)',
 };
+
+// Templates enviados pelo servidor com dados do usuário (aceitam placeholders)
+const PLACEHOLDER_SLUG_PREFIX = 'sales_summary_';
 
 const WEEKDAY_LABELS: Record<number, string> = {
   1: 'Domingo', 2: 'Segunda', 3: 'Terça', 4: 'Quarta', 5: 'Quinta', 6: 'Sexta', 7: 'Sábado',
@@ -276,7 +282,7 @@ export function TipsPage({ toast }: Props) {
             <BellRing size={20} className="text-purple-500" />
             <div>
               <h2 className="text-xl font-bold text-gray-900 dark:text-white">Notificações Locais</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Templates das notificações agendadas no celular do usuário</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Templates das notificações agendadas (locais do app e resumos de vendas enviados pelo servidor)</p>
             </div>
           </div>
         </div>
@@ -438,6 +444,11 @@ export function TipsPage({ toast }: Props) {
                   value={templateBody}
                   onChange={e => setTemplateBody(e.target.value)}
                 />
+                {editingTemplate.slug.startsWith(PLACEHOLDER_SLUG_PREFIX) && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Placeholders disponíveis: <code>{'{nome}'}</code> (confeitaria), <code>{'{vendas}'}</code> (ex: "3 vendas") e <code>{'{valor}'}</code> (ex: "R$ 150,00"). Enviado só para quem registrou vendas no dia.
+                  </p>
+                )}
               </div>
 
               {/* Agendamento */}
