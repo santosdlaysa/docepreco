@@ -26,7 +26,7 @@ import { demoStatsApi, demoSaleApi } from '../../data/demo/demoApi';
 import { usePremium } from '../context/PremiumContext';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { usePaywall } from '../premium/usePaywall';
-import { AdBanner } from '../ads';
+import { AdBanner, AdBanner2 } from '../ads';
 import { SupportFab } from '../components/SupportFab';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { bannerApi, Banner, CarouselBanner, PlanBanner } from '../../data/api/bannerApi';
@@ -657,14 +657,14 @@ export const HomeScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.proCtaTitle}>Desbloqueie tudo no PRO</Text>
-                <Text style={s.proCtaSub}>R$ 14,90/mês ou R$ 10 no PIX</Text>
+                <Text style={s.proCtaSub}>Mensal R$ 14,90  ·  Anual R$ 120 no PIX</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={PINK} />
             </LinearGradient>
           </TouchableOpacity>
         )}
 
-        <View style={s.adWrap}><AdBanner /></View>
+        <View style={s.adWrap}><AdBanner2 /></View>
       </ScrollView>
       <SupportFab />
       <DemoGuardModal />
