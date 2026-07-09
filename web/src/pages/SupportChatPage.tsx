@@ -43,6 +43,7 @@ export function SupportChatPage({ toast }: Props) {
   const [userResults, setUserResults] = useState<AdminUser[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
 
@@ -99,7 +100,8 @@ export function SupportChatPage({ toast }: Props) {
 
   // Scroll to bottom when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const container = messagesContainerRef.current;
+    if (container) container.scrollTop = container.scrollHeight;
   }, [messages]);
 
   // Busca usuários (debounced) enquanto o modal de nova conversa está aberto
@@ -357,7 +359,7 @@ export function SupportChatPage({ toast }: Props) {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 space-y-3">
+                <div ref={messagesContainerRef} className="flex-1 overflow-y-auto p-4 space-y-3">
                   {loadingMessages ? (
                     <div className="flex items-center justify-center py-8">
                       <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary-500 border-t-transparent" />
