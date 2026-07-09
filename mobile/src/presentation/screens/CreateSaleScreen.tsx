@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi, demoIngredientApi } from '../../data/demo/demoApi';
 import { applySaleDeduction } from '../../data/stock/stockStorage';
+import { customProductStorage } from '../../data/storage/customProductStorage';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { colors } from '../theme/colors';
@@ -50,6 +51,8 @@ const THUMB_COLORS = ['#5E3A23', '#8B5E3C', '#EA4B92', '#F9C74F', '#90BE6D', '#7
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+type SaleMode = 'recipe' | 'custom';
+
 export const CreateSaleScreen: React.FC = () => {
   const navigation = useNavigation();
   const { t } = useTranslation();
@@ -58,24 +61,38 @@ export const CreateSaleScreen: React.FC = () => {
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
+  const [mode, setMode] = useState<SaleMode>('recipe');
+
+  /* recipe mode */
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [showPicker, setShowPicker] = useState(false);
+
+  /* custom product mode */
+  const [customName, setCustomName] = useState('');
+  const [savedProducts, setSavedProducts] = useState<string[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+
+  /* shared fields */
   const [quantity, setQuantity] = useState('');
   const [salePrice, setSalePrice] = useState('');
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [showPicker, setShowPicker] = useState(false);
 
   useEffect(() => {
     rApi.getAll().then(setRecipes).catch(() => {});
     iApi.getAll().then(setIngredients).catch(() => {});
+    customProductStorage.getAll().then(setSavedProducts).catch(() => {});
   }, []);
 
+  const filteredSuggestions = savedProducts.filter(p =>
+    customName.trim().length === 0 || p.toLowerCase().includes(customName.toLowerCase())
+  );
+
   const handlePriceChange = (text: string) => {
-    // Mantém a vírgula como separador decimal (padrão BR); aceita ponto também
     const cleaned = text.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
     const parts = cleaned.split(',');
     const value = parts.length > 2 ? parts[0] + ',' + parts.slice(1).join('') : cleaned;
@@ -85,7 +102,8 @@ export const CreateSaleScreen: React.FC = () => {
 
   const validate = () => {
     const e: Record<string, string> = {};
-    if (!selectedRecipe) e.recipe = 'Escolha uma receita';
+    if (mode === 'recipe' && !selectedRecipe) e.recipe = 'Escolha uma receita';
+    if (mode === 'custom' && !customName.trim()) e.customName = 'Informe o nome do produto';
     if (!quantity || parseInt(quantity) <= 0) e.qty = 'Obrigatório';
     if (!salePrice || parseLocaleNumber(salePrice) <= 0) e.price = 'Obrigatório';
     if (!saleDate) e.date = 'Obrigatório';
@@ -98,24 +116,37 @@ export const CreateSaleScreen: React.FC = () => {
     setLoading(true);
     try {
       const soldQty = parseInt(quantity);
-      await sApi.create({
-        recipeId: selectedRecipe!.id,
-        quantitySold: soldQty,
-        salePrice: parseLocaleNumber(salePrice),
-        saleDate,
-        notes: notes.trim() || undefined,
-      });
-      // Baixa automática de estoque (Master) — só afeta ingredientes controlados.
-      let lowStock: { name: string }[] = [];
-      try {
-        lowStock = await applySaleDeduction(selectedRecipe!, recipes, ingredients, soldQty);
-      } catch { /* baixa de estoque é best-effort, não bloqueia a venda */ }
-      showToast(
-        lowStock.length > 0
-          ? `Venda registrada! Estoque baixo: ${lowStock.map(l => l.name).join(', ')}`
-          : 'Venda registrada!',
-        lowStock.length > 0 ? 'warning' : 'success',
-      );
+      if (mode === 'recipe') {
+        await sApi.create({
+          recipeId: selectedRecipe!.id,
+          quantitySold: soldQty,
+          salePrice: parseLocaleNumber(salePrice),
+          saleDate,
+          notes: notes.trim() || undefined,
+        });
+        let lowStock: { name: string }[] = [];
+        try {
+          lowStock = await applySaleDeduction(selectedRecipe!, recipes, ingredients, soldQty);
+        } catch { /* best-effort */ }
+        showToast(
+          lowStock.length > 0
+            ? `Venda registrada! Estoque baixo: ${lowStock.map(l => l.name).join(', ')}`
+            : 'Venda registrada!',
+          lowStock.length > 0 ? 'warning' : 'success',
+        );
+      } else {
+        await sApi.create({
+          recipeId: null,
+          productName: customName.trim(),
+          quantitySold: soldQty,
+          salePrice: parseLocaleNumber(salePrice),
+          saleDate,
+          notes: notes.trim() || undefined,
+        });
+        await customProductStorage.add(customName.trim());
+        setSavedProducts(await customProductStorage.getAll());
+        showToast('Venda registrada!', 'success');
+      }
       navigation.goBack();
     } catch (error) {
       showToast((error as Error).message || 'Erro ao salvar', 'error');
@@ -151,25 +182,90 @@ export const CreateSaleScreen: React.FC = () => {
         <ScrollView style={st.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 14 }}>
 
-          {/* ── Receita ── */}
-          <View style={st.field}>
-            <Text style={st.label}>Receita</Text>
-            <TouchableOpacity style={[st.input, errors.recipe ? st.inputErr : null]} onPress={() => setShowPicker(true)} activeOpacity={0.8}>
-              {selectedRecipe ? (
-                <>
-                  <LinearGradient colors={['#8B5E3C', '#5E3A23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                    style={st.recipeThumb}>
-                    <Text style={st.recipeThumbText}>{recipeInitials}</Text>
-                  </LinearGradient>
-                  <Text style={st.inputVal}>{selectedRecipe.name}</Text>
-                </>
-              ) : (
-                <Text style={st.placeholder}>Selecionar receita</Text>
-              )}
-              <Ionicons name="chevron-forward" size={16} color={INK3} style={{ marginLeft: 'auto' }} />
+          {/* ── Modo: Receita vs Produto avulso ── */}
+          <View style={st.modeRow}>
+            <TouchableOpacity
+              style={[st.modeTab, mode === 'recipe' && st.modeTabActive]}
+              onPress={() => { setMode('recipe'); setErrors({}); }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="book-outline" size={14} color={mode === 'recipe' ? '#fff' : INK2} style={{ marginRight: 5 }} />
+              <Text style={[st.modeTabText, mode === 'recipe' && st.modeTabTextActive]}>Receita</Text>
             </TouchableOpacity>
-            {errors.recipe && <Text style={st.err}>{errors.recipe}</Text>}
+            <TouchableOpacity
+              style={[st.modeTab, mode === 'custom' && st.modeTabActive]}
+              onPress={() => { setMode('custom'); setErrors({}); }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="pricetag-outline" size={14} color={mode === 'custom' ? '#fff' : INK2} style={{ marginRight: 5 }} />
+              <Text style={[st.modeTabText, mode === 'custom' && st.modeTabTextActive]}>Produto avulso</Text>
+            </TouchableOpacity>
           </View>
+
+          {/* ── Receita ── */}
+          {mode === 'recipe' && (
+            <View style={st.field}>
+              <Text style={st.label}>Receita</Text>
+              <TouchableOpacity style={[st.input, errors.recipe ? st.inputErr : null]} onPress={() => setShowPicker(true)} activeOpacity={0.8}>
+                {selectedRecipe ? (
+                  <>
+                    <LinearGradient colors={['#8B5E3C', '#5E3A23']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                      style={st.recipeThumb}>
+                      <Text style={st.recipeThumbText}>{recipeInitials}</Text>
+                    </LinearGradient>
+                    <Text style={st.inputVal}>{selectedRecipe.name}</Text>
+                  </>
+                ) : (
+                  <Text style={st.placeholder}>Selecionar receita</Text>
+                )}
+                <Ionicons name="chevron-forward" size={16} color={INK3} style={{ marginLeft: 'auto' }} />
+              </TouchableOpacity>
+              {errors.recipe && <Text style={st.err}>{errors.recipe}</Text>}
+            </View>
+          )}
+
+          {/* ── Produto avulso ── */}
+          {mode === 'custom' && (
+            <View style={st.field}>
+              <Text style={st.label}>Nome do produto</Text>
+              <View style={[st.input, errors.customName ? st.inputErr : null]}>
+                <Ionicons name="pricetag-outline" size={18} color={INK3} />
+                <TextInput
+                  style={st.inputText}
+                  value={customName}
+                  onChangeText={setCustomName}
+                  onFocus={() => setShowSuggestions(true)}
+                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  placeholder="Ex: Brigadeiro gourmet"
+                  placeholderTextColor={INK3}
+                  returnKeyType="done"
+                />
+                {customName.length > 0 && (
+                  <TouchableOpacity onPress={() => setCustomName('')}>
+                    <Ionicons name="close-circle" size={18} color={INK3} />
+                  </TouchableOpacity>
+                )}
+              </View>
+              {errors.customName && <Text style={st.err}>{errors.customName}</Text>}
+
+              {/* Sugestões */}
+              {showSuggestions && filteredSuggestions.length > 0 && (
+                <View style={st.suggestions}>
+                  {filteredSuggestions.slice(0, 6).map(name => (
+                    <TouchableOpacity
+                      key={name}
+                      style={st.suggestionRow}
+                      onPress={() => { setCustomName(name); setShowSuggestions(false); }}
+                      activeOpacity={0.7}
+                    >
+                      <Ionicons name="time-outline" size={14} color={INK2} style={{ marginRight: 8 }} />
+                      <Text style={st.suggestionText}>{name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
 
           {/* ── Quantidade + Preço ── */}
           <View style={st.two}>
@@ -293,6 +389,19 @@ const st = StyleSheet.create({
 
   body: { flex: 1, paddingHorizontal: 18 },
 
+  /* mode toggle */
+  modeRow: {
+    flexDirection: 'row', gap: 8,
+    backgroundColor: '#F5EBF0', borderRadius: 14, padding: 4,
+  },
+  modeTab: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingVertical: 9, borderRadius: 11,
+  },
+  modeTabActive: { backgroundColor: PINK, ...SHADOW, shadowColor: PINK, shadowOpacity: 0.3 },
+  modeTabText: { fontSize: 13.5, fontWeight: '600', color: INK2 },
+  modeTabTextActive: { color: '#fff' },
+
   /* field */
   field: { gap: 7 },
   label: { fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 },
@@ -314,6 +423,18 @@ const st = StyleSheet.create({
   /* recipe thumbnail in input */
   recipeThumb: { width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   recipeThumbText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+
+  /* suggestions dropdown */
+  suggestions: {
+    backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden',
+    ...SHADOW, marginTop: -4,
+  },
+  suggestionRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingVertical: 11, paddingHorizontal: 15,
+    borderBottomWidth: 1, borderBottomColor: LINE,
+  },
+  suggestionText: { fontSize: 14.5, color: INK, flex: 1 },
 
   /* two columns */
   two: { flexDirection: 'row', gap: 11 },
