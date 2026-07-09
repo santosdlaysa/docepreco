@@ -1,3 +1,5 @@
+export type PaymentMethod = 'dinheiro' | 'cartao' | 'pix';
+
 export interface Sale {
   id: string;
   recipeId: string | null;
@@ -8,6 +10,7 @@ export interface Sale {
   discount: number;
   saleDate: string;
   notes?: string;
+  paymentMethod?: PaymentMethod | null;
   orderId?: string | null;
   createdAt: string;
 }
@@ -22,4 +25,5 @@ export interface CreateSaleDTO {
   discount?: number;
   saleDate: string;
   notes?: string;
+  paymentMethod?: PaymentMethod | null;
 }

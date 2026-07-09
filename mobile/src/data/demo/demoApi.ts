@@ -250,6 +250,7 @@ export const demoSaleApi = {
       discount,
       saleDate: data.saleDate,
       notes: data.notes,
+      paymentMethod: data.paymentMethod,
       createdAt: now(),
     };
     sales.unshift(sale);

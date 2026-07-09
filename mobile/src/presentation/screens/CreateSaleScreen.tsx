@@ -25,6 +25,7 @@ import { applySaleDeduction } from '../../data/stock/stockStorage';
 import { customProductStorage } from '../../data/storage/customProductStorage';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Ingredient } from '../../domain/entities/Ingredient';
+import { PaymentMethod } from '../../domain/entities/Sale';
 import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
@@ -49,6 +50,12 @@ const SHADOW = {
 };
 
 const THUMB_COLORS = ['#5E3A23', '#8B5E3C', '#EA4B92', '#F9C74F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4'];
+
+const PAYMENT_METHODS: { key: PaymentMethod; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
+  { key: 'pix', icon: 'qr-code-outline', label: 'Pix' },
+  { key: 'dinheiro', icon: 'cash-outline', label: 'Dinheiro' },
+  { key: 'cartao', icon: 'card-outline', label: 'Cartão' },
+];
 
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -82,6 +89,7 @@ export const CreateSaleScreen: React.FC = () => {
   const [discountType, setDiscountType] = useState<DiscountType>('fixed');
   const [discountValue, setDiscountValue] = useState('');
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -129,6 +137,7 @@ export const CreateSaleScreen: React.FC = () => {
           salePrice: parseLocaleNumber(salePrice),
           discount,
           saleDate,
+          paymentMethod,
           notes: notes.trim() || undefined,
         });
         let lowStock: { name: string }[] = [];
@@ -149,6 +158,7 @@ export const CreateSaleScreen: React.FC = () => {
           salePrice: parseLocaleNumber(salePrice),
           discount,
           saleDate,
+          paymentMethod,
           notes: notes.trim() || undefined,
         });
         await customProductStorage.add(customName.trim());
@@ -316,6 +326,23 @@ export const CreateSaleScreen: React.FC = () => {
             {errors.date && <Text style={st.err}>{errors.date}</Text>}
           </View>
 
+          {/* ── Forma de pagamento ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Forma de pagamento</Text>
+            <View style={st.ugrid}>
+              {PAYMENT_METHODS.map(m => {
+                const on = paymentMethod === m.key;
+                return (
+                  <TouchableOpacity key={m.key} onPress={() => setPaymentMethod(m.key)}
+                    style={[st.payChip, { backgroundColor: on ? PINK + '15' : '#fff', borderWidth: on ? 2 : 0, borderColor: PINK }]} activeOpacity={0.7}>
+                    <Ionicons name={m.icon} size={14} color={on ? PINK : INK3} />
+                    <Text style={[st.payChipText, { color: on ? PINK : INK2, marginLeft: 4 }]}>{m.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
           {/* ── Notas ── */}
           <View style={st.field}>
             <Text style={st.label}>Notas (opcional)</Text>
@@ -457,6 +484,11 @@ const st = StyleSheet.create({
 
   /* two columns */
   two: { flexDirection: 'row', gap: 11 },
+
+  /* payment method chips */
+  ugrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  payChip: { height: 40, minWidth: 46, paddingHorizontal: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', ...SHADOW },
+  payChipText: { fontWeight: '700', fontSize: 13.5 },
 
   /* result card (green) */
   result: {

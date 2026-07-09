@@ -762,18 +762,14 @@ export function LojaPage() {
               })}
             </div>
             <div className="bg-gray-50 px-4 divide-y divide-gray-100">
-              {appliedFee > 0 && (
-                <div className="flex justify-between items-center py-2.5">
-                  <span className="text-sm text-gray-500">Subtotal</span>
-                  <span className="text-sm text-gray-700">{fmt(subtotal)}</span>
-                </div>
-              )}
-              {appliedFee > 0 && (
-                <div className="flex justify-between items-center py-2.5">
-                  <span className="text-sm text-gray-500">Taxa de entrega</span>
-                  <span className="text-sm text-gray-700">{fmt(appliedFee)}</span>
-                </div>
-              )}
+              <div className="flex justify-between items-center py-2.5">
+                <span className="text-sm text-gray-500">Subtotal</span>
+                <span className="text-sm text-gray-700">{fmt(subtotal)}</span>
+              </div>
+              <div className="flex justify-between items-center py-2.5">
+                <span className="text-sm text-gray-500">Taxa de entrega</span>
+                <span className="text-sm text-gray-700">{fmt(appliedFee)}</span>
+              </div>
               <div className="flex justify-between items-center py-3">
                 <span className="text-sm font-bold text-gray-700">Total</span>
                 <span className="text-[#EA4B92] font-bold text-lg">{fmt(totalPrice)}</span>
@@ -963,7 +959,7 @@ export function LojaPage() {
       '',
       summary,
       '',
-      ...(summaryFee > 0 ? [`Taxa de entrega: ${fmt(summaryFee)}`] : []),
+      `Taxa de entrega: ${fmt(summaryFee)}`,
       `*Total: ${fmt(summaryTotal)}*`,
       '',
       `Nome: ${form.clientName}`,
@@ -1078,12 +1074,10 @@ export function LojaPage() {
               </div>
             ))}
           </div>
-          {summaryFee > 0 && (
-            <div className="px-4 py-2 flex justify-between text-sm text-gray-400 border-t border-gray-50">
-              <span>Taxa de entrega</span>
-              <span>{fmt(summaryFee)}</span>
-            </div>
-          )}
+          <div className="px-4 py-2 flex justify-between text-sm text-gray-400 border-t border-gray-50">
+            <span>Taxa de entrega</span>
+            <span>{fmt(summaryFee)}</span>
+          </div>
           {summaryPayment && (
             <div className="px-4 py-2 flex justify-between text-sm text-gray-400 border-t border-gray-50">
               <span>Pagamento</span>

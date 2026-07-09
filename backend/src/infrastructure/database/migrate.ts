@@ -1050,6 +1050,10 @@ export async function runMigrations() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_store_products_user ON store_products (user_id)`);
 
+    // Desconto configurado por produto da loja online (percentual ou valor fixo).
+    await addColumnIfMissing(client, 'store_products', 'discount_type', 'VARCHAR(10) NULL');
+    await addColumnIfMissing(client, 'store_products', 'discount_value', 'DECIMAL(10,2) NULL');
+
     // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
     // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.
     await client.query(`
