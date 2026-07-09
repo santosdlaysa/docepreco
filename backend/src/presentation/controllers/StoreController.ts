@@ -55,12 +55,14 @@ export class StoreController {
         return;
       }
       const product = await repo.createProduct(req.userId!, {
-        name:        String(b.name).trim(),
-        description: b.description ?? null,
-        photoUrl:    b.photoUrl ?? null,
-        publicPrice: Number(b.publicPrice),
-        available:   b.available !== false,
-        recipeId:    b.recipeId ?? null,
+        name:          String(b.name).trim(),
+        description:   b.description ?? null,
+        photoUrl:      b.photoUrl ?? null,
+        publicPrice:   Number(b.publicPrice),
+        available:     b.available !== false,
+        recipeId:      b.recipeId ?? null,
+        discountType:  b.discountType ?? null,
+        discountValue: b.discountValue != null ? Number(b.discountValue) : null,
       });
       res.status(201).json({ success: true, data: product });
     } catch (error) {
@@ -79,6 +81,8 @@ export class StoreController {
       if (b.publicPrice !== undefined) patch.publicPrice = Number(b.publicPrice);
       if (b.available !== undefined)   patch.available   = b.available;
       if ('recipeId' in b)             patch.recipeId    = b.recipeId ?? null;
+      if ('discountType' in b)         patch.discountType = b.discountType ?? null;
+      if ('discountValue' in b)        patch.discountValue = b.discountValue != null ? Number(b.discountValue) : null;
       const product = await repo.updateProduct(req.params.id, req.userId!, patch as any);
       if (!product) {
         res.status(404).json({ success: false, message: 'Produto não encontrado' });

@@ -14,6 +14,8 @@ export interface OrderItem {
   recipeName: string;
   quantity: number;
   unitPrice: number;
+  /** Valor do desconto do item já resolvido em R$ (não percentual). */
+  discount?: number;
 }
 
 export interface Order {

@@ -1000,6 +1000,9 @@ export async function runMigrations() {
     await client.query(`ALTER TABLE sales ALTER COLUMN recipe_id DROP NOT NULL`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_sales_order ON sales (order_id)`);
 
+    // Desconto aplicado na venda (valor em R$ já resolvido, subtraído do total_revenue).
+    await addColumnIfMissing(client, 'sales', 'discount', 'DECIMAL(10,2) NOT NULL DEFAULT 0');
+
     // Índices para acelerar listagem/carregamento de receitas e suas relações
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipes_user ON recipes (user_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_ingredients_recipe ON recipe_ingredients (recipe_id)`);

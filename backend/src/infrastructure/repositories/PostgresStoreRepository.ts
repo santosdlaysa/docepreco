@@ -1,4 +1,5 @@
 import { pool } from '../database/connection';
+import { DiscountType } from '../../domain/utils/discount';
 
 export interface StoreSettings {
   id: string;
@@ -28,6 +29,8 @@ export interface StoreProduct {
   publicPrice: number;
   available: boolean;
   recipeId?: string | null;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -76,6 +79,8 @@ function mapProduct(row: Record<string, unknown>): StoreProduct {
     publicPrice: Number(row.public_price),
     available: row.available as boolean,
     recipeId: row.recipe_id as string | null,
+    discountType: (row.discount_type as DiscountType | null) ?? null,
+    discountValue: row.discount_value != null ? Number(row.discount_value) : null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -172,12 +177,14 @@ export class PostgresStoreRepository {
     publicPrice: number;
     available: boolean;
     recipeId?: string | null;
+    discountType?: DiscountType | null;
+    discountValue?: number | null;
   }): Promise<StoreProduct> {
     const result = await pool.query(
-      `INSERT INTO store_products (user_id, name, description, photo_url, public_price, available, recipe_id)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO store_products (user_id, name, description, photo_url, public_price, available, recipe_id, discount_type, discount_value)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
-      [userId, data.name, data.description ?? null, data.photoUrl ?? null, data.publicPrice, data.available, data.recipeId ?? null]
+      [userId, data.name, data.description ?? null, data.photoUrl ?? null, data.publicPrice, data.available, data.recipeId ?? null, data.discountType ?? null, data.discountValue ?? null]
     );
     return mapProduct(result.rows[0]);
   }
@@ -189,6 +196,8 @@ export class PostgresStoreRepository {
     publicPrice: number;
     available: boolean;
     recipeId: string | null;
+    discountType: DiscountType | null;
+    discountValue: number | null;
   }>): Promise<StoreProduct | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -200,6 +209,8 @@ export class PostgresStoreRepository {
     if (data.publicPrice !== undefined) { fields.push(`public_price = $${idx++}`); values.push(data.publicPrice); }
     if (data.available !== undefined)   { fields.push(`available = $${idx++}`);    values.push(data.available); }
     if ('recipeId' in data)             { fields.push(`recipe_id = $${idx++}`);    values.push(data.recipeId ?? null); }
+    if ('discountType' in data)         { fields.push(`discount_type = $${idx++}`); values.push(data.discountType ?? null); }
+    if ('discountValue' in data)        { fields.push(`discount_value = $${idx++}`); values.push(data.discountValue ?? null); }
 
     if (fields.length === 0) return this.getProductById(id, userId);
 

@@ -62,6 +62,7 @@ export async function registerSalesForDeliveredOrder(order: Order): Promise<bool
       // sales.quantity_sold é INTEGER; encomendas aceitam fração
       quantitySold: Math.max(1, Math.round(item.quantity)),
       salePrice: item.unitPrice,
+      discount: item.discount ?? 0,
       saleDate: order.deliveryDate,
       notes: `Encomenda de ${order.clientName}`,
       paymentMethod,
@@ -73,7 +74,7 @@ export async function registerSalesForDeliveredOrder(order: Order): Promise<bool
   // Taxa de entrega (pedidos online): o total do pedido inclui a taxa, mas as
   // vendas são registradas por item. A diferença vira um lançamento próprio
   // para o faturamento bater com o valor cobrado do cliente.
-  const itemsTotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice, 0);
+  const itemsTotal = items.reduce((sum, i) => sum + i.quantity * i.unitPrice - (i.discount ?? 0), 0);
   const fee = Math.round((order.totalPrice - itemsTotal) * 100) / 100;
   if (fee > 0) {
     await saleRepo.create({

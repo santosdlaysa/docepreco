@@ -27,6 +27,8 @@ import { recipeApi } from '../../data/api/recipeApi';
 import { Recipe } from '../../domain/entities/Recipe';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
+import { DiscountType } from '../utils/discount';
+import { DiscountInput } from '../components/DiscountInput';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'StoreProductForm'>;
@@ -68,6 +70,8 @@ export const StoreProductFormScreen: React.FC = () => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [priceText, setPriceText] = useState('');
+  const [discountType, setDiscountType] = useState<DiscountType>('fixed');
+  const [discountValue, setDiscountValue] = useState('');
   const [available, setAvailable] = useState(true);
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [recipeId, setRecipeId] = useState<string | undefined>(undefined);
@@ -86,6 +90,10 @@ export const StoreProductFormScreen: React.FC = () => {
           setName(found.name);
           setDescription(found.description ?? '');
           setPriceText(formatMoney(found.publicPrice));
+          if (found.discountType && found.discountValue) {
+            setDiscountType(found.discountType);
+            setDiscountValue(found.discountType === 'percent' ? String(found.discountValue) : formatMoney(found.discountValue));
+          }
           setAvailable(found.available);
           setPhotoUrl(found.photoUrl ?? '');
           setRecipeId(found.recipeId);
@@ -131,6 +139,8 @@ export const StoreProductFormScreen: React.FC = () => {
       return;
     }
 
+    const discountValueNum = discountType === 'percent' ? parseInt(discountValue, 10) || 0 : parseMoney(discountValue);
+
     setSaving(true);
     try {
       const data = {
@@ -140,6 +150,8 @@ export const StoreProductFormScreen: React.FC = () => {
         available,
         recipeId,
         photoUrl: photoUrl.trim() || undefined,
+        discountType: discountValueNum > 0 ? discountType : null,
+        discountValue: discountValueNum > 0 ? discountValueNum : null,
       };
 
       if (isEditing && productId) {
@@ -310,6 +322,17 @@ export const StoreProductFormScreen: React.FC = () => {
               placeholder="0,00"
               placeholderTextColor={INK3}
               keyboardType="decimal-pad"
+            />
+          </View>
+
+          {/* ── Desconto ── */}
+          <View style={{ marginTop: 12 }}>
+            <DiscountInput
+              label="Desconto (opcional)"
+              type={discountType}
+              value={discountValue}
+              onChangeType={setDiscountType}
+              onChangeValue={setDiscountValue}
             />
           </View>
 

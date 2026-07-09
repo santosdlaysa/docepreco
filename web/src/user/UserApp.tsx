@@ -138,7 +138,7 @@ function Shell() {
 
       <div className="p-3 border-t border-gray-100 dark:border-gray-700">
         <button
-          onClick={logout}
+          onClick={() => { logout(); routerNavigate('/', { replace: true }); }}
           className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <LogOut size={18} className="text-gray-400" />

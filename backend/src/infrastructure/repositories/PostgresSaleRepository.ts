@@ -46,7 +46,8 @@ export class PostgresSaleRepository implements ISaleRepository {
     } else if (!data.productName?.trim()) {
       throw new Error('Informe a receita ou o nome do produto da venda.');
     }
-    const totalRevenue = data.quantitySold * data.salePrice;
+    const discount = Math.max(0, Math.min(data.discount || 0, data.quantitySold * data.salePrice));
+    const totalRevenue = data.quantitySold * data.salePrice - discount;
     // Vincula a venda ao caixa aberto do usuário (se houver)
     const openSession = await pool.query(
       `SELECT id FROM cash_sessions WHERE user_id = $1 AND status = 'open' ORDER BY opened_at DESC LIMIT 1`,
@@ -54,10 +55,10 @@ export class PostgresSaleRepository implements ISaleRepository {
     );
     const sessionId = openSession.rows[0]?.id ?? null;
     const result = await pool.query(`
-      INSERT INTO sales (user_id, recipe_id, product_name, quantity_sold, sale_price, total_revenue, sale_date, notes, payment_method, session_id, order_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      INSERT INTO sales (user_id, recipe_id, product_name, quantity_sold, sale_price, total_revenue, discount, sale_date, notes, payment_method, session_id, order_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
       RETURNING *
-    `, [userId, data.recipeId || null, data.productName?.trim() || null, data.quantitySold, data.salePrice, totalRevenue, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId, data.orderId || null]);
+    `, [userId, data.recipeId || null, data.productName?.trim() || null, data.quantitySold, data.salePrice, totalRevenue, discount, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId, data.orderId || null]);
     return this.findById(result.rows[0].id, userId) as Promise<Sale>;
   }
 
@@ -114,6 +115,7 @@ export class PostgresSaleRepository implements ISaleRepository {
       quantitySold: Number(row.quantity_sold),
       salePrice: parseFloat(row.sale_price as string),
       totalRevenue: parseFloat(row.total_revenue as string),
+      discount: parseFloat((row.discount as string) ?? '0'),
       saleDate: (row.sale_date as Date).toISOString().split('T')[0],
       notes: row.notes as string | undefined,
       paymentMethod: (row.payment_method as Sale['paymentMethod']) ?? null,

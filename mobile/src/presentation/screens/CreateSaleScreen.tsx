@@ -29,6 +29,8 @@ import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
+import { computeDiscountAmount, DiscountType } from '../utils/discount';
+import { DiscountInput } from '../components/DiscountInput';
 
 /* ─── Design tokens ─── */
 const INK = '#3D2233';
@@ -77,6 +79,8 @@ export const CreateSaleScreen: React.FC = () => {
   /* shared fields */
   const [quantity, setQuantity] = useState('');
   const [salePrice, setSalePrice] = useState('');
+  const [discountType, setDiscountType] = useState<DiscountType>('fixed');
+  const [discountValue, setDiscountValue] = useState('');
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -116,11 +120,14 @@ export const CreateSaleScreen: React.FC = () => {
     setLoading(true);
     try {
       const soldQty = parseInt(quantity);
+      const subtotal = soldQty * parseLocaleNumber(salePrice);
+      const discount = computeDiscountAmount(subtotal, discountType, parseLocaleNumber(discountValue));
       if (mode === 'recipe') {
         await sApi.create({
           recipeId: selectedRecipe!.id,
           quantitySold: soldQty,
           salePrice: parseLocaleNumber(salePrice),
+          discount,
           saleDate,
           notes: notes.trim() || undefined,
         });
@@ -140,6 +147,7 @@ export const CreateSaleScreen: React.FC = () => {
           productName: customName.trim(),
           quantitySold: soldQty,
           salePrice: parseLocaleNumber(salePrice),
+          discount,
           saleDate,
           notes: notes.trim() || undefined,
         });
@@ -155,10 +163,10 @@ export const CreateSaleScreen: React.FC = () => {
     }
   };
 
-  const totalRevenue = quantity && salePrice
-    ? parseInt(quantity) * parseLocaleNumber(salePrice)
-    : null;
-  const showTotal = totalRevenue !== null && !isNaN(totalRevenue) && totalRevenue > 0;
+  const subtotal = quantity && salePrice ? parseInt(quantity) * parseLocaleNumber(salePrice) : 0;
+  const discountAmount = computeDiscountAmount(subtotal, discountType, parseLocaleNumber(discountValue));
+  const totalRevenue = subtotal > 0 ? subtotal - discountAmount : null;
+  const showTotal = totalRevenue !== null && !isNaN(totalRevenue) && subtotal > 0;
 
   const recipeInitials = selectedRecipe
     ? selectedRecipe.name.split(' ').slice(0, 2).map(w => w[0]?.toUpperCase() ?? '').join('')
@@ -289,6 +297,14 @@ export const CreateSaleScreen: React.FC = () => {
             </View>
           </View>
 
+          {/* ── Desconto ── */}
+          <DiscountInput
+            type={discountType}
+            value={discountValue}
+            onChangeType={setDiscountType}
+            onChangeValue={setDiscountValue}
+          />
+
           {/* ── Data da venda ── */}
           <View style={st.field}>
             <Text style={st.label}>Data da venda</Text>
@@ -316,6 +332,9 @@ export const CreateSaleScreen: React.FC = () => {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.result}>
               <Text style={st.rl}>Total da venda</Text>
               <Text style={st.rprice}>{fmtCurrency(totalRevenue!)}</Text>
+              {discountAmount > 0 && (
+                <Text style={st.rDiscount}>Desconto: -{fmtCurrency(discountAmount)}</Text>
+              )}
             </LinearGradient>
           )}
 
@@ -446,6 +465,7 @@ const st = StyleSheet.create({
   },
   rl: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.92)', letterSpacing: 0.2 },
   rprice: { fontSize: 38, fontWeight: '800', color: '#fff', marginTop: 5, letterSpacing: 0.4 },
+  rDiscount: { fontSize: 12.5, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginTop: 4 },
 
   /* button */
   btn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowColor: PINK, shadowOpacity: 0.35 },

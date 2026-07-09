@@ -1,5 +1,7 @@
 import { PaymentMethodType } from './Order';
 
+export type DiscountType = 'percent' | 'fixed';
+
 export interface StoreProduct {
   id: string;
   name: string;
@@ -8,6 +10,8 @@ export interface StoreProduct {
   publicPrice: number;
   available: boolean;
   recipeId?: string;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
   createdAt: string;
   updatedAt: string;
 }

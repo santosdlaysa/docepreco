@@ -9,6 +9,7 @@ interface StoreProduct {
   description: string | null;
   photoUrl: string | null;
   price: number;
+  originalPrice?: number;
 }
 interface StoreData {
   storeName: string;
@@ -92,7 +93,12 @@ function ProductRow({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="text-xs font-semibold text-[#EA4B92] mb-0.5">{fmt(product.price)}</p>
+        <p className="flex items-center gap-1.5 mb-0.5">
+          {product.originalPrice != null && (
+            <span className="text-[11px] text-gray-400 line-through">{fmt(product.originalPrice)}</span>
+          )}
+          <span className="text-xs font-semibold text-[#EA4B92]">{fmt(product.price)}</span>
+        </p>
         <p className="font-bold text-gray-900 text-[15px] leading-tight line-clamp-2">
           {product.name}
         </p>

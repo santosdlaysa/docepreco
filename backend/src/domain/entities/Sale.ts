@@ -8,6 +8,7 @@ export interface Sale {
   quantitySold: number;
   salePrice: number;
   totalRevenue: number;
+  discount: number;
   saleDate: string;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
@@ -21,6 +22,8 @@ export interface CreateSaleDTO {
   productName?: string | null;
   quantitySold: number;
   salePrice: number;
+  /** Valor do desconto já resolvido em R$ (não percentual). */
+  discount?: number;
   saleDate: string;
   notes?: string;
   paymentMethod?: PaymentMethod | null;

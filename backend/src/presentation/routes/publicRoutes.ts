@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { computeDiscountAmount, DiscountType } from '../../domain/utils/discount';
 
 const router = Router();
 
@@ -40,7 +41,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     const u = userResult.rows[0] ?? {};
     // Buscar produtos disponíveis
     const productsResult = await pool.query(
-      'SELECT id, name, description, photo_url, public_price FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
+      'SELECT id, name, description, photo_url, public_price, discount_type, discount_value FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
       [s.user_id]
     );
     res.json({
@@ -58,13 +59,18 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         address: s.address ?? null,
         phone: u.phone ?? null,
         instagramHandle: u.instagram_handle ?? null,
-        products: productsResult.rows.map(p => ({
-          id: p.id,
-          name: p.name,
-          description: p.description,
-          photoUrl: p.photo_url,
-          price: Number(p.public_price),
-        })),
+        products: productsResult.rows.map(p => {
+          const publicPrice = Number(p.public_price);
+          const discountAmount = computeDiscountAmount(publicPrice, p.discount_type as DiscountType | null, p.discount_value != null ? Number(p.discount_value) : null);
+          return {
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            photoUrl: p.photo_url,
+            price: publicPrice - discountAmount,
+            originalPrice: discountAmount > 0 ? publicPrice : undefined,
+          };
+        }),
       },
     });
   } catch (error) {
@@ -109,21 +115,23 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
     // Buscar preços dos produtos (nunca confiar no preço enviado pelo cliente)
     const productIds = b.items.map((i: any) => i.productId);
     const productsResult = await pool.query(
-      'SELECT id, name, public_price, recipe_id FROM store_products WHERE id = ANY($1) AND user_id = $2 AND available = TRUE',
+      'SELECT id, name, public_price, recipe_id, discount_type, discount_value FROM store_products WHERE id = ANY($1) AND user_id = $2 AND available = TRUE',
       [productIds, userId]
     );
     const productMap = new Map(productsResult.rows.map(p => [p.id, p]));
 
-    // Montar itens com preços do banco
-    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number }> = [];
+    // Montar itens com preços do banco, já com o desconto do produto aplicado
+    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number; discount: number }> = [];
     let totalPrice = 0;
     for (const item of b.items) {
       const product = productMap.get(item.productId);
       if (!product) continue;
       const qty = Math.max(1, Number(item.quantity) || 1);
       const unitPrice = Number(product.public_price);
-      items.push({ productId: product.id, recipeId: product.recipe_id ?? null, recipeName: product.name, quantity: qty, unitPrice });
-      totalPrice += qty * unitPrice;
+      const discountPerUnit = computeDiscountAmount(unitPrice, product.discount_type as DiscountType | null, product.discount_value != null ? Number(product.discount_value) : null);
+      const discount = Math.round(discountPerUnit * qty * 100) / 100;
+      items.push({ productId: product.id, recipeId: product.recipe_id ?? null, recipeName: product.name, quantity: qty, unitPrice, discount });
+      totalPrice += qty * unitPrice - discount;
     }
     if (items.length === 0) {
       res.status(400).json({ success: false, error: 'Nenhum produto válido no pedido' });
@@ -159,7 +167,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         firstItem.unitPrice,
         totalWithFee,
         deliveryDate,
-        JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice }))),
+        JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount }))),
         b.notes ? String(b.notes).trim() : null,
         b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
         paymentMethod,

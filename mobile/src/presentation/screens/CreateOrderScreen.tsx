@@ -30,6 +30,8 @@ import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
 import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
+import { computeDiscountAmount, DiscountType } from '../utils/discount';
+import { DiscountInput } from '../components/DiscountInput';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditOrder'>;
@@ -90,8 +92,9 @@ export const CreateOrderScreen: React.FC = () => {
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
 
-  interface ItemDraft { id: string; recipeId?: string; recipeName: string; quantity: string; unitPrice: string; }
-  const newItemDraft = (): ItemDraft => ({ id: Math.random().toString(36).slice(2), recipeId: undefined, recipeName: '', quantity: '', unitPrice: '' });
+  interface ItemDraft { id: string; recipeId?: string; recipeName: string; quantity: string; unitPrice: string; discountType: DiscountType; discountValue: string; }
+  const newItemDraft = (): ItemDraft => ({ id: Math.random().toString(36).slice(2), recipeId: undefined, recipeName: '', quantity: '', unitPrice: '', discountType: 'fixed', discountValue: '' });
+  const itemDiscount = (item: ItemDraft) => computeDiscountAmount(num(item.quantity) * num(item.unitPrice), item.discountType, num(item.discountValue));
 
   const [clientName, setClientName] = useState('');
   const [clientPhone, setClientPhone] = useState('');
@@ -131,8 +134,8 @@ export const CreateOrderScreen: React.FC = () => {
         setClientName(order.clientName);
         setClientPhone(order.clientPhone || '');
         const loadedItems = order.items && order.items.length > 0
-          ? order.items.map(i => ({ id: Math.random().toString(36).slice(2), recipeId: i.recipeId, recipeName: i.recipeName, quantity: String(i.quantity), unitPrice: String(i.unitPrice).replace('.', ',') }))
-          : [{ id: Math.random().toString(36).slice(2), recipeId: order.recipeId, recipeName: order.recipeName, quantity: String(order.quantity), unitPrice: String(order.unitPrice).replace('.', ',') }];
+          ? order.items.map(i => ({ id: Math.random().toString(36).slice(2), recipeId: i.recipeId, recipeName: i.recipeName, quantity: String(i.quantity), unitPrice: String(i.unitPrice).replace('.', ','), discountType: 'fixed' as DiscountType, discountValue: i.discount ? String(i.discount).replace('.', ',') : '' }))
+          : [{ id: Math.random().toString(36).slice(2), recipeId: order.recipeId, recipeName: order.recipeName, quantity: String(order.quantity), unitPrice: String(order.unitPrice).replace('.', ','), discountType: 'fixed' as DiscountType, discountValue: '' }];
         setItems(loadedItems);
         setDeliveryDate(fromIso(order.deliveryDate));
         setDeliveryTime(order.deliveryTime || '');
@@ -148,7 +151,7 @@ export const CreateOrderScreen: React.FC = () => {
     }
   }, []);
 
-  const totalPrice = items.reduce((s, i) => s + num(i.quantity) * num(i.unitPrice), 0);
+  const totalPrice = items.reduce((s, i) => s + num(i.quantity) * num(i.unitPrice) - itemDiscount(i), 0);
   const totalPaid = payments.reduce((sum, p) => sum + p.amount, 0);
   const remaining = Math.max(totalPrice - totalPaid, 0);
 
@@ -177,6 +180,7 @@ export const CreateOrderScreen: React.FC = () => {
         recipeName: i.recipeName.trim(),
         quantity: num(i.quantity),
         unitPrice: num(i.unitPrice),
+        discount: itemDiscount(i),
       }));
       const data = {
         clientName: clientName.trim(), clientPhone: clientPhone.trim() || undefined,
@@ -198,7 +202,7 @@ export const CreateOrderScreen: React.FC = () => {
       const isFullyPaid = totalPrice > 0 && toCents(totalPaid) >= toCents(totalPrice);
       if (isFullyPaid && status === 'delivered') {
         try {
-          await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
+          await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, discount: orderItems[0]?.discount ?? 0, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
           showToast('Encomenda entregue e venda registrada!', 'success');
         } catch { showToast('Encomenda salva, mas erro ao registrar venda', 'warning'); }
       }
@@ -224,6 +228,7 @@ export const CreateOrderScreen: React.FC = () => {
       const orderItems: OrderItem[] = items.map(i => ({
         recipeId: i.recipeId, recipeName: i.recipeName.trim(),
         quantity: num(i.quantity), unitPrice: num(i.unitPrice),
+        discount: itemDiscount(i),
       }));
       let finalPayments = [...payments];
       const modalAmount = num(deliveryModalAmount);
@@ -249,7 +254,7 @@ export const CreateOrderScreen: React.FC = () => {
       if (isEditing) await orderStorage.update(orderId!, data);
       else await orderStorage.create({ ...data, source: 'manual' as const });
       try {
-        await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
+        await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, discount: orderItems[0]?.discount ?? 0, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
         showToast('Entregue e venda registrada!', 'success');
       } catch { showToast('Entregue, mas erro ao registrar venda', 'warning'); }
       setShowDeliveryModal(false);
@@ -320,7 +325,9 @@ export const CreateOrderScreen: React.FC = () => {
           {/* ── Produtos ── */}
           <Text style={st.sec}>Produtos</Text>
           {items.map((item, idx) => {
-            const itemTotal = num(item.quantity) * num(item.unitPrice);
+            const itemSubtotal = num(item.quantity) * num(item.unitPrice);
+            const itemDiscountAmount = itemDiscount(item);
+            const itemTotal = itemSubtotal - itemDiscountAmount;
             return (
               <View key={item.id} style={st.itemCard}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -367,9 +374,19 @@ export const CreateOrderScreen: React.FC = () => {
                     </View>
                   </View>
                 </View>
-                {itemTotal > 0 && items.length > 1 && (
+                {!isLocked && (
+                  <DiscountInput
+                    compact
+                    label="Desconto do item"
+                    type={item.discountType}
+                    value={item.discountValue}
+                    onChangeType={t => setItems(prev => prev.map((it, i) => i === idx ? { ...it, discountType: t } : it))}
+                    onChangeValue={v => setItems(prev => prev.map((it, i) => i === idx ? { ...it, discountValue: v } : it))}
+                  />
+                )}
+                {itemSubtotal > 0 && (items.length > 1 || itemDiscountAmount > 0) && (
                   <View style={[st.totalRow, { marginTop: 0 }]}>
-                    <Text style={st.totalLabel}>Subtotal</Text>
+                    <Text style={st.totalLabel}>Subtotal{itemDiscountAmount > 0 ? ` (-${fmtCurrency(itemDiscountAmount)})` : ''}</Text>
                     <Text style={[st.totalValue, { fontSize: 15 }]}>{fmtCurrency(itemTotal)}</Text>
                   </View>
                 )}
