@@ -350,47 +350,49 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
         <p className="text-center text-gray-400 py-8 text-sm">Nenhum evento encontrado</p>
       ) : (
         <>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-700/50">
-                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Empresa</th>
-                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Plataforma</th>
-                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo</th>
-                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Valor</th>
-                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
-                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Expiração</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map(event => (
-                <tr key={event.id} className="border-b border-gray-50 dark:border-gray-700/30 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
-                  <td className="px-5 py-3">
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white truncate">{event.companyName}</p>
-                      <p className="text-xs text-gray-400 truncate">{event.email}</p>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
-                      {event.platform || '—'}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-gray-600 dark:text-gray-400 text-xs">{event.eventType}</td>
-                  <td className="px-5 py-3 font-semibold text-gray-900 dark:text-white">{fmt(event.amountBRL)}</td>
-                  <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">{fmtDateTime(event.createdAt)}</td>
-                  <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs">
-                    {event.expirationAt ? (
-                      new Date(event.expirationAt) <= new Date() ? (
-                        <span className="text-red-600 dark:text-red-400 font-semibold">Expirado</span>
-                      ) : (
-                        fmtDate(event.expirationAt)
-                      )
-                    ) : '—'}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Empresa</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Plataforma</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Valor</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Expiração</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paged.map(event => (
+                  <tr key={event.id} className="border-b border-gray-50 dark:border-gray-700/30 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+                    <td className="px-5 py-3 max-w-[220px]">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">{event.companyName}</p>
+                        <p className="text-xs text-gray-400 truncate">{event.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
+                        {event.platform || '—'}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-gray-600 dark:text-gray-400 text-xs whitespace-nowrap">{event.eventType}</td>
+                    <td className="px-5 py-3 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{fmt(event.amountBRL)}</td>
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{fmtDateTime(event.createdAt)}</td>
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">
+                      {event.expirationAt ? (
+                        new Date(event.expirationAt) <= new Date() ? (
+                          <span className="text-red-600 dark:text-red-400 font-semibold">Expirado</span>
+                        ) : (
+                          fmtDate(event.expirationAt)
+                        )
+                      ) : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           {totalPages > 1 && (
             <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
               <span className="text-xs text-gray-400">Página {page} de {totalPages}</span>
