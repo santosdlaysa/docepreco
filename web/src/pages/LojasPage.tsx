@@ -18,7 +18,10 @@ interface StoreListItem {
   deliveryFee: number | null;
   city: string | null;
   category: string | null;
+  distanceKm: number | null;
 }
+
+type SortOption = 'distance' | 'fee_asc';
 
 export function LojasPage() {
   const [stores, setStores] = useState<StoreListItem[]>([]);
@@ -27,6 +30,9 @@ export function LojasPage() {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [cityFilter, setCityFilter] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [sortBy, setSortBy] = useState<SortOption | null>(null);
+  const [freeOnly, setFreeOnly] = useState(false);
   const [locating, setLocating] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -40,19 +46,20 @@ export function LojasPage() {
     return () => clearTimeout(id);
   }, [search]);
 
-  // Reseta a página ao trocar de categoria ou cidade
+  // Reseta a página ao trocar de categoria, cidade, ordenação ou filtro de taxa
   useEffect(() => {
     setPage(1);
-  }, [selectedCategory, cityFilter]);
+  }, [selectedCategory, cityFilter, sortBy, freeOnly]);
 
   // Detecta a localização do cliente (uma vez) e pré-filtra pela cidade dele.
   useEffect(() => {
     try {
       const cached = localStorage.getItem(CITY_CACHE_KEY);
       if (cached) {
-        const { city, ts } = JSON.parse(cached);
+        const { city, lat, lng, ts } = JSON.parse(cached);
         if (city && Date.now() - ts < CITY_CACHE_TTL) {
           setCityFilter(city);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) setCoords({ lat, lng });
           return;
         }
       }
@@ -61,17 +68,18 @@ export function LojasPage() {
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async pos => {
+        const { latitude: lat, longitude: lng } = pos.coords;
+        setCoords({ lat, lng });
         try {
-          const { latitude, longitude } = pos.coords;
           const r = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10&addressdetails=1`
           );
           const j = await r.json();
           const city: string | undefined =
             j.address?.city || j.address?.town || j.address?.village || j.address?.municipality;
           if (city) {
             setCityFilter(city);
-            localStorage.setItem(CITY_CACHE_KEY, JSON.stringify({ city, ts: Date.now() }));
+            localStorage.setItem(CITY_CACHE_KEY, JSON.stringify({ city, lat, lng, ts: Date.now() }));
           }
         } catch {}
         setLocating(false);
@@ -90,6 +98,12 @@ export function LojasPage() {
       page: String(page),
       limit: '20',
     });
+    if (sortBy) params.set('sort', sortBy);
+    if (freeOnly) params.set('freeDelivery', 'true');
+    if (coords) {
+      params.set('lat', String(coords.lat));
+      params.set('lng', String(coords.lng));
+    }
     fetch(`${API_BASE}/public/stores?${params.toString()}`)
       .then(r => r.json())
       .then(json => {
@@ -102,7 +116,7 @@ export function LojasPage() {
         if (page === 1) setStores([]);
       })
       .finally(() => setLoading(false));
-  }, [debouncedSearch, selectedCategory, cityFilter, page]);
+  }, [debouncedSearch, selectedCategory, cityFilter, sortBy, freeOnly, coords, page]);
 
   const handleToggleCategory = (key: string) => {
     setSelectedCategory(prev => (prev === key ? null : key));
@@ -111,6 +125,34 @@ export function LojasPage() {
   const clearCityFilter = () => {
     setCityFilter(null);
     try { localStorage.removeItem(CITY_CACHE_KEY); } catch {}
+  };
+
+  // Ordenar por distância precisa das coordenadas do cliente — pede permissão se ainda não tiver.
+  const handleSortDistance = () => {
+    if (sortBy === 'distance') {
+      setSortBy(null);
+      return;
+    }
+    if (coords) {
+      setSortBy('distance');
+      return;
+    }
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        setCoords(c);
+        try {
+          const cached = JSON.parse(localStorage.getItem(CITY_CACHE_KEY) ?? 'null');
+          localStorage.setItem(CITY_CACHE_KEY, JSON.stringify({ ...(cached ?? {}), ...c, ts: Date.now() }));
+        } catch {}
+        setSortBy('distance');
+        setLocating(false);
+      },
+      () => setLocating(false),
+      { timeout: 8000, maximumAge: 600000 }
+    );
   };
 
   return (
@@ -165,7 +207,7 @@ export function LojasPage() {
         </div>
 
         {/* Categorias */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5 -mx-4 px-4">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-3 -mx-4 px-4">
           {FOOD_CATEGORIES.map(cat => {
             const active = selectedCategory === cat.key;
             return (
@@ -183,6 +225,27 @@ export function LojasPage() {
               </button>
             );
           })}
+        </div>
+
+        {/* Ordenação e filtros de entrega */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5 -mx-4 px-4">
+          {([
+            { key: 'distance', label: '📍 Mais próximas', active: sortBy === 'distance', onClick: handleSortDistance },
+            { key: 'free', label: '🚚 Entrega grátis', active: freeOnly, onClick: () => setFreeOnly(f => !f) },
+            { key: 'fee_asc', label: '💰 Menor taxa', active: sortBy === 'fee_asc', onClick: () => setSortBy(s => (s === 'fee_asc' ? null : 'fee_asc')) },
+          ] as const).map(opt => (
+            <button
+              key={opt.key}
+              onClick={opt.onClick}
+              className={`flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors active:scale-95 ${
+                opt.active
+                  ? 'bg-gray-900 text-white shadow-sm'
+                  : 'bg-white text-gray-500 shadow-sm'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
         </div>
 
         {/* Loading inicial */}
@@ -227,7 +290,9 @@ export function LojasPage() {
                 acceptsDelivery={store.acceptsDelivery}
                 acceptsPickup={store.acceptsPickup}
                 minOrderValue={store.minOrderValue}
+                deliveryFee={store.deliveryFee}
                 city={store.city}
+                distanceKm={store.distanceKm}
               />
             ))}
           </div>

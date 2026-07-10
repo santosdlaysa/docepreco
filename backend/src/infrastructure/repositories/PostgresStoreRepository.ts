@@ -18,6 +18,8 @@ export interface StoreSettings {
   paymentMethods: string[];
   address?: string | null;
   city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   category?: string | null;
   useBusinessHours: boolean;
   businessHours: DayHours[];
@@ -37,6 +39,7 @@ export interface MarketplaceStoreSummary {
   deliveryFee?: number | null;
   city?: string | null;
   category?: string | null;
+  distanceKm?: number | null;
 }
 
 export interface StoreProduct {
@@ -86,6 +89,8 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     paymentMethods: (row.payment_methods as string[] | null) ?? ['pix', 'cash', 'credit', 'debit'],
     address: (row.address as string | null) ?? null,
     city: (row.city as string | null) ?? null,
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
     category: (row.category as string | null) ?? null,
     useBusinessHours,
     businessHours,
@@ -107,6 +112,7 @@ function mapMarketplaceStore(row: Record<string, unknown>): MarketplaceStoreSumm
     deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     city: (row.city as string | null) ?? null,
     category: (row.category as string | null) ?? null,
+    distanceKm: row.distance_km != null ? Math.round(Number(row.distance_km) * 10) / 10 : null,
   };
 }
 
@@ -211,27 +217,64 @@ export class PostgresStoreRepository {
     return mapSettings(result.rows[0]);
   }
 
-  async listMarketplaceStores(filters: { search?: string; category?: string; city?: string; page: number; limit: number }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
+  async updateCoordinates(userId: string, latitude: number | null, longitude: number | null): Promise<void> {
+    await pool.query(
+      'UPDATE store_settings SET latitude = $1, longitude = $2 WHERE user_id = $3',
+      [latitude, longitude, userId]
+    );
+  }
+
+  async listMarketplaceStores(filters: {
+    search?: string;
+    category?: string;
+    city?: string;
+    sort?: 'distance' | 'fee_asc';
+    freeDelivery?: boolean;
+    lat?: number;
+    lng?: number;
+    page: number;
+    limit: number;
+  }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
     const search = filters.search?.trim() || null;
     const category = filters.category?.trim() || null;
     const city = filters.city?.trim() || null;
+    const freeDelivery = filters.freeDelivery === true;
+    const hasCoords = Number.isFinite(filters.lat) && Number.isFinite(filters.lng);
+    const lat = hasCoords ? filters.lat! : null;
+    const lng = hasCoords ? filters.lng! : null;
+    // Ordenar por distância sem coordenadas do cliente não faz sentido — cai na ordem padrão.
+    const sort = filters.sort === 'distance' && !hasCoords ? null : filters.sort ?? null;
     const limit = Math.min(Math.max(filters.limit, 1), 50);
     const offset = Math.max(filters.page - 1, 0) * limit;
 
     // Filtra pelo horário de funcionamento em JS: pega uma página extra do banco
     // (lojas fechadas por horário automático são descartadas) para manter o limite pedido.
+    // distance_km via fórmula de Haversine; lojas sem coordenadas ficam por último (NULLS LAST).
     const rows = await pool.query(
-      `SELECT store_name, slug, description, cover_image_url,
-              accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
-              city, category, active, use_business_hours, business_hours
-       FROM store_settings
-       WHERE active = TRUE
-         AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
-         AND ($2::text IS NULL OR category = $2)
-         AND ($3::text IS NULL OR city ILIKE $3)
-       ORDER BY store_name ASC
-       LIMIT $4 OFFSET $5`,
-      [search, category, city ? `%${city}%` : null, limit, offset]
+      `SELECT * FROM (
+         SELECT store_name, slug, description, cover_image_url,
+                accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
+                city, category, active, use_business_hours, business_hours,
+                CASE WHEN $4::double precision IS NOT NULL AND latitude IS NOT NULL AND longitude IS NOT NULL THEN
+                  2 * 6371 * asin(sqrt(
+                    power(sin(radians((latitude - $4::double precision) / 2)), 2) +
+                    cos(radians($4::double precision)) * cos(radians(latitude)) *
+                    power(sin(radians((longitude - $5::double precision) / 2)), 2)
+                  ))
+                END AS distance_km
+         FROM store_settings
+         WHERE active = TRUE
+           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
+           AND ($2::text IS NULL OR category = $2)
+           AND ($3::text IS NULL OR city ILIKE $3)
+           AND ($6::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))
+       ) s
+       ORDER BY
+         CASE WHEN $7::text = 'distance' THEN s.distance_km END ASC NULLS LAST,
+         CASE WHEN $7::text = 'fee_asc' THEN (CASE WHEN s.accepts_delivery THEN s.delivery_fee END) END ASC NULLS LAST,
+         s.store_name ASC
+       LIMIT $8 OFFSET $9`,
+      [search, category, city ? `%${city}%` : null, lat, lng, freeDelivery, sort, limit, offset]
     );
     const openRows = rows.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours }));
 
@@ -241,8 +284,9 @@ export class PostgresStoreRepository {
        WHERE active = TRUE
          AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR category = $2)
-         AND ($3::text IS NULL OR city ILIKE $3)`,
-      [search, category, city ? `%${city}%` : null]
+         AND ($3::text IS NULL OR city ILIKE $3)
+         AND ($4::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))`,
+      [search, category, city ? `%${city}%` : null, freeDelivery]
     );
     const total = count.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours })).length;
 

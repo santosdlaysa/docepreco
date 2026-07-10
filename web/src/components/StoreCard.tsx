@@ -9,7 +9,15 @@ interface StoreCardProps {
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue: number | null;
+  deliveryFee?: number | null;
   city: string | null;
+  distanceKm?: number | null;
+}
+
+function fmtDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 10) return `${km.toFixed(1).replace('.', ',')} km`;
+  return `${Math.round(km)} km`;
 }
 
 const COLORS: Array<[string, string]> = [
@@ -41,7 +49,9 @@ export function StoreCard({
   acceptsDelivery,
   acceptsPickup,
   minOrderValue,
+  deliveryFee,
   city,
+  distanceKm,
 }: StoreCardProps) {
   return (
     <Link
@@ -61,11 +71,24 @@ export function StoreCard({
           <p className="text-gray-400 text-sm mt-1 line-clamp-2">{description}</p>
         )}
         <div className="flex flex-wrap items-center gap-1.5 mt-3">
-          {acceptsDelivery && (
+          {distanceKm != null && (
+            <span className="text-[11px] font-semibold text-sky-600 bg-sky-50 rounded-full px-2.5 py-1">
+              📍 {fmtDistance(distanceKm)}
+            </span>
+          )}
+          {acceptsDelivery && deliveryFee === 0 ? (
+            <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50 rounded-full px-2.5 py-1">
+              Entrega grátis
+            </span>
+          ) : acceptsDelivery && deliveryFee != null ? (
+            <span className="text-[11px] font-semibold text-[#EA4B92] bg-rose-50 rounded-full px-2.5 py-1">
+              Entrega {fmt(deliveryFee)}
+            </span>
+          ) : acceptsDelivery ? (
             <span className="text-[11px] font-semibold text-[#EA4B92] bg-rose-50 rounded-full px-2.5 py-1">
               Entrega
             </span>
-          )}
+          ) : null}
           {acceptsPickup && (
             <span className="text-[11px] font-semibold text-[#7C3AED] bg-[#EDE9FE] rounded-full px-2.5 py-1">
               Retirada

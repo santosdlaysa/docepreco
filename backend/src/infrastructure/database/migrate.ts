@@ -1041,6 +1041,10 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_settings', 'city', 'VARCHAR(120) NULL');
     await addColumnIfMissing(client, 'store_settings', 'category', 'VARCHAR(30) NULL');
 
+    // Coordenadas geocodificadas do endereço da loja — usadas na ordenação por distância do marketplace.
+    await addColumnIfMissing(client, 'store_settings', 'latitude', 'DOUBLE PRECISION NULL');
+    await addColumnIfMissing(client, 'store_settings', 'longitude', 'DOUBLE PRECISION NULL');
+
     // Horário de funcionamento: liga/desliga a loja automaticamente conforme o horário cadastrado.
     await addColumnIfMissing(client, 'store_settings', 'use_business_hours', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'store_settings', 'business_hours', "JSONB NOT NULL DEFAULT '[]'::jsonb");

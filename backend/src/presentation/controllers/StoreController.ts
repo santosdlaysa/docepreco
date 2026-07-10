@@ -1,13 +1,29 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
+import { geocodeStoreLocation } from '../../infrastructure/services/geocodingService';
 
 const repo = new PostgresStoreRepository();
+
+// Geocodifica em segundo plano (não atrasa a resposta). Só sobrescreve as
+// coordenadas quando encontra resultado — falha de rede não apaga o que já existe.
+function refreshCoordinates(userId: string, address: string | null, city: string | null): void {
+  void geocodeStoreLocation(address, city)
+    .then(coords => {
+      if (coords) return repo.updateCoordinates(userId, coords.latitude, coords.longitude);
+      if (!address && !city) return repo.updateCoordinates(userId, null, null);
+    })
+    .catch(err => console.error('[Store] geocode error:', err));
+}
 
 export class StoreController {
   async getSettings(req: AuthRequest, res: Response): Promise<void> {
     try {
       const settings = await repo.getSettings(req.userId!);
+      // Backfill preguiçoso: lojas criadas antes das coordenadas geocodificam ao abrir o painel.
+      if (settings.latitude == null && (settings.address || settings.city)) {
+        refreshCoordinates(req.userId!, settings.address ?? null, settings.city ?? null);
+      }
       res.json({ success: true, data: settings });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
@@ -34,6 +50,9 @@ export class StoreController {
         useBusinessHours: b.useBusinessHours,
         businessHours:    Array.isArray(b.businessHours) ? b.businessHours : undefined,
       });
+      if ('address' in b || 'city' in b) {
+        refreshCoordinates(req.userId!, settings.address ?? null, settings.city ?? null);
+      }
       res.json({ success: true, data: settings });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);

@@ -29,9 +29,20 @@ router.get('/stores', publicListLimiter, async (req: Request, res: Response) => 
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
     const city = typeof req.query.city === 'string' ? req.query.city : undefined;
+    const sortRaw = typeof req.query.sort === 'string' ? req.query.sort : undefined;
+    const sort = sortRaw === 'distance' || sortRaw === 'fee_asc' ? sortRaw : undefined;
+    const freeDelivery = req.query.freeDelivery === 'true' || req.query.freeDelivery === '1';
+    const latRaw = Number(req.query.lat);
+    const lngRaw = Number(req.query.lng);
+    const hasCoords = Number.isFinite(latRaw) && Number.isFinite(lngRaw) && Math.abs(latRaw) <= 90 && Math.abs(lngRaw) <= 180;
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
-    const { stores, total } = await storeRepo.listMarketplaceStores({ search, category, city, page, limit });
+    const { stores, total } = await storeRepo.listMarketplaceStores({
+      search, category, city, sort, freeDelivery,
+      lat: hasCoords ? latRaw : undefined,
+      lng: hasCoords ? lngRaw : undefined,
+      page, limit,
+    });
     res.json({ success: true, data: { stores, page, limit, total } });
   } catch (error) {
     console.error('[Public Stores] list error:', error);
