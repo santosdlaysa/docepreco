@@ -34,6 +34,7 @@ export function LojasPage() {
   const [sortBy, setSortBy] = useState<SortOption | null>(null);
   const [freeOnly, setFreeOnly] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -187,27 +188,72 @@ export function LojasPage() {
           </div>
         )}
 
-        {/* Busca */}
-        <div className="relative mb-4">
-          <svg
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
-          </svg>
-          <input
-            className="w-full bg-white border border-gray-200 rounded-full pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-[#EA4B92] focus:ring-2 focus:ring-[#EA4B92]/10 transition-all placeholder:text-gray-300"
-            placeholder="Buscar loja..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
+        {/* Busca + ordenação */}
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <svg
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
+            </svg>
+            <input
+              className="w-full bg-white border border-gray-200 rounded-full pl-11 pr-4 py-3 text-sm focus:outline-none focus:border-[#EA4B92] focus:ring-2 focus:ring-[#EA4B92]/10 transition-all placeholder:text-gray-300"
+              placeholder="Buscar loja..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+          <div className="relative flex-shrink-0">
+            <button
+              onClick={() => setSortMenuOpen(o => !o)}
+              aria-label="Ordenar e filtrar"
+              className={`relative w-11 h-11 rounded-full flex items-center justify-center shadow-sm transition-colors active:scale-95 ${
+                sortBy || freeOnly ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 border border-gray-200'
+              }`}
+            >
+              <svg width={18} height={18} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m8-8v12m0 0l-4-4m4 4l4-4" />
+              </svg>
+            </button>
+            {sortMenuOpen && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setSortMenuOpen(false)} />
+                <div className="absolute right-0 top-full mt-2 z-20 w-52 bg-white rounded-2xl shadow-lg border border-gray-100 py-1.5 overflow-hidden">
+                  {([
+                    { key: 'distance', label: 'Mais próximas', active: sortBy === 'distance', onClick: handleSortDistance },
+                    { key: 'free', label: 'Entrega grátis', active: freeOnly, onClick: () => setFreeOnly(f => !f) },
+                    { key: 'fee_asc', label: 'Menor taxa', active: sortBy === 'fee_asc', onClick: () => setSortBy(s => (s === 'fee_asc' ? null : 'fee_asc')) },
+                  ] as const).map(opt => (
+                    <button
+                      key={opt.key}
+                      onClick={() => {
+                        opt.onClick();
+                        setSortMenuOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-2.5 text-sm text-left transition-colors ${
+                        opt.active ? 'font-bold text-[#EA4B92]' : 'font-medium text-gray-600'
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      {opt.active && (
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Categorias */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-3 -mx-4 px-4">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5 -mx-4 px-4">
           {FOOD_CATEGORIES.map(cat => {
             const active = selectedCategory === cat.key;
             return (
@@ -225,27 +271,6 @@ export function LojasPage() {
               </button>
             );
           })}
-        </div>
-
-        {/* Ordenação e filtros de entrega */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5 -mx-4 px-4">
-          {([
-            { key: 'distance', label: '📍 Mais próximas', active: sortBy === 'distance', onClick: handleSortDistance },
-            { key: 'free', label: '🚚 Entrega grátis', active: freeOnly, onClick: () => setFreeOnly(f => !f) },
-            { key: 'fee_asc', label: '💰 Menor taxa', active: sortBy === 'fee_asc', onClick: () => setSortBy(s => (s === 'fee_asc' ? null : 'fee_asc')) },
-          ] as const).map(opt => (
-            <button
-              key={opt.key}
-              onClick={opt.onClick}
-              className={`flex-shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors active:scale-95 ${
-                opt.active
-                  ? 'bg-gray-900 text-white shadow-sm'
-                  : 'bg-white text-gray-500 shadow-sm'
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
         </div>
 
         {/* Loading inicial */}

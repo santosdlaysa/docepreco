@@ -1074,6 +1074,21 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_products', 'discount_type', 'VARCHAR(10) NULL');
     await addColumnIfMissing(client, 'store_products', 'discount_value', 'DECIMAL(10,2) NULL');
 
+    // Itens adicionais da loja online (ex.: cobertura extra, embalagem para presente) —
+    // o cliente escolhe na tela de detalhes do produto ao montar o pedido.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS store_addons (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(120) NOT NULL,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0,
+        available BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_store_addons_user ON store_addons (user_id)`);
+
     // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
     // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.
     await client.query(`

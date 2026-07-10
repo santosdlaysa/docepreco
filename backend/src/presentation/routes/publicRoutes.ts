@@ -159,6 +159,11 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
       'SELECT id, name, description, photo_url, public_price, discount_type, discount_value FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
       [s.user_id]
     );
+    // Itens adicionais disponíveis — o cliente escolhe no detalhe do produto
+    const addonsResult = await pool.query(
+      'SELECT id, name, price FROM store_addons WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
+      [s.user_id]
+    );
     res.json({
       success: true,
       data: {
@@ -186,6 +191,11 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
             originalPrice: discountAmount > 0 ? publicPrice : undefined,
           };
         }),
+        addons: addonsResult.rows.map(a => ({
+          id: a.id,
+          name: a.name,
+          price: Number(a.price),
+        })),
       },
     });
   } catch (error) {
@@ -235,17 +245,32 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
     );
     const productMap = new Map(productsResult.rows.map(p => [p.id, p]));
 
-    // Montar itens com preços do banco, já com o desconto do produto aplicado
-    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number; discount: number }> = [];
+    // Adicionais da loja (preço sempre do banco, nunca do cliente)
+    const addonsResult = await pool.query(
+      'SELECT id, name, price FROM store_addons WHERE user_id = $1 AND available = TRUE',
+      [userId]
+    );
+    const addonMap = new Map(addonsResult.rows.map(a => [a.id, a]));
+
+    // Montar itens com preços do banco, já com o desconto do produto aplicado.
+    // Adicionais entram no preço unitário (por unidade do produto) e ficam listados no item.
+    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number; discount: number; addons: Array<{ name: string; price: number }> }> = [];
     let totalPrice = 0;
     for (const item of b.items) {
       const product = productMap.get(item.productId);
       if (!product) continue;
       const qty = Math.max(1, Number(item.quantity) || 1);
-      const unitPrice = Number(product.public_price);
-      const discountPerUnit = computeDiscountAmount(unitPrice, product.discount_type as DiscountType | null, product.discount_value != null ? Number(product.discount_value) : null);
+      const addonIds: string[] = Array.isArray(item.addonIds) ? item.addonIds : [];
+      const addons = addonIds
+        .map(id => addonMap.get(id))
+        .filter(Boolean)
+        .map((a: any) => ({ name: a.name as string, price: Number(a.price) }));
+      const addonsPerUnit = addons.reduce((sum, a) => sum + a.price, 0);
+      const productPrice = Number(product.public_price);
+      const unitPrice = Math.round((productPrice + addonsPerUnit) * 100) / 100;
+      const discountPerUnit = computeDiscountAmount(productPrice, product.discount_type as DiscountType | null, product.discount_value != null ? Number(product.discount_value) : null);
       const discount = Math.round(discountPerUnit * qty * 100) / 100;
-      items.push({ productId: product.id, recipeId: product.recipe_id ?? null, recipeName: product.name, quantity: qty, unitPrice, discount });
+      items.push({ productId: product.id, recipeId: product.recipe_id ?? null, recipeName: product.name, quantity: qty, unitPrice, discount, addons });
       totalPrice += qty * unitPrice - discount;
     }
     if (items.length === 0) {
@@ -282,7 +307,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         firstItem.unitPrice,
         totalWithFee,
         deliveryDate,
-        JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount }))),
+        JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount, addons: i.addons }))),
         b.notes ? String(b.notes).trim() : null,
         b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
         paymentMethod,
@@ -297,7 +322,9 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
       const tokenRepo = new PostgresPushTokenRepository();
       const tokens = await tokenRepo.findByUserId(userId);
       if (tokens.length > 0) {
-        const itemsSummary = items.map(i => `${i.quantity}x ${i.recipeName}`).join(', ');
+        const itemsSummary = items
+          .map(i => `${i.quantity}x ${i.recipeName}${i.addons.length ? ` (+ ${i.addons.map(a => a.name).join(', ')})` : ''}`)
+          .join(', ');
         const phoneInfo = b.clientPhone ? ` • ${String(b.clientPhone).trim()}` : '';
         const addrInfo = isDelivery && b.deliveryAddress ? ` • ${String(b.deliveryAddress).trim()}` : '';
         const methodLabels: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };

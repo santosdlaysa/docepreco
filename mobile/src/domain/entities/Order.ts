@@ -16,6 +16,8 @@ export interface OrderItem {
   unitPrice: number;
   /** Valor do desconto do item já resolvido em R$ (não percentual). */
   discount?: number;
+  /** Itens adicionais escolhidos pelo cliente (já inclusos no unitPrice). */
+  addons?: Array<{ name: string; price: number }>;
 }
 
 export interface Order {

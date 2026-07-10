@@ -13,6 +13,20 @@ interface StoreProduct {
   price: number;
   originalPrice?: number;
 }
+interface StoreAddon {
+  id: string;
+  name: string;
+  price: number;
+}
+// Uma linha do carrinho: mesmo produto com adicionais diferentes vira linhas separadas.
+interface CartLine {
+  productId: string;
+  qty: number;
+  addonIds: string[];
+}
+const lineKey = (productId: string, addonIds: string[]) =>
+  `${productId}|${[...addonIds].sort().join(',')}`;
+
 interface StoreData {
   storeName: string;
   slug: string;
@@ -27,6 +41,7 @@ interface StoreData {
   paymentMethods: string[];
   address: string | null;
   products: StoreProduct[];
+  addons: StoreAddon[];
 }
 
 const PAYMENT_METHODS: Array<{ key: string; label: string; emoji: string }> = [
@@ -60,16 +75,17 @@ function ProductInitial({ name }: { name: string }) {
 function ProductRow({
   product,
   qty,
-  onAdd,
-  onRemove,
+  onOpen,
 }: {
   product: StoreProduct;
   qty: number;
-  onAdd: () => void;
-  onRemove: () => void;
+  onOpen: () => void;
 }) {
   return (
-    <div className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm">
+    <button
+      onClick={onOpen}
+      className="w-full text-left bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-transform"
+    >
       {/* Foto circular */}
       <div className="relative flex-shrink-0">
         <div className="w-[72px] h-[72px] rounded-full overflow-hidden shadow-md">
@@ -104,36 +120,14 @@ function ProductRow({
         )}
       </div>
 
-      {/* Controles */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {qty > 0 && (
-          <>
-            <button
-              onClick={onRemove}
-              className="w-8 h-8 rounded-full border-2 border-[#EA4B92] text-[#EA4B92] font-bold text-lg flex items-center justify-center leading-none active:scale-90 transition-transform"
-            >
-              −
-            </button>
-            <span className="w-4 text-center text-sm font-bold text-gray-800 tabular-nums">
-              {qty}
-            </span>
-          </>
-        )}
-        <button
-          onClick={onAdd}
-          className="w-9 h-9 rounded-full bg-[#EA4B92] text-white font-bold text-xl flex items-center justify-center leading-none shadow-md shadow-pink-200 active:scale-90 transition-transform"
-        >
-          +
-        </button>
-      </div>
-    </div>
+    </button>
   );
 }
 
 interface SavedOrder {
   orderId: string;
   orderNumber?: number | null;
-  items: Array<{ name: string; qty: number; price: number }>;
+  items: Array<{ name: string; qty: number; price: number; addons?: Array<{ name: string; price: number }> }>;
   total: number;
   deliveryFee: number;
   paymentMethod?: string;
@@ -149,7 +143,9 @@ export function LojaPage() {
   const [loading, setLoading] = useState(true);
   const [store, setStore] = useState<StoreData | null>(null);
   const [notFound, setNotFound] = useState(false);
-  const [cart, setCart] = useState<Map<string, number>>(new Map());
+  const [cart, setCart] = useState<CartLine[]>([]);
+  // Produto aberto na folha de detalhes (com seleção de adicionais e quantidade)
+  const [detail, setDetail] = useState<{ product: StoreProduct; qty: number; addonIds: string[] } | null>(null);
   const [step, setStep] = useState<'catalog' | 'checkout' | 'success' | 'history'>('catalog');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -218,13 +214,20 @@ export function LojaPage() {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const totalItems = Array.from(cart.values()).reduce((a, b) => a + b, 0);
-  const subtotal = store
-    ? Array.from(cart.entries()).reduce((acc, [id, qty]) => {
-        const p = store.products.find(p => p.id === id);
-        return acc + (p ? p.price * qty : 0);
-      }, 0)
-    : 0;
+  const addonById = (id: string) => store?.addons?.find(a => a.id === id);
+  // Preço unitário de uma linha = produto + adicionais escolhidos
+  const lineUnitPrice = (line: CartLine) => {
+    const p = store?.products.find(p => p.id === line.productId);
+    if (!p) return 0;
+    return p.price + line.addonIds.reduce((s, id) => s + (addonById(id)?.price ?? 0), 0);
+  };
+  const lineAddons = (line: CartLine) =>
+    line.addonIds.map(id => addonById(id)).filter((a): a is StoreAddon => !!a);
+  const productQty = (productId: string) =>
+    cart.reduce((sum, l) => (l.productId === productId ? sum + l.qty : sum), 0);
+
+  const totalItems = cart.reduce((a, l) => a + l.qty, 0);
+  const subtotal = cart.reduce((acc, l) => acc + lineUnitPrice(l) * l.qty, 0);
   const appliedFee =
     form.deliveryType === 'delivery' && store?.deliveryFee ? store.deliveryFee : 0;
   const totalPrice = subtotal + appliedFee;
@@ -290,16 +293,47 @@ export function LojaPage() {
     return () => clearInterval(id);
   }, [step, orderId, slug, orderStatus]);
 
-  const setQty = (id: string, delta: number) => {
-    setCart(prev => {
-      const next = new Map(prev);
-      const cur = next.get(id) ?? 0;
-      const nxt = cur + delta;
-      if (nxt <= 0) next.delete(id);
-      else next.set(id, nxt);
-      return next;
-    });
+  // Altera a quantidade de uma linha do carrinho; remove a linha quando zera.
+  const changeLineQty = (key: string, delta: number) => {
+    setCart(prev =>
+      prev
+        .map(l => (lineKey(l.productId, l.addonIds) === key ? { ...l, qty: l.qty + delta } : l))
+        .filter(l => l.qty > 0)
+    );
   };
+
+  const openDetail = (product: StoreProduct) => {
+    setDetail({ product, qty: 1, addonIds: [] });
+  };
+
+  const toggleDetailAddon = (addonId: string) => {
+    setDetail(d =>
+      d
+        ? {
+            ...d,
+            addonIds: d.addonIds.includes(addonId)
+              ? d.addonIds.filter(id => id !== addonId)
+              : [...d.addonIds, addonId],
+          }
+        : d
+    );
+  };
+
+  // Move a seleção da folha de detalhes para o carrinho (linhas iguais se somam)
+  const addDetailToCart = () => {
+    if (!detail) return;
+    const key = lineKey(detail.product.id, detail.addonIds);
+    setCart(prev => {
+      const idx = prev.findIndex(l => lineKey(l.productId, l.addonIds) === key);
+      if (idx >= 0) return prev.map((l, i) => (i === idx ? { ...l, qty: l.qty + detail.qty } : l));
+      return [...prev, { productId: detail.product.id, qty: detail.qty, addonIds: detail.addonIds }];
+    });
+    setDetail(null);
+  };
+
+  const detailUnitPrice = detail
+    ? detail.product.price + detail.addonIds.reduce((s, id) => s + (addonById(id)?.price ?? 0), 0)
+    : 0;
 
   const handleSubmit = async () => {
     if (!form.clientName.trim()) { setError('Informe seu nome'); return; }
@@ -320,7 +354,7 @@ export function LojaPage() {
       : NaN;
     const changeFor = Number.isFinite(changeForNum) && changeForNum > 0 ? changeForNum : undefined;
     try {
-      const items = Array.from(cart.entries()).map(([productId, quantity]) => ({ productId, quantity }));
+      const items = cart.map(l => ({ productId: l.productId, quantity: l.qty, addonIds: l.addonIds }));
       const res = await fetch(`${API_BASE}/public/store/${slug}/orders`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -346,9 +380,14 @@ export function LojaPage() {
         const newOrder: SavedOrder = {
           orderId: json.data.orderId,
           orderNumber: json.data.orderNumber ?? null,
-          items: Array.from(cart.entries()).map(([id, qty]) => {
-            const p = store!.products.find(p => p.id === id)!;
-            return { name: p.name, qty, price: p.price };
+          items: cart.map(l => {
+            const p = store!.products.find(p => p.id === l.productId)!;
+            return {
+              name: p.name,
+              qty: l.qty,
+              price: lineUnitPrice(l),
+              addons: lineAddons(l).map(a => ({ name: a.name, price: a.price })),
+            };
           }),
           total: totalPrice,
           deliveryFee: appliedFee,
@@ -616,9 +655,8 @@ export function LojaPage() {
                   <ProductRow
                     key={p.id}
                     product={p}
-                    qty={cart.get(p.id) ?? 0}
-                    onAdd={() => setQty(p.id, 1)}
-                    onRemove={() => setQty(p.id, -1)}
+                    qty={productQty(p.id)}
+                    onOpen={() => openDetail(p)}
                   />
                 ))}
               </div>
@@ -648,6 +686,131 @@ export function LojaPage() {
             </div>
           </div>
         </div>
+
+        {/* Folha de detalhes do produto */}
+        {detail && (
+          <div className="fixed inset-0 z-50 flex items-end justify-center">
+            {/* Backdrop */}
+            <div
+              className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"
+              onClick={() => setDetail(null)}
+            />
+            <div className="relative w-full max-w-lg bg-white rounded-t-[28px] max-h-[88vh] flex flex-col overflow-hidden animate-[slideUp_.25s_ease-out]">
+              {/* Foto grande */}
+              <div className="relative h-52 flex-shrink-0 bg-gradient-to-br from-[#FDDDE6] to-[#EDE9FE]">
+                {detail.product.photoUrl ? (
+                  <img
+                    src={detail.product.photoUrl}
+                    alt={detail.product.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-24 h-24 rounded-full overflow-hidden shadow-lg">
+                      <ProductInitial name={detail.product.name} />
+                    </div>
+                  </div>
+                )}
+                <button
+                  onClick={() => setDetail(null)}
+                  aria-label="Fechar"
+                  className="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/90 shadow flex items-center justify-center active:scale-90 transition-transform"
+                >
+                  <svg className="w-4 h-4 text-gray-700" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 12H5m0 0l7 7m-7-7l7-7" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Conteúdo rolável */}
+              <div className="flex-1 overflow-y-auto px-5 pt-4 pb-3">
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-xl font-extrabold text-gray-900 leading-tight">{detail.product.name}</h2>
+                  <div className="text-right flex-shrink-0">
+                    {detail.product.originalPrice != null && (
+                      <p className="text-[11px] text-gray-400 line-through">{fmt(detail.product.originalPrice)}</p>
+                    )}
+                    <p className="text-[17px] font-extrabold text-[#EA4B92]">{fmt(detail.product.price)}</p>
+                  </div>
+                </div>
+                {detail.product.description && (
+                  <p className="text-sm text-gray-400 mt-2 leading-relaxed">{detail.product.description}</p>
+                )}
+
+                {/* Adicionais */}
+                {(store.addons?.length ?? 0) > 0 && (
+                  <div className="mt-5">
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2.5">
+                      Adicionais
+                    </p>
+                    <div className="flex flex-col gap-2">
+                      {store.addons.map(addon => {
+                        const selected = detail.addonIds.includes(addon.id);
+                        return (
+                          <button
+                            key={addon.id}
+                            onClick={() => toggleDetailAddon(addon.id)}
+                            className={`flex items-center justify-between gap-3 rounded-xl border-2 px-3.5 py-3 transition-all ${
+                              selected ? 'border-[#EA4B92] bg-rose-50' : 'border-gray-100 bg-gray-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <span
+                                className={`w-5 h-5 rounded-md border-2 flex items-center justify-center flex-shrink-0 transition-colors ${
+                                  selected ? 'border-[#EA4B92] bg-[#EA4B92]' : 'border-gray-300 bg-white'
+                                }`}
+                              >
+                                {selected && (
+                                  <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                  </svg>
+                                )}
+                              </span>
+                              <span className={`text-sm font-semibold truncate ${selected ? 'text-[#EA4B92]' : 'text-gray-600'}`}>
+                                {addon.name}
+                              </span>
+                            </div>
+                            <span className={`text-xs font-bold flex-shrink-0 ${selected ? 'text-[#EA4B92]' : 'text-gray-400'}`}>
+                              {addon.price > 0 ? `+ ${fmt(addon.price)}` : 'Grátis'}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Rodapé: quantidade + adicionar */}
+              <div className="flex-shrink-0 px-5 pt-3 pb-6 border-t border-gray-100 flex items-center gap-3">
+                <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-2xl px-3 py-2.5">
+                  <button
+                    onClick={() => setDetail(d => (d ? { ...d, qty: Math.max(1, d.qty - 1) } : d))}
+                    aria-label="Diminuir quantidade"
+                    className="w-7 h-7 rounded-full text-[#EA4B92] font-bold text-lg flex items-center justify-center leading-none active:scale-90 transition-transform"
+                  >
+                    −
+                  </button>
+                  <span className="w-5 text-center text-sm font-bold text-gray-800 tabular-nums">{detail.qty}</span>
+                  <button
+                    onClick={() => setDetail(d => (d ? { ...d, qty: d.qty + 1 } : d))}
+                    aria-label="Aumentar quantidade"
+                    className="w-7 h-7 rounded-full text-[#EA4B92] font-bold text-lg flex items-center justify-center leading-none active:scale-90 transition-transform"
+                  >
+                    +
+                  </button>
+                </div>
+                <button
+                  onClick={addDetailToCart}
+                  className="flex-1 bg-[#EA4B92] text-white font-bold py-[15px] rounded-2xl shadow-lg shadow-pink-200/60 flex items-center justify-center gap-2 text-sm active:scale-[0.98] transition-transform"
+                >
+                  Adicionar
+                  <span className="tabular-nums">• {fmt(detailUnitPrice * detail.qty)}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
 
@@ -698,12 +861,19 @@ export function LojaPage() {
                     )}
                   </div>
                   {o.items.map((item, i) => (
-                    <div key={i} className="flex items-center justify-between py-1.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
-                      <div className="flex items-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">{item.qty}</span>
-                        <span>{item.name}</span>
+                    <div key={i} className="py-1.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">{item.qty}</span>
+                          <span>{item.name}</span>
+                        </div>
+                        <span className="font-medium text-gray-600">{fmt(item.price * item.qty)}</span>
                       </div>
-                      <span className="font-medium text-gray-600">{fmt(item.price * item.qty)}</span>
+                      {(item.addons?.length ?? 0) > 0 && (
+                        <p className="text-[11px] text-gray-400 mt-0.5 ml-7">
+                          + {item.addons!.map(a => a.name).join(', ')}
+                        </p>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -760,20 +930,45 @@ export function LojaPage() {
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
             <div className="px-4 pt-4 pb-2">
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-3">Seu pedido</p>
-              {Array.from(cart.entries()).map(([id, qty]) => {
-                const p = store.products.find(p => p.id === id);
+              {cart.map(line => {
+                const p = store.products.find(p => p.id === line.productId);
                 if (!p) return null;
+                const key = lineKey(line.productId, line.addonIds);
+                const addons = lineAddons(line);
                 return (
-                  <div key={id} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0">
-                    <div className="flex items-center gap-2 text-sm text-gray-700">
-                      <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
-                        {qty}
-                      </span>
-                      <span className="line-clamp-1">{p.name}</span>
+                  <div key={key} className="py-2.5 border-b border-gray-50 last:border-0">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2 text-sm text-gray-700 min-w-0">
+                        <span className="w-5 h-5 rounded-full bg-rose-50 text-[#EA4B92] text-[10px] font-bold flex items-center justify-center flex-shrink-0">
+                          {line.qty}
+                        </span>
+                        <span className="line-clamp-1">{p.name}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2 flex-shrink-0">
+                        <span className="font-semibold text-gray-800 text-sm">
+                          {fmt(lineUnitPrice(line) * line.qty)}
+                        </span>
+                        <button
+                          onClick={() => changeLineQty(key, -1)}
+                          aria-label="Remover um"
+                          className="w-6 h-6 rounded-full border border-gray-200 text-gray-400 font-bold text-sm flex items-center justify-center leading-none active:scale-90 transition-transform"
+                        >
+                          −
+                        </button>
+                        <button
+                          onClick={() => changeLineQty(key, 1)}
+                          aria-label="Adicionar um"
+                          className="w-6 h-6 rounded-full border border-[#EA4B92] text-[#EA4B92] font-bold text-sm flex items-center justify-center leading-none active:scale-90 transition-transform"
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
-                    <span className="font-semibold text-gray-800 text-sm ml-2 flex-shrink-0">
-                      {fmt(p.price * qty)}
-                    </span>
+                    {addons.length > 0 && (
+                      <p className="text-[11px] text-gray-400 mt-1 ml-7">
+                        + {addons.map(a => a.name).join(', ')}
+                      </p>
+                    )}
                   </div>
                 );
               })}
@@ -950,11 +1145,13 @@ export function LojaPage() {
   // Ao acompanhar pelo histórico o carrinho já foi limpo,
   // então o resumo sai do pedido salvo no localStorage.
   const trackedOrder = orderId ? savedOrders.find(o => o.orderId === orderId) ?? null : null;
-  const summaryItems: Array<{ name: string; qty: number; price: number }> = trackedOrder
+  const summaryItems: Array<{ name: string; qty: number; price: number; addons?: Array<{ name: string; price: number }> }> = trackedOrder
     ? trackedOrder.items ?? []
-    : Array.from(cart.entries()).flatMap(([id, qty]) => {
-        const p = store.products.find(p => p.id === id);
-        return p ? [{ name: p.name, qty, price: p.price }] : [];
+    : cart.flatMap(line => {
+        const p = store.products.find(p => p.id === line.productId);
+        return p
+          ? [{ name: p.name, qty: line.qty, price: lineUnitPrice(line), addons: lineAddons(line).map(a => ({ name: a.name, price: a.price })) }]
+          : [];
       });
   const summaryFee = trackedOrder ? trackedOrder.deliveryFee : appliedFee;
   const summaryTotal = trackedOrder ? trackedOrder.total : totalPrice;
@@ -969,7 +1166,10 @@ export function LojaPage() {
   const sendOrderWhatsApp = () => {
     if (!store.phone) return;
     const summary = summaryItems
-      .map(item => `• ${item.qty}x ${item.name} — ${fmt(item.price * item.qty)}`)
+      .map(item => {
+        const addonsInfo = item.addons?.length ? ` (+ ${item.addons.map(a => a.name).join(', ')})` : '';
+        return `• ${item.qty}x ${item.name}${addonsInfo} — ${fmt(item.price * item.qty)}`;
+      })
       .join('\n');
     const msg = [
       `Olá, *${store.storeName}*! Segue meu pedido${summaryNumber != null ? ` *#${summaryNumber}*` : ''}:`,
@@ -1082,12 +1282,19 @@ export function LojaPage() {
               Resumo do pedido{summaryNumber != null ? ` #${summaryNumber}` : ''}
             </p>
             {summaryItems.map((item, i) => (
-              <div key={i} className="flex justify-between items-center py-2.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
-                <div className="flex items-center gap-2.5">
-                  <span className="w-6 h-6 rounded-full bg-rose-50 text-[#EA4B92] text-[11px] font-bold flex items-center justify-center flex-shrink-0">{item.qty}</span>
-                  <span className="font-medium">{item.name}</span>
+              <div key={i} className="py-2.5 border-b border-gray-50 last:border-0 text-sm text-gray-700">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2.5">
+                    <span className="w-6 h-6 rounded-full bg-rose-50 text-[#EA4B92] text-[11px] font-bold flex items-center justify-center flex-shrink-0">{item.qty}</span>
+                    <span className="font-medium">{item.name}</span>
+                  </div>
+                  <span className="font-semibold ml-2 text-gray-800">{fmt(item.price * item.qty)}</span>
                 </div>
-                <span className="font-semibold ml-2 text-gray-800">{fmt(item.price * item.qty)}</span>
+                {(item.addons?.length ?? 0) > 0 && (
+                  <p className="text-[11px] text-gray-400 mt-1 ml-[34px]">
+                    + {item.addons!.map(a => a.name).join(', ')}
+                  </p>
+                )}
               </div>
             ))}
           </div>
@@ -1124,7 +1331,7 @@ export function LojaPage() {
 
         <button
           onClick={() => {
-            setCart(new Map());
+            setCart([]);
             setStep('catalog');
             setOrderId(null);
             let customer: { name?: string; phone?: string; address?: string } | null = null;

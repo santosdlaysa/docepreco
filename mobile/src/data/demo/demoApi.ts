@@ -15,7 +15,7 @@ import {
   demoStoreProducts,
   demoStoreSettings,
 } from './demoData';
-import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
+import { StoreAddon, StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
 
 // Cópias mutáveis dos arrays (reset ao sair do demo mode)
 let ingredients = [...demoIngredients];
@@ -322,6 +322,10 @@ export const demoExpenseApi = {
 
 let storeProducts = [...demoStoreProducts];
 let storeSettings = { ...demoStoreSettings };
+let storeAddons: StoreAddon[] = [
+  { id: 'demo-addon-1', name: 'Cobertura extra', price: 3, available: true, createdAt: now(), updatedAt: now() },
+  { id: 'demo-addon-2', name: 'Embalagem para presente', price: 5, available: true, createdAt: now(), updatedAt: now() },
+];
 
 export const demoStoreApi = {
   getProducts: async (): Promise<StoreProduct[]> => {
@@ -351,5 +355,24 @@ export const demoStoreApi = {
     await delay();
     storeSettings = { ...storeSettings, ...data };
     return { ...storeSettings };
+  },
+  getAddons: async (): Promise<StoreAddon[]> => {
+    await delay();
+    return [...storeAddons];
+  },
+  createAddon: async (data: Pick<StoreAddon, 'name' | 'price'> & Partial<Pick<StoreAddon, 'available'>>): Promise<StoreAddon> => {
+    await delay();
+    const a: StoreAddon = { id: genId(), name: data.name, price: data.price, available: data.available !== false, createdAt: now(), updatedAt: now() };
+    storeAddons.push(a);
+    return a;
+  },
+  updateAddon: async (id: string, data: Partial<Pick<StoreAddon, 'name' | 'price' | 'available'>>): Promise<StoreAddon> => {
+    await delay();
+    storeAddons = storeAddons.map(a => a.id === id ? { ...a, ...data, updatedAt: now() } : a);
+    return storeAddons.find(a => a.id === id)!;
+  },
+  deleteAddon: async (id: string): Promise<void> => {
+    await delay();
+    storeAddons = storeAddons.filter(a => a.id !== id);
   },
 };

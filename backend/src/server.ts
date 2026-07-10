@@ -44,6 +44,7 @@ import stripeRoutes from './presentation/routes/stripeRoutes';
 import expenseRoutes from './presentation/routes/expenseRoutes';
 import storeRoutes from './presentation/routes/storeRoutes';
 import { warmUpEvolutionApi } from './infrastructure/services/whatsappService';
+import { backfillStoreCoordinates } from './infrastructure/services/geocodeBackfill';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
 import { PostgresTelegramAlertRepository } from './infrastructure/repositories/PostgresTelegramAlertRepository';
@@ -202,6 +203,9 @@ async function bootstrap() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+    // Geocodifica lojas antigas sem coordenadas (fire-and-forget)
+    void backfillStoreCoordinates();
+
     // Ping Evolution API a cada 5 min para evitar cold start
     warmUpEvolutionApi();
     cron.schedule('*/5 * * * *', () => warmUpEvolutionApi());

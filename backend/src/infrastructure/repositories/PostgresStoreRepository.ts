@@ -57,6 +57,16 @@ export interface StoreProduct {
   updatedAt: string;
 }
 
+export interface StoreAddon {
+  id: string;
+  userId: string;
+  name: string;
+  price: number;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 const BASE_URL = process.env.STORE_BASE_URL || 'https://docepreco.site/loja';
 
 function slugify(text: string): string {
@@ -113,6 +123,18 @@ function mapMarketplaceStore(row: Record<string, unknown>): MarketplaceStoreSumm
     city: (row.city as string | null) ?? null,
     category: (row.category as string | null) ?? null,
     distanceKm: row.distance_km != null ? Math.round(Number(row.distance_km) * 10) / 10 : null,
+  };
+}
+
+function mapAddon(row: Record<string, unknown>): StoreAddon {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    name: row.name as string,
+    price: Number(row.price),
+    available: row.available as boolean,
+    createdAt: (row.created_at as Date).toISOString(),
+    updatedAt: (row.updated_at as Date).toISOString(),
   };
 }
 
@@ -371,5 +393,56 @@ export class PostgresStoreRepository {
     );
     if (result.rows.length === 0) return null;
     return mapProduct(result.rows[0]);
+  }
+
+  async getAddons(userId: string): Promise<StoreAddon[]> {
+    const result = await pool.query(
+      'SELECT * FROM store_addons WHERE user_id = $1 ORDER BY created_at ASC',
+      [userId]
+    );
+    return result.rows.map(mapAddon);
+  }
+
+  async createAddon(userId: string, data: { name: string; price: number; available: boolean }): Promise<StoreAddon> {
+    const result = await pool.query(
+      `INSERT INTO store_addons (user_id, name, price, available)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [userId, data.name, data.price, data.available]
+    );
+    return mapAddon(result.rows[0]);
+  }
+
+  async updateAddon(id: string, userId: string, data: Partial<{ name: string; price: number; available: boolean }>): Promise<StoreAddon | null> {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (data.name !== undefined)      { fields.push(`name = $${idx++}`);      values.push(data.name); }
+    if (data.price !== undefined)     { fields.push(`price = $${idx++}`);     values.push(data.price); }
+    if (data.available !== undefined) { fields.push(`available = $${idx++}`); values.push(data.available); }
+
+    if (fields.length === 0) {
+      const existing = await pool.query('SELECT * FROM store_addons WHERE id = $1 AND user_id = $2', [id, userId]);
+      return existing.rows.length > 0 ? mapAddon(existing.rows[0]) : null;
+    }
+
+    fields.push(`updated_at = NOW()`);
+    values.push(id, userId);
+
+    const result = await pool.query(
+      `UPDATE store_addons SET ${fields.join(', ')} WHERE id = $${idx++} AND user_id = $${idx} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return null;
+    return mapAddon(result.rows[0]);
+  }
+
+  async deleteAddon(id: string, userId: string): Promise<boolean> {
+    const result = await pool.query(
+      'DELETE FROM store_addons WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
   }
 }

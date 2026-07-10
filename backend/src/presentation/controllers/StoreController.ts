@@ -131,4 +131,82 @@ export class StoreController {
       res.status(500).json({ success: false, message: 'Erro ao excluir produto' });
     }
   }
+
+  async getAddons(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const addons = await repo.getAddons(req.userId!);
+      res.json({ success: true, data: addons });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao buscar adicionais' });
+    }
+  }
+
+  async createAddon(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const b = req.body ?? {};
+      const name = typeof b.name === 'string' ? b.name.trim() : '';
+      const price = Number(b.price);
+      if (!name || !Number.isFinite(price) || price < 0) {
+        res.status(400).json({ success: false, message: 'Nome e preço válido são obrigatórios' });
+        return;
+      }
+      const addon = await repo.createAddon(req.userId!, {
+        name,
+        price,
+        available: b.available !== false,
+      });
+      res.status(201).json({ success: true, data: addon });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao criar adicional' });
+    }
+  }
+
+  async updateAddon(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const b = req.body ?? {};
+      const patch: Partial<{ name: string; price: number; available: boolean }> = {};
+      if (b.name !== undefined) {
+        const name = String(b.name).trim();
+        if (!name) {
+          res.status(400).json({ success: false, message: 'Nome não pode ser vazio' });
+          return;
+        }
+        patch.name = name;
+      }
+      if (b.price !== undefined) {
+        const price = Number(b.price);
+        if (!Number.isFinite(price) || price < 0) {
+          res.status(400).json({ success: false, message: 'Preço inválido' });
+          return;
+        }
+        patch.price = price;
+      }
+      if (b.available !== undefined) patch.available = Boolean(b.available);
+      const addon = await repo.updateAddon(req.params.id, req.userId!, patch);
+      if (!addon) {
+        res.status(404).json({ success: false, message: 'Adicional não encontrado' });
+        return;
+      }
+      res.json({ success: true, data: addon });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao atualizar adicional' });
+    }
+  }
+
+  async deleteAddon(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const deleted = await repo.deleteAddon(req.params.id, req.userId!);
+      if (!deleted) {
+        res.status(404).json({ success: false, message: 'Adicional não encontrado' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao excluir adicional' });
+    }
+  }
 }

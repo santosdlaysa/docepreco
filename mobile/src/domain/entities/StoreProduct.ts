@@ -16,6 +16,16 @@ export interface StoreProduct {
   updatedAt: string;
 }
 
+/** Item adicional oferecido na loja online (ex.: cobertura extra, embalagem para presente). */
+export interface StoreAddon {
+  id: string;
+  name: string;
+  price: number;
+  available: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StoreBusinessHours {
   dayOfWeek: number; // 0 = domingo ... 6 = sábado
   closed: boolean;

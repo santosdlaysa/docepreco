@@ -60,3 +60,13 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Entrada da folha de detalhes do produto (bottom sheet) */
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

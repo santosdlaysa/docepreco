@@ -22,7 +22,7 @@ import { useNavigation, useFocusEffect, useRoute, RouteProp } from '@react-navig
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Clipboard from 'expo-clipboard';
 import { RootStackParamList } from '../navigation/types';
-import { StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
+import { StoreAddon, StoreProduct, StoreSettings } from '../../domain/entities/StoreProduct';
 import { Order, OrderStatus } from '../../domain/entities/Order';
 import { storeApi } from '../../data/api/storeApi';
 import { orderApi } from '../../data/api/orderApi';
@@ -106,7 +106,12 @@ export const StoreScreen: React.FC = () => {
   const salApi = isDemoMode() ? demoSaleApi : saleApi;
 
   const [products, setProducts] = useState<StoreProduct[]>([]);
+  const [addons, setAddons] = useState<StoreAddon[]>([]);
   const [settings, setSettings] = useState<StoreSettings | null>(null);
+  // Modal de cadastro/edição de item adicional
+  const [addonModal, setAddonModal] = useState<{ id?: string; name: string; price: string } | null>(null);
+  const [savingAddon, setSavingAddon] = useState(false);
+  const [togglingAddon, setTogglingAddon] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [backendReady, setBackendReady] = useState(true);
   const [togglingActive, setTogglingActive] = useState(false);
@@ -232,9 +237,10 @@ export const StoreScreen: React.FC = () => {
   const load = async () => {
     setLoading(true);
     try {
-      const [s, p] = await Promise.all([sApi.getSettings(), sApi.getProducts()]);
+      const [s, p, a] = await Promise.all([sApi.getSettings(), sApi.getProducts(), sApi.getAddons()]);
       setSettings(s);
       setProducts(p);
+      setAddons(a);
       setBackendReady(true);
     } catch {
       setBackendReady(false);
@@ -280,6 +286,66 @@ export const StoreScreen: React.FC = () => {
       message: `Faça seu pedido na minha loja: ${settings.storeLink}`,
       url: settings.storeLink,
     });
+  };
+
+  const handleSaveAddon = async () => {
+    if (!addonModal) return;
+    const name = addonModal.name.trim();
+    const price = num(addonModal.price);
+    if (!name) {
+      showToast('Informe o nome do adicional', 'warning');
+      return;
+    }
+    if (price < 0) {
+      showToast('Preço inválido', 'warning');
+      return;
+    }
+    setSavingAddon(true);
+    try {
+      if (addonModal.id) {
+        const updated = await sApi.updateAddon(addonModal.id, { name, price });
+        setAddons(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+        showToast('Adicional atualizado', 'success');
+      } else {
+        const created = await sApi.createAddon({ name, price });
+        setAddons(prev => [...prev, created]);
+        showToast('Adicional criado', 'success');
+      }
+      setAddonModal(null);
+    } catch {
+      showToast('Erro ao salvar adicional', 'error');
+    } finally {
+      setSavingAddon(false);
+    }
+  };
+
+  const toggleAddonAvailable = async (addon: StoreAddon) => {
+    setTogglingAddon(addon.id);
+    try {
+      const updated = await sApi.updateAddon(addon.id, { available: !addon.available });
+      setAddons(prev => prev.map(a => (a.id === updated.id ? updated : a)));
+    } catch {
+      showToast('Erro ao atualizar adicional', 'error');
+    } finally {
+      setTogglingAddon(null);
+    }
+  };
+
+  const handleDeleteAddon = (addon: StoreAddon) => {
+    Alert.alert('Excluir adicional?', `"${addon.name}" não aparecerá mais para os clientes.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Excluir', style: 'destructive', onPress: async () => {
+          try {
+            await sApi.deleteAddon(addon.id);
+            setAddons(prev => prev.filter(a => a.id !== addon.id));
+            showToast('Adicional removido', 'success');
+          } catch {
+            showToast('Erro ao excluir adicional', 'error');
+          }
+        },
+      },
+    ]);
   };
 
   const handleDeleteProduct = (product: StoreProduct) => {
@@ -548,6 +614,67 @@ export const StoreScreen: React.FC = () => {
                 <Text style={st.hint}>Pressione e segure um produto para excluí-lo.</Text>
               </View>
             )}
+
+            {/* ── Itens adicionais ── */}
+            <View style={[st.secRow, { marginTop: 26 }]}>
+              <Text style={st.secTitle}>Itens adicionais</Text>
+              <TouchableOpacity
+                onPress={() => setAddonModal({ name: '', price: '' })}
+                style={st.addBtn}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="add" size={16} color="#fff" />
+                <Text style={st.addBtnText}>Adicionar</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={st.addonExplain}>
+              Extras que o cliente pode incluir na hora de comprar (ex.: cobertura extra, embalagem para presente).
+            </Text>
+
+            {addons.length === 0 ? (
+              <View style={[st.empty, { paddingTop: 20 }]}>
+                <View style={[st.emptyIcon, { width: 56, height: 56, borderRadius: 18 }]}>
+                  <Ionicons name="add-circle-outline" size={26} color={PINK} />
+                </View>
+                <Text style={st.emptyDesc}>
+                  Nenhum adicional cadastrado. Eles aparecem na tela de detalhes de todos os produtos.
+                </Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10 }}>
+                {addons.map(addon => (
+                  <View key={addon.id} style={st.productCard}>
+                    <TouchableOpacity
+                      style={st.productMain}
+                      onPress={() => setAddonModal({ id: addon.id, name: addon.name, price: String(addon.price).replace('.', ',') })}
+                      onLongPress={() => handleDeleteAddon(addon)}
+                      activeOpacity={0.85}
+                    >
+                      <View style={[st.productThumb, st.productThumbPlaceholder, { width: 44, height: 44 }]}>
+                        <Ionicons name="add-outline" size={20} color={PINK} />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={st.productName} numberOfLines={1}>{addon.name}</Text>
+                        <Text style={st.productPrice}>
+                          {addon.price > 0 ? `+ ${fmtCurrency(addon.price)}` : 'Grátis'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                    <View style={st.productRight}>
+                      <Switch
+                        value={addon.available}
+                        onValueChange={() => toggleAddonAvailable(addon)}
+                        disabled={togglingAddon === addon.id}
+                      />
+                      <Text style={[st.productAvailLabel, { color: addon.available ? GREEN : INK3 }]}>
+                        {addon.available ? 'Ativo' : 'Oculto'}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+                <Text style={st.hint}>Toque para editar; pressione e segure para excluir.</Text>
+              </View>
+            )}
           </>
         )}
 
@@ -758,10 +885,17 @@ export const StoreScreen: React.FC = () => {
                     {/* Itens */}
                     <View style={st.modalItems}>
                       {itemList.map((it, i) => (
-                        <View key={i} style={st.modalItemRow}>
-                          <Text style={st.modalItemQty}>{it.quantity}x</Text>
-                          <Text style={st.modalItemName} numberOfLines={1}>{it.recipeName}</Text>
-                          <Text style={st.modalItemPrice}>{fmtCurrency(it.unitPrice * it.quantity)}</Text>
+                        <View key={i}>
+                          <View style={st.modalItemRow}>
+                            <Text style={st.modalItemQty}>{it.quantity}x</Text>
+                            <Text style={st.modalItemName} numberOfLines={1}>{it.recipeName}</Text>
+                            <Text style={st.modalItemPrice}>{fmtCurrency(it.unitPrice * it.quantity)}</Text>
+                          </View>
+                          {('addons' in it && it.addons?.length) ? (
+                            <Text style={st.modalItemAddons} numberOfLines={2}>
+                              + {it.addons.map(a => a.name).join(', ')}
+                            </Text>
+                          ) : null}
                         </View>
                       ))}
                       <View style={st.modalTotalRow}>
@@ -931,6 +1065,61 @@ export const StoreScreen: React.FC = () => {
         </View>
       </Modal>
 
+      {/* ── Modal de item adicional ── */}
+      <Modal visible={!!addonModal} transparent animationType="fade" onRequestClose={() => setAddonModal(null)}>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 14 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFEDF4', alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="add-circle-outline" size={22} color={PINK} />
+              </View>
+              <Text style={{ flex: 1, fontSize: 16, fontWeight: '700', color: INK }}>
+                {addonModal?.id ? 'Editar adicional' : 'Novo adicional'}
+              </Text>
+              <TouchableOpacity onPress={() => setAddonModal(null)}>
+                <Ionicons name="close" size={22} color={INK2} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={st.addonInputBox}>
+              <Ionicons name="pricetag-outline" size={18} color={INK2} />
+              <TextInput
+                style={st.addonInput}
+                value={addonModal?.name ?? ''}
+                onChangeText={t => setAddonModal(m => (m ? { ...m, name: t } : m))}
+                placeholder="Nome (ex.: Cobertura extra)"
+                placeholderTextColor={INK3}
+                maxLength={120}
+              />
+            </View>
+            <View style={st.addonInputBox}>
+              <Ionicons name="cash-outline" size={18} color={INK2} />
+              <TextInput
+                style={st.addonInput}
+                value={addonModal?.price ?? ''}
+                onChangeText={t => setAddonModal(m => (m ? { ...m, price: t } : m))}
+                keyboardType="decimal-pad"
+                placeholder="Preço (0 = grátis)"
+                placeholderTextColor={INK3}
+              />
+            </View>
+
+            <TouchableOpacity onPress={handleSaveAddon} disabled={savingAddon} activeOpacity={0.85}>
+              <LinearGradient colors={[PINK_LIGHT, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.primaryAction}>
+                {savingAddon ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <>
+                    <Ionicons name="checkmark" size={18} color="#fff" />
+                    <Text style={st.primaryActionText}>{addonModal?.id ? 'Salvar' : 'Criar adicional'}</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 };
@@ -1076,6 +1265,13 @@ const st = StyleSheet.create({
 
   hint: { fontSize: 11.5, color: INK3, textAlign: 'center', marginTop: 16 },
 
+  addonExplain: { fontSize: 12, color: INK2, lineHeight: 17, marginBottom: 12, marginTop: -4 },
+  addonInputBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#F5F5F7', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+  },
+  addonInput: { flex: 1, fontSize: 15, fontWeight: '600', color: INK },
+
   pendingWrap: { flex: 1, padding: 18, justifyContent: 'center' },
   pendingCard: {
     borderRadius: 24, padding: 28, alignItems: 'center', gap: 12,
@@ -1126,6 +1322,7 @@ const st = StyleSheet.create({
   modalItemQty: { fontSize: 14, fontWeight: '800', color: PINK, minWidth: 26 },
   modalItemName: { flex: 1, fontSize: 14, color: INK, fontWeight: '500' },
   modalItemPrice: { fontSize: 14, fontWeight: '600', color: INK2 },
+  modalItemAddons: { fontSize: 12, color: INK2, marginLeft: 36, marginTop: 2 },
   modalTotalRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     paddingTop: 10, borderTopWidth: 1, borderTopColor: '#EDE6EA',
