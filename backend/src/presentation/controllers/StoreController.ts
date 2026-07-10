@@ -31,6 +31,8 @@ export class StoreController {
         address:         b.address,
         city:            b.city,
         category:        b.category,
+        useBusinessHours: b.useBusinessHours,
+        businessHours:    Array.isArray(b.businessHours) ? b.businessHours : undefined,
       });
       res.json({ success: true, data: settings });
     } catch (error) {

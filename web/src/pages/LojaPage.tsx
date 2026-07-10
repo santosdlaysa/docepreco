@@ -427,7 +427,11 @@ export function LojaPage() {
         {/* Header estilo delivery */}
         <div className="max-w-lg mx-auto">
           {/* Barra de volta ao diretório de lojas */}
-          <div className="px-4 pt-3">
+          <div className="px-4 pt-3 flex items-center justify-between gap-2">
+            <Link to="/lojas" className="flex items-center gap-2">
+              <img src="/pwa-192x192.png" alt="DocePreço" className="w-7 h-7 rounded-lg shadow-sm" />
+              <span className="text-[13px] font-extrabold text-gray-700 tracking-tight">DocePreço</span>
+            </Link>
             <Link
               to="/lojas"
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-white rounded-full px-3 py-1.5 shadow-sm active:scale-95 transition-transform"

@@ -23,11 +23,28 @@ const PLATFORM_LABELS: Record<string, string> = {
 };
 const platformLabel = (p: string) => PLATFORM_LABELS[p] ?? p;
 
+// Rótulos amigáveis para o nível de plano (planTier)
+const PLAN_TIER_LABELS: Record<string, string> = {
+  free: 'Grátis',
+  premium: 'Premium',
+  master: 'Master',
+};
+const planTierLabel = (p: string) => PLAN_TIER_LABELS[p] ?? p;
+
+type SortBy = 'recent' | 'revenue' | 'sales';
+const SORT_OPTIONS: { key: SortBy; label: string }[] = [
+  { key: 'recent', label: 'Recentes' },
+  { key: 'revenue', label: 'Receita' },
+  { key: 'sales', label: 'Vendas' },
+];
+
 export const AdminUsersScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<string | null>(null);
+  const [planTier, setPlanTier] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortBy>('recent');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -45,16 +62,40 @@ export const AdminUsersScreen: React.FC = () => {
     return Array.from(set).sort();
   }, [users]);
 
-  // Lista exibida: aplica o filtro de plataforma sobre os usuários carregados
-  const filtered = useMemo(
-    () => (platform ? users.filter(u => u.premiumPlatform === platform) : users),
-    [users, platform],
-  );
+  // Níveis de plano presentes entre os usuários carregados (para os chips de filtro)
+  const planTiers = useMemo(() => {
+    const set = new Set<string>();
+    users.forEach(u => { if (u.planTier) set.add(u.planTier); });
+    return Array.from(set).sort();
+  }, [users]);
+
+  // Lista exibida: aplica os filtros de plataforma e plano sobre os usuários carregados
+  const filtered = useMemo(() => {
+    let list = users;
+    if (platform) list = list.filter(u => u.premiumPlatform === platform);
+    if (planTier) list = list.filter(u => u.planTier === planTier);
+    return list;
+  }, [users, platform, planTier]);
+
+  // Ordena a lista já filtrada, sem nova chamada à API
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      if (sortBy === 'revenue') return (b.totalRevenue ?? 0) - (a.totalRevenue ?? 0);
+      if (sortBy === 'sales') return (b.saleCount ?? 0) - (a.saleCount ?? 0);
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    return arr;
+  }, [filtered, sortBy]);
 
   // Se o filtro ativo deixar de existir nos dados, volta para "Todas"
   useEffect(() => {
     if (platform && !platforms.includes(platform)) setPlatform(null);
   }, [platforms, platform]);
+
+  useEffect(() => {
+    if (planTier && !planTiers.includes(planTier)) setPlanTier(null);
+  }, [planTiers, planTier]);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
@@ -74,7 +115,7 @@ export const AdminUsersScreen: React.FC = () => {
         </TouchableOpacity>
         <Text style={styles.title}>Usuários</Text>
         <View style={styles.countBadge}>
-          <Text style={styles.countText}>{filtered.length}</Text>
+          <Text style={styles.countText}>{sorted.length}</Text>
         </View>
       </View>
 
@@ -120,11 +161,60 @@ export const AdminUsersScreen: React.FC = () => {
         </ScrollView>
       )}
 
+      {planTiers.length > 0 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+        >
+          <TouchableOpacity
+            onPress={() => setPlanTier(null)}
+            style={[styles.chip, planTier === null && styles.chipActive]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.chipText, planTier === null && styles.chipTextActive]}>Todos os planos</Text>
+          </TouchableOpacity>
+          {planTiers.map(p => (
+            <TouchableOpacity
+              key={p}
+              onPress={() => setPlanTier(p)}
+              style={[styles.chip, planTier === p && styles.chipActive]}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.chipText, planTier === p && styles.chipTextActive]}>{planTierLabel(p)}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      )}
+
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.chipsRow}
+      >
+        {SORT_OPTIONS.map(opt => (
+          <TouchableOpacity
+            key={opt.key}
+            onPress={() => setSortBy(opt.key)}
+            style={[styles.chip, sortBy === opt.key && styles.chipActive]}
+            activeOpacity={0.8}
+          >
+            <Ionicons
+              name="swap-vertical"
+              size={12}
+              color={sortBy === opt.key ? '#fff' : colors.textMuted}
+              style={{ marginRight: 4 }}
+            />
+            <Text style={[styles.chipText, sortBy === opt.key && styles.chipTextActive]}>{opt.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
-          data={filtered}
+          data={sorted}
           keyExtractor={u => u.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           contentContainerStyle={{ paddingBottom: 40 }}
@@ -169,7 +259,7 @@ const styles = StyleSheet.create({
   searchWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, height: 44, fontSize: 14, color: colors.text },
   chipsRow: { paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
-  chip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   chipTextActive: { color: '#fff' },

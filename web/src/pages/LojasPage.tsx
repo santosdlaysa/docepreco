@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Cake } from 'lucide-react';
 import { StoreCard } from '../components/StoreCard';
 import { BottomNav } from '../components/BottomNav';
 import { FOOD_CATEGORIES } from '../data/categories';
@@ -73,9 +72,7 @@ export function LojasPage() {
       <div className="max-w-lg mx-auto px-4 pt-8 pb-20">
         {/* Cabeçalho */}
         <div className="flex items-center gap-2 mb-5">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] flex items-center justify-center shadow-lg shadow-pink-500/25 flex-shrink-0">
-            <Cake size={18} className="text-white" />
-          </div>
+          <img src="/pwa-192x192.png" alt="DocePreço" className="w-9 h-9 rounded-xl shadow-lg shadow-pink-500/25 flex-shrink-0" />
           <div>
             <h1 className="text-[17px] font-extrabold text-gray-900 leading-tight tracking-tight">DocePreço</h1>
             <p className="text-gray-400 text-xs">Escolha uma loja para pedir</p>

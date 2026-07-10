@@ -5,4 +5,7 @@ export type AdminStackParamList = {
   AdminPix: undefined;
   AdminSupport: undefined;
   AdminSupportChat: { userId: string; companyName: string };
+  AdminBanners: undefined;
+  AdminNotifications: undefined;
+  AdminCoupons: undefined;
 };

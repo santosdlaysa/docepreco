@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, Alert,
+  StyleSheet, ActivityIndicator, Alert, Modal, TextInput, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import { adminApi, AdminUser } from '../../../data/api/adminApi';
+import { adminApi, AdminUser, PremiumEvent } from '../../../data/api/adminApi';
 import { useAuth } from '../../../context/AuthContext';
 import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
@@ -23,6 +23,15 @@ const PLATFORM_LABELS: Record<string, string> = {
   manual: 'Manual',
   card: 'Cartão',
 };
+
+// Deixa o tipo de evento (snake_case vindo do backend) legível
+const formatEventType = (t: string) => {
+  const spaced = t.replace(/_/g, ' ');
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+};
+
+const fmtAmount = (cents: number | null) =>
+  cents != null ? `R$ ${(cents / 100).toFixed(2).replace('.', ',')}` : null;
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
@@ -50,10 +59,16 @@ export const AdminUserDetailScreen: React.FC = () => {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
+  const [premiumHistory, setPremiumHistory] = useState<PremiumEvent[]>([]);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [resetting, setResetting] = useState(false);
 
   const load = async () => {
+    // Usuário e histórico são independentes: uma falha não pode zerar o outro
     try { setUser(await adminApi.getUser(userId)); } catch {}
-    finally { setLoading(false); }
+    try { setPremiumHistory(await adminApi.getPremiumHistory(userId)); } catch {}
+    setLoading(false);
   };
 
   useEffect(() => { load(); }, [userId]);
@@ -74,6 +89,32 @@ export const AdminUserDetailScreen: React.FC = () => {
     user?.isActive ? 'Desativar este usuário?' : 'Reativar este usuário?',
     () => adminApi.toggleActive(userId, user?.isActive ?? true),
   );
+
+  const handleOpenWhatsApp = () => {
+    if (!user?.phone) return;
+    const digits = user.phone.replace(/\D/g, '');
+    Linking.openURL(`https://wa.me/${digits}`).catch(() => {
+      Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.');
+    });
+  };
+
+  const handleConfirmReset = async () => {
+    if (newPassword.length < 6) {
+      Alert.alert('Senha muito curta', 'A senha deve ter pelo menos 6 caracteres.');
+      return;
+    }
+    setResetting(true);
+    try {
+      await adminApi.resetPassword(userId, newPassword);
+      setShowResetModal(false);
+      setNewPassword('');
+      Alert.alert('Sucesso', 'Senha redefinida com sucesso.');
+    } catch (e: any) {
+      Alert.alert('Erro', e?.response?.data?.error ?? e?.message ?? 'Não foi possível redefinir a senha.');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const handleImpersonate = () => {
     Alert.alert(
@@ -162,6 +203,35 @@ export const AdminUserDetailScreen: React.FC = () => {
           <InfoRow label="Premium até" value={fmtDate(user.premiumUntil)} />
         </View>
 
+        {/* Histórico de assinatura */}
+        <Text style={styles.sectionLabel}>Histórico de assinatura</Text>
+        <View style={styles.card}>
+          {premiumHistory.length === 0 ? (
+            <View style={{ padding: 16 }}>
+              <Text style={{ color: colors.textMuted, fontSize: 13 }}>Nenhum evento registrado.</Text>
+            </View>
+          ) : (
+            premiumHistory.map((ev, idx) => {
+              const amount = fmtAmount(ev.amountCents);
+              return (
+                <View
+                  key={ev.id}
+                  style={[styles.infoRow, idx === premiumHistory.length - 1 && { borderBottomWidth: 0 }]}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.historyType}>{formatEventType(ev.eventType)}</Text>
+                    <Text style={styles.historyMeta}>
+                      {fmtDateTime(ev.createdAt)}
+                      {ev.platform ? ` · ${PLATFORM_LABELS[ev.platform] ?? ev.platform}` : ''}
+                    </Text>
+                  </View>
+                  {amount && <Text style={styles.historyAmount}>{amount}</Text>}
+                </View>
+              );
+            })
+          )}
+        </View>
+
         {/* Actions */}
         <Text style={styles.sectionLabel}>Ações</Text>
         <View style={styles.actionsWrap}>
@@ -170,6 +240,9 @@ export const AdminUserDetailScreen: React.FC = () => {
           ) : (
             <>
               <ActionBtn label="Ver como empresa" icon="eye-outline" color={colors.primary} onPress={handleImpersonate} />
+              {!!user.phone && (
+                <ActionBtn label="Chamar no WhatsApp" icon="logo-whatsapp" color="#25D366" onPress={handleOpenWhatsApp} />
+              )}
               {!user.isPremium && (
                 <ActionBtn label="Conceder Premium (30d)" icon="star" color="#D97706" onPress={handleGrantPremium} />
               )}
@@ -180,6 +253,7 @@ export const AdminUserDetailScreen: React.FC = () => {
                 <ActionBtn label="Remover acesso" icon="close-circle-outline" color={colors.error} onPress={handleRevokePremium} />
               )}
               <ActionBtn label="Conceder Trial" icon="gift-outline" color="#43BE6E" onPress={handleTrial} />
+              <ActionBtn label="Redefinir senha" icon="key-outline" color="#2563EB" onPress={() => setShowResetModal(true)} />
               <ActionBtn
                 label={user.isActive ? 'Desativar conta' : 'Ativar conta'}
                 icon={user.isActive ? 'ban-outline' : 'checkmark-circle-outline'}
@@ -190,6 +264,48 @@ export const AdminUserDetailScreen: React.FC = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* Modal: redefinir senha */}
+      <Modal
+        visible={showResetModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { if (!resetting) { setShowResetModal(false); setNewPassword(''); } }}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Redefinir senha</Text>
+            <Text style={styles.modalSubtitle}>Defina uma nova senha para {user.companyName}</Text>
+            <TextInput
+              value={newPassword}
+              onChangeText={setNewPassword}
+              placeholder="Nova senha (mín. 6 caracteres)"
+              placeholderTextColor={colors.textMuted}
+              secureTextEntry
+              autoFocus
+              style={styles.modalInput}
+            />
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => { setShowResetModal(false); setNewPassword(''); }}
+                activeOpacity={0.8}
+                style={styles.modalCancelBtn}
+                disabled={resetting}
+              >
+                <Text style={styles.modalCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleConfirmReset}
+                activeOpacity={0.8}
+                style={[styles.modalConfirmBtn, (resetting || newPassword.length < 6) && { opacity: 0.5 }]}
+                disabled={resetting || newPassword.length < 6}
+              >
+                {resetting ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.modalConfirmText}>Confirmar</Text>}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -212,4 +328,17 @@ const styles = StyleSheet.create({
   actionsWrap: { marginHorizontal: 20, gap: 10 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, borderWidth: 1.5, backgroundColor: colors.surface },
   actionBtnText: { fontSize: 14, fontWeight: '600' },
+  historyType: { fontSize: 13, color: colors.text, fontWeight: '600' },
+  historyMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  historyAmount: { fontSize: 13, color: colors.text, fontWeight: '700', marginLeft: 12 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'center', padding: 24 },
+  modalCard: { backgroundColor: colors.surface, borderRadius: 20, padding: 24, gap: 14 },
+  modalTitle: { fontSize: 17, fontWeight: '800', color: colors.text },
+  modalSubtitle: { fontSize: 13, color: colors.textMuted, marginTop: -8 },
+  modalInput: { height: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, fontSize: 14, color: colors.text },
+  modalActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
+  modalCancelBtn: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.border },
+  modalCancelText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  modalConfirmBtn: { flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, backgroundColor: colors.primary },
+  modalConfirmText: { fontSize: 14, fontWeight: '700', color: '#fff' },
 });

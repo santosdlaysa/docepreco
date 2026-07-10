@@ -1,5 +1,6 @@
 import { pool } from '../database/connection';
 import { DiscountType } from '../../domain/utils/discount';
+import { DayHours, isStoreOpenNow } from '../../domain/utils/businessHours';
 
 export interface StoreSettings {
   id: string;
@@ -18,6 +19,9 @@ export interface StoreSettings {
   address?: string | null;
   city?: string | null;
   category?: string | null;
+  useBusinessHours: boolean;
+  businessHours: DayHours[];
+  isOpenNow: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -64,6 +68,8 @@ function slugify(text: string): string {
 
 function mapSettings(row: Record<string, unknown>): StoreSettings {
   const slug = row.slug as string;
+  const useBusinessHours = (row.use_business_hours as boolean) ?? false;
+  const businessHours = (row.business_hours as DayHours[] | null) ?? [];
   return {
     id: row.id as string,
     userId: row.user_id as string,
@@ -81,6 +87,9 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     address: (row.address as string | null) ?? null,
     city: (row.city as string | null) ?? null,
     category: (row.category as string | null) ?? null,
+    useBusinessHours,
+    businessHours,
+    isOpenNow: isStoreOpenNow({ active: row.active as boolean, use_business_hours: useBusinessHours, business_hours: businessHours }),
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -166,6 +175,8 @@ export class PostgresStoreRepository {
     address: string | null;
     city: string | null;
     category: string | null;
+    useBusinessHours: boolean;
+    businessHours: DayHours[];
   }>): Promise<StoreSettings> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -183,6 +194,8 @@ export class PostgresStoreRepository {
     if ('address' in data)                 { fields.push(`address = $${idx++}`);          values.push(data.address ?? null); }
     if ('city' in data)                    { fields.push(`city = $${idx++}`);             values.push(data.city ?? null); }
     if ('category' in data)                { fields.push(`category = $${idx++}`);         values.push(data.category ?? null); }
+    if (data.useBusinessHours !== undefined) { fields.push(`use_business_hours = $${idx++}`); values.push(data.useBusinessHours); }
+    if (data.businessHours !== undefined)    { fields.push(`business_hours = $${idx++}`);     values.push(JSON.stringify(data.businessHours)); }
 
     fields.push(`updated_at = NOW()`);
     values.push(userId);
@@ -204,30 +217,33 @@ export class PostgresStoreRepository {
     const limit = Math.min(Math.max(filters.limit, 1), 50);
     const offset = Math.max(filters.page - 1, 0) * limit;
 
-    const [rows, count] = await Promise.all([
-      pool.query(
-        `SELECT store_name, slug, description, cover_image_url,
-                accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
-                city, category
-         FROM store_settings
-         WHERE active = TRUE
-           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
-           AND ($2::text IS NULL OR category = $2)
-         ORDER BY store_name ASC
-         LIMIT $3 OFFSET $4`,
-        [search, category, limit, offset]
-      ),
-      pool.query(
-        `SELECT COUNT(*)::int AS total
-         FROM store_settings
-         WHERE active = TRUE
-           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
-           AND ($2::text IS NULL OR category = $2)`,
-        [search, category]
-      ),
-    ]);
+    // Filtra pelo horário de funcionamento em JS: pega uma página extra do banco
+    // (lojas fechadas por horário automático são descartadas) para manter o limite pedido.
+    const rows = await pool.query(
+      `SELECT store_name, slug, description, cover_image_url,
+              accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
+              city, category, active, use_business_hours, business_hours
+       FROM store_settings
+       WHERE active = TRUE
+         AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
+         AND ($2::text IS NULL OR category = $2)
+       ORDER BY store_name ASC
+       LIMIT $3 OFFSET $4`,
+      [search, category, limit, offset]
+    );
+    const openRows = rows.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours }));
 
-    return { stores: rows.rows.map(mapMarketplaceStore), total: count.rows[0].total };
+    const count = await pool.query(
+      `SELECT store_name, active, use_business_hours, business_hours
+       FROM store_settings
+       WHERE active = TRUE
+         AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
+         AND ($2::text IS NULL OR category = $2)`,
+      [search, category]
+    );
+    const total = count.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours })).length;
+
+    return { stores: openRows.map(mapMarketplaceStore), total };
   }
 
   async getProducts(userId: string): Promise<StoreProduct[]> {

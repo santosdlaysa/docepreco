@@ -52,6 +52,9 @@ import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
 import { AdminPixScreen } from '../screens/admin/AdminPixScreen';
 import { AdminSupportScreen } from '../screens/admin/AdminSupportScreen';
 import { AdminSupportChatScreen } from '../screens/admin/AdminSupportChatScreen';
+import { AdminBannersScreen } from '../screens/admin/AdminBannersScreen';
+import { AdminNotificationsScreen } from '../screens/admin/AdminNotificationsScreen';
+import { AdminCouponsScreen } from '../screens/admin/AdminCouponsScreen';
 import { StoreScreen } from '../screens/StoreScreen';
 import { StoreProductFormScreen } from '../screens/StoreProductFormScreen';
 import { StoreSettingsScreen } from '../screens/StoreSettingsScreen';
@@ -571,6 +574,9 @@ export function AppNavigator() {
           <Stack.Screen name="AdminPix" component={AdminPixScreen} />
           <Stack.Screen name="AdminSupport" component={AdminSupportScreen} />
           <Stack.Screen name="AdminSupportChat" component={AdminSupportChatScreen} />
+          <Stack.Screen name="AdminBanners" component={AdminBannersScreen} />
+          <Stack.Screen name="AdminNotifications" component={AdminNotificationsScreen} />
+          <Stack.Screen name="AdminCoupons" component={AdminCouponsScreen} />
           <Stack.Screen name="Store" component={StoreScreen} />
           <Stack.Screen name="StoreProductForm" component={StoreProductFormScreen} />
           <Stack.Screen name="StoreSettings" component={StoreSettingsScreen} />

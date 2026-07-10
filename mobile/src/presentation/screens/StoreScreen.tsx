@@ -407,7 +407,7 @@ export const StoreScreen: React.FC = () => {
               />
             )}
           </View>
-          {settings?.active && (
+          {settings?.active && settings?.isOpenNow !== false && (
             <TouchableOpacity
               style={st.statusBadge}
               onPress={() => navigation.navigate('Orders', { initialFilter: 'online' })}
@@ -417,6 +417,12 @@ export const StoreScreen: React.FC = () => {
               <Text style={st.statusBadgeText}>Loja online e recebendo pedidos</Text>
               <Ionicons name="chevron-forward" size={14} color={PINK} />
             </TouchableOpacity>
+          )}
+          {settings?.active && settings?.useBusinessHours && settings?.isOpenNow === false && (
+            <View style={[st.statusBadge, { backgroundColor: 'rgba(0,0,0,0.06)' }]}>
+              <Ionicons name="moon-outline" size={14} color={INK2} />
+              <Text style={[st.statusBadgeText, { color: INK2 }]}>Fechada agora, fora do horário cadastrado</Text>
+            </View>
           )}
         </LinearGradient>
 

@@ -260,4 +260,7 @@ export const demoStoreSettings: StoreSettings = {
   deliveryFee: 5,
   paymentMethods: ['pix', 'cash', 'credit', 'debit'],
   address: 'Rua das Flores, 123 — Centro',
+  useBusinessHours: false,
+  businessHours: [],
+  isOpenNow: true,
 };

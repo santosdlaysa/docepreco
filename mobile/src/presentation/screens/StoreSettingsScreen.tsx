@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { StoreSettings } from '../../domain/entities/StoreProduct';
+import { StoreSettings, StoreBusinessHours } from '../../domain/entities/StoreProduct';
 import { PaymentMethodType } from '../../domain/entities/Order';
 import { storeApi } from '../../data/api/storeApi';
 import { demoStoreApi } from '../../data/demo/demoApi';
@@ -58,6 +58,16 @@ const ALL_PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons
   { key: 'debit', icon: 'card-outline', label: 'Cartão de débito', sub: 'Na maquininha' },
 ];
 
+const WEEKDAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+const defaultBusinessHours = (): StoreBusinessHours[] =>
+  Array.from({ length: 7 }, (_, dayOfWeek) => ({
+    dayOfWeek,
+    closed: dayOfWeek === 0,
+    openTime: '08:00',
+    closeTime: '18:00',
+  }));
+
 const FOOD_CATEGORIES = [
   { key: 'hamburguer', label: 'Hambúrguer', emoji: '🍔' },
   { key: 'bolos',      label: 'Bolos',       emoji: '🎂' },
@@ -92,6 +102,8 @@ export const StoreSettingsScreen: React.FC = () => {
   const [deliveryFeeText, setDeliveryFeeText] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodType[]>(['pix', 'cash', 'credit', 'debit']);
+  const [useBusinessHours, setUseBusinessHours] = useState(false);
+  const [businessHours, setBusinessHours] = useState<StoreBusinessHours[]>(defaultBusinessHours());
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -110,6 +122,8 @@ export const StoreSettingsScreen: React.FC = () => {
         setDeliveryFeeText(formatMoney(s.deliveryFee ?? 0));
         setCoverImageUrl(s.coverImageUrl ?? '');
         setPaymentMethods(s.paymentMethods?.length ? s.paymentMethods : ['pix', 'cash', 'credit', 'debit']);
+        setUseBusinessHours(s.useBusinessHours ?? false);
+        setBusinessHours(s.businessHours?.length === 7 ? s.businessHours : defaultBusinessHours());
       })
       .catch(() => showToast('Erro ao carregar configurações', 'error'))
       .finally(() => setLoading(false));
@@ -137,6 +151,10 @@ export const StoreSettingsScreen: React.FC = () => {
     setPaymentMethods(prev =>
       prev.includes(key) ? prev.filter(m => m !== key) : [...prev, key]
     );
+  };
+
+  const updateDayHours = (dayOfWeek: number, patch: Partial<StoreBusinessHours>) => {
+    setBusinessHours(prev => prev.map(d => d.dayOfWeek === dayOfWeek ? { ...d, ...patch } : d));
   };
 
   const handleSave = async () => {
@@ -171,6 +189,8 @@ export const StoreSettingsScreen: React.FC = () => {
         deliveryFee: parseMoney(deliveryFeeText) || undefined,
         coverImageUrl: coverImageUrl || undefined,
         paymentMethods,
+        useBusinessHours,
+        businessHours,
       });
       showToast('Configurações salvas!', 'success');
       navigation.goBack();
@@ -380,6 +400,72 @@ export const StoreSettingsScreen: React.FC = () => {
             );
           })}
 
+          {/* ── Horário de funcionamento ── */}
+          <TouchableOpacity style={[st.toggleRow, { marginTop: 20 }]} onPress={() => setUseBusinessHours(v => !v)} activeOpacity={0.7}>
+            <View style={st.toggleLeft}>
+              <View style={[st.toggleIcon, { backgroundColor: useBusinessHours ? '#FFE3EF' : '#F5F5F5' }]}>
+                <Ionicons name="time-outline" size={20} color={useBusinessHours ? PINK : INK3} />
+              </View>
+              <View>
+                <Text style={st.toggleLabel}>Horário de funcionamento</Text>
+                <Text style={st.toggleSub}>Ativa e desativa a loja sozinha, conforme o horário</Text>
+              </View>
+            </View>
+            <View style={[st.track, useBusinessHours && st.trackOn]}>
+              <View style={[st.thumb, useBusinessHours && st.thumbOn]} />
+            </View>
+          </TouchableOpacity>
+
+          {useBusinessHours && (
+            <View style={{ gap: 8, marginTop: 4 }}>
+              {businessHours.map(day => (
+                <View key={day.dayOfWeek} style={st.dayRow}>
+                  <View style={st.dayHeadRow}>
+                    <Text style={st.dayLabel}>{WEEKDAY_LABELS[day.dayOfWeek]}</Text>
+                    <TouchableOpacity
+                      style={[st.dayClosedChip, day.closed && st.dayClosedChipOn]}
+                      onPress={() => updateDayHours(day.dayOfWeek, { closed: !day.closed })}
+                      activeOpacity={0.7}
+                    >
+                      <Text style={[st.dayClosedChipText, day.closed && st.dayClosedChipTextOn]}>
+                        {day.closed ? 'Fechado' : 'Aberto'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  {!day.closed && (
+                    <View style={st.dayTimeRow}>
+                      <TextInput
+                        style={st.dayTimeInput}
+                        value={day.openTime}
+                        onChangeText={t => updateDayHours(day.dayOfWeek, { openTime: t })}
+                        placeholder="08:00"
+                        placeholderTextColor={INK3}
+                        keyboardType="numbers-and-punctuation"
+                        maxLength={5}
+                      />
+                      <Text style={st.dayTimeSep}>às</Text>
+                      <TextInput
+                        style={st.dayTimeInput}
+                        value={day.closeTime}
+                        onChangeText={t => updateDayHours(day.dayOfWeek, { closeTime: t })}
+                        placeholder="18:00"
+                        placeholderTextColor={INK3}
+                        keyboardType="numbers-and-punctuation"
+                        maxLength={5}
+                      />
+                    </View>
+                  )}
+                </View>
+              ))}
+              <View style={st.slugCard}>
+                <Ionicons name="information-circle-outline" size={18} color="#2BA7DD" />
+                <Text style={st.slugText}>
+                  Use o formato 24h (ex: 08:00, 18:30). Fora do horário cadastrado, sua loja some da vitrine e não recebe pedidos automaticamente.
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* ── Slug info ── */}
           {settings?.slug && (
             <View style={st.slugCard}>
@@ -479,6 +565,22 @@ const st = StyleSheet.create({
   categoryChipOn: { backgroundColor: '#FFE3EF', borderColor: PINK },
   categoryChipText: { fontSize: 13, fontWeight: '600', color: INK2 },
   categoryChipTextOn: { color: PINK },
+
+  dayRow: {
+    backgroundColor: '#fff', borderRadius: 14, padding: 12, paddingHorizontal: 14, ...SHADOW,
+  },
+  dayHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  dayLabel: { fontSize: 14, fontWeight: '700', color: INK },
+  dayClosedChip: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#DCF6E5' },
+  dayClosedChipOn: { backgroundColor: '#F5F5F5' },
+  dayClosedChipText: { fontSize: 12, fontWeight: '700', color: '#1F8A48' },
+  dayClosedChipTextOn: { color: INK2 },
+  dayTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
+  dayTimeInput: {
+    flex: 1, backgroundColor: CREAM, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 10,
+    fontSize: 14, color: INK, textAlign: 'center',
+  },
+  dayTimeSep: { fontSize: 12, color: INK2, fontWeight: '600' },
 
   slugCard: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

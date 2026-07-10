@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
   StyleSheet, ActivityIndicator, RefreshControl, Platform,
@@ -8,7 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { adminApi, AdminStats } from '../../../data/api/adminApi';
+import { adminApi, AdminStats, SubscriptionDashboard } from '../../../data/api/adminApi';
 import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
 
@@ -18,6 +18,38 @@ const PINK  = colors.primary;
 const INK   = '#3D2233';
 const INK2  = '#9A7E8C';
 const CREAM = '#FFF6F0';
+const GREEN = '#16A34A';
+const RED   = '#DC2626';
+
+const fmtBRL = (n: number) =>
+  `R$ ${(n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Retorna a data (YYYY-MM-DD) da segunda-feira da semana ISO daquele dia
+function weekStartOf(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00`);
+  const day = d.getDay(); // 0 (dom) .. 6 (sáb)
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diffToMonday);
+  return d.toISOString().slice(0, 10);
+}
+
+// Agrupa o timeseries diário (até 90 pontos, dias sem atividade omitidos) em
+// buckets semanais, mantendo só as últimas ~12 semanas — igual em espírito ao
+// agrupamento mensal usado no ReportsScreen, mas por semana.
+function bucketWeekly(timeseries: { date: string; totalBRL: number }[]): { label: string; value: number }[] {
+  const totals = new Map<string, number>();
+  for (const point of timeseries) {
+    const weekStart = weekStartOf(point.date);
+    totals.set(weekStart, (totals.get(weekStart) ?? 0) + point.totalBRL);
+  }
+  return Array.from(totals.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .slice(-12)
+    .map(([weekStart, value]) => ({
+      label: new Date(`${weekStart}T00:00:00`).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
+      value,
+    }));
+}
 
 // ── Stat Hero (big card no topo) ─────────────────────────────────────────────
 function HeroStat({ value, label }: { value: string | number; label: string }) {
@@ -96,13 +128,14 @@ interface Props { onLogout: () => void; }
 export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
   const navigation = useNavigation<Nav>();
   const [stats, setStats] = useState<AdminStats | null>(null);
+  const [subDash, setSubDash] = useState<SubscriptionDashboard | null>(null);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    // Stats e unread são independentes: uma falha não pode zerar a outra
+    // Stats, subDash e unread são independentes: uma falha não pode zerar as outras
     try {
       const s = await adminApi.getStats();
       setStats(s);
@@ -116,6 +149,9 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
       }
     }
     try {
+      setSubDash(await adminApi.getSubscriptionDashboard());
+    } catch {}
+    try {
       setUnread(await adminApi.getUnreadCount());
     } catch {}
   }, []);
@@ -127,6 +163,10 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
   const premiumPct = stats && stats.totalUsers > 0
     ? Math.round((stats.premiumUsers / stats.totalUsers) * 100)
     : 0;
+
+  const weeklyRevenue = useMemo(() => bucketWeekly(subDash?.timeseries ?? []), [subDash]);
+  const maxWeeklyRevenue = Math.max(...weeklyRevenue.map(w => w.value), 1);
+  const momPositive = (subDash?.overview.momGrowth ?? 0) >= 0;
 
   return (
     <SafeAreaView style={st.root} edges={['top']}>
@@ -190,6 +230,107 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
           </View>
         )}
 
+        {/* ── Assinaturas: MRR/ARR/MoM ── */}
+        {!loading && subDash && (
+          <>
+            <Text style={st.sectionLabel}>Assinaturas</Text>
+            <View style={st.miniRow}>
+              <MiniCard
+                label="MRR" value={fmtBRL(subDash.overview.mrr)}
+                icon="cash-outline" bg="#F5F3FF" iconColor="#7C3AED"
+              />
+              <MiniCard
+                label="ARR" value={fmtBRL(subDash.overview.arr)}
+                icon="trending-up-outline" bg="#EFF6FF" iconColor="#2563EB"
+              />
+              <MiniCard
+                label="Cresc. mensal"
+                value={`${momPositive ? '+' : ''}${(subDash.overview.momGrowth ?? 0).toFixed(1)}%`}
+                icon={momPositive ? 'arrow-up' : 'arrow-down'}
+                bg={momPositive ? '#F0FDF4' : '#FEF2F2'}
+                iconColor={momPositive ? GREEN : RED}
+              />
+            </View>
+
+            {/* Assinantes */}
+            <View style={st.miniRow}>
+              <MiniCard
+                label="Ativos" value={subDash.overview.activeSubscribers}
+                icon="checkmark-circle-outline" bg="#F0FDF4" iconColor={GREEN}
+              />
+              <MiniCard
+                label="Expirando (7d)" value={subDash.overview.expiringSubscribers}
+                icon="alert-circle-outline" bg="#FFFBEB" iconColor="#D97706"
+              />
+              <MiniCard
+                label="Expirados" value={subDash.overview.expiredSubscribers}
+                icon="close-circle-outline" bg="#FEF2F2" iconColor={RED}
+              />
+            </View>
+
+            {/* Gráfico de receita semanal */}
+            {weeklyRevenue.length > 0 && (
+              <>
+                <Text style={st.sectionLabel}>Receita ({weeklyRevenue.length} semanas)</Text>
+                <View style={st.chartCard}>
+                  <View style={st.chartContainer}>
+                    {weeklyRevenue.map((week, idx) => {
+                      const barHeight = Math.max((week.value / maxWeeklyRevenue) * 100, 6);
+                      const isLast = idx === weeklyRevenue.length - 1;
+                      return (
+                        <View key={idx} style={st.barColumn}>
+                          <View style={st.barTrack}>
+                            {isLast ? (
+                              <LinearGradient
+                                colors={['#FF6AAE', PINK, '#C7367A']}
+                                style={[st.bar, { height: `${barHeight}%` }]}
+                              />
+                            ) : (
+                              <View style={[st.bar, { height: `${barHeight}%`, backgroundColor: '#FFE3EF' }]} />
+                            )}
+                          </View>
+                          <Text style={st.barLabel}>{week.label}</Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                </View>
+              </>
+            )}
+
+            {/* Detalhamento por plataforma */}
+            {subDash.byPlatform.length > 0 && (
+              <>
+                <Text style={st.sectionLabel}>Por plataforma</Text>
+                <View style={st.listCard}>
+                  {subDash.byPlatform.map((p, i) => (
+                    <React.Fragment key={p.platform || i}>
+                      {i > 0 && <View style={st.divider} />}
+                      <View style={st.userRow}>
+                        <View style={st.avatar}>
+                          <Ionicons
+                            name={
+                              p.platform === 'ios' ? 'logo-apple'
+                                : p.platform === 'android' ? 'logo-google-playstore'
+                                : 'phone-portrait-outline'
+                            }
+                            size={18} color={PINK}
+                          />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={st.userName} numberOfLines={1}>{p.platform || 'Desconhecido'}</Text>
+                          <Text style={st.userEmail}>{p.subscriberCount} assinantes</Text>
+                        </View>
+                        <Text style={st.revenueText}>{fmtBRL(p.totalBRL)}</Text>
+                      </View>
+                    </React.Fragment>
+                  ))}
+                </View>
+              </>
+            )}
+          </>
+        )}
+
         {/* ── Nav tiles ── */}
         <Text style={st.sectionLabel}>Gerenciar</Text>
         <View style={st.tilesRow}>
@@ -213,7 +354,26 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
             color={PINK} badge={unread}
             onPress={() => navigation.navigate('AdminSupport')}
           />
-          <View style={{ flex: 1 }} />
+          <NavTile
+            icon="megaphone-outline" label="Banners"
+            sub="Avisos no app"
+            color="#F59E0B"
+            onPress={() => navigation.navigate('AdminBanners')}
+          />
+        </View>
+        <View style={[st.tilesRow, { marginTop: 10 }]}>
+          <NavTile
+            icon="notifications-outline" label="Notificações"
+            sub="Push para usuários"
+            color="#0EA5E9"
+            onPress={() => navigation.navigate('AdminNotifications')}
+          />
+          <NavTile
+            icon="pricetag-outline" label="Cupons"
+            sub="Descontos promocionais"
+            color="#7C3AED"
+            onPress={() => navigation.navigate('AdminCoupons')}
+          />
         </View>
 
         {/* ── Últimos cadastros ── */}
@@ -317,4 +477,12 @@ const st = StyleSheet.create({
   rankBadge:    { width: 28, height: 28, borderRadius: 8, backgroundColor: '#F5F0FF', alignItems: 'center', justifyContent: 'center' },
   rankText:     { fontSize: 12, fontWeight: '800', color: '#7C3AED' },
   revenueText:  { fontSize: 13, fontWeight: '700', color: '#16A34A' },
+
+  // weekly revenue chart (mesmo padrão do ReportsScreen)
+  chartCard:      { marginHorizontal: 16, backgroundColor: colors.surface, borderRadius: 18, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 4 },
+  chartContainer: { flexDirection: 'row', height: 140, alignItems: 'flex-end', gap: 4 },
+  barColumn:      { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
+  barTrack:       { flex: 1, width: '70%', justifyContent: 'flex-end', alignItems: 'center' },
+  bar:            { width: '100%', borderTopLeftRadius: 6, borderTopRightRadius: 6 },
+  barLabel:       { fontSize: 9, color: INK2, marginTop: 6 },
 });

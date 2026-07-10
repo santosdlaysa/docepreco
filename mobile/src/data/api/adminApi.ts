@@ -33,6 +33,48 @@ export interface AdminStats {
   recentUsers: { id: string; companyName: string; email: string; isPremium: boolean; createdAt: string }[];
 }
 
+export interface SubscriptionDashboard {
+  overview: {
+    activeSubscribers: number;
+    expiringSubscribers: number;
+    expiredSubscribers: number;
+    totalSubscribers: number;
+    totalReceivedBRL: number;
+    monthlyReceivedBRL: number;
+    lastMonthBRL: number;
+    avgValueBRL: number;
+    mrr: number;
+    arr: number;
+    momGrowth: number;
+  };
+  byPlatform: {
+    platform: string;
+    subscriberCount: number;
+    eventCount: number;
+    totalBRL: number;
+    avgBRL: number;
+  }[];
+  recentEvents: {
+    id: string;
+    userId: string;
+    companyName: string;
+    email: string;
+    platform: string;
+    store: string;
+    productId: string;
+    amountBRL: number;
+    expirationAt: string | null;
+    eventType: string;
+    createdAt: string;
+  }[];
+  timeseries: {
+    date: string;
+    totalBRL: number;
+    eventCount: number;
+    uniqueUsers: number;
+  }[];
+}
+
 export interface AdminUser {
   id: string;
   companyName: string;
@@ -49,6 +91,19 @@ export interface AdminUser {
   ingredientCount: number;
   saleCount: number;
   totalRevenue: number;
+}
+
+export interface PremiumEvent {
+  id: string;
+  eventType: string;
+  source: string | null;
+  platform: string | null;
+  productId: string | null;
+  expirationAt: string | null;
+  store: string | null;
+  amountCents: number | null;
+  currency: string | null;
+  createdAt: string;
 }
 
 export interface PixRequest {
@@ -79,6 +134,43 @@ export interface AdminMessage {
   message: string;
   imageUrl: string | null;
   readAt: string | null;
+  createdAt: string;
+}
+
+export interface Banner {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'warning' | 'promo' | 'update';
+  actionUrl: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AppNotification {
+  id: string;
+  title: string;
+  body: string;
+  dataJson: string | null;
+  target: 'all' | 'premium' | 'free' | 'master';
+  scheduledAt: string | null;
+  sentAt: string | null;
+  status: 'pending' | 'scheduled' | 'sent' | 'failed';
+  recipientsCount: number;
+  createdAt: string;
+}
+
+export interface Coupon {
+  id: string;
+  code: string;
+  discountPercent: number;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string | null;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -125,6 +217,11 @@ const normalizeConversation = (raw: RawAdminConversation): AdminConversation => 
 export const adminApi = {
   async getStats(): Promise<AdminStats> {
     const { data } = await adminClient.get('/admin/stats');
+    return data.data;
+  },
+
+  async getSubscriptionDashboard(): Promise<SubscriptionDashboard> {
+    const { data } = await adminClient.get('/admin/subscriptions');
     return data.data;
   },
 
@@ -177,6 +274,16 @@ export const adminApi = {
     await adminClient.post(`/admin/users/${userId}/toggle-active`, { isActive: !currentIsActive });
   },
 
+  // Backend espera { newPassword } (mín. 6 caracteres, validado no servidor)
+  async resetPassword(userId: string, newPassword: string): Promise<void> {
+    await adminClient.post(`/admin/users/${userId}/reset-password`, { newPassword });
+  },
+
+  async getPremiumHistory(userId: string): Promise<PremiumEvent[]> {
+    const { data } = await adminClient.get(`/admin/users/${userId}/premium-history`);
+    return data.data ?? [];
+  },
+
   async listPixRequests(): Promise<PixRequest[]> {
     const { data } = await adminClient.get('/admin/pix-requests', { params: { status: 'all' } });
     return data.data ?? [];
@@ -215,5 +322,97 @@ export const adminApi = {
   async getUnreadCount(): Promise<number> {
     const { data } = await adminClient.get('/support/admin/unread');
     return data.data?.unreadCount ?? 0;
+  },
+
+  // ── Banners ── (rota NÃO é /admin/banners, apenas /banners)
+  async listBanners(): Promise<Banner[]> {
+    const { data } = await adminClient.get('/banners');
+    return data.data ?? [];
+  },
+
+  async createBanner(payload: {
+    title: string;
+    message: string;
+    type: Banner['type'];
+    actionUrl?: string;
+    startsAt?: string;
+    endsAt?: string;
+  }): Promise<Banner> {
+    const { data } = await adminClient.post('/banners', payload);
+    return data.data;
+  },
+
+  async updateBanner(id: string, payload: Partial<{
+    title: string;
+    message: string;
+    type: Banner['type'];
+    actionUrl: string | null;
+    startsAt: string;
+    endsAt: string | null;
+    isActive: boolean;
+  }>): Promise<Banner> {
+    const { data } = await adminClient.put(`/banners/${id}`, payload);
+    return data.data;
+  },
+
+  async deleteBanner(id: string): Promise<void> {
+    await adminClient.delete(`/banners/${id}`);
+  },
+
+  // ── Notificações ── (rota NÃO é /admin/notifications, apenas /notifications)
+  async listNotifications(): Promise<AppNotification[]> {
+    const { data } = await adminClient.get('/notifications');
+    return data.data ?? [];
+  },
+
+  async createNotification(payload: {
+    title: string;
+    body: string;
+    target?: AppNotification['target'];
+    dataJson?: string;
+    scheduledAt?: string;
+  }): Promise<AppNotification> {
+    const { data } = await adminClient.post('/notifications', payload);
+    return data.data;
+  },
+
+  async sendNotification(id: string): Promise<void> {
+    await adminClient.post(`/notifications/${id}/send`, {});
+  },
+
+  async deleteNotification(id: string): Promise<void> {
+    await adminClient.delete(`/notifications/${id}`);
+  },
+
+  // ── Cupons ── (rota É prefixada com /admin/coupons)
+  async listCoupons(): Promise<Coupon[]> {
+    const { data } = await adminClient.get('/admin/coupons');
+    return data.data ?? [];
+  },
+
+  async createCoupon(payload: {
+    code: string;
+    discountPercent: number;
+    maxUses?: number;
+    expiresAt?: string | null;
+    isActive?: boolean;
+  }): Promise<Coupon> {
+    const { data } = await adminClient.post('/admin/coupons', payload);
+    return data.data;
+  },
+
+  async updateCoupon(id: string, payload: Partial<{
+    code: string;
+    discountPercent: number;
+    maxUses: number;
+    expiresAt: string | null;
+    isActive: boolean;
+  }>): Promise<Coupon> {
+    const { data } = await adminClient.put(`/admin/coupons/${id}`, payload);
+    return data.data;
+  },
+
+  async deleteCoupon(id: string): Promise<void> {
+    await adminClient.delete(`/admin/coupons/${id}`);
   },
 };

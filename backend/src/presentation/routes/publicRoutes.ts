@@ -4,6 +4,7 @@ import { sendPushNotifications } from '../../infrastructure/services/pushService
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
 import { computeDiscountAmount, DiscountType } from '../../domain/utils/discount';
+import { isStoreOpenNow } from '../../domain/utils/businessHours';
 import { publicListLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
@@ -88,7 +89,7 @@ router.get('/products/search', publicListLimiter, async (req: Request, res: Resp
     const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 50);
     const result = await pool.query(
       `SELECT p.id, p.name, p.description, p.photo_url, p.public_price, p.discount_type, p.discount_value,
-              s.store_name, s.slug AS store_slug
+              s.store_name, s.slug AS store_slug, s.active, s.use_business_hours, s.business_hours
        FROM store_products p
        JOIN store_settings s ON s.user_id = p.user_id
        WHERE p.available = TRUE AND s.active = TRUE
@@ -100,7 +101,7 @@ router.get('/products/search', publicListLimiter, async (req: Request, res: Resp
     res.json({
       success: true,
       data: {
-        products: result.rows.map(p => {
+        products: result.rows.filter(p => isStoreOpenNow({ active: p.active, use_business_hours: p.use_business_hours, business_hours: p.business_hours })).map(p => {
           const publicPrice = Number(p.public_price);
           const discountAmount = computeDiscountAmount(publicPrice, p.discount_type as DiscountType | null, p.discount_value != null ? Number(p.discount_value) : null);
           return {
@@ -127,10 +128,10 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     const { slug } = req.params;
     // Buscar configurações
     const settingsResult = await pool.query(
-      'SELECT * FROM store_settings WHERE slug = $1 AND active = TRUE',
+      'SELECT * FROM store_settings WHERE slug = $1',
       [slug]
     );
-    if (settingsResult.rows.length === 0) {
+    if (settingsResult.rows.length === 0 || !isStoreOpenNow(settingsResult.rows[0])) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
       return;
     }
@@ -194,10 +195,10 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
 
     // Buscar loja
     const settingsResult = await pool.query(
-      'SELECT user_id, store_name, min_order_value, delivery_fee, payment_methods FROM store_settings WHERE slug = $1 AND active = TRUE',
+      'SELECT user_id, store_name, min_order_value, delivery_fee, payment_methods, active, use_business_hours, business_hours FROM store_settings WHERE slug = $1',
       [slug]
     );
-    if (settingsResult.rows.length === 0) {
+    if (settingsResult.rows.length === 0 || !isStoreOpenNow(settingsResult.rows[0])) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
       return;
     }

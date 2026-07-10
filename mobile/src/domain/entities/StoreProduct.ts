@@ -16,6 +16,13 @@ export interface StoreProduct {
   updatedAt: string;
 }
 
+export interface StoreBusinessHours {
+  dayOfWeek: number; // 0 = domingo ... 6 = sábado
+  closed: boolean;
+  openTime: string;  // "HH:mm"
+  closeTime: string; // "HH:mm"
+}
+
 export interface StoreSettings {
   active: boolean;
   storeName: string;
@@ -31,4 +38,8 @@ export interface StoreSettings {
   address?: string;
   city?: string;
   category?: string;
+  useBusinessHours: boolean;
+  businessHours: StoreBusinessHours[];
+  /** Calculado pelo backend no momento da consulta (ativa + dentro do horário, se aplicável). */
+  isOpenNow?: boolean;
 }

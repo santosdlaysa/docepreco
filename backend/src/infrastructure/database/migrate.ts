@@ -1040,6 +1040,10 @@ export async function runMigrations() {
     // Marketplace (vitrine pública de lojas) — toda loja com active = TRUE aparece, sem opt-in separado.
     await addColumnIfMissing(client, 'store_settings', 'city', 'VARCHAR(120) NULL');
     await addColumnIfMissing(client, 'store_settings', 'category', 'VARCHAR(30) NULL');
+
+    // Horário de funcionamento: liga/desliga a loja automaticamente conforme o horário cadastrado.
+    await addColumnIfMissing(client, 'store_settings', 'use_business_hours', 'BOOLEAN NOT NULL DEFAULT FALSE');
+    await addColumnIfMissing(client, 'store_settings', 'business_hours', "JSONB NOT NULL DEFAULT '[]'::jsonb");
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_store_settings_marketplace
       ON store_settings (store_name)
