@@ -503,24 +503,26 @@ export function LojaPage() {
   if (step === 'catalog')
     return (
       <div className="min-h-screen bg-[#F5F5F7]">
-        {/* Header estilo delivery */}
-        <div className="max-w-lg mx-auto">
-          {/* Barra de volta ao diretório de lojas */}
-          <div className="px-4 pt-3 flex items-center justify-between gap-2">
+        {/* Header fixo estilo marketplace (igual à vitrine) */}
+        <header className="sticky top-0 z-40 bg-white shadow-sm">
+          <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
             <Link to="/lojas" className="flex items-center gap-2">
-              <img src="/pwa-192x192.png" alt="DocePedidos" className="w-7 h-7 rounded-lg shadow-sm" />
-              <span className="text-[13px] font-extrabold text-gray-700 tracking-tight">DocePedidos</span>
+              <img src="/pwa-192x192.png" alt="DocePedidos" className="w-9 h-9 rounded-lg flex-shrink-0" />
+              <span className="text-lg font-extrabold tracking-tight leading-none">
+                <span className="text-[#EA4B92]">Doce</span>
+                <span className="text-[#2BA3C2]">Pedidos</span>
+              </span>
             </Link>
             <Link
               to="/lojas"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-white rounded-full px-3 py-1.5 shadow-sm active:scale-95 transition-transform"
+              className="bg-[#EA4B92] text-white text-[13px] font-bold px-4 py-2 rounded-lg active:scale-95 transition-transform"
             >
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-              </svg>
-              Ver todas as lojas
+              Ver lojas
             </Link>
           </div>
+        </header>
+
+        <div className="max-w-lg mx-auto">
           {/* Banner */}
           <div className="relative h-40 bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] overflow-hidden">
             {store.coverImageUrl ? (

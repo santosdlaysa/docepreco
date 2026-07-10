@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { SlidersHorizontal } from 'lucide-react';
 import { StoreCard } from '../components/StoreCard';
 import { BottomNav } from '../components/BottomNav';
 import { FOOD_CATEGORIES } from '../data/categories';
@@ -22,7 +23,20 @@ interface StoreListItem {
   distanceKm: number | null;
 }
 
+interface FeaturedProduct {
+  id: string;
+  name: string;
+  photoUrl: string | null;
+  price: number;
+  originalPrice?: number;
+  storeName: string;
+  storeSlug: string;
+}
+
 type SortOption = 'distance' | 'fee_asc';
+
+const fmtPrice = (v: number) =>
+  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function LojasPage() {
   const [stores, setStores] = useState<StoreListItem[]>([]);
@@ -37,6 +51,7 @@ export function LojasPage() {
   const [locating, setLocating] = useState(false);
   const [geoFailed, setGeoFailed] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [featured, setFeatured] = useState<FeaturedProduct[]>([]);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -152,6 +167,20 @@ export function LojasPage() {
       .finally(() => setLoading(false));
   }, [debouncedSearch, selectedCategory, cityFilter, sortBy, freeOnly, coords, page]);
 
+  // Itens das lojas da região — vitrine horizontal acima da lista de lojas
+  useEffect(() => {
+    if (!cityFilter) {
+      setFeatured([]);
+      return;
+    }
+    fetch(`${API_BASE}/public/products/featured?city=${encodeURIComponent(cityFilter)}&limit=12`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) setFeatured(json.data.products);
+      })
+      .catch(() => setFeatured([]));
+  }, [cityFilter]);
+
   const handleToggleCategory = (key: string) => {
     setSelectedCategory(prev => (prev === key ? null : key));
   };
@@ -212,12 +241,14 @@ export function LojasPage() {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto px-4 pt-4 pb-20">
+      {/* Topo colorido com transição ondulada para o fundo cinza */}
+      <div className="relative bg-[#EA4B92]">
+        <div className="max-w-lg mx-auto px-4 pt-4">
         {/* Localização detectada */}
         {(cityFilter || locating) && (
-          <div className="flex items-center justify-between gap-2 bg-white rounded-full px-3.5 py-2 mb-4 shadow-sm">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 min-w-0">
-              <svg className="w-3.5 h-3.5 text-[#EA4B92] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <div className="flex items-center justify-between gap-2 px-1 mb-4">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-white min-w-0">
+              <svg className="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
@@ -226,7 +257,7 @@ export function LojasPage() {
               </span>
             </div>
             {cityFilter && (
-              <button onClick={refreshLocation} className="text-xs font-semibold text-gray-400 flex-shrink-0">
+              <button onClick={refreshLocation} className="text-xs font-semibold text-white/70 flex-shrink-0">
                 Atualizar
               </button>
             )}
@@ -260,9 +291,7 @@ export function LojasPage() {
                 sortBy || freeOnly ? 'bg-gray-900 text-white' : 'bg-white text-gray-500 border border-gray-200'
               }`}
             >
-              <svg width={18} height={18} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m8-8v12m0 0l-4-4m4 4l4-4" />
-              </svg>
+              <SlidersHorizontal size={20} strokeWidth={2.2} />
             </button>
             {sortMenuOpen && (
               <>
@@ -297,8 +326,8 @@ export function LojasPage() {
           </div>
         </div>
 
-        {/* Categorias */}
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5 -mx-4 px-4">
+        {/* Categorias — bolinhas circulares com rótulo embaixo */}
+        <div className="flex gap-4 overflow-x-auto scrollbar-hide -mx-4 px-4 pt-1 pb-2">
           {FOOD_CATEGORIES.map(cat => {
             const active = selectedCategory === cat.key;
             const Icon = cat.icon;
@@ -306,19 +335,54 @@ export function LojasPage() {
               <button
                 key={cat.key}
                 onClick={() => handleToggleCategory(cat.key)}
-                className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors active:scale-95 ${
-                  active
-                    ? 'bg-[#EA4B92] text-white shadow-sm shadow-pink-500/25'
-                    : 'bg-white text-gray-500 shadow-sm'
-                }`}
+                className="flex-shrink-0 flex flex-col items-center gap-1.5 w-[60px] active:scale-95 transition-transform"
               >
-                <Icon size={14} strokeWidth={2.5} className={active ? 'text-white' : 'text-[#EA4B92]'} />
-                <span>{cat.label}</span>
+                <span
+                  className={`w-[54px] h-[54px] rounded-full flex items-center justify-center transition-all duration-200 ${
+                    active
+                      ? 'bg-white shadow-lg shadow-black/10 scale-105'
+                      : 'bg-white/20 backdrop-blur-[2px]'
+                  }`}
+                >
+                  <Icon
+                    size={22}
+                    strokeWidth={2.2}
+                    className={active ? 'text-[#EA4B92]' : 'text-white'}
+                  />
+                </span>
+                <span
+                  className={`text-[11px] leading-tight truncate max-w-full transition-colors ${
+                    active ? 'font-bold text-white' : 'font-semibold text-white/80'
+                  }`}
+                >
+                  {cat.label}
+                </span>
+                <span
+                  className={`w-1 h-1 rounded-full -mt-0.5 transition-opacity ${
+                    active ? 'bg-white opacity-100' : 'opacity-0'
+                  }`}
+                />
               </button>
             );
           })}
         </div>
+        </div>
 
+        {/* Onda de transição para o fundo cinza */}
+        <svg
+          className="block w-full h-10 -mb-px"
+          viewBox="0 0 1440 60"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M0,32 C180,58 360,6 540,14 C760,24 920,56 1120,48 C1270,42 1370,20 1440,26 L1440,60 L0,60 Z"
+            fill="#F5F5F7"
+          />
+        </svg>
+      </div>
+
+      <div className="max-w-lg mx-auto px-4 pt-1 pb-20">
         {/* Loading inicial (buscando localização ou lojas) */}
         {(locating || (loading && page === 1 && cityFilter)) && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -372,9 +436,46 @@ export function LojasPage() {
           </div>
         )}
 
+        {/* Itens das lojas da região */}
+        {!loading && featured.length > 0 && stores.length > 0 && (
+          <div className="mb-6 mt-2">
+            <h2 className="text-[17px] font-extrabold text-gray-900 mb-3">Destaques</h2>
+            <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
+              {featured.map(p => (
+                <Link
+                  key={p.id}
+                  to={`/loja/${p.storeSlug}`}
+                  className="flex-shrink-0 w-[132px] bg-white rounded-2xl shadow-sm overflow-hidden active:scale-95 transition-transform"
+                >
+                  <div className="h-[88px] bg-gradient-to-br from-[#FDDDE6] to-[#EDE9FE]">
+                    {p.photoUrl ? (
+                      <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-2xl font-black text-[#EA4B92]">
+                        {p.name[0]?.toUpperCase()}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-2.5">
+                    <p className="text-xs font-bold text-gray-800 leading-tight line-clamp-1">{p.name}</p>
+                    <p className="flex items-center gap-1 mt-1">
+                      {p.originalPrice != null && (
+                        <span className="text-[10px] text-gray-300 line-through">{fmtPrice(p.originalPrice)}</span>
+                      )}
+                      <span className="text-xs font-extrabold text-[#EA4B92]">{fmtPrice(p.price)}</span>
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-0.5 line-clamp-1">{p.storeName}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Lista de lojas */}
         {stores.length > 0 && (
           <div className="flex flex-col gap-3">
+            <h2 className="text-[17px] font-extrabold text-gray-900 -mb-0.5">Nossos restaurantes</h2>
             {stores.map(store => (
               <StoreCard
                 key={store.slug}

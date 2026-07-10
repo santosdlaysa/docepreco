@@ -92,6 +92,47 @@ router.get('/customer/orders', publicListLimiter, async (req: Request, res: Resp
   }
 });
 
+// Vitrine de itens das lojas da região — produtos mais recentes de lojas abertas,
+// exibidos acima da lista de lojas no marketplace.
+router.get('/products/featured', publicListLimiter, async (req: Request, res: Response) => {
+  try {
+    const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 30);
+    // Busca com folga: lojas fechadas pelo horário de funcionamento são filtradas em JS.
+    const result = await pool.query(
+      `SELECT p.id, p.name, p.photo_url, p.public_price, p.discount_type, p.discount_value,
+              s.store_name, s.slug AS store_slug, s.active, s.use_business_hours, s.business_hours
+       FROM store_products p
+       JOIN store_settings s ON s.user_id = p.user_id
+       WHERE p.available = TRUE AND s.active = TRUE
+         AND ($1::text = '' OR s.city ILIKE '%' || $1 || '%')
+       ORDER BY p.created_at DESC
+       LIMIT $2`,
+      [city, limit * 2]
+    );
+    const products = result.rows
+      .filter(p => isStoreOpenNow({ active: p.active, use_business_hours: p.use_business_hours, business_hours: p.business_hours }))
+      .slice(0, limit)
+      .map(p => {
+        const publicPrice = Number(p.public_price);
+        const discountAmount = computeDiscountAmount(publicPrice, p.discount_type as DiscountType | null, p.discount_value != null ? Number(p.discount_value) : null);
+        return {
+          id: p.id,
+          name: p.name,
+          photoUrl: p.photo_url,
+          price: publicPrice - discountAmount,
+          originalPrice: discountAmount > 0 ? publicPrice : undefined,
+          storeName: p.store_name,
+          storeSlug: p.store_slug,
+        };
+      });
+    res.json({ success: true, data: { products } });
+  } catch (error) {
+    console.error('[Public Products] featured error:', error);
+    res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+});
+
 router.get('/products/search', publicListLimiter, async (req: Request, res: Response) => {
   try {
     const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
