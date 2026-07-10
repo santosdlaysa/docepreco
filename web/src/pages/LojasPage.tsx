@@ -201,7 +201,11 @@ export function LojasPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z" />
               </svg>
             </div>
-            <p className="text-gray-400 text-sm">Nenhuma loja encontrada</p>
+            <p className="text-gray-400 text-sm">
+              {cityFilter
+                ? `Nenhuma loja encontrada em ${cityFilter} faz parte do DocePreço`
+                : 'Nenhuma loja encontrada'}
+            </p>
             {cityFilter && (
               <button onClick={clearCityFilter} className="text-xs font-semibold text-[#EA4B92]">
                 Ver lojas de outras cidades
