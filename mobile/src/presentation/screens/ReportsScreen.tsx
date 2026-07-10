@@ -48,6 +48,15 @@ interface RecipeRanking {
   revenue: number;
 }
 
+interface PaymentMethodData {
+  method: string;
+  label: string;
+  count: number;
+  revenue: number;
+}
+
+const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
+
 export const ReportsScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
@@ -62,6 +71,7 @@ export const ReportsScreen: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   const [topRecipes, setTopRecipes] = useState<RecipeRanking[]>([]);
+  const [paymentBreakdown, setPaymentBreakdown] = useState<PaymentMethodData[]>([]);
   const [currentMonthRevenue, setCurrentMonthRevenue] = useState(0);
   const [prevMonthRevenue, setPrevMonthRevenue] = useState(0);
   const [avgTicket, setAvgTicket] = useState(0);
@@ -141,6 +151,20 @@ export const ReportsScreen: React.FC = () => {
         .sort((a, b) => b.revenue - a.revenue)
         .slice(0, 5);
       setTopRecipes(ranked);
+
+      // By payment method
+      const methodMap = new Map<string, { count: number; revenue: number }>();
+      for (const sale of allSales) {
+        const method = sale.paymentMethod || 'nao_informado';
+        const existing = methodMap.get(method) || { count: 0, revenue: 0 };
+        existing.count += 1;
+        existing.revenue += sale.totalRevenue;
+        methodMap.set(method, existing);
+      }
+      const paymentRanked = Array.from(methodMap.entries())
+        .map(([method, data]) => ({ method, label: PAYMENT_LABEL[method] || 'Não informado', ...data }))
+        .sort((a, b) => b.revenue - a.revenue);
+      setPaymentBreakdown(paymentRanked);
     } catch {
       // silently fail
     } finally {
@@ -170,6 +194,13 @@ export const ReportsScreen: React.FC = () => {
           <td>${r.recipeName}</td>
           <td>${r.quantity} un</td>
           <td style="text-align:right;font-weight:600;color:#E91E63">${formatCurrency(r.revenue)}</td>
+        </tr>`).join('');
+
+      const paymentRows = paymentBreakdown.map(p => `
+        <tr>
+          <td>${p.label}</td>
+          <td>${p.count} venda${p.count !== 1 ? 's' : ''}</td>
+          <td style="text-align:right;font-weight:600;color:#E91E63">${formatCurrency(p.revenue)}</td>
         </tr>`).join('');
 
       const html = `
@@ -218,6 +249,14 @@ export const ReportsScreen: React.FC = () => {
             ? '<p style="color:#aaa">Nenhuma venda registrada.</p>'
             : `<table><thead><tr><th>#</th><th>Receita</th><th>Qtd.</th><th style="text-align:right">Faturamento</th></tr></thead>
                <tbody>${recipeRows}</tbody></table>`}
+        </div>
+
+        <div class="section">
+          <h2>Vendas por forma de pagamento</h2>
+          ${paymentBreakdown.length === 0
+            ? '<p style="color:#aaa">Nenhuma venda registrada.</p>'
+            : `<table><thead><tr><th>Forma de pagamento</th><th>Qtd. vendas</th><th style="text-align:right">Faturamento</th></tr></thead>
+               <tbody>${paymentRows}</tbody></table>`}
         </div>
 
         <div class="footer">DocePreço · relatório gerado automaticamente</div>
@@ -430,6 +469,33 @@ export const ReportsScreen: React.FC = () => {
                   <Text style={styles.rankSub}>{t('reports.unitsSold', { count: recipe.quantity })}</Text>
                 </View>
                 <Text style={styles.rankRevenue}>{formatCurrency(recipe.revenue)}</Text>
+              </View>
+            ))
+          )}
+        </View>
+
+        {/* Payment methods */}
+        <Text style={styles.sectionTitle}>Formas de pagamento</Text>
+        <View style={styles.recipesCard}>
+          {paymentBreakdown.length === 0 ? (
+            <Text style={styles.emptyText}>{t('reports.noSales')}</Text>
+          ) : (
+            paymentBreakdown.map((p, idx) => (
+              <View
+                key={p.method}
+                style={[
+                  styles.rankRow,
+                  idx > 0 && { borderTopWidth: 1, borderTopColor: LINE },
+                ]}
+              >
+                <View style={styles.rankBadge}>
+                  <Ionicons name="card-outline" size={18} color={INK2} />
+                </View>
+                <View style={styles.rankInfo}>
+                  <Text style={styles.rankName}>{p.label}</Text>
+                  <Text style={styles.rankSub}>{p.count} venda{p.count !== 1 ? 's' : ''}</Text>
+                </View>
+                <Text style={styles.rankRevenue}>{formatCurrency(p.revenue)}</Text>
               </View>
             ))
           )}

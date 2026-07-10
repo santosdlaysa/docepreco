@@ -6,6 +6,8 @@ import { formatBRL, formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
 
+const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
+
 export function SalesPage({ toast }: { toast: ToastFn }) {
   const [sales, setSales] = useState<Sale[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -74,6 +76,7 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {s.quantitySold}× · {formatDate(s.saleDate)}
+                  {s.paymentMethod ? ` · ${PAYMENT_LABEL[s.paymentMethod] || s.paymentMethod}` : ''}
                   {s.notes ? ` · ${s.notes}` : ''}
                 </p>
               </div>

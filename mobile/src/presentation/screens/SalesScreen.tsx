@@ -44,6 +44,8 @@ const SHADOW = {
 const fmtCurrency = (v: number) =>
   v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
+
 type Section = { date: string; label: string; data: Sale[]; total: number };
 
 export const SalesScreen: React.FC = () => {
@@ -213,7 +215,10 @@ export const SalesScreen: React.FC = () => {
               </View>
               <View style={st.gt}>
                 <Text style={st.gtB}>{item.recipeName}</Text>
-                <Text style={st.gtS}>{item.quantitySold} un × {fmtCurrency(item.salePrice)}</Text>
+                <Text style={st.gtS}>
+                  {item.quantitySold} un × {fmtCurrency(item.salePrice)}
+                  {item.paymentMethod ? ` · ${PAYMENT_LABEL[item.paymentMethod] || item.paymentMethod}` : ''}
+                </Text>
                 {item.orderId ? (
                   <View style={st.orderBadge}>
                     <Ionicons name="calendar-outline" size={11} color="#B04A85" />

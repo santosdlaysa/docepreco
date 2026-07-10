@@ -16,8 +16,23 @@ export interface StoreSettings {
   coverImageUrl?: string | null;
   paymentMethods: string[];
   address?: string | null;
+  city?: string | null;
+  category?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MarketplaceStoreSummary {
+  storeName: string;
+  slug: string;
+  description?: string | null;
+  coverImageUrl?: string | null;
+  acceptsDelivery: boolean;
+  acceptsPickup: boolean;
+  minOrderValue?: number | null;
+  deliveryFee?: number | null;
+  city?: string | null;
+  category?: string | null;
 }
 
 export interface StoreProduct {
@@ -64,8 +79,25 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
     paymentMethods: (row.payment_methods as string[] | null) ?? ['pix', 'cash', 'credit', 'debit'],
     address: (row.address as string | null) ?? null,
+    city: (row.city as string | null) ?? null,
+    category: (row.category as string | null) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
+  };
+}
+
+function mapMarketplaceStore(row: Record<string, unknown>): MarketplaceStoreSummary {
+  return {
+    storeName: row.store_name as string,
+    slug: row.slug as string,
+    description: row.description as string | null,
+    coverImageUrl: (row.cover_image_url as string | null) ?? null,
+    acceptsDelivery: row.accepts_delivery as boolean,
+    acceptsPickup: row.accepts_pickup as boolean,
+    minOrderValue: row.min_order_value != null ? Number(row.min_order_value) : null,
+    deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
+    city: (row.city as string | null) ?? null,
+    category: (row.category as string | null) ?? null,
   };
 }
 
@@ -132,6 +164,8 @@ export class PostgresStoreRepository {
     coverImageUrl: string | null;
     paymentMethods: string[];
     address: string | null;
+    city: string | null;
+    category: string | null;
   }>): Promise<StoreSettings> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -147,6 +181,8 @@ export class PostgresStoreRepository {
     if ('coverImageUrl' in data)           { fields.push(`cover_image_url = $${idx++}`); values.push(data.coverImageUrl ?? null); }
     if (data.paymentMethods !== undefined)  { fields.push(`payment_methods = $${idx++}`); values.push(JSON.stringify(data.paymentMethods)); }
     if ('address' in data)                 { fields.push(`address = $${idx++}`);          values.push(data.address ?? null); }
+    if ('city' in data)                    { fields.push(`city = $${idx++}`);             values.push(data.city ?? null); }
+    if ('category' in data)                { fields.push(`category = $${idx++}`);         values.push(data.category ?? null); }
 
     fields.push(`updated_at = NOW()`);
     values.push(userId);
@@ -160,6 +196,35 @@ export class PostgresStoreRepository {
       return this.getSettings(userId);
     }
     return mapSettings(result.rows[0]);
+  }
+
+  async listMarketplaceStores(filters: { search?: string; page: number; limit: number }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
+    const search = filters.search?.trim() || null;
+    const limit = Math.min(Math.max(filters.limit, 1), 50);
+    const offset = Math.max(filters.page - 1, 0) * limit;
+
+    const [rows, count] = await Promise.all([
+      pool.query(
+        `SELECT store_name, slug, description, cover_image_url,
+                accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
+                city, category
+         FROM store_settings
+         WHERE active = TRUE
+           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
+         ORDER BY store_name ASC
+         LIMIT $2 OFFSET $3`,
+        [search, limit, offset]
+      ),
+      pool.query(
+        `SELECT COUNT(*)::int AS total
+         FROM store_settings
+         WHERE active = TRUE
+           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')`,
+        [search]
+      ),
+    ]);
+
+    return { stores: rows.rows.map(mapMarketplaceStore), total: count.rows[0].total };
   }
 
   async getProducts(userId: string): Promise<StoreProduct[]> {

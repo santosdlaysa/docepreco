@@ -29,4 +29,6 @@ export interface StoreSettings {
   coverImageUrl?: string;
   paymentMethods: PaymentMethodType[];
   address?: string;
+  city?: string;
+  category?: string;
 }

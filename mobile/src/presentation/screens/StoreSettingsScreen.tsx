@@ -71,6 +71,7 @@ export const StoreSettingsScreen: React.FC = () => {
   const [storeName, setStoreName] = useState('');
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
+  const [city, setCity] = useState('');
   const [acceptsDelivery, setAcceptsDelivery] = useState(true);
   const [acceptsPickup, setAcceptsPickup] = useState(true);
   const [minOrderText, setMinOrderText] = useState('');
@@ -87,6 +88,7 @@ export const StoreSettingsScreen: React.FC = () => {
         setStoreName(s.storeName);
         setDescription(s.description ?? '');
         setAddress(s.address ?? '');
+        setCity(s.city ?? '');
         setAcceptsDelivery(s.acceptsDelivery);
         setAcceptsPickup(s.acceptsPickup);
         setMinOrderText(formatMoney(s.minOrderValue ?? 0));
@@ -138,6 +140,7 @@ export const StoreSettingsScreen: React.FC = () => {
         storeName: storeName.trim(),
         description: description.trim() || undefined,
         address: address.trim() || undefined,
+        city: city.trim() || undefined,
         acceptsDelivery,
         acceptsPickup,
         minOrderValue: parseMoney(minOrderText) || undefined,
@@ -229,6 +232,23 @@ export const StoreSettingsScreen: React.FC = () => {
             placeholderTextColor={INK3}
             returnKeyType="next"
           />
+
+          {/* ── City ── */}
+          <Text style={st.label}>Cidade (opcional)</Text>
+          <TextInput
+            style={st.input}
+            value={city}
+            onChangeText={setCity}
+            placeholder="Ex: São Paulo"
+            placeholderTextColor={INK3}
+            returnKeyType="next"
+          />
+          <View style={st.slugCard}>
+            <Ionicons name="storefront-outline" size={18} color="#2BA7DD" />
+            <Text style={st.slugText}>
+              Toda loja ativa aparece automaticamente na vitrine de lojas do DocePreço. A cidade ajuda o cliente a te encontrar.
+            </Text>
+          </View>
 
           {/* ── Min order ── */}
           <Text style={st.label}>Valor mínimo de pedido (opcional)</Text>

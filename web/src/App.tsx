@@ -4,6 +4,7 @@ import { DownloadPage } from './pages/DownloadPage';
 import AdminApp from './admin/AdminApp';
 import UserApp from './user/UserApp';
 import { LojaPage } from './pages/LojaPage';
+import { LojasPage } from './pages/LojasPage';
 
 export default function App() {
   return (
@@ -13,6 +14,7 @@ export default function App() {
       <Route path="/app" element={<UserApp />} />
       <Route path="/app/:slug" element={<UserApp />} />
       <Route path="/admin" element={<AdminApp />} />
+      <Route path="/lojas" element={<LojasPage />} />
       <Route path="/loja/:slug" element={<LojaPage />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

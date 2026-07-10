@@ -21,6 +21,8 @@ type PeriodId = (typeof PERIODS)[number]['id'];
 
 const PINK = '#e91e8c';
 
+const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
+
 /** Aritmética de calendário sem deslocamento de fuso (entrada/saída YYYY-MM-DD). */
 function shiftDay(iso: string, n: number): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -115,6 +117,20 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
   const topProducts = [...productMap.values()].sort((a, b) => b.revenue - a.revenue).slice(0, 5);
   const topMax = topProducts[0]?.revenue || 1;
 
+  // Vendas por forma de pagamento (mês)
+  const paymentMap = new Map<string, { count: number; revenue: number }>();
+  monthSales.forEach(s => {
+    const method = s.paymentMethod || 'nao_informado';
+    const cur = paymentMap.get(method) || { count: 0, revenue: 0 };
+    cur.count += 1;
+    cur.revenue += s.totalRevenue || 0;
+    paymentMap.set(method, cur);
+  });
+  const paymentBreakdown = [...paymentMap.entries()]
+    .map(([method, d]) => ({ method, label: PAYMENT_LABEL[method] || 'Não informado', ...d }))
+    .sort((a, b) => b.revenue - a.revenue);
+  const paymentMax = paymentBreakdown[0]?.revenue || 1;
+
   // ── Filtro "Vendas por receita" (receita + período) ──
   const recipeOptions = Array.from(
     sales.reduce((m, s) => {
@@ -176,6 +192,22 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
       <td>${r.name}</td><td>${r.q} un</td>
       <td style="text-align:right;font-weight:600;color:#E91E63">${formatBRL(r.r)}</td></tr>`).join('');
 
+    // Vendas por forma de pagamento (geral)
+    const paymentMapAll = new Map<string, { count: number; revenue: number }>();
+    sales.forEach(s => {
+      const method = s.paymentMethod || 'nao_informado';
+      const cur = paymentMapAll.get(method) || { count: 0, revenue: 0 };
+      cur.count += 1;
+      cur.revenue += s.totalRevenue || 0;
+      paymentMapAll.set(method, cur);
+    });
+    const paymentAll = [...paymentMapAll.entries()]
+      .map(([method, d]) => ({ label: PAYMENT_LABEL[method] || 'Não informado', ...d }))
+      .sort((a, b) => b.revenue - a.revenue);
+    const paymentRows = paymentAll.map(p => `
+      <tr><td>${p.label}</td><td>${p.count} venda${p.count !== 1 ? 's' : ''}</td>
+      <td style="text-align:right;font-weight:600;color:#E91E63">${formatBRL(p.revenue)}</td></tr>`).join('');
+
     const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Relatório DocePreço</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 32px; color: #333; }
@@ -217,6 +249,12 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
         ${top.length === 0
           ? '<p style="color:#aaa">Nenhuma venda registrada.</p>'
           : `<table><thead><tr><th>#</th><th>Receita</th><th>Qtd.</th><th style="text-align:right">Faturamento</th></tr></thead><tbody>${recipeRows}</tbody></table>`}
+      </div>
+      <div class="section">
+        <h2>Vendas por forma de pagamento</h2>
+        ${paymentAll.length === 0
+          ? '<p style="color:#aaa">Nenhuma venda registrada.</p>'
+          : `<table><thead><tr><th>Forma de pagamento</th><th>Qtd. vendas</th><th style="text-align:right">Faturamento</th></tr></thead><tbody>${paymentRows}</tbody></table>`}
       </div>
       <div class="footer">DocePreço · relatório gerado automaticamente</div>
       </body></html>`;
@@ -386,6 +424,34 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
             </div>
           </div>
 
+          {/* ── Por forma de pagamento (mês) ── */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+              <Receipt size={16} className="text-gray-400" />
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">Vendas por forma de pagamento (mês)</p>
+            </div>
+            {paymentBreakdown.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-10">Sem vendas neste mês.</p>
+            ) : (
+              <div className="p-3 space-y-2.5">
+                {paymentBreakdown.map(p => (
+                  <div key={p.method} className="flex items-center gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{p.label}</p>
+                        <span className="text-sm font-semibold text-green-600 dark:text-green-400 shrink-0">{formatBRL(p.revenue)}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
+                        <div className="h-full rounded-full bg-primary-400" style={{ width: `${Math.max(8, (p.revenue / paymentMax) * 100)}%` }} />
+                      </div>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{p.count} venda{p.count !== 1 ? 's' : ''}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* ── Vendas recentes ── */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
@@ -400,7 +466,10 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                   <div key={s.id} className="flex items-center gap-3 px-4 py-3">
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-gray-900 dark:text-white truncate">{s.recipeName}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{s.quantitySold}× · {formatDate(s.saleDate)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {s.quantitySold}× · {formatDate(s.saleDate)}
+                        {s.paymentMethod ? ` · ${PAYMENT_LABEL[s.paymentMethod] || s.paymentMethod}` : ''}
+                      </p>
                     </div>
                     <span className="font-semibold text-green-600 dark:text-green-400">{formatBRL(s.totalRevenue)}</span>
                   </div>

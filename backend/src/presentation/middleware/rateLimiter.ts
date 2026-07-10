@@ -23,3 +23,12 @@ export const resetLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, error: 'Muitas tentativas. Tente novamente em alguns minutos.' },
 });
+
+/** Limite leve para a listagem pública de lojas (vitrine) — evita scraping em massa, sem afetar uso normal. */
+export const publicListLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitas requisições. Tente novamente em instantes.' },
+});

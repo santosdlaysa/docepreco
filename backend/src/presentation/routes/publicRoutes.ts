@@ -2,9 +2,12 @@ import { Router, Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
 import { computeDiscountAmount, DiscountType } from '../../domain/utils/discount';
+import { publicListLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
+const storeRepo = new PostgresStoreRepository();
 
 router.get('/stats', async (_req: Request, res: Response) => {
   try {
@@ -17,6 +20,19 @@ router.get('/stats', async (_req: Request, res: Response) => {
   } catch (error) {
     console.error('[Public] stats error:', error);
     res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+router.get('/stores', publicListLimiter, async (req: Request, res: Response) => {
+  try {
+    const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const page = Math.max(Number(req.query.page) || 1, 1);
+    const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
+    const { stores, total } = await storeRepo.listMarketplaceStores({ search, page, limit });
+    res.json({ success: true, data: { stores, page, limit, total } });
+  } catch (error) {
+    console.error('[Public Stores] list error:', error);
+    res.status(500).json({ success: false, error: 'Erro interno' });
   }
 });
 

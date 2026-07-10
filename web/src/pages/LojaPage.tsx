@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
+import { fmt, initials } from '../utils/format';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -34,13 +35,6 @@ const PAYMENT_METHODS: Array<{ key: string; label: string; emoji: string }> = [
   { key: 'debit', label: 'Débito', emoji: '💳' },
 ];
 const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };
-
-const fmt = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-function initials(name: string) {
-  return name.split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-}
 
 function ProductInitial({ name }: { name: string }) {
   const colors = [
@@ -425,6 +419,18 @@ export function LojaPage() {
       <div className="min-h-screen bg-[#F5F5F7]">
         {/* Header estilo delivery */}
         <div className="max-w-lg mx-auto">
+          {/* Barra de volta ao diretório de lojas */}
+          <div className="px-4 pt-3">
+            <Link
+              to="/lojas"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 bg-white rounded-full px-3 py-1.5 shadow-sm active:scale-95 transition-transform"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+              </svg>
+              Ver todas as lojas
+            </Link>
+          </div>
           {/* Banner */}
           <div className="relative h-40 bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] overflow-hidden">
             {store.coverImageUrl ? (
