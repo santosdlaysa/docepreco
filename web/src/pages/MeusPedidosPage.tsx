@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { fmt, STATUS_LABEL } from '../utils/format';
 import { BottomNav } from '../components/BottomNav';
+import { getCustomerProfile, saveCustomerProfile, clearCustomerProfile } from '../utils/customerProfile';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
-const PHONE_KEY = 'dpeco_customer_phone';
 
 interface CustomerOrderItem {
   recipeName: string;
@@ -33,7 +33,7 @@ export function MeusPedidosPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const saved = localStorage.getItem(PHONE_KEY);
+    const saved = getCustomerProfile().phone;
     if (saved) {
       setPhone(saved);
       setPhoneInput(saved);
@@ -61,12 +61,12 @@ export function MeusPedidosPage() {
       setError('Informe um telefone válido');
       return;
     }
-    localStorage.setItem(PHONE_KEY, phoneInput.trim());
+    saveCustomerProfile({ phone: phoneInput.trim() });
     setPhone(phoneInput.trim());
   };
 
   const handleLogout = () => {
-    localStorage.removeItem(PHONE_KEY);
+    clearCustomerProfile();
     setPhone('');
     setPhoneInput('');
     setOrders([]);

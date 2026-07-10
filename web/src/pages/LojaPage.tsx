@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { fmt, initials, STATUS_LABEL } from '../utils/format';
+import { getCustomerProfile, saveCustomerProfile } from '../utils/customerProfile';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -197,7 +198,15 @@ export function LojaPage() {
           try {
             const saved = localStorage.getItem(CUSTOMER_KEY(slug!));
             const customer = saved ? JSON.parse(saved) : null;
-            setForm(f => ({ ...f, deliveryType: defaultType, paymentMethod: defaultPayment, clientName: customer?.name ?? '', clientPhone: customer?.phone ?? '', deliveryAddress: customer?.address ?? '' }));
+            const profile = getCustomerProfile();
+            setForm(f => ({
+              ...f,
+              deliveryType: defaultType,
+              paymentMethod: defaultPayment,
+              clientName: customer?.name ?? profile.name ?? '',
+              clientPhone: customer?.phone ?? profile.phone ?? '',
+              deliveryAddress: customer?.address ?? profile.address ?? '',
+            }));
             const orders = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
             setSavedOrders(orders);
           } catch {
@@ -328,6 +337,7 @@ export function LojaPage() {
       // Salvar cliente e pedido no localStorage
       try {
         localStorage.setItem(CUSTOMER_KEY(slug!), JSON.stringify({ name: form.clientName.trim(), phone: form.clientPhone.trim(), address: form.deliveryAddress.trim() }));
+        saveCustomerProfile({ name: form.clientName.trim(), phone: form.clientPhone.trim(), address: form.deliveryAddress.trim() });
         const newOrder: SavedOrder = {
           orderId: json.data.orderId,
           orderNumber: json.data.orderNumber ?? null,
