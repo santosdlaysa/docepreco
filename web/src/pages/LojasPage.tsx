@@ -301,6 +301,7 @@ export function LojasPage() {
         <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5 -mx-4 px-4">
           {FOOD_CATEGORIES.map(cat => {
             const active = selectedCategory === cat.key;
+            const Icon = cat.icon;
             return (
               <button
                 key={cat.key}
@@ -311,7 +312,7 @@ export function LojasPage() {
                     : 'bg-white text-gray-500 shadow-sm'
                 }`}
               >
-                <span>{cat.emoji}</span>
+                <Icon size={14} strokeWidth={2.5} className={active ? 'text-white' : 'text-[#EA4B92]'} />
                 <span>{cat.label}</span>
               </button>
             );
