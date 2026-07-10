@@ -125,7 +125,7 @@ export function SaleForm({
   const [price, setPrice] = useState('');
   const [date, setDate] = useState(todayISO());
   const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'cartao' | 'pix'>('dinheiro');
+  const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'credito' | 'debito' | 'pix'>('dinheiro');
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
@@ -197,9 +197,10 @@ export function SaleForm({
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
           </FormField>
           <FormField label="Pagamento">
-            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as 'dinheiro' | 'cartao' | 'pix')} className={inputClass}>
+            <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as 'dinheiro' | 'credito' | 'debito' | 'pix')} className={inputClass}>
               <option value="dinheiro">Dinheiro</option>
-              <option value="cartao">Cartão</option>
+              <option value="credito">Crédito</option>
+              <option value="debito">Débito</option>
               <option value="pix">PIX</option>
             </select>
           </FormField>

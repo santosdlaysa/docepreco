@@ -13,7 +13,7 @@ import { parseLocaleNumber } from '../number';
 const fmtDateTime = (iso: string) =>
   new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-const METHOD_LABEL: Record<string, string> = { dinheiro: 'Dinheiro', cartao: 'Cartão', pix: 'PIX', outros: 'Outros' };
+const METHOD_LABEL: Record<string, string> = { dinheiro: 'Dinheiro', cartao: 'Cartão', credito: 'Crédito', debito: 'Débito', pix: 'PIX', outros: 'Outros' };
 
 export function CashPage({ toast }: { toast: ToastFn }) {
   const [session, setSession] = useState<CashSession | null>(null);
@@ -96,10 +96,14 @@ export function CashPage({ toast }: { toast: ToastFn }) {
           </div>
 
           {/* Por forma de pagamento */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <MethodCard icon={Banknote} label="Dinheiro" value={session.byMethod.dinheiro} color="text-green-600" bg="bg-green-50 dark:bg-green-900/30" />
-            <MethodCard icon={CreditCard} label="Cartão" value={session.byMethod.cartao} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
+            <MethodCard icon={CreditCard} label="Crédito" value={session.byMethod.credito} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
+            <MethodCard icon={CreditCard} label="Débito" value={session.byMethod.debito} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
             <MethodCard icon={QrCode} label="PIX" value={session.byMethod.pix} color="text-primary-600" bg="bg-primary-50 dark:bg-primary-900/30" />
+            {session.byMethod.cartao > 0 && (
+              <MethodCard icon={CreditCard} label="Cartão" value={session.byMethod.cartao} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
+            )}
           </div>
 
           {/* Movimentos */}
@@ -293,8 +297,10 @@ function CloseCashModal({ session, toast, onClose, onDone }: { session: CashSess
         <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 space-y-1 text-sm">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Recebido nas vendas</p>
           <Row label="Dinheiro" value={formatBRL(session.byMethod.dinheiro)} />
-          <Row label="Cartão" value={formatBRL(session.byMethod.cartao)} />
+          <Row label="Crédito" value={formatBRL(session.byMethod.credito)} />
+          <Row label="Débito" value={formatBRL(session.byMethod.debito)} />
           <Row label="PIX" value={formatBRL(session.byMethod.pix)} />
+          {session.byMethod.cartao > 0 && <Row label="Cartão" value={formatBRL(session.byMethod.cartao)} />}
           {session.byMethod.outros > 0 && <Row label="Outros" value={formatBRL(session.byMethod.outros)} />}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
             <Row label="Total recebido" value={formatBRL(session.salesTotal)} bold />

@@ -16,7 +16,7 @@ async function buildSessionSummary(row: Record<string, any>, includeSales: boole
     [sessionId]
   );
 
-  const byMethod: Record<string, number> = { dinheiro: 0, cartao: 0, pix: 0, outros: 0 };
+  const byMethod: Record<string, number> = { dinheiro: 0, cartao: 0, credito: 0, debito: 0, pix: 0, outros: 0 };
   let salesTotal = 0;
   for (const s of salesRes.rows) {
     const v = parseFloat(s.total_revenue);

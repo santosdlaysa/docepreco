@@ -54,7 +54,8 @@ const THUMB_COLORS = ['#5E3A23', '#8B5E3C', '#EA4B92', '#F9C74F', '#90BE6D', '#7
 const PAYMENT_METHODS: { key: PaymentMethod; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { key: 'pix', icon: 'qr-code-outline', label: 'Pix' },
   { key: 'dinheiro', icon: 'cash-outline', label: 'Dinheiro' },
-  { key: 'cartao', icon: 'card-outline', label: 'Cartão' },
+  { key: 'credito', icon: 'card-outline', label: 'Crédito' },
+  { key: 'debito', icon: 'card-outline', label: 'Débito' },
 ];
 
 const fmtCurrency = (v: number) =>

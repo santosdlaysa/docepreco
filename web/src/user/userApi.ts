@@ -151,7 +151,7 @@ export interface CalculationResult {
   subRecipesCost: number;
 }
 
-export type PaymentMethod = 'dinheiro' | 'cartao' | 'pix';
+export type PaymentMethod = 'dinheiro' | 'cartao' | 'credito' | 'debito' | 'pix';
 
 export interface Sale {
   id: string;
@@ -200,7 +200,7 @@ export interface CashSession {
   notes: string | null;
   salesTotal: number;
   salesCount: number;
-  byMethod: { dinheiro: number; cartao: number; pix: number; outros: number };
+  byMethod: { dinheiro: number; cartao: number; credito: number; debito: number; pix: number; outros: number };
   sangriaTotal: number;
   suprimentoTotal: number;
   expectedCash: number;

@@ -13,8 +13,8 @@ function salePaymentMethod(order: Order): PaymentMethod | null {
   switch (method) {
     case 'pix': return 'pix';
     case 'cash': return 'dinheiro';
-    case 'credit':
-    case 'debit': return 'cartao';
+    case 'credit': return 'credito';
+    case 'debit': return 'debito';
     default: return null;
   }
 }
