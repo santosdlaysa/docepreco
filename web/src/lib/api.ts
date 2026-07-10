@@ -319,6 +319,36 @@ export interface UserStoreProduct {
   updatedAt: string;
 }
 
+export interface AdminStore {
+  id: string;
+  storeName: string;
+  slug: string;
+  active: boolean;
+  logoUrl: string | null;
+  city: string | null;
+  category: string | null;
+  acceptsDelivery: boolean;
+  acceptsPickup: boolean;
+  createdAt: string;
+  updatedAt: string;
+  userId: string;
+  companyName: string;
+  email: string;
+  phone: string | null;
+  isPremium: boolean;
+  planTier: 'free' | 'premium' | 'master';
+  productCount: number;
+}
+
+export interface StoresResponse {
+  stores: AdminStore[];
+  total: number;
+  activeCount: number;
+  inactiveCount: number;
+  page: number;
+  limit: number;
+}
+
 // ── Endpoints ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -355,6 +385,14 @@ export const api = {
     if (params.lastSeenDays != null) q.set('lastSeenDays', String(params.lastSeenDays));
     if (params.createdDays != null) q.set('createdDays', String(params.createdDays));
     return req<UsersResponse>(`/admin/users?${q}`);
+  },
+
+  listStores: (params: { search?: string; page?: number; active?: boolean | null } = {}) => {
+    const q = new URLSearchParams();
+    if (params.search) q.set('search', params.search);
+    if (params.page) q.set('page', String(params.page));
+    q.set('active', params.active == null ? 'all' : String(params.active));
+    return req<StoresResponse>(`/admin/stores?${q}`);
   },
 
   getUser: (id: string) => req<AdminUserDetail>(`/admin/users/${id}`),
