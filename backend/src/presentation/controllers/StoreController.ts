@@ -34,22 +34,26 @@ export class StoreController {
   async updateSettings(req: AuthRequest, res: Response): Promise<void> {
     try {
       const b = req.body ?? {};
-      const settings = await repo.updateSettings(req.userId!, {
-        active:          b.active,
-        storeName:       b.storeName,
-        description:     b.description,
-        acceptsDelivery: b.acceptsDelivery,
-        acceptsPickup:   b.acceptsPickup,
-        minOrderValue:   b.minOrderValue,
-        deliveryFee:     b.deliveryFee,
-        coverImageUrl:   b.coverImageUrl,
-        paymentMethods:  Array.isArray(b.paymentMethods) ? b.paymentMethods : undefined,
-        address:         b.address,
-        city:            b.city,
-        category:        b.category,
-        useBusinessHours: b.useBusinessHours,
-        businessHours:    Array.isArray(b.businessHours) ? b.businessHours : undefined,
-      });
+      // Só inclui os campos presentes no body — um update parcial (ex.: só `active`)
+      // não pode apagar imagem, logo, endereço etc. (o repo interpreta chave presente
+      // com valor null/undefined como "limpar o campo").
+      const patch: Record<string, unknown> = {};
+      if (b.active !== undefined)           patch.active          = b.active;
+      if (b.storeName !== undefined)        patch.storeName       = b.storeName;
+      if ('description' in b)               patch.description     = b.description ?? null;
+      if (b.acceptsDelivery !== undefined)  patch.acceptsDelivery = b.acceptsDelivery;
+      if (b.acceptsPickup !== undefined)    patch.acceptsPickup   = b.acceptsPickup;
+      if ('minOrderValue' in b)             patch.minOrderValue   = b.minOrderValue ?? null;
+      if ('deliveryFee' in b)               patch.deliveryFee     = b.deliveryFee ?? null;
+      if ('coverImageUrl' in b)             patch.coverImageUrl   = b.coverImageUrl ?? null;
+      if ('logoUrl' in b)                   patch.logoUrl         = b.logoUrl ?? null;
+      if (Array.isArray(b.paymentMethods))  patch.paymentMethods  = b.paymentMethods;
+      if ('address' in b)                   patch.address         = b.address ?? null;
+      if ('city' in b)                      patch.city            = b.city ?? null;
+      if ('category' in b)                  patch.category        = b.category ?? null;
+      if (b.useBusinessHours !== undefined) patch.useBusinessHours = b.useBusinessHours;
+      if (Array.isArray(b.businessHours))   patch.businessHours   = b.businessHours;
+      const settings = await repo.updateSettings(req.userId!, patch as any);
       if ('address' in b || 'city' in b) {
         refreshCoordinates(req.userId!, settings.address ?? null, settings.city ?? null);
       }

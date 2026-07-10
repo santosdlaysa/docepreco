@@ -44,6 +44,8 @@ export interface StoreSettings {
   minOrderValue?: number;
   deliveryFee?: number;
   coverImageUrl?: string;
+  /** Logo/foto de perfil da loja — aparece nas listas do marketplace. */
+  logoUrl?: string;
   paymentMethods: PaymentMethodType[];
   address?: string;
   city?: string;

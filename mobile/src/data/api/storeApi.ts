@@ -3,7 +3,10 @@ import { StoreAddon, StoreProduct, StoreSettings } from '../../domain/entities/S
 
 type ProductInput = Omit<StoreProduct, 'id' | 'createdAt' | 'updatedAt'>;
 type AddonInput = Pick<StoreAddon, 'name' | 'price'> & Partial<Pick<StoreAddon, 'available'>>;
-type SettingsInput = Partial<Pick<StoreSettings, 'active' | 'storeName' | 'description' | 'acceptsDelivery' | 'acceptsPickup' | 'minOrderValue' | 'deliveryFee' | 'coverImageUrl' | 'paymentMethods' | 'address' | 'city' | 'category' | 'useBusinessHours' | 'businessHours'>>;
+type SettingsInput = Partial<Pick<StoreSettings, 'active' | 'storeName' | 'description' | 'acceptsDelivery' | 'acceptsPickup' | 'minOrderValue' | 'deliveryFee' | 'coverImageUrl' | 'paymentMethods' | 'address' | 'city' | 'category' | 'useBusinessHours' | 'businessHours'>> & {
+  /** null remove a logo no servidor (undefined = não mexe). */
+  logoUrl?: string | null;
+};
 
 export const storeApi = {
   getProducts: async (): Promise<StoreProduct[]> => {

@@ -15,6 +15,7 @@ export interface StoreSettings {
   minOrderValue?: number | null;
   deliveryFee?: number | null;
   coverImageUrl?: string | null;
+  logoUrl?: string | null;
   paymentMethods: string[];
   address?: string | null;
   city?: string | null;
@@ -33,6 +34,7 @@ export interface MarketplaceStoreSummary {
   slug: string;
   description?: string | null;
   coverImageUrl?: string | null;
+  logoUrl?: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue?: number | null;
@@ -96,6 +98,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     minOrderValue: row.min_order_value ? Number(row.min_order_value) : null,
     deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
+    logoUrl: (row.logo_url as string | null) ?? null,
     paymentMethods: (row.payment_methods as string[] | null) ?? ['pix', 'cash', 'credit', 'debit'],
     address: (row.address as string | null) ?? null,
     city: (row.city as string | null) ?? null,
@@ -116,6 +119,7 @@ function mapMarketplaceStore(row: Record<string, unknown>): MarketplaceStoreSumm
     slug: row.slug as string,
     description: row.description as string | null,
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
+    logoUrl: (row.logo_url as string | null) ?? null,
     acceptsDelivery: row.accepts_delivery as boolean,
     acceptsPickup: row.accepts_pickup as boolean,
     minOrderValue: row.min_order_value != null ? Number(row.min_order_value) : null,
@@ -199,6 +203,7 @@ export class PostgresStoreRepository {
     minOrderValue: number | null;
     deliveryFee: number | null;
     coverImageUrl: string | null;
+    logoUrl: string | null;
     paymentMethods: string[];
     address: string | null;
     city: string | null;
@@ -218,6 +223,7 @@ export class PostgresStoreRepository {
     if ('minOrderValue' in data)           { fields.push(`min_order_value = $${idx++}`);  values.push(data.minOrderValue ?? null); }
     if ('deliveryFee' in data)             { fields.push(`delivery_fee = $${idx++}`);     values.push(data.deliveryFee ?? null); }
     if ('coverImageUrl' in data)           { fields.push(`cover_image_url = $${idx++}`); values.push(data.coverImageUrl ?? null); }
+    if ('logoUrl' in data)                 { fields.push(`logo_url = $${idx++}`);        values.push(data.logoUrl ?? null); }
     if (data.paymentMethods !== undefined)  { fields.push(`payment_methods = $${idx++}`); values.push(JSON.stringify(data.paymentMethods)); }
     if ('address' in data)                 { fields.push(`address = $${idx++}`);          values.push(data.address ?? null); }
     if ('city' in data)                    { fields.push(`city = $${idx++}`);             values.push(data.city ?? null); }
@@ -274,7 +280,7 @@ export class PostgresStoreRepository {
     // distance_km via fórmula de Haversine; lojas sem coordenadas ficam por último (NULLS LAST).
     const rows = await pool.query(
       `SELECT * FROM (
-         SELECT store_name, slug, description, cover_image_url,
+         SELECT store_name, slug, description, cover_image_url, logo_url,
                 accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
                 city, category, active, use_business_hours, business_hours,
                 CASE WHEN $4::double precision IS NOT NULL AND latitude IS NOT NULL AND longitude IS NOT NULL THEN

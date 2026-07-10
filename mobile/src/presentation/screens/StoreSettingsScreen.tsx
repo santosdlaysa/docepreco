@@ -147,6 +147,7 @@ export const StoreSettingsScreen: React.FC = () => {
     }
   };
 
+
   const togglePaymentMethod = (key: PaymentMethodType) => {
     setPaymentMethods(prev =>
       prev.includes(key) ? prev.filter(m => m !== key) : [...prev, key]

@@ -6,7 +6,8 @@ interface StoreCardProps {
   storeName: string;
   slug: string;
   description: string | null;
-  coverImageUrl: string | null;
+  /** Logo/foto de perfil da loja — usada como miniatura na lista. */
+  logoUrl?: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue: number | null;
@@ -29,12 +30,12 @@ const COLORS: Array<[string, string]> = [
   ['#D1FAE5', '#059669'],
 ];
 
-function StoreInitial({ name, large }: { name: string; large?: boolean }) {
+function StoreInitial({ name }: { name: string }) {
   const idx = name.charCodeAt(0) % COLORS.length;
   const [bg, fg] = COLORS[idx];
   return (
     <div
-      className={`w-full h-full flex items-center justify-center font-black ${large ? 'text-2xl' : 'text-base'}`}
+      className="w-full h-full flex items-center justify-center text-lg font-black"
       style={{ backgroundColor: bg, color: fg }}
     >
       {initials(name)}
@@ -46,7 +47,7 @@ export function StoreCard({
   storeName,
   slug,
   description,
-  coverImageUrl,
+  logoUrl,
   acceptsDelivery,
   acceptsPickup,
   minOrderValue,
@@ -59,76 +60,57 @@ export function StoreCard({
   return (
     <Link
       to={`/loja/${slug}`}
-      className="block bg-white rounded-3xl shadow-sm overflow-hidden active:scale-[0.98] transition-transform"
+      className="block bg-white rounded-2xl shadow-sm p-3.5 active:scale-[0.98] transition-transform"
     >
-      {/* Capa com chips sobrepostos */}
-      <div className="relative h-32 w-full overflow-hidden">
-        {coverImageUrl ? (
-          <img src={coverImageUrl} alt={storeName} className="w-full h-full object-cover" />
-        ) : (
-          <StoreInitial name={storeName} large />
-        )}
-        {/* leve escurecimento para os chips lerem bem */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/15 to-transparent" />
-
-        {distanceKm != null && (
-          <span className="absolute top-3 left-3 flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-full">
-            <MapPin size={11} strokeWidth={2.5} />
-            {fmtDistance(distanceKm)}
-          </span>
-        )}
-        {freeDelivery && (
-          <span className="absolute top-3 right-3 bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-full shadow-sm">
-            Entrega grátis
-          </span>
-        )}
-      </div>
-
-      <div className="px-4 pb-4">
-        {/* Avatar saltando da capa + nome */}
-        <div className="flex items-start gap-3">
-          <div className="w-14 h-14 rounded-2xl overflow-hidden ring-4 ring-white shadow-md -mt-6 flex-shrink-0 relative z-10 bg-white">
+      <div className="flex items-center gap-3.5">
+        {/* Logo da loja (foto de perfil da empresa) */}
+        <div className="w-[68px] h-[68px] rounded-2xl overflow-hidden flex-shrink-0 shadow-sm">
+          {logoUrl ? (
+            <img src={logoUrl} alt={storeName} className="w-full h-full object-cover" />
+          ) : (
             <StoreInitial name={storeName} />
-          </div>
-          <div className="pt-2.5 flex-1 min-w-0">
-            <p className="font-extrabold text-gray-900 text-[15px] leading-tight truncate">
-              {storeName}
-            </p>
-            {city && (
-              <p className="text-[11px] text-gray-400 font-medium mt-0.5 truncate">{city}</p>
-            )}
-          </div>
+          )}
         </div>
 
-        {description && (
-          <p className="text-gray-400 text-[13px] mt-2 line-clamp-1 leading-relaxed">
-            {description}
+        {/* Infos */}
+        <div className="flex-1 min-w-0">
+          <p className="font-extrabold text-gray-900 text-[15px] leading-tight truncate">
+            {storeName}
           </p>
-        )}
+          <p className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium mt-0.5 truncate">
+            {distanceKm != null && (
+              <span className="flex items-center gap-0.5 text-sky-600 font-bold flex-shrink-0">
+                <MapPin size={11} strokeWidth={2.5} />
+                {fmtDistance(distanceKm)}
+              </span>
+            )}
+            {distanceKm != null && city && <span className="text-gray-300">•</span>}
+            {city && <span className="truncate">{city}</span>}
+          </p>
+          {description && (
+            <p className="text-gray-400 text-[12px] mt-1 line-clamp-1 leading-relaxed">
+              {description}
+            </p>
+          )}
 
-        {/* Linha de infos */}
-        <div className="flex items-center gap-2 mt-3 text-[12px] font-semibold text-gray-500 flex-wrap">
-          {acceptsDelivery && (
-            <span
-              className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 ${
-                freeDelivery ? 'text-emerald-600 bg-emerald-50' : 'text-gray-600 bg-gray-50'
-              }`}
-            >
-              <Bike size={13} strokeWidth={2.4} />
-              {freeDelivery ? 'Grátis' : deliveryFee != null ? fmt(deliveryFee) : 'Entrega'}
-            </span>
-          )}
-          {acceptsPickup && (
-            <span className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-gray-600 bg-gray-50">
-              <ShoppingBag size={13} strokeWidth={2.4} />
-              Retirada
-            </span>
-          )}
-          {minOrderValue != null && (
-            <span className="text-[11px] font-medium text-gray-400 ml-auto">
-              Pedido mín. {fmt(minOrderValue)}
-            </span>
-          )}
+          {/* Linha de entrega/retirada */}
+          <div className="flex items-center gap-2.5 mt-1.5 text-[11px] font-bold flex-wrap">
+            {acceptsDelivery && (
+              <span className={`flex items-center gap-1 ${freeDelivery ? 'text-emerald-600' : 'text-[#EA4B92]'}`}>
+                <Bike size={12} strokeWidth={2.4} />
+                {freeDelivery ? 'Grátis' : deliveryFee != null ? fmt(deliveryFee) : 'Entrega'}
+              </span>
+            )}
+            {acceptsPickup && (
+              <span className="flex items-center gap-1 text-[#7C3AED]">
+                <ShoppingBag size={12} strokeWidth={2.4} />
+                Retirada
+              </span>
+            )}
+            {minOrderValue != null && (
+              <span className="font-medium text-gray-400">Mín. {fmt(minOrderValue)}</span>
+            )}
+          </div>
         </div>
       </div>
     </Link>

@@ -74,6 +74,7 @@ import { requestAdConsent } from '../ads';
 import { initializeMobileAds } from '../ads/initMobileAds';
 import { usePremium } from '../context/PremiumContext';
 import { setForceLogout } from '../../data/api/client';
+import { storeApi } from '../../data/api/storeApi';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -320,6 +321,11 @@ export function AppNavigator() {
     } else {
       await companyLogoStorage.remove();
       setCompanyLogoState(null);
+    }
+    // Sincroniza com o servidor: a foto de perfil também é a logo da loja
+    // no marketplace (fire-and-forget; sem loja configurada o backend ignora).
+    if (!demoMode) {
+      storeApi.updateSettings({ logoUrl: logo }).catch(() => {});
     }
   };
 

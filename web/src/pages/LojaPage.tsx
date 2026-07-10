@@ -38,6 +38,7 @@ interface StoreData {
   instagramHandle: string | null;
   deliveryFee: number | null;
   coverImageUrl: string | null;
+  logoUrl: string | null;
   paymentMethods: string[];
   address: string | null;
   products: StoreProduct[];
@@ -615,11 +616,15 @@ export function LojaPage() {
                   </a>
                 )}
               </div>
-              {/* Logo circular */}
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] flex items-center justify-center flex-shrink-0 shadow-lg ring-4 ring-white -mt-12">
-                <span className="text-white font-black text-lg tracking-tight">
-                  {initials(store.storeName)}
-                </span>
+              {/* Logo circular (foto de perfil da empresa) */}
+              <div className="w-16 h-16 rounded-full overflow-hidden bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] flex items-center justify-center flex-shrink-0 shadow-lg ring-4 ring-white -mt-12">
+                {store.logoUrl ? (
+                  <img src={store.logoUrl} alt={store.storeName} className="w-full h-full object-cover" />
+                ) : (
+                  <span className="text-white font-black text-lg tracking-tight">
+                    {initials(store.storeName)}
+                  </span>
+                )}
               </div>
             </div>
 

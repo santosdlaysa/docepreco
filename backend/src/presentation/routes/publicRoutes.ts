@@ -61,7 +61,7 @@ router.get('/customer/orders', publicListLimiter, async (req: Request, res: Resp
     const result = await pool.query(
       `SELECT o.id, o.order_number, o.status, o.total_price, o.items, o.created_at,
               o.delivery_address, o.payment_method,
-              s.store_name, s.slug, s.cover_image_url
+              s.store_name, s.slug, s.cover_image_url, s.logo_url
        FROM orders o
        JOIN store_settings s ON s.user_id = o.user_id
        WHERE o.source = 'online'
@@ -83,7 +83,7 @@ router.get('/customer/orders', publicListLimiter, async (req: Request, res: Resp
         paymentMethod: o.payment_method,
         storeName: o.store_name,
         storeSlug: o.slug,
-        storeImageUrl: o.cover_image_url ?? null,
+        storeImageUrl: o.logo_url ?? o.cover_image_url ?? null,
       })),
     });
   } catch (error) {
@@ -217,6 +217,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         minOrderValue: s.min_order_value ? Number(s.min_order_value) : null,
         deliveryFee: s.delivery_fee ? Number(s.delivery_fee) : null,
         coverImageUrl: s.cover_image_url ?? null,
+        logoUrl: s.logo_url ?? null,
         paymentMethods: s.payment_methods ?? ['pix', 'cash', 'credit', 'debit'],
         address: s.address ?? null,
         phone: u.phone ?? null,

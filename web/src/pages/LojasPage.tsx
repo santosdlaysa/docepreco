@@ -14,6 +14,7 @@ interface StoreListItem {
   slug: string;
   description: string | null;
   coverImageUrl: string | null;
+  logoUrl: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue: number | null;
@@ -492,7 +493,7 @@ export function LojasPage() {
                 storeName={store.storeName}
                 slug={store.slug}
                 description={store.description}
-                coverImageUrl={store.coverImageUrl}
+                logoUrl={store.logoUrl}
                 acceptsDelivery={store.acceptsDelivery}
                 acceptsPickup={store.acceptsPickup}
                 minOrderValue={store.minOrderValue}
