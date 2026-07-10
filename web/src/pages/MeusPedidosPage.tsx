@@ -42,16 +42,22 @@ export function MeusPedidosPage() {
 
   useEffect(() => {
     if (!phone) return;
-    setLoading(true);
-    setError('');
-    fetch(`${API_BASE}/public/customer/orders?phone=${encodeURIComponent(phone)}`)
-      .then(r => r.json())
-      .then(json => {
-        if (json.success) setOrders(json.data);
-        else setError('Não foi possível carregar seus pedidos');
-      })
-      .catch(() => setError('Não foi possível carregar seus pedidos'))
-      .finally(() => setLoading(false));
+    let first = true;
+    const load = () => {
+      if (first) setLoading(true);
+      setError('');
+      fetch(`${API_BASE}/public/customer/orders?phone=${encodeURIComponent(phone)}`)
+        .then(r => r.json())
+        .then(json => {
+          if (json.success) setOrders(json.data);
+          else if (first) setError('Não foi possível carregar seus pedidos');
+        })
+        .catch(() => { if (first) setError('Não foi possível carregar seus pedidos'); })
+        .finally(() => { setLoading(false); first = false; });
+    };
+    load();
+    const id = setInterval(load, 5000);
+    return () => clearInterval(id);
   }, [phone]);
 
   const handleSubmit = (e: React.FormEvent) => {

@@ -235,26 +235,31 @@ export function LojaPage() {
     prevTotal.current = totalItems;
   }, [totalItems]);
 
-  // Buscar status de todos os pedidos ao abrir histórico
+  // Buscar status de todos os pedidos ao abrir histórico, com atualização automática
   useEffect(() => {
     if (step !== 'history' || !slug || savedOrders.length === 0) return;
-    savedOrders.forEach(async o => {
-      try {
-        const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${o.orderId}`);
-        const j = await r.json();
-        if (j.success) {
-          setHistoryStatuses(prev => ({ ...prev, [o.orderId]: j.data.status }));
-          // Pedidos salvos antes do número existir ganham o número vindo da API
-          if (j.data.orderNumber != null && o.orderNumber !== j.data.orderNumber) {
-            setSavedOrders(prev => {
-              const updated = prev.map(s => (s.orderId === o.orderId ? { ...s, orderNumber: j.data.orderNumber } : s));
-              try { localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated)); } catch {}
-              return updated;
-            });
+    const poll = () => {
+      savedOrders.forEach(async o => {
+        try {
+          const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${o.orderId}`);
+          const j = await r.json();
+          if (j.success) {
+            setHistoryStatuses(prev => (prev[o.orderId] === j.data.status ? prev : { ...prev, [o.orderId]: j.data.status }));
+            // Pedidos salvos antes do número existir ganham o número vindo da API
+            if (j.data.orderNumber != null && o.orderNumber !== j.data.orderNumber) {
+              setSavedOrders(prev => {
+                const updated = prev.map(s => (s.orderId === o.orderId ? { ...s, orderNumber: j.data.orderNumber } : s));
+                try { localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated)); } catch {}
+                return updated;
+              });
+            }
           }
-        }
-      } catch {}
-    });
+        } catch {}
+      });
+    };
+    poll();
+    const id = setInterval(poll, 5000);
+    return () => clearInterval(id);
   }, [step, slug, savedOrders]);
 
   // Polling de status do pedido — deve estar aqui (antes de qualquer return condicional)
@@ -281,7 +286,7 @@ export function LojaPage() {
       } catch {}
     };
     poll();
-    const id = setInterval(poll, 20000);
+    const id = setInterval(poll, 5000);
     return () => clearInterval(id);
   }, [step, orderId, slug, orderStatus]);
 
