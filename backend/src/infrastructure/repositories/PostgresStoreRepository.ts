@@ -211,9 +211,10 @@ export class PostgresStoreRepository {
     return mapSettings(result.rows[0]);
   }
 
-  async listMarketplaceStores(filters: { search?: string; category?: string; page: number; limit: number }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
+  async listMarketplaceStores(filters: { search?: string; category?: string; city?: string; page: number; limit: number }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
     const search = filters.search?.trim() || null;
     const category = filters.category?.trim() || null;
+    const city = filters.city?.trim() || null;
     const limit = Math.min(Math.max(filters.limit, 1), 50);
     const offset = Math.max(filters.page - 1, 0) * limit;
 
@@ -227,9 +228,10 @@ export class PostgresStoreRepository {
        WHERE active = TRUE
          AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR category = $2)
+         AND ($3::text IS NULL OR city ILIKE $3)
        ORDER BY store_name ASC
-       LIMIT $3 OFFSET $4`,
-      [search, category, limit, offset]
+       LIMIT $4 OFFSET $5`,
+      [search, category, city ? `%${city}%` : null, limit, offset]
     );
     const openRows = rows.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours }));
 
@@ -238,8 +240,9 @@ export class PostgresStoreRepository {
        FROM store_settings
        WHERE active = TRUE
          AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
-         AND ($2::text IS NULL OR category = $2)`,
-      [search, category]
+         AND ($2::text IS NULL OR category = $2)
+         AND ($3::text IS NULL OR city ILIKE $3)`,
+      [search, category, city ? `%${city}%` : null]
     );
     const total = count.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours })).length;
 

@@ -4,6 +4,8 @@ import { BottomNav } from '../components/BottomNav';
 import { FOOD_CATEGORIES } from '../data/categories';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+const CITY_CACHE_KEY = 'dpeco_detected_city';
+const CITY_CACHE_TTL = 24 * 60 * 60 * 1000;
 
 interface StoreListItem {
   storeName: string;
@@ -24,6 +26,8 @@ export function LojasPage() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [cityFilter, setCityFilter] = useState<string | null>(null);
+  const [locating, setLocating] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -36,16 +40,53 @@ export function LojasPage() {
     return () => clearTimeout(id);
   }, [search]);
 
-  // Reseta a página ao trocar de categoria
+  // Reseta a página ao trocar de categoria ou cidade
   useEffect(() => {
     setPage(1);
-  }, [selectedCategory]);
+  }, [selectedCategory, cityFilter]);
+
+  // Detecta a localização do cliente (uma vez) e pré-filtra pela cidade dele.
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(CITY_CACHE_KEY);
+      if (cached) {
+        const { city, ts } = JSON.parse(cached);
+        if (city && Date.now() - ts < CITY_CACHE_TTL) {
+          setCityFilter(city);
+          return;
+        }
+      }
+    } catch {}
+    if (!navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=10&addressdetails=1`
+          );
+          const j = await r.json();
+          const city: string | undefined =
+            j.address?.city || j.address?.town || j.address?.village || j.address?.municipality;
+          if (city) {
+            setCityFilter(city);
+            localStorage.setItem(CITY_CACHE_KEY, JSON.stringify({ city, ts: Date.now() }));
+          }
+        } catch {}
+        setLocating(false);
+      },
+      () => setLocating(false),
+      { timeout: 8000, maximumAge: 600000 }
+    );
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams({
       search: debouncedSearch,
       category: selectedCategory ?? '',
+      city: cityFilter ?? '',
       page: String(page),
       limit: '20',
     });
@@ -61,10 +102,15 @@ export function LojasPage() {
         if (page === 1) setStores([]);
       })
       .finally(() => setLoading(false));
-  }, [debouncedSearch, selectedCategory, page]);
+  }, [debouncedSearch, selectedCategory, cityFilter, page]);
 
   const handleToggleCategory = (key: string) => {
     setSelectedCategory(prev => (prev === key ? null : key));
+  };
+
+  const clearCityFilter = () => {
+    setCityFilter(null);
+    try { localStorage.removeItem(CITY_CACHE_KEY); } catch {}
   };
 
   return (
@@ -78,6 +124,26 @@ export function LojasPage() {
             <p className="text-gray-400 text-xs">Escolha uma loja para pedir</p>
           </div>
         </div>
+
+        {/* Localização detectada */}
+        {(cityFilter || locating) && (
+          <div className="flex items-center justify-between gap-2 bg-white rounded-full px-3.5 py-2 mb-4 shadow-sm">
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 min-w-0">
+              <svg className="w-3.5 h-3.5 text-[#EA4B92] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              <span className="truncate">
+                {locating ? 'Buscando sua localização...' : `Lojas perto de ${cityFilter}`}
+              </span>
+            </div>
+            {cityFilter && (
+              <button onClick={clearCityFilter} className="text-xs font-semibold text-gray-400 flex-shrink-0">
+                Ver todas
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Busca */}
         <div className="relative mb-4">
@@ -136,6 +202,11 @@ export function LojasPage() {
               </svg>
             </div>
             <p className="text-gray-400 text-sm">Nenhuma loja encontrada</p>
+            {cityFilter && (
+              <button onClick={clearCityFilter} className="text-xs font-semibold text-[#EA4B92]">
+                Ver lojas de outras cidades
+              </button>
+            )}
           </div>
         )}
 

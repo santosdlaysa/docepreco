@@ -28,9 +28,10 @@ router.get('/stores', publicListLimiter, async (req: Request, res: Response) => 
   try {
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
+    const city = typeof req.query.city === 'string' ? req.query.city : undefined;
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
-    const { stores, total } = await storeRepo.listMarketplaceStores({ search, category, page, limit });
+    const { stores, total } = await storeRepo.listMarketplaceStores({ search, category, city, page, limit });
     res.json({ success: true, data: { stores, page, limit, total } });
   } catch (error) {
     console.error('[Public Stores] list error:', error);
