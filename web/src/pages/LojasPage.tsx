@@ -439,7 +439,12 @@ export function LojasPage() {
         {/* Itens das lojas da região */}
         {!loading && featured.length > 0 && stores.length > 0 && (
           <div className="mb-6 mt-2">
-            <h2 className="text-[17px] font-extrabold text-gray-900 mb-3">Destaques</h2>
+            <div className="flex items-center gap-2.5 mb-3">
+              <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#EA4B92] to-[#7C3AED]" />
+              <h2 className="text-[18px] font-black text-gray-900 tracking-tight leading-none">
+                Destaques
+              </h2>
+            </div>
             <div className="flex gap-3 overflow-x-auto scrollbar-hide -mx-4 px-4 pb-1">
               {featured.map(p => (
                 <Link
@@ -475,7 +480,12 @@ export function LojasPage() {
         {/* Lista de lojas */}
         {stores.length > 0 && (
           <div className="flex flex-col gap-3">
-            <h2 className="text-[17px] font-extrabold text-gray-900 -mb-0.5">Nossos restaurantes</h2>
+            <div className="flex items-center gap-2.5 mb-1">
+              <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#EA4B92] to-[#7C3AED]" />
+              <h2 className="text-[18px] font-black text-gray-900 tracking-tight leading-none">
+                Nossos restaurantes
+              </h2>
+            </div>
             {stores.map(store => (
               <StoreCard
                 key={store.slug}
