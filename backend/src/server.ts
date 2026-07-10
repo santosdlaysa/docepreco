@@ -304,7 +304,7 @@ async function bootstrap() {
       try {
         const { pool } = require('./infrastructure/database/connection');
         const result = await pool.query(
-          `UPDATE users SET is_premium = FALSE, premium_platform = NULL
+          `UPDATE users SET is_premium = FALSE, plan_tier = 'free', premium_platform = NULL
            WHERE is_premium = TRUE AND premium_until IS NOT NULL AND premium_until < NOW()
            RETURNING id, company_name`
         );

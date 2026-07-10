@@ -496,6 +496,10 @@ export async function runMigrations() {
     // 'premium' tier once; idempotent thanks to the `plan_tier = 'free'` guard.
     await addColumnIfMissing(client, 'users', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'free'");
     await client.query(`UPDATE users SET plan_tier = 'premium' WHERE is_premium = TRUE AND plan_tier = 'free'`);
+    // Data fix: o cron de expiração zerava is_premium mas deixava plan_tier
+    // sujo ('premium'/'master'), fazendo expirados aparecerem como pagos no
+    // admin. O cron foi corrigido; isto limpa as linhas já afetadas.
+    await client.query(`UPDATE users SET plan_tier = 'free' WHERE is_premium = FALSE AND plan_tier <> 'free'`);
     await addColumnIfMissing(client, 'pix_requests', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'premium'");
     await addColumnIfMissing(client, 'pix_requests', 'mp_payment_id', 'VARCHAR(100) NULL');
     await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code', 'TEXT NULL');
