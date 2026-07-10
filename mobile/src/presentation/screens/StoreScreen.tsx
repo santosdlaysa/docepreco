@@ -14,6 +14,8 @@ import {
   Modal,
   Linking,
   TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -964,7 +966,10 @@ export const StoreScreen: React.FC = () => {
       </Modal>
       {/* ── Modal confirmar entrega ── */}
       <Modal visible={!!deliveryOrder} transparent animationType="fade" onRequestClose={() => setDeliveryOrder(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}
+        >
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 }}>
             {/* Título */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -1062,12 +1067,15 @@ export const StoreScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* ── Modal de item adicional ── */}
       <Modal visible={!!addonModal} transparent animationType="fade" onRequestClose={() => setAddonModal(null)}>
-        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' }}
+        >
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 14 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#FFEDF4', alignItems: 'center', justifyContent: 'center' }}>
@@ -1117,7 +1125,7 @@ export const StoreScreen: React.FC = () => {
               </LinearGradient>
             </TouchableOpacity>
           </View>
-        </View>
+        </KeyboardAvoidingView>
       </Modal>
 
     </SafeAreaView>
