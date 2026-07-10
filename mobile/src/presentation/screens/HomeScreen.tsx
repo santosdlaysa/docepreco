@@ -35,6 +35,8 @@ import { bannerApi, Banner, CarouselBanner, PlanBanner } from '../../data/api/ba
 import { bannerStorage, carouselCache } from '../../data/storage/bannerStorage';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 import { planConfigApi } from '../../data/api/planConfigApi';
+import { orderApi } from '../../data/api/orderApi';
+import { notificationReadStorage } from '../../data/storage/notificationReadStorage';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -71,6 +73,7 @@ export const HomeScreen: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [hasMandatoryAlert, setHasMandatoryAlert] = useState(false);
+  const [hasUnreadOrders, setHasUnreadOrders] = useState(false);
   const [carouselBanners, setCarouselBanners] = useState<CarouselBanner[]>([]);
   const [planBanners, setPlanBanners] = useState<PlanBanner[]>([]);
   const [planBannerIndex, setPlanBannerIndex] = useState(0);
@@ -109,8 +112,14 @@ export const HomeScreen: React.FC = () => {
       storeSettingsApi.getSettings()
         .then(s => setHasMandatoryAlert(getMissingStoreItems(s).length > 0))
         .catch(() => setHasMandatoryAlert(false));
+      orderApi.getAll().then(async all => {
+        const readIds = await notificationReadStorage.getReadIds();
+        const unread = all.some(o => o.source === 'online' && !readIds.includes(`order:${o.id}`));
+        setHasUnreadOrders(unread);
+      }).catch(() => setHasUnreadOrders(false));
     } else {
       setHasMandatoryAlert(false);
+      setHasUnreadOrders(false);
     }
     await Promise.all([
       stApi.getStats().then(setStats).catch(() => {}),
@@ -253,7 +262,7 @@ export const HomeScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <Ionicons name="notifications-outline" size={22} color={INK} />
-              {(banners.length > 0 || hasMandatoryAlert) && (
+              {(banners.length > 0 || hasMandatoryAlert || hasUnreadOrders) && (
                 <View style={[s.bellDot, hasMandatoryAlert && { backgroundColor: '#C0392B' }]} />
               )}
             </TouchableOpacity>

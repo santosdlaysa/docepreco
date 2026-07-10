@@ -21,6 +21,22 @@ import { demoStoreApi } from '../../data/demo/demoApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { usePremium } from '../context/PremiumContext';
 import { getMissingStoreItems, MissingStoreItem } from '../utils/storeSetup';
+import { orderApi } from '../../data/api/orderApi';
+import { Order } from '../../domain/entities/Order';
+import { notificationReadStorage } from '../../data/storage/notificationReadStorage';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+
+const MAX_ORDER_NOTIFICATIONS = 20;
+
+const orderNotifId = (orderId: string) => `order:${orderId}`;
+const bannerNotifId = (bannerId: string) => `banner:${bannerId}`;
+
+const formatOrderTime = (iso: string) => {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return `Hoje às ${time}`;
+  return `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${time}`;
+};
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -50,11 +66,14 @@ export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { isMaster } = usePremium();
   const sApi = isDemoMode() ? demoStoreApi : storeApi;
+  const { formatCurrency } = useCurrencyFormat();
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [missingItems, setMissingItems] = useState<MissingStoreItem[]>([]);
+  const [onlineOrders, setOnlineOrders] = useState<Order[]>([]);
+  const [readIds, setReadIds] = useState<string[]>([]);
 
   const loadData = useCallback(async () => {
     const bannersPromise = bannerApi.getActive().then(async active => {
@@ -67,7 +86,18 @@ export const NotificationsScreen: React.FC = () => {
       ? sApi.getSettings().then(s => setMissingItems(getMissingStoreItems(s))).catch(() => setMissingItems([]))
       : Promise.resolve(setMissingItems([]));
 
-    await Promise.all([bannersPromise, storePromise]);
+    const ordersPromise = isMaster
+      ? orderApi.getAll().then(all => {
+          const online = all
+            .filter(o => o.source === 'online')
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, MAX_ORDER_NOTIFICATIONS);
+          setOnlineOrders(online);
+        }).catch(() => setOnlineOrders([]))
+      : Promise.resolve(setOnlineOrders([]));
+
+    await Promise.all([bannersPromise, storePromise, ordersPromise]);
+    setReadIds(await notificationReadStorage.getReadIds());
   }, [isMaster]);
 
   useFocusEffect(useCallback(() => { loadData().finally(() => setLoading(false)); }, [loadData]));
@@ -83,7 +113,23 @@ export const NotificationsScreen: React.FC = () => {
     setBanners(prev => prev.filter(b => b.id !== id));
   };
 
+  const openOrder = (order: Order) => {
+    notificationReadStorage.markAllRead([orderNotifId(order.id)]).then(() =>
+      setReadIds(prev => [...prev, orderNotifId(order.id)])
+    );
+    navigation.navigate('EditOrder', { orderId: order.id });
+  };
+
   const hasMandatory = missingItems.length > 0;
+  const unreadCount =
+    banners.filter(b => !readIds.includes(bannerNotifId(b.id))).length +
+    onlineOrders.filter(o => !readIds.includes(orderNotifId(o.id))).length;
+
+  const markAllAsRead = async () => {
+    const ids = [...banners.map(b => bannerNotifId(b.id)), ...onlineOrders.map(o => orderNotifId(o.id))];
+    await notificationReadStorage.markAllRead(ids);
+    setReadIds(prev => [...prev, ...ids]);
+  };
 
   return (
     <SafeAreaView style={st.safe}>
@@ -92,7 +138,13 @@ export const NotificationsScreen: React.FC = () => {
           <Ionicons name="arrow-back" size={20} color={INK} />
         </TouchableOpacity>
         <Text style={st.headerTitle}>Notificações</Text>
-        <View style={{ width: 38 }} />
+        {unreadCount > 0 ? (
+          <TouchableOpacity onPress={markAllAsRead} style={st.markReadBtn} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={st.markReadBtnText}>Marcar lidas</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={{ width: 38 }} />
+        )}
       </View>
 
       {loading ? (
@@ -135,6 +187,36 @@ export const NotificationsScreen: React.FC = () => {
             </View>
           )}
 
+          {/* ── Pedidos recebidos pelo link da loja ── */}
+          {onlineOrders.length > 0 && (
+            <View style={{ marginBottom: 22 }}>
+              <Text style={st.sectionTitle}>Pedidos</Text>
+              {onlineOrders.map(order => {
+                const unread = !readIds.includes(orderNotifId(order.id));
+                return (
+                  <TouchableOpacity
+                    key={order.id}
+                    style={[st.notifCard, { backgroundColor: '#fff', borderColor: LINE }]}
+                    activeOpacity={0.7}
+                    onPress={() => openOrder(order)}
+                  >
+                    {unread && <View style={st.unreadDot} />}
+                    <Ionicons name="bag-handle-outline" size={22} color={PINK} style={{ marginTop: 1 }} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[st.notifTitle, { color: INK, fontWeight: unread ? '800' : '700' }]}>
+                        Novo pedido de {order.clientName}
+                      </Text>
+                      <Text style={st.notifMsg}>
+                        {order.recipeName} · {formatCurrency(order.totalPrice)}
+                      </Text>
+                      <Text style={st.notifTime}>{formatOrderTime(order.createdAt)}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
           {/* ── Notificações do app ── */}
           <Text style={st.sectionTitle}>Notificações do app</Text>
           {banners.length === 0 ? (
@@ -147,11 +229,16 @@ export const NotificationsScreen: React.FC = () => {
             banners.map(banner => {
               const cfg = BANNER_CONFIG[banner.type];
               const hasLink = !!(banner.actionUrl && banner.actionUrl.trim());
+              const unread = !readIds.includes(bannerNotifId(banner.id));
               const openLink = () => {
+                notificationReadStorage.markAllRead([bannerNotifId(banner.id)]).then(() =>
+                  setReadIds(prev => [...prev, bannerNotifId(banner.id)])
+                );
                 if (banner.actionUrl) Linking.openURL(banner.actionUrl).catch(() => {});
               };
               return (
                 <View key={banner.id} style={[st.notifCard, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
+                  {unread && <View style={st.unreadDot} />}
                   <Ionicons name={cfg.icon as any} size={22} color={cfg.iconColor} style={{ marginTop: 1 }} />
                   <TouchableOpacity
                     style={{ flex: 1 }}
@@ -159,7 +246,7 @@ export const NotificationsScreen: React.FC = () => {
                     disabled={!hasLink}
                     onPress={openLink}
                   >
-                    <Text style={[st.notifTitle, { color: cfg.iconColor }]}>{banner.title}</Text>
+                    <Text style={[st.notifTitle, { color: cfg.iconColor, fontWeight: unread ? '800' : '700' }]}>{banner.title}</Text>
                     <Text style={st.notifMsg}>{banner.message}</Text>
                     {hasLink && <Text style={[st.notifLink, { color: cfg.iconColor }]}>Ver mais →</Text>}
                   </TouchableOpacity>
@@ -189,6 +276,8 @@ const st = StyleSheet.create({
     ...SHADOW,
   },
   headerTitle: { flex: 1, fontSize: 20, fontWeight: '700', color: INK, textAlign: 'center' },
+  markReadBtn: { paddingVertical: 8, paddingHorizontal: 4 },
+  markReadBtnText: { fontSize: 13, fontWeight: '700', color: PINK },
 
   body: { paddingHorizontal: 18, paddingBottom: 40 },
 
@@ -217,7 +306,12 @@ const st = StyleSheet.create({
   },
   notifTitle: { fontSize: 13.5, fontWeight: '700', marginBottom: 2 },
   notifMsg: { fontSize: 12.5, color: INK2, fontWeight: '500', lineHeight: 17 },
+  notifTime: { fontSize: 11.5, color: INK3, fontWeight: '600', marginTop: 3 },
   notifLink: { fontSize: 12.5, fontWeight: '700', marginTop: 6 },
+  unreadDot: {
+    position: 'absolute', top: 12, left: 5,
+    width: 7, height: 7, borderRadius: 3.5, backgroundColor: PINK,
+  },
 
   /* empty */
   empty: { alignItems: 'center', paddingTop: 30, paddingBottom: 20, gap: 8 },
