@@ -58,6 +58,19 @@ const ALL_PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons
   { key: 'debit', icon: 'card-outline', label: 'Cartão de débito', sub: 'Na maquininha' },
 ];
 
+const FOOD_CATEGORIES = [
+  { key: 'hamburguer', label: 'Hambúrguer', emoji: '🍔' },
+  { key: 'bolos',      label: 'Bolos',       emoji: '🎂' },
+  { key: 'doces',      label: 'Doces',       emoji: '🍬' },
+  { key: 'sorvetes',   label: 'Sorvetes',    emoji: '🍦' },
+  { key: 'pudins',     label: 'Pudins',      emoji: '🍮' },
+  { key: 'salgados',   label: 'Salgados',    emoji: '🥟' },
+  { key: 'bebidas',    label: 'Bebidas',     emoji: '🥤' },
+  { key: 'pizzas',     label: 'Pizzas',      emoji: '🍕' },
+  { key: 'marmitas',   label: 'Marmitas',    emoji: '🍱' },
+  { key: 'outros',     label: 'Outros',      emoji: '🍽️' },
+];
+
 export const StoreSettingsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { showToast } = useToast();
@@ -72,6 +85,7 @@ export const StoreSettingsScreen: React.FC = () => {
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [city, setCity] = useState('');
+  const [category, setCategory] = useState('');
   const [acceptsDelivery, setAcceptsDelivery] = useState(true);
   const [acceptsPickup, setAcceptsPickup] = useState(true);
   const [minOrderText, setMinOrderText] = useState('');
@@ -89,6 +103,7 @@ export const StoreSettingsScreen: React.FC = () => {
         setDescription(s.description ?? '');
         setAddress(s.address ?? '');
         setCity(s.city ?? '');
+        setCategory(s.category ?? '');
         setAcceptsDelivery(s.acceptsDelivery);
         setAcceptsPickup(s.acceptsPickup);
         setMinOrderText(formatMoney(s.minOrderValue ?? 0));
@@ -141,6 +156,7 @@ export const StoreSettingsScreen: React.FC = () => {
         description: description.trim() || undefined,
         address: address.trim() || undefined,
         city: city.trim() || undefined,
+        category: category || undefined,
         acceptsDelivery,
         acceptsPickup,
         minOrderValue: parseMoney(minOrderText) || undefined,
@@ -248,6 +264,26 @@ export const StoreSettingsScreen: React.FC = () => {
             <Text style={st.slugText}>
               Toda loja ativa aparece automaticamente na vitrine de lojas do DocePreço. A cidade ajuda o cliente a te encontrar.
             </Text>
+          </View>
+
+          {/* ── Category ── */}
+          <Text style={[st.label, { marginTop: 16 }]}>Categoria da loja (opcional)</Text>
+          <View style={st.categoryWrap}>
+            {FOOD_CATEGORIES.map(cat => {
+              const on = category === cat.key;
+              return (
+                <TouchableOpacity
+                  key={cat.key}
+                  style={[st.categoryChip, on && st.categoryChipOn]}
+                  onPress={() => setCategory(c => c === cat.key ? '' : cat.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[st.categoryChipText, on && st.categoryChipTextOn]}>
+                    {cat.emoji} {cat.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           {/* ── Min order ── */}
@@ -426,6 +462,15 @@ const st = StyleSheet.create({
   trackOn: { backgroundColor: PINK },
   thumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#fff' },
   thumbOn: { alignSelf: 'flex-end' },
+
+  categoryWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  categoryChip: {
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
+    backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#F5F5F5',
+  },
+  categoryChipOn: { backgroundColor: '#FFE3EF', borderColor: PINK },
+  categoryChipText: { fontSize: 13, fontWeight: '600', color: INK2 },
+  categoryChipTextOn: { color: PINK },
 
   slugCard: {
     flexDirection: 'row', alignItems: 'center', gap: 8,

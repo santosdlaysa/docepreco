@@ -198,8 +198,9 @@ export class PostgresStoreRepository {
     return mapSettings(result.rows[0]);
   }
 
-  async listMarketplaceStores(filters: { search?: string; page: number; limit: number }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
+  async listMarketplaceStores(filters: { search?: string; category?: string; page: number; limit: number }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
     const search = filters.search?.trim() || null;
+    const category = filters.category?.trim() || null;
     const limit = Math.min(Math.max(filters.limit, 1), 50);
     const offset = Math.max(filters.page - 1, 0) * limit;
 
@@ -211,16 +212,18 @@ export class PostgresStoreRepository {
          FROM store_settings
          WHERE active = TRUE
            AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
+           AND ($2::text IS NULL OR category = $2)
          ORDER BY store_name ASC
-         LIMIT $2 OFFSET $3`,
-        [search, limit, offset]
+         LIMIT $3 OFFSET $4`,
+        [search, category, limit, offset]
       ),
       pool.query(
         `SELECT COUNT(*)::int AS total
          FROM store_settings
          WHERE active = TRUE
-           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')`,
-        [search]
+           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
+           AND ($2::text IS NULL OR category = $2)`,
+        [search, category]
       ),
     ]);
 

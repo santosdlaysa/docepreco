@@ -26,12 +26,98 @@ router.get('/stats', async (_req: Request, res: Response) => {
 router.get('/stores', publicListLimiter, async (req: Request, res: Response) => {
   try {
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+    const category = typeof req.query.category === 'string' ? req.query.category : undefined;
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
-    const { stores, total } = await storeRepo.listMarketplaceStores({ search, page, limit });
+    const { stores, total } = await storeRepo.listMarketplaceStores({ search, category, page, limit });
     res.json({ success: true, data: { stores, page, limit, total } });
   } catch (error) {
     console.error('[Public Stores] list error:', error);
+    res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+});
+
+router.get('/customer/orders', publicListLimiter, async (req: Request, res: Response) => {
+  try {
+    const rawPhone = typeof req.query.phone === 'string' ? req.query.phone : '';
+    const phone = rawPhone.replace(/\D/g, '');
+    if (phone.length < 8) {
+      res.status(400).json({ success: false, error: 'Telefone inválido' });
+      return;
+    }
+    const result = await pool.query(
+      `SELECT o.id, o.order_number, o.status, o.total_price, o.items, o.created_at,
+              o.delivery_address, o.payment_method,
+              s.store_name, s.slug
+       FROM orders o
+       JOIN store_settings s ON s.user_id = o.user_id
+       WHERE o.source = 'online'
+         AND regexp_replace(o.client_phone, '\\D', '', 'g') = $1
+       ORDER BY o.created_at DESC
+       LIMIT 100`,
+      [phone]
+    );
+    res.json({
+      success: true,
+      data: result.rows.map(o => ({
+        orderId: o.id,
+        orderNumber: o.order_number != null ? Number(o.order_number) : null,
+        status: o.status,
+        totalPrice: Number(o.total_price),
+        items: o.items ?? [],
+        createdAt: o.created_at,
+        deliveryAddress: o.delivery_address,
+        paymentMethod: o.payment_method,
+        storeName: o.store_name,
+        storeSlug: o.slug,
+      })),
+    });
+  } catch (error) {
+    console.error('[Public Customer] orders error:', error);
+    res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+});
+
+router.get('/products/search', publicListLimiter, async (req: Request, res: Response) => {
+  try {
+    const q = typeof req.query.q === 'string' ? req.query.q.trim() : '';
+    if (q.length < 2) {
+      res.json({ success: true, data: { products: [] } });
+      return;
+    }
+    const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 50);
+    const result = await pool.query(
+      `SELECT p.id, p.name, p.description, p.photo_url, p.public_price, p.discount_type, p.discount_value,
+              s.store_name, s.slug AS store_slug
+       FROM store_products p
+       JOIN store_settings s ON s.user_id = p.user_id
+       WHERE p.available = TRUE AND s.active = TRUE
+         AND p.name ILIKE '%' || $1 || '%'
+       ORDER BY p.name ASC
+       LIMIT $2`,
+      [q, limit]
+    );
+    res.json({
+      success: true,
+      data: {
+        products: result.rows.map(p => {
+          const publicPrice = Number(p.public_price);
+          const discountAmount = computeDiscountAmount(publicPrice, p.discount_type as DiscountType | null, p.discount_value != null ? Number(p.discount_value) : null);
+          return {
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            photoUrl: p.photo_url,
+            price: publicPrice - discountAmount,
+            originalPrice: discountAmount > 0 ? publicPrice : undefined,
+            storeName: p.store_name,
+            storeSlug: p.store_slug,
+          };
+        }),
+      },
+    });
+  } catch (error) {
+    console.error('[Public Products] search error:', error);
     res.status(500).json({ success: false, error: 'Erro interno' });
   }
 });

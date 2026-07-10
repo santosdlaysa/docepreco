@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Cake } from 'lucide-react';
 import { StoreCard } from '../components/StoreCard';
+import { BottomNav } from '../components/BottomNav';
+import { FOOD_CATEGORIES } from '../data/categories';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -21,6 +24,7 @@ export function LojasPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -33,10 +37,16 @@ export function LojasPage() {
     return () => clearTimeout(id);
   }, [search]);
 
+  // Reseta a página ao trocar de categoria
+  useEffect(() => {
+    setPage(1);
+  }, [selectedCategory]);
+
   useEffect(() => {
     setLoading(true);
     const params = new URLSearchParams({
       search: debouncedSearch,
+      category: selectedCategory ?? '',
       page: String(page),
       limit: '20',
     });
@@ -52,19 +62,28 @@ export function LojasPage() {
         if (page === 1) setStores([]);
       })
       .finally(() => setLoading(false));
-  }, [debouncedSearch, page]);
+  }, [debouncedSearch, selectedCategory, page]);
+
+  const handleToggleCategory = (key: string) => {
+    setSelectedCategory(prev => (prev === key ? null : key));
+  };
 
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
-      <div className="max-w-lg mx-auto px-4 pt-8 pb-16">
+      <div className="max-w-lg mx-auto px-4 pt-8 pb-20">
         {/* Cabeçalho */}
-        <div className="mb-5">
-          <h1 className="text-[22px] font-extrabold text-gray-900 leading-tight">Lojas</h1>
-          <p className="text-gray-400 text-sm mt-1">Escolha uma loja para pedir</p>
+        <div className="flex items-center gap-2 mb-5">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] flex items-center justify-center shadow-lg shadow-pink-500/25 flex-shrink-0">
+            <Cake size={18} className="text-white" />
+          </div>
+          <div>
+            <h1 className="text-[17px] font-extrabold text-gray-900 leading-tight tracking-tight">DocePreço</h1>
+            <p className="text-gray-400 text-xs">Escolha uma loja para pedir</p>
+          </div>
         </div>
 
         {/* Busca */}
-        <div className="relative mb-5">
+        <div className="relative mb-4">
           <svg
             className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300"
             fill="none"
@@ -80,6 +99,27 @@ export function LojasPage() {
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
+        </div>
+
+        {/* Categorias */}
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide mb-5 -mx-4 px-4">
+          {FOOD_CATEGORIES.map(cat => {
+            const active = selectedCategory === cat.key;
+            return (
+              <button
+                key={cat.key}
+                onClick={() => handleToggleCategory(cat.key)}
+                className={`flex-shrink-0 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold transition-colors active:scale-95 ${
+                  active
+                    ? 'bg-[#EA4B92] text-white shadow-sm shadow-pink-500/25'
+                    : 'bg-white text-gray-500 shadow-sm'
+                }`}
+              >
+                <span>{cat.emoji}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Loading inicial */}
@@ -139,6 +179,7 @@ export function LojasPage() {
           </div>
         )}
       </div>
+      <BottomNav />
     </div>
   );
 }

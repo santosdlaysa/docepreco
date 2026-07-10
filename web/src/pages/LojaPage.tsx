@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { fmt, initials } from '../utils/format';
+import { fmt, initials, STATUS_LABEL } from '../utils/format';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -142,14 +142,6 @@ interface SavedOrder {
 
 const CUSTOMER_KEY = (slug: string) => `dpeco_customer_${slug}`;
 const ORDERS_KEY   = (slug: string) => `dpeco_orders_${slug}`;
-
-const STATUS_LABEL: Record<string, { label: string; color: string; bg: string }> = {
-  pending:     { label: 'Aguardando', color: '#D97706', bg: '#FEF3C7' },
-  in_progress: { label: 'Em produção', color: '#7C3AED', bg: '#EDE9FE' },
-  done:        { label: 'Saiu para entrega', color: '#7C3AED', bg: '#EDE9FE' },
-  delivered:   { label: 'Entregue',   color: '#059669', bg: '#D1FAE5' },
-  cancelled:   { label: 'Cancelado',  color: '#DC2626', bg: '#FEE2E2' },
-};
 
 export function LojaPage() {
   const { slug } = useParams<{ slug: string }>();
