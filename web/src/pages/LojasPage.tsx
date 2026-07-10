@@ -34,6 +34,7 @@ export function LojasPage() {
   const [sortBy, setSortBy] = useState<SortOption | null>(null);
   const [freeOnly, setFreeOnly] = useState(false);
   const [locating, setLocating] = useState(false);
+  const [geoFailed, setGeoFailed] = useState(false);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -52,20 +53,14 @@ export function LojasPage() {
     setPage(1);
   }, [selectedCategory, cityFilter, sortBy, freeOnly]);
 
-  // Detecta a localização do cliente (uma vez) e pré-filtra pela cidade dele.
-  useEffect(() => {
-    try {
-      const cached = localStorage.getItem(CITY_CACHE_KEY);
-      if (cached) {
-        const { city, lat, lng, ts } = JSON.parse(cached);
-        if (city && Date.now() - ts < CITY_CACHE_TTL) {
-          setCityFilter(city);
-          if (Number.isFinite(lat) && Number.isFinite(lng)) setCoords({ lat, lng });
-          return;
-        }
-      }
-    } catch {}
-    if (!navigator.geolocation) return;
+  // Detecta a localização do cliente e filtra pela cidade dele. Sem cidade
+  // detectada a página não mostra loja nenhuma (só lojas da região da pessoa).
+  const detectLocation = () => {
+    if (!navigator.geolocation) {
+      setGeoFailed(true);
+      return;
+    }
+    setGeoFailed(false);
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async pos => {
@@ -81,21 +76,51 @@ export function LojasPage() {
           if (city) {
             setCityFilter(city);
             localStorage.setItem(CITY_CACHE_KEY, JSON.stringify({ city, lat, lng, ts: Date.now() }));
+          } else {
+            setGeoFailed(true);
           }
-        } catch {}
+        } catch {
+          setGeoFailed(true);
+        }
         setLocating(false);
       },
-      () => setLocating(false),
+      () => {
+        setLocating(false);
+        setGeoFailed(true);
+      },
       { timeout: 8000, maximumAge: 600000 }
     );
+  };
+
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(CITY_CACHE_KEY);
+      if (cached) {
+        const { city, lat, lng, ts } = JSON.parse(cached);
+        if (city && Date.now() - ts < CITY_CACHE_TTL) {
+          setCityFilter(city);
+          if (Number.isFinite(lat) && Number.isFinite(lng)) setCoords({ lat, lng });
+          return;
+        }
+      }
+    } catch {}
+    detectLocation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    // Sem cidade detectada não lista nada — lojas de outras regiões não devem aparecer.
+    if (!cityFilter) {
+      setStores([]);
+      setTotal(0);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     const params = new URLSearchParams({
       search: debouncedSearch,
       category: selectedCategory ?? '',
-      city: cityFilter ?? '',
+      city: cityFilter,
       page: String(page),
       limit: '20',
     });
@@ -123,9 +148,11 @@ export function LojasPage() {
     setSelectedCategory(prev => (prev === key ? null : key));
   };
 
-  const clearCityFilter = () => {
-    setCityFilter(null);
+  // Re-detecta a localização (ex.: cidade detectada errada ou usuário viajou).
+  const refreshLocation = () => {
     try { localStorage.removeItem(CITY_CACHE_KEY); } catch {}
+    setCityFilter(null);
+    detectLocation();
   };
 
   // Ordenar por distância precisa das coordenadas do cliente — pede permissão se ainda não tiver.
@@ -181,8 +208,8 @@ export function LojasPage() {
               </span>
             </div>
             {cityFilter && (
-              <button onClick={clearCityFilter} className="text-xs font-semibold text-gray-400 flex-shrink-0">
-                Ver todas
+              <button onClick={refreshLocation} className="text-xs font-semibold text-gray-400 flex-shrink-0">
+                Atualizar
               </button>
             )}
           </div>
@@ -273,16 +300,47 @@ export function LojasPage() {
           })}
         </div>
 
-        {/* Loading inicial */}
-        {loading && page === 1 && (
+        {/* Loading inicial (buscando localização ou lojas) */}
+        {(locating || (loading && page === 1 && cityFilter)) && (
           <div className="flex flex-col items-center justify-center py-24 gap-3">
             <div className="w-10 h-10 border-[3px] border-[#EA4B92] border-t-transparent rounded-full animate-spin" />
-            <p className="text-sm text-gray-400">Carregando lojas...</p>
+            <p className="text-sm text-gray-400">
+              {locating ? 'Buscando sua localização...' : 'Carregando lojas...'}
+            </p>
           </div>
         )}
 
-        {/* Vazio */}
-        {!loading && stores.length === 0 && (
+        {/* Sem localização — a página só lista lojas da cidade da pessoa */}
+        {!locating && !cityFilter && (
+          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center">
+              <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </div>
+            <p className="text-gray-500 text-sm font-medium">
+              Para ver as lojas da sua região,
+              <br />
+              precisamos da sua localização
+            </p>
+            {geoFailed && (
+              <p className="text-xs text-gray-400 max-w-[260px]">
+                Não conseguimos detectar sua cidade. Verifique se a permissão de
+                localização está ativada no navegador.
+              </p>
+            )}
+            <button
+              onClick={detectLocation}
+              className="mt-1 text-sm font-bold text-white bg-[#EA4B92] shadow-sm shadow-pink-500/25 rounded-full px-6 py-3 active:scale-95 transition-transform"
+            >
+              Usar minha localização
+            </button>
+          </div>
+        )}
+
+        {/* Vazio — nenhuma loja na cidade da pessoa */}
+        {!loading && cityFilter && stores.length === 0 && (
           <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
             <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center">
               <svg className="w-7 h-7 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -290,15 +348,8 @@ export function LojasPage() {
               </svg>
             </div>
             <p className="text-gray-400 text-sm">
-              {cityFilter
-                ? `Nenhuma loja encontrada em ${cityFilter} faz parte do DocePreço`
-                : 'Nenhuma loja encontrada'}
+              Nenhuma loja encontrada em {cityFilter} faz parte do DocePreço
             </p>
-            {cityFilter && (
-              <button onClick={clearCityFilter} className="text-xs font-semibold text-[#EA4B92]">
-                Ver lojas de outras cidades
-              </button>
-            )}
           </div>
         )}
 
