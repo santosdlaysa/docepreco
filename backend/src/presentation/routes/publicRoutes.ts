@@ -61,7 +61,7 @@ router.get('/customer/orders', publicListLimiter, async (req: Request, res: Resp
     const result = await pool.query(
       `SELECT o.id, o.order_number, o.status, o.total_price, o.items, o.created_at,
               o.delivery_address, o.payment_method,
-              s.store_name, s.slug
+              s.store_name, s.slug, s.cover_image_url
        FROM orders o
        JOIN store_settings s ON s.user_id = o.user_id
        WHERE o.source = 'online'
@@ -83,6 +83,7 @@ router.get('/customer/orders', publicListLimiter, async (req: Request, res: Resp
         paymentMethod: o.payment_method,
         storeName: o.store_name,
         storeSlug: o.slug,
+        storeImageUrl: o.cover_image_url ?? null,
       })),
     });
   } catch (error) {
@@ -254,7 +255,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
 
     // Montar itens com preços do banco, já com o desconto do produto aplicado.
     // Adicionais entram no preço unitário (por unidade do produto) e ficam listados no item.
-    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number; discount: number; addons: Array<{ name: string; price: number }> }> = [];
+    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number; discount: number; addons: Array<{ id: string; name: string; price: number }> }> = [];
     let totalPrice = 0;
     for (const item of b.items) {
       const product = productMap.get(item.productId);
@@ -264,7 +265,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
       const addons = addonIds
         .map(id => addonMap.get(id))
         .filter(Boolean)
-        .map((a: any) => ({ name: a.name as string, price: Number(a.price) }));
+        .map((a: any) => ({ id: a.id as string, name: a.name as string, price: Number(a.price) }));
       const addonsPerUnit = addons.reduce((sum, a) => sum + a.price, 0);
       const productPrice = Number(product.public_price);
       const unitPrice = Math.round((productPrice + addonsPerUnit) * 100) / 100;
@@ -307,7 +308,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
         firstItem.unitPrice,
         totalWithFee,
         deliveryDate,
-        JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount, addons: i.addons }))),
+        JSON.stringify(items.map(i => ({ productId: i.productId, recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount, addons: i.addons }))),
         b.notes ? String(b.notes).trim() : null,
         b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
         paymentMethod,

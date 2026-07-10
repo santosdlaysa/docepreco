@@ -13,8 +13,8 @@ export default defineConfig({
       // icon itself should launch into /lojas.
       scope: '/',
       manifest: {
-        name: 'Doceprecopedidos',
-        short_name: 'Doceprecopedidos',
+        name: 'DocePedidos',
+        short_name: 'DocePedidos',
         description: 'Peça doces e bolos das confeitarias parceiras do DocePreço',
         start_url: '/lojas',
         scope: '/',

@@ -232,11 +232,51 @@ export function LojaPage() {
     form.deliveryType === 'delivery' && store?.deliveryFee ? store.deliveryFee : 0;
   const totalPrice = subtotal + appliedFee;
 
+  // Título da aba com o nome da loja
+  useEffect(() => {
+    const prev = document.title;
+    document.title = store?.storeName ? `${store.storeName} · DocePedidos` : 'DocePedidos';
+    return () => { document.title = prev; };
+  }, [store?.storeName]);
+
   useEffect(() => {
     if (totalItems > 0 && prevTotal.current === 0) setCartVisible(true);
     if (totalItems === 0) setCartVisible(false);
     prevTotal.current = totalItems;
   }, [totalItems]);
+
+  // "Pedir de novo" vindo do histórico: remonta o carrinho com os itens do pedido
+  // anterior, casando por id (pedidos novos) ou por nome (pedidos antigos).
+  // Produtos/adicionais que saíram do cardápio são ignorados.
+  useEffect(() => {
+    if (!store || !slug) return;
+    const key = `dpeco_reorder_${slug}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (!raw) return;
+      localStorage.removeItem(key);
+      const { items, ts } = JSON.parse(raw);
+      if (!Array.isArray(items) || Date.now() - ts > 5 * 60 * 1000) return;
+      const merged = new Map<string, CartLine>();
+      for (const it of items) {
+        const product = store.products.find(
+          p => (it.productId && p.id === it.productId) || p.name === it.name
+        );
+        if (!product) continue;
+        const addonIds = (Array.isArray(it.addons) ? it.addons : [])
+          .map((a: { id?: string | null; name: string }) =>
+            store.addons?.find(sa => (a.id && sa.id === a.id) || sa.name === a.name)?.id
+          )
+          .filter((id: string | undefined): id is string => !!id);
+        const qty = Math.max(1, Number(it.qty) || 1);
+        const k = lineKey(product.id, addonIds);
+        const existing = merged.get(k);
+        if (existing) existing.qty += qty;
+        else merged.set(k, { productId: product.id, qty, addonIds });
+      }
+      if (merged.size > 0) setCart(Array.from(merged.values()));
+    } catch {}
+  }, [store, slug]);
 
   // Buscar status de todos os pedidos ao abrir histórico, com atualização automática
   useEffect(() => {
@@ -468,8 +508,8 @@ export function LojaPage() {
           {/* Barra de volta ao diretório de lojas */}
           <div className="px-4 pt-3 flex items-center justify-between gap-2">
             <Link to="/lojas" className="flex items-center gap-2">
-              <img src="/pwa-192x192.png" alt="DocePreço" className="w-7 h-7 rounded-lg shadow-sm" />
-              <span className="text-[13px] font-extrabold text-gray-700 tracking-tight">DocePreço</span>
+              <img src="/pwa-192x192.png" alt="DocePedidos" className="w-7 h-7 rounded-lg shadow-sm" />
+              <span className="text-[13px] font-extrabold text-gray-700 tracking-tight">DocePedidos</span>
             </Link>
             <Link
               to="/lojas"
@@ -1193,6 +1233,15 @@ export function LojaPage() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#EA4B92] to-[#7C3AED] px-5 pt-12 pb-8 text-white">
         <div className="max-w-lg mx-auto">
+          <button
+            onClick={() => setStep('catalog')}
+            className="mb-3 w-8 h-8 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
+            aria-label="Voltar para a loja"
+          >
+            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
           <p className="text-white/60 text-xs font-semibold uppercase tracking-widest mb-1">{store.storeName}</p>
           <h1 className="text-2xl font-bold">
             {cancelledStatus ? 'Pedido cancelado' : orderStatus === 'delivered' ? 'Pedido entregue! 🎉' : 'Acompanhar pedido'}
@@ -1350,6 +1399,13 @@ export function LojaPage() {
         >
           Fazer outro pedido
         </button>
+
+        <Link
+          to="/lojas"
+          className="w-full bg-white text-gray-600 font-bold py-3.5 rounded-2xl shadow-sm active:scale-[0.98] transition-transform text-center block"
+        >
+          Ver outras lojas
+        </Link>
 
         <p className="text-center text-[11px] text-gray-300 pb-2">
           Criado com <span className="text-[#EA4B92] font-semibold">DocePreço</span>

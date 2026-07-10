@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { StoreCard } from '../components/StoreCard';
 import { BottomNav } from '../components/BottomNav';
 import { FOOD_CATEGORIES } from '../data/categories';
@@ -38,6 +39,13 @@ export function LojasPage() {
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+
+  // Título da aba na vitrine pública
+  useEffect(() => {
+    const prev = document.title;
+    document.title = 'DocePedidos - Peça doces das melhores lojas';
+    return () => { document.title = prev; };
+  }, []);
 
   // Debounce da busca
   useEffect(() => {
@@ -185,16 +193,26 @@ export function LojasPage() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F7]">
-      <div className="max-w-lg mx-auto px-4 pt-8 pb-20">
-        {/* Cabeçalho */}
-        <div className="flex items-center gap-2 mb-5">
-          <img src="/pwa-192x192.png" alt="DocePreço" className="w-9 h-9 rounded-xl shadow-lg shadow-pink-500/25 flex-shrink-0" />
-          <div>
-            <h1 className="text-[17px] font-extrabold text-gray-900 leading-tight tracking-tight">DocePreço</h1>
-            <p className="text-gray-400 text-xs">Escolha uma loja para pedir</p>
+      {/* Header fixo estilo marketplace */}
+      <header className="sticky top-0 z-40 bg-white shadow-sm">
+        <div className="max-w-lg mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <img src="/pwa-192x192.png" alt="DocePedidos" className="w-9 h-9 rounded-lg flex-shrink-0" />
+            <h1 className="text-lg font-extrabold tracking-tight leading-none">
+              <span className="text-[#EA4B92]">Doce</span>
+              <span className="text-[#2BA3C2]">Pedidos</span>
+            </h1>
           </div>
+          <Link
+            to="/perfil"
+            className="bg-[#EA4B92] text-white text-[13px] font-bold px-4 py-2 rounded-lg active:scale-95 transition-transform"
+          >
+            Perfil
+          </Link>
         </div>
+      </header>
 
+      <div className="max-w-lg mx-auto px-4 pt-4 pb-20">
         {/* Localização detectada */}
         {(cityFilter || locating) && (
           <div className="flex items-center justify-between gap-2 bg-white rounded-full px-3.5 py-2 mb-4 shadow-sm">
@@ -348,7 +366,7 @@ export function LojasPage() {
               </svg>
             </div>
             <p className="text-gray-400 text-sm">
-              Nenhuma loja encontrada em {cityFilter} faz parte do DocePreço
+              Nenhuma loja encontrada em {cityFilter} faz parte do DocePedidos
             </p>
           </div>
         )}
