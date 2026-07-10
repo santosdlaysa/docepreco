@@ -1074,6 +1074,14 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_products', 'discount_type', 'VARCHAR(10) NULL');
     await addColumnIfMissing(client, 'store_products', 'discount_value', 'DECIMAL(10,2) NULL');
 
+    // Limpeza de segurança: logs antigos de rotas de auth gravaram senhas em claro no
+    // request_body (e tokens no response_body) antes da redação ser implementada.
+    await client.query(`
+      UPDATE request_logs SET request_body = NULL, response_body = NULL
+      WHERE path IN ('/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/reset-password')
+        AND (request_body IS NOT NULL OR response_body IS NOT NULL)
+    `);
+
     // Itens adicionais da loja online (ex.: cobertura extra, embalagem para presente) —
     // o cliente escolhe na tela de detalhes do produto ao montar o pedido.
     await client.query(`

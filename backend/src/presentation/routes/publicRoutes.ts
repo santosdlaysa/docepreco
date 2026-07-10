@@ -5,7 +5,7 @@ import { PostgresPushTokenRepository } from '../../infrastructure/repositories/P
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
 import { computeDiscountAmount, DiscountType } from '../../domain/utils/discount';
 import { isStoreOpenNow } from '../../domain/utils/businessHours';
-import { publicListLimiter } from '../middleware/rateLimiter';
+import { publicListLimiter, publicOrderLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 const storeRepo = new PostgresStoreRepository();
@@ -204,7 +204,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/store/:slug/orders', async (req: Request, res: Response) => {
+router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
     const b = req.body ?? {};

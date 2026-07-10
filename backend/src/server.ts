@@ -93,6 +93,33 @@ app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
 // Limite ampliado para acomodar imagens (ex.: QR do PIX) enviadas em base64
 app.use(express.json({ limit: '5mb' }));
 
+// Campos que nunca podem ir para request_logs em claro (senhas, tokens, segredos).
+// Comparação por nome de chave, sem case, em qualquer nível do JSON.
+const SENSITIVE_LOG_KEYS = new Set([
+  'password', 'newpassword', 'currentpassword', 'oldpassword', 'confirmpassword',
+  'token', 'accesstoken', 'refreshtoken', 'resetcode', 'code', 'secret', 'authorization',
+]);
+
+function redactSensitive(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(redactSensitive);
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = SENSITIVE_LOG_KEYS.has(k.toLowerCase()) ? '[REDACTED]' : redactSensitive(v);
+    }
+    return out;
+  }
+  return value;
+}
+
+function safeStringifyRedacted(body: unknown): string | null {
+  try {
+    return JSON.stringify(redactSensitive(body)).slice(0, 2000);
+  } catch {
+    return null;
+  }
+}
+
 app.use((req, res, next) => {
   const start = Date.now();
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.socket.remoteAddress ?? null;
@@ -104,11 +131,9 @@ app.use((req, res, next) => {
     if (res.statusCode >= 400 && body && !res.locals.errorMessage) {
       res.locals.errorMessage = body.error || body.message || undefined;
     }
-    // Armazena apenas erros e respostas pequenas (< 5KB)
+    // Armazena apenas erros e respostas pequenas (< 5KB), sempre com campos sensíveis redigidos
     if (res.statusCode >= 400 || (body && JSON.stringify(body).length < 5000)) {
-      try {
-        responseBody = JSON.stringify(body).slice(0, 2000);
-      } catch {}
+      responseBody = safeStringifyRedacted(body);
     }
     return originalJson(body);
   };
@@ -122,12 +147,10 @@ app.use((req, res, next) => {
     const isAuthRoute = path === '/api/auth/login' || path === '/api/auth/register' || path === '/api/auth/forgot-password';
     const bodyEmail = isAuthRoute && req.body?.email ? String(req.body.email).toLowerCase() : null;
 
-    // Armazena apenas request body de erros ou formas POST/PUT/PATCH
+    // Armazena apenas request body de erros ou formas POST/PUT/PATCH — com senhas/tokens redigidos
     let requestBody: string | null = null;
     if ((res.statusCode >= 400 || ['POST', 'PUT', 'PATCH'].includes(req.method)) && req.body) {
-      try {
-        requestBody = JSON.stringify(req.body).slice(0, 2000);
-      } catch {}
+      requestBody = safeStringifyRedacted(req.body);
     }
 
     pool.query(
