@@ -144,6 +144,14 @@ export const StoreSettingsScreen: React.FC = () => {
       showToast('Informe o nome da loja', 'warning');
       return;
     }
+    if (!city.trim()) {
+      showToast('Informe a cidade da loja', 'warning');
+      return;
+    }
+    if (!category) {
+      showToast('Selecione a categoria da loja', 'warning');
+      return;
+    }
     if (paymentMethods.length === 0) {
       showToast('Selecione ao menos uma forma de pagamento', 'warning');
       return;
@@ -250,7 +258,7 @@ export const StoreSettingsScreen: React.FC = () => {
           />
 
           {/* ── City ── */}
-          <Text style={st.label}>Cidade (opcional)</Text>
+          <Text style={st.label}>Cidade *</Text>
           <TextInput
             style={st.input}
             value={city}
@@ -267,7 +275,7 @@ export const StoreSettingsScreen: React.FC = () => {
           </View>
 
           {/* ── Category ── */}
-          <Text style={[st.label, { marginTop: 16 }]}>Categoria da loja (opcional)</Text>
+          <Text style={[st.label, { marginTop: 16 }]}>Categoria da loja *</Text>
           <View style={st.categoryWrap}>
             {FOOD_CATEGORIES.map(cat => {
               const on = category === cat.key;

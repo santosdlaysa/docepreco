@@ -22,7 +22,9 @@ import { statsApi, AppStats } from '../../data/api/statsApi';
 import { saleApi } from '../../data/api/saleApi';
 import { Sale } from '../../domain/entities/Sale';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoStatsApi, demoSaleApi } from '../../data/demo/demoApi';
+import { demoStatsApi, demoSaleApi, demoStoreApi } from '../../data/demo/demoApi';
+import { storeApi } from '../../data/api/storeApi';
+import { getMissingStoreItems } from '../utils/storeSetup';
 import { usePremium } from '../context/PremiumContext';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { usePaywall } from '../premium/usePaywall';
@@ -68,6 +70,7 @@ export const HomeScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [hasMandatoryAlert, setHasMandatoryAlert] = useState(false);
   const [carouselBanners, setCarouselBanners] = useState<CarouselBanner[]>([]);
   const [planBanners, setPlanBanners] = useState<PlanBanner[]>([]);
   const [planBannerIndex, setPlanBannerIndex] = useState(0);
@@ -77,6 +80,7 @@ export const HomeScreen: React.FC = () => {
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const stApi = isDemoMode() ? demoStatsApi : statsApi;
+  const storeSettingsApi = isDemoMode() ? demoStoreApi : storeApi;
 
   const { formatCurrency } = useCurrencyFormat();
 
@@ -101,6 +105,13 @@ export const HomeScreen: React.FC = () => {
       carouselCache.set(list);
     }).catch(() => {});
     bannerApi.getPlan().then(setPlanBanners).catch(() => {});
+    if (isMaster) {
+      storeSettingsApi.getSettings()
+        .then(s => setHasMandatoryAlert(getMissingStoreItems(s).length > 0))
+        .catch(() => setHasMandatoryAlert(false));
+    } else {
+      setHasMandatoryAlert(false);
+    }
     await Promise.all([
       stApi.getStats().then(setStats).catch(() => {}),
       sApi.getAll().then(setAllSales).catch(() => {}),
@@ -236,6 +247,16 @@ export const HomeScreen: React.FC = () => {
                 </LinearGradient>
               </TouchableOpacity>
             )}
+            <TouchableOpacity
+              style={s.bellBtn}
+              onPress={() => navigation.navigate('Notifications')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="notifications-outline" size={22} color={INK} />
+              {(banners.length > 0 || hasMandatoryAlert) && (
+                <View style={[s.bellDot, hasMandatoryAlert && { backgroundColor: '#C0392B' }]} />
+              )}
+            </TouchableOpacity>
             <TouchableOpacity
               style={s.profileBtn}
               onPress={() => navigation.navigate('Profile' as never)}
@@ -733,6 +754,25 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   profileImg: { width: 46, height: 46, borderRadius: 23 },
+  bellBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bellDot: {
+    position: 'absolute',
+    top: 9,
+    right: 10,
+    width: 9,
+    height: 9,
+    borderRadius: 5,
+    backgroundColor: PINK,
+    borderWidth: 1.5,
+    borderColor: '#fff',
+  },
 
   /* ── Subscription plans carousel ── */
   planBannerSection: { marginHorizontal: 18, marginBottom: 14 },

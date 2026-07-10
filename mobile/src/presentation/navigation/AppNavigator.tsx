@@ -55,6 +55,7 @@ import { AdminSupportChatScreen } from '../screens/admin/AdminSupportChatScreen'
 import { StoreScreen } from '../screens/StoreScreen';
 import { StoreProductFormScreen } from '../screens/StoreProductFormScreen';
 import { StoreSettingsScreen } from '../screens/StoreSettingsScreen';
+import { NotificationsScreen } from '../screens/NotificationsScreen';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { impersonationStorage } from '../../data/storage/impersonationStorage';
@@ -573,6 +574,7 @@ export function AppNavigator() {
           <Stack.Screen name="Store" component={StoreScreen} />
           <Stack.Screen name="StoreProductForm" component={StoreProductFormScreen} />
           <Stack.Screen name="StoreSettings" component={StoreSettingsScreen} />
+          <Stack.Screen name="Notifications" component={NotificationsScreen} />
           <Stack.Screen
             name="Paywall"
             component={PaywallScreen}

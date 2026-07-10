@@ -55,4 +55,5 @@ export type RootStackParamList = {
   StoreProductForm: { productId?: string } | undefined;
   StoreSettings: undefined;
   AnnounceBanner: undefined;
+  Notifications: undefined;
 };
