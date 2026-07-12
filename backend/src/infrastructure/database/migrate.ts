@@ -496,6 +496,10 @@ export async function runMigrations() {
     // 'premium' tier once; idempotent thanks to the `plan_tier = 'free'` guard.
     await addColumnIfMissing(client, 'users', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'free'");
     await client.query(`UPDATE users SET plan_tier = 'premium' WHERE is_premium = TRUE AND plan_tier = 'free'`);
+    // Data fix: o cron de expiração zerava is_premium mas deixava plan_tier
+    // sujo ('premium'/'master'), fazendo expirados aparecerem como pagos no
+    // admin. O cron foi corrigido; isto limpa as linhas já afetadas.
+    await client.query(`UPDATE users SET plan_tier = 'free' WHERE is_premium = FALSE AND plan_tier <> 'free'`);
     await addColumnIfMissing(client, 'pix_requests', 'plan_tier', "VARCHAR(20) NOT NULL DEFAULT 'premium'");
     await addColumnIfMissing(client, 'pix_requests', 'mp_payment_id', 'VARCHAR(100) NULL');
     await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code', 'TEXT NULL');
@@ -1041,6 +1045,13 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_settings', 'city', 'VARCHAR(120) NULL');
     await addColumnIfMissing(client, 'store_settings', 'category', 'VARCHAR(30) NULL');
 
+    // Logo/foto de perfil da loja — exibida nas listas do marketplace (a capa fica só na página da loja).
+    await addColumnIfMissing(client, 'store_settings', 'logo_url', 'TEXT NULL');
+
+    // Coordenadas geocodificadas do endereço da loja — usadas na ordenação por distância do marketplace.
+    await addColumnIfMissing(client, 'store_settings', 'latitude', 'DOUBLE PRECISION NULL');
+    await addColumnIfMissing(client, 'store_settings', 'longitude', 'DOUBLE PRECISION NULL');
+
     // Horário de funcionamento: liga/desliga a loja automaticamente conforme o horário cadastrado.
     await addColumnIfMissing(client, 'store_settings', 'use_business_hours', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'store_settings', 'business_hours', "JSONB NOT NULL DEFAULT '[]'::jsonb");
@@ -1069,6 +1080,29 @@ export async function runMigrations() {
     // Desconto configurado por produto da loja online (percentual ou valor fixo).
     await addColumnIfMissing(client, 'store_products', 'discount_type', 'VARCHAR(10) NULL');
     await addColumnIfMissing(client, 'store_products', 'discount_value', 'DECIMAL(10,2) NULL');
+
+    // Limpeza de segurança: logs antigos de rotas de auth gravaram senhas em claro no
+    // request_body (e tokens no response_body) antes da redação ser implementada.
+    await client.query(`
+      UPDATE request_logs SET request_body = NULL, response_body = NULL
+      WHERE path IN ('/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', '/api/auth/reset-password')
+        AND (request_body IS NOT NULL OR response_body IS NOT NULL)
+    `);
+
+    // Itens adicionais da loja online (ex.: cobertura extra, embalagem para presente) —
+    // o cliente escolhe na tela de detalhes do produto ao montar o pedido.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS store_addons (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name VARCHAR(120) NOT NULL,
+        price DECIMAL(10,2) NOT NULL DEFAULT 0,
+        available BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_store_addons_user ON store_addons (user_id)`);
 
     // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
     // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.

@@ -1,13 +1,29 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
+import { geocodeStoreLocation } from '../../infrastructure/services/geocodingService';
 
 const repo = new PostgresStoreRepository();
+
+// Geocodifica em segundo plano (não atrasa a resposta). Só sobrescreve as
+// coordenadas quando encontra resultado — falha de rede não apaga o que já existe.
+function refreshCoordinates(userId: string, address: string | null, city: string | null): void {
+  void geocodeStoreLocation(address, city)
+    .then(coords => {
+      if (coords) return repo.updateCoordinates(userId, coords.latitude, coords.longitude);
+      if (!address && !city) return repo.updateCoordinates(userId, null, null);
+    })
+    .catch(err => console.error('[Store] geocode error:', err));
+}
 
 export class StoreController {
   async getSettings(req: AuthRequest, res: Response): Promise<void> {
     try {
       const settings = await repo.getSettings(req.userId!);
+      // Backfill preguiçoso: lojas criadas antes das coordenadas geocodificam ao abrir o painel.
+      if (settings.latitude == null && (settings.address || settings.city)) {
+        refreshCoordinates(req.userId!, settings.address ?? null, settings.city ?? null);
+      }
       res.json({ success: true, data: settings });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
@@ -18,22 +34,29 @@ export class StoreController {
   async updateSettings(req: AuthRequest, res: Response): Promise<void> {
     try {
       const b = req.body ?? {};
-      const settings = await repo.updateSettings(req.userId!, {
-        active:          b.active,
-        storeName:       b.storeName,
-        description:     b.description,
-        acceptsDelivery: b.acceptsDelivery,
-        acceptsPickup:   b.acceptsPickup,
-        minOrderValue:   b.minOrderValue,
-        deliveryFee:     b.deliveryFee,
-        coverImageUrl:   b.coverImageUrl,
-        paymentMethods:  Array.isArray(b.paymentMethods) ? b.paymentMethods : undefined,
-        address:         b.address,
-        city:            b.city,
-        category:        b.category,
-        useBusinessHours: b.useBusinessHours,
-        businessHours:    Array.isArray(b.businessHours) ? b.businessHours : undefined,
-      });
+      // Só inclui os campos presentes no body — um update parcial (ex.: só `active`)
+      // não pode apagar imagem, logo, endereço etc. (o repo interpreta chave presente
+      // com valor null/undefined como "limpar o campo").
+      const patch: Record<string, unknown> = {};
+      if (b.active !== undefined)           patch.active          = b.active;
+      if (b.storeName !== undefined)        patch.storeName       = b.storeName;
+      if ('description' in b)               patch.description     = b.description ?? null;
+      if (b.acceptsDelivery !== undefined)  patch.acceptsDelivery = b.acceptsDelivery;
+      if (b.acceptsPickup !== undefined)    patch.acceptsPickup   = b.acceptsPickup;
+      if ('minOrderValue' in b)             patch.minOrderValue   = b.minOrderValue ?? null;
+      if ('deliveryFee' in b)               patch.deliveryFee     = b.deliveryFee ?? null;
+      if ('coverImageUrl' in b)             patch.coverImageUrl   = b.coverImageUrl ?? null;
+      if ('logoUrl' in b)                   patch.logoUrl         = b.logoUrl ?? null;
+      if (Array.isArray(b.paymentMethods))  patch.paymentMethods  = b.paymentMethods;
+      if ('address' in b)                   patch.address         = b.address ?? null;
+      if ('city' in b)                      patch.city            = b.city ?? null;
+      if ('category' in b)                  patch.category        = b.category ?? null;
+      if (b.useBusinessHours !== undefined) patch.useBusinessHours = b.useBusinessHours;
+      if (Array.isArray(b.businessHours))   patch.businessHours   = b.businessHours;
+      const settings = await repo.updateSettings(req.userId!, patch as any);
+      if ('address' in b || 'city' in b) {
+        refreshCoordinates(req.userId!, settings.address ?? null, settings.city ?? null);
+      }
       res.json({ success: true, data: settings });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
@@ -110,6 +133,84 @@ export class StoreController {
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao excluir produto' });
+    }
+  }
+
+  async getAddons(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const addons = await repo.getAddons(req.userId!);
+      res.json({ success: true, data: addons });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao buscar adicionais' });
+    }
+  }
+
+  async createAddon(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const b = req.body ?? {};
+      const name = typeof b.name === 'string' ? b.name.trim() : '';
+      const price = Number(b.price);
+      if (!name || !Number.isFinite(price) || price < 0) {
+        res.status(400).json({ success: false, message: 'Nome e preço válido são obrigatórios' });
+        return;
+      }
+      const addon = await repo.createAddon(req.userId!, {
+        name,
+        price,
+        available: b.available !== false,
+      });
+      res.status(201).json({ success: true, data: addon });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao criar adicional' });
+    }
+  }
+
+  async updateAddon(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const b = req.body ?? {};
+      const patch: Partial<{ name: string; price: number; available: boolean }> = {};
+      if (b.name !== undefined) {
+        const name = String(b.name).trim();
+        if (!name) {
+          res.status(400).json({ success: false, message: 'Nome não pode ser vazio' });
+          return;
+        }
+        patch.name = name;
+      }
+      if (b.price !== undefined) {
+        const price = Number(b.price);
+        if (!Number.isFinite(price) || price < 0) {
+          res.status(400).json({ success: false, message: 'Preço inválido' });
+          return;
+        }
+        patch.price = price;
+      }
+      if (b.available !== undefined) patch.available = Boolean(b.available);
+      const addon = await repo.updateAddon(req.params.id, req.userId!, patch);
+      if (!addon) {
+        res.status(404).json({ success: false, message: 'Adicional não encontrado' });
+        return;
+      }
+      res.json({ success: true, data: addon });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao atualizar adicional' });
+    }
+  }
+
+  async deleteAddon(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const deleted = await repo.deleteAddon(req.params.id, req.userId!);
+      if (!deleted) {
+        res.status(404).json({ success: false, message: 'Adicional não encontrado' });
+        return;
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao excluir adicional' });
     }
   }
 }

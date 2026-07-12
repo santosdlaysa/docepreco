@@ -15,9 +15,12 @@ export interface StoreSettings {
   minOrderValue?: number | null;
   deliveryFee?: number | null;
   coverImageUrl?: string | null;
+  logoUrl?: string | null;
   paymentMethods: string[];
   address?: string | null;
   city?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
   category?: string | null;
   useBusinessHours: boolean;
   businessHours: DayHours[];
@@ -31,12 +34,14 @@ export interface MarketplaceStoreSummary {
   slug: string;
   description?: string | null;
   coverImageUrl?: string | null;
+  logoUrl?: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue?: number | null;
   deliveryFee?: number | null;
   city?: string | null;
   category?: string | null;
+  distanceKm?: number | null;
 }
 
 export interface StoreProduct {
@@ -50,6 +55,16 @@ export interface StoreProduct {
   recipeId?: string | null;
   discountType?: DiscountType | null;
   discountValue?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StoreAddon {
+  id: string;
+  userId: string;
+  name: string;
+  price: number;
+  available: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -83,9 +98,12 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     minOrderValue: row.min_order_value ? Number(row.min_order_value) : null,
     deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
+    logoUrl: (row.logo_url as string | null) ?? null,
     paymentMethods: (row.payment_methods as string[] | null) ?? ['pix', 'cash', 'credit', 'debit'],
     address: (row.address as string | null) ?? null,
     city: (row.city as string | null) ?? null,
+    latitude: row.latitude != null ? Number(row.latitude) : null,
+    longitude: row.longitude != null ? Number(row.longitude) : null,
     category: (row.category as string | null) ?? null,
     useBusinessHours,
     businessHours,
@@ -101,12 +119,26 @@ function mapMarketplaceStore(row: Record<string, unknown>): MarketplaceStoreSumm
     slug: row.slug as string,
     description: row.description as string | null,
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
+    logoUrl: (row.logo_url as string | null) ?? null,
     acceptsDelivery: row.accepts_delivery as boolean,
     acceptsPickup: row.accepts_pickup as boolean,
     minOrderValue: row.min_order_value != null ? Number(row.min_order_value) : null,
     deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
     city: (row.city as string | null) ?? null,
     category: (row.category as string | null) ?? null,
+    distanceKm: row.distance_km != null ? Math.round(Number(row.distance_km) * 10) / 10 : null,
+  };
+}
+
+function mapAddon(row: Record<string, unknown>): StoreAddon {
+  return {
+    id: row.id as string,
+    userId: row.user_id as string,
+    name: row.name as string,
+    price: Number(row.price),
+    available: row.available as boolean,
+    createdAt: (row.created_at as Date).toISOString(),
+    updatedAt: (row.updated_at as Date).toISOString(),
   };
 }
 
@@ -171,6 +203,7 @@ export class PostgresStoreRepository {
     minOrderValue: number | null;
     deliveryFee: number | null;
     coverImageUrl: string | null;
+    logoUrl: string | null;
     paymentMethods: string[];
     address: string | null;
     city: string | null;
@@ -190,6 +223,7 @@ export class PostgresStoreRepository {
     if ('minOrderValue' in data)           { fields.push(`min_order_value = $${idx++}`);  values.push(data.minOrderValue ?? null); }
     if ('deliveryFee' in data)             { fields.push(`delivery_fee = $${idx++}`);     values.push(data.deliveryFee ?? null); }
     if ('coverImageUrl' in data)           { fields.push(`cover_image_url = $${idx++}`); values.push(data.coverImageUrl ?? null); }
+    if ('logoUrl' in data)                 { fields.push(`logo_url = $${idx++}`);        values.push(data.logoUrl ?? null); }
     if (data.paymentMethods !== undefined)  { fields.push(`payment_methods = $${idx++}`); values.push(JSON.stringify(data.paymentMethods)); }
     if ('address' in data)                 { fields.push(`address = $${idx++}`);          values.push(data.address ?? null); }
     if ('city' in data)                    { fields.push(`city = $${idx++}`);             values.push(data.city ?? null); }
@@ -211,27 +245,64 @@ export class PostgresStoreRepository {
     return mapSettings(result.rows[0]);
   }
 
-  async listMarketplaceStores(filters: { search?: string; category?: string; city?: string; page: number; limit: number }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
+  async updateCoordinates(userId: string, latitude: number | null, longitude: number | null): Promise<void> {
+    await pool.query(
+      'UPDATE store_settings SET latitude = $1, longitude = $2 WHERE user_id = $3',
+      [latitude, longitude, userId]
+    );
+  }
+
+  async listMarketplaceStores(filters: {
+    search?: string;
+    category?: string;
+    city?: string;
+    sort?: 'distance' | 'fee_asc';
+    freeDelivery?: boolean;
+    lat?: number;
+    lng?: number;
+    page: number;
+    limit: number;
+  }): Promise<{ stores: MarketplaceStoreSummary[]; total: number }> {
     const search = filters.search?.trim() || null;
     const category = filters.category?.trim() || null;
     const city = filters.city?.trim() || null;
+    const freeDelivery = filters.freeDelivery === true;
+    const hasCoords = Number.isFinite(filters.lat) && Number.isFinite(filters.lng);
+    const lat = hasCoords ? filters.lat! : null;
+    const lng = hasCoords ? filters.lng! : null;
+    // Ordenar por distância sem coordenadas do cliente não faz sentido — cai na ordem padrão.
+    const sort = filters.sort === 'distance' && !hasCoords ? null : filters.sort ?? null;
     const limit = Math.min(Math.max(filters.limit, 1), 50);
     const offset = Math.max(filters.page - 1, 0) * limit;
 
     // Filtra pelo horário de funcionamento em JS: pega uma página extra do banco
     // (lojas fechadas por horário automático são descartadas) para manter o limite pedido.
+    // distance_km via fórmula de Haversine; lojas sem coordenadas ficam por último (NULLS LAST).
     const rows = await pool.query(
-      `SELECT store_name, slug, description, cover_image_url,
-              accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
-              city, category, active, use_business_hours, business_hours
-       FROM store_settings
-       WHERE active = TRUE
-         AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
-         AND ($2::text IS NULL OR category = $2)
-         AND ($3::text IS NULL OR city ILIKE $3)
-       ORDER BY store_name ASC
-       LIMIT $4 OFFSET $5`,
-      [search, category, city ? `%${city}%` : null, limit, offset]
+      `SELECT * FROM (
+         SELECT store_name, slug, description, cover_image_url, logo_url,
+                accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
+                city, category, active, use_business_hours, business_hours,
+                CASE WHEN $4::double precision IS NOT NULL AND latitude IS NOT NULL AND longitude IS NOT NULL THEN
+                  2 * 6371 * asin(sqrt(
+                    power(sin(radians((latitude - $4::double precision) / 2)), 2) +
+                    cos(radians($4::double precision)) * cos(radians(latitude)) *
+                    power(sin(radians((longitude - $5::double precision) / 2)), 2)
+                  ))
+                END AS distance_km
+         FROM store_settings
+         WHERE active = TRUE
+           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
+           AND ($2::text IS NULL OR category = $2)
+           AND ($3::text IS NULL OR city ILIKE $3)
+           AND ($6::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))
+       ) s
+       ORDER BY
+         CASE WHEN $7::text = 'distance' THEN s.distance_km END ASC NULLS LAST,
+         CASE WHEN $7::text = 'fee_asc' THEN (CASE WHEN s.accepts_delivery THEN s.delivery_fee END) END ASC NULLS LAST,
+         s.store_name ASC
+       LIMIT $8 OFFSET $9`,
+      [search, category, city ? `%${city}%` : null, lat, lng, freeDelivery, sort, limit, offset]
     );
     const openRows = rows.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours }));
 
@@ -241,8 +312,9 @@ export class PostgresStoreRepository {
        WHERE active = TRUE
          AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR category = $2)
-         AND ($3::text IS NULL OR city ILIKE $3)`,
-      [search, category, city ? `%${city}%` : null]
+         AND ($3::text IS NULL OR city ILIKE $3)
+         AND ($4::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))`,
+      [search, category, city ? `%${city}%` : null, freeDelivery]
     );
     const total = count.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours })).length;
 
@@ -327,5 +399,56 @@ export class PostgresStoreRepository {
     );
     if (result.rows.length === 0) return null;
     return mapProduct(result.rows[0]);
+  }
+
+  async getAddons(userId: string): Promise<StoreAddon[]> {
+    const result = await pool.query(
+      'SELECT * FROM store_addons WHERE user_id = $1 ORDER BY created_at ASC',
+      [userId]
+    );
+    return result.rows.map(mapAddon);
+  }
+
+  async createAddon(userId: string, data: { name: string; price: number; available: boolean }): Promise<StoreAddon> {
+    const result = await pool.query(
+      `INSERT INTO store_addons (user_id, name, price, available)
+       VALUES ($1, $2, $3, $4)
+       RETURNING *`,
+      [userId, data.name, data.price, data.available]
+    );
+    return mapAddon(result.rows[0]);
+  }
+
+  async updateAddon(id: string, userId: string, data: Partial<{ name: string; price: number; available: boolean }>): Promise<StoreAddon | null> {
+    const fields: string[] = [];
+    const values: unknown[] = [];
+    let idx = 1;
+
+    if (data.name !== undefined)      { fields.push(`name = $${idx++}`);      values.push(data.name); }
+    if (data.price !== undefined)     { fields.push(`price = $${idx++}`);     values.push(data.price); }
+    if (data.available !== undefined) { fields.push(`available = $${idx++}`); values.push(data.available); }
+
+    if (fields.length === 0) {
+      const existing = await pool.query('SELECT * FROM store_addons WHERE id = $1 AND user_id = $2', [id, userId]);
+      return existing.rows.length > 0 ? mapAddon(existing.rows[0]) : null;
+    }
+
+    fields.push(`updated_at = NOW()`);
+    values.push(id, userId);
+
+    const result = await pool.query(
+      `UPDATE store_addons SET ${fields.join(', ')} WHERE id = $${idx++} AND user_id = $${idx} RETURNING *`,
+      values
+    );
+    if (result.rows.length === 0) return null;
+    return mapAddon(result.rows[0]);
+  }
+
+  async deleteAddon(id: string, userId: string): Promise<boolean> {
+    const result = await pool.query(
+      'DELETE FROM store_addons WHERE id = $1 AND user_id = $2',
+      [id, userId]
+    );
+    return (result.rowCount ?? 0) > 0;
   }
 }

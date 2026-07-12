@@ -5,7 +5,7 @@ import { PostgresPushTokenRepository } from '../../infrastructure/repositories/P
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
 import { computeDiscountAmount, DiscountType } from '../../domain/utils/discount';
 import { isStoreOpenNow } from '../../domain/utils/businessHours';
-import { publicListLimiter } from '../middleware/rateLimiter';
+import { publicListLimiter, publicOrderLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 const storeRepo = new PostgresStoreRepository();
@@ -29,9 +29,20 @@ router.get('/stores', publicListLimiter, async (req: Request, res: Response) => 
     const search = typeof req.query.search === 'string' ? req.query.search : undefined;
     const category = typeof req.query.category === 'string' ? req.query.category : undefined;
     const city = typeof req.query.city === 'string' ? req.query.city : undefined;
+    const sortRaw = typeof req.query.sort === 'string' ? req.query.sort : undefined;
+    const sort = sortRaw === 'distance' || sortRaw === 'fee_asc' ? sortRaw : undefined;
+    const freeDelivery = req.query.freeDelivery === 'true' || req.query.freeDelivery === '1';
+    const latRaw = Number(req.query.lat);
+    const lngRaw = Number(req.query.lng);
+    const hasCoords = Number.isFinite(latRaw) && Number.isFinite(lngRaw) && Math.abs(latRaw) <= 90 && Math.abs(lngRaw) <= 180;
     const page = Math.max(Number(req.query.page) || 1, 1);
     const limit = Math.min(Math.max(Number(req.query.limit) || 20, 1), 50);
-    const { stores, total } = await storeRepo.listMarketplaceStores({ search, category, city, page, limit });
+    const { stores, total } = await storeRepo.listMarketplaceStores({
+      search, category, city, sort, freeDelivery,
+      lat: hasCoords ? latRaw : undefined,
+      lng: hasCoords ? lngRaw : undefined,
+      page, limit,
+    });
     res.json({ success: true, data: { stores, page, limit, total } });
   } catch (error) {
     console.error('[Public Stores] list error:', error);
@@ -50,7 +61,7 @@ router.get('/customer/orders', publicListLimiter, async (req: Request, res: Resp
     const result = await pool.query(
       `SELECT o.id, o.order_number, o.status, o.total_price, o.items, o.created_at,
               o.delivery_address, o.payment_method,
-              s.store_name, s.slug
+              s.store_name, s.slug, s.cover_image_url, s.logo_url
        FROM orders o
        JOIN store_settings s ON s.user_id = o.user_id
        WHERE o.source = 'online'
@@ -72,10 +83,52 @@ router.get('/customer/orders', publicListLimiter, async (req: Request, res: Resp
         paymentMethod: o.payment_method,
         storeName: o.store_name,
         storeSlug: o.slug,
+        storeImageUrl: o.logo_url ?? o.cover_image_url ?? null,
       })),
     });
   } catch (error) {
     console.error('[Public Customer] orders error:', error);
+    res.status(500).json({ success: false, error: 'Erro interno' });
+  }
+});
+
+// Vitrine de itens das lojas da região — produtos mais recentes de lojas abertas,
+// exibidos acima da lista de lojas no marketplace.
+router.get('/products/featured', publicListLimiter, async (req: Request, res: Response) => {
+  try {
+    const city = typeof req.query.city === 'string' ? req.query.city.trim() : '';
+    const limit = Math.min(Math.max(Number(req.query.limit) || 12, 1), 30);
+    // Busca com folga: lojas fechadas pelo horário de funcionamento são filtradas em JS.
+    const result = await pool.query(
+      `SELECT p.id, p.name, p.photo_url, p.public_price, p.discount_type, p.discount_value,
+              s.store_name, s.slug AS store_slug, s.active, s.use_business_hours, s.business_hours
+       FROM store_products p
+       JOIN store_settings s ON s.user_id = p.user_id
+       WHERE p.available = TRUE AND s.active = TRUE
+         AND ($1::text = '' OR s.city ILIKE '%' || $1 || '%')
+       ORDER BY p.created_at DESC
+       LIMIT $2`,
+      [city, limit * 2]
+    );
+    const products = result.rows
+      .filter(p => isStoreOpenNow({ active: p.active, use_business_hours: p.use_business_hours, business_hours: p.business_hours }))
+      .slice(0, limit)
+      .map(p => {
+        const publicPrice = Number(p.public_price);
+        const discountAmount = computeDiscountAmount(publicPrice, p.discount_type as DiscountType | null, p.discount_value != null ? Number(p.discount_value) : null);
+        return {
+          id: p.id,
+          name: p.name,
+          photoUrl: p.photo_url,
+          price: publicPrice - discountAmount,
+          originalPrice: discountAmount > 0 ? publicPrice : undefined,
+          storeName: p.store_name,
+          storeSlug: p.store_slug,
+        };
+      });
+    res.json({ success: true, data: { products } });
+  } catch (error) {
+    console.error('[Public Products] featured error:', error);
     res.status(500).json({ success: false, error: 'Erro interno' });
   }
 });
@@ -148,6 +201,11 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
       'SELECT id, name, description, photo_url, public_price, discount_type, discount_value FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
       [s.user_id]
     );
+    // Itens adicionais disponíveis — o cliente escolhe no detalhe do produto
+    const addonsResult = await pool.query(
+      'SELECT id, name, price FROM store_addons WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
+      [s.user_id]
+    );
     res.json({
       success: true,
       data: {
@@ -159,6 +217,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         minOrderValue: s.min_order_value ? Number(s.min_order_value) : null,
         deliveryFee: s.delivery_fee ? Number(s.delivery_fee) : null,
         coverImageUrl: s.cover_image_url ?? null,
+        logoUrl: s.logo_url ?? null,
         paymentMethods: s.payment_methods ?? ['pix', 'cash', 'credit', 'debit'],
         address: s.address ?? null,
         phone: u.phone ?? null,
@@ -175,6 +234,11 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
             originalPrice: discountAmount > 0 ? publicPrice : undefined,
           };
         }),
+        addons: addonsResult.rows.map(a => ({
+          id: a.id,
+          name: a.name,
+          price: Number(a.price),
+        })),
       },
     });
   } catch (error) {
@@ -183,7 +247,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/store/:slug/orders', async (req: Request, res: Response) => {
+router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res: Response) => {
   try {
     const { slug } = req.params;
     const b = req.body ?? {};
@@ -224,17 +288,32 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
     );
     const productMap = new Map(productsResult.rows.map(p => [p.id, p]));
 
-    // Montar itens com preços do banco, já com o desconto do produto aplicado
-    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number; discount: number }> = [];
+    // Adicionais da loja (preço sempre do banco, nunca do cliente)
+    const addonsResult = await pool.query(
+      'SELECT id, name, price FROM store_addons WHERE user_id = $1 AND available = TRUE',
+      [userId]
+    );
+    const addonMap = new Map(addonsResult.rows.map(a => [a.id, a]));
+
+    // Montar itens com preços do banco, já com o desconto do produto aplicado.
+    // Adicionais entram no preço unitário (por unidade do produto) e ficam listados no item.
+    const items: Array<{ productId: string; recipeId: string | null; recipeName: string; quantity: number; unitPrice: number; discount: number; addons: Array<{ id: string; name: string; price: number }> }> = [];
     let totalPrice = 0;
     for (const item of b.items) {
       const product = productMap.get(item.productId);
       if (!product) continue;
       const qty = Math.max(1, Number(item.quantity) || 1);
-      const unitPrice = Number(product.public_price);
-      const discountPerUnit = computeDiscountAmount(unitPrice, product.discount_type as DiscountType | null, product.discount_value != null ? Number(product.discount_value) : null);
+      const addonIds: string[] = Array.isArray(item.addonIds) ? item.addonIds : [];
+      const addons = addonIds
+        .map(id => addonMap.get(id))
+        .filter(Boolean)
+        .map((a: any) => ({ id: a.id as string, name: a.name as string, price: Number(a.price) }));
+      const addonsPerUnit = addons.reduce((sum, a) => sum + a.price, 0);
+      const productPrice = Number(product.public_price);
+      const unitPrice = Math.round((productPrice + addonsPerUnit) * 100) / 100;
+      const discountPerUnit = computeDiscountAmount(productPrice, product.discount_type as DiscountType | null, product.discount_value != null ? Number(product.discount_value) : null);
       const discount = Math.round(discountPerUnit * qty * 100) / 100;
-      items.push({ productId: product.id, recipeId: product.recipe_id ?? null, recipeName: product.name, quantity: qty, unitPrice, discount });
+      items.push({ productId: product.id, recipeId: product.recipe_id ?? null, recipeName: product.name, quantity: qty, unitPrice, discount, addons });
       totalPrice += qty * unitPrice - discount;
     }
     if (items.length === 0) {
@@ -271,7 +350,7 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
         firstItem.unitPrice,
         totalWithFee,
         deliveryDate,
-        JSON.stringify(items.map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount }))),
+        JSON.stringify(items.map(i => ({ productId: i.productId, recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount, addons: i.addons }))),
         b.notes ? String(b.notes).trim() : null,
         b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
         paymentMethod,
@@ -286,7 +365,9 @@ router.post('/store/:slug/orders', async (req: Request, res: Response) => {
       const tokenRepo = new PostgresPushTokenRepository();
       const tokens = await tokenRepo.findByUserId(userId);
       if (tokens.length > 0) {
-        const itemsSummary = items.map(i => `${i.quantity}x ${i.recipeName}`).join(', ');
+        const itemsSummary = items
+          .map(i => `${i.quantity}x ${i.recipeName}${i.addons.length ? ` (+ ${i.addons.map(a => a.name).join(', ')})` : ''}`)
+          .join(', ');
         const phoneInfo = b.clientPhone ? ` • ${String(b.clientPhone).trim()}` : '';
         const addrInfo = isDelivery && b.deliveryAddress ? ` • ${String(b.deliveryAddress).trim()}` : '';
         const methodLabels: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };

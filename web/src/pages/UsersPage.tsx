@@ -31,8 +31,8 @@ function formatPhone(phone: string): string {
   return phone;
 }
 
-function PremiumBadge({ planTier, platform }: { planTier: AdminUser['planTier']; platform: string | null }) {
-  if (planTier === 'free') return <span className="text-xs text-gray-400">Gratuito</span>;
+function PremiumBadge({ planTier, platform, isPremium = true }: { planTier: AdminUser['planTier']; platform: string | null; isPremium?: boolean }) {
+  if (planTier === 'free' || !isPremium) return <span className="text-xs text-gray-400">Gratuito</span>;
   const label = tierBadgeLabel(planTier, platform);
   return (
     <span className="inline-flex items-center gap-1 text-xs font-semibold bg-primary-100 text-primary-700 px-2 py-0.5 rounded-full">
@@ -364,7 +364,7 @@ function UserModal({
                 <div>
                   <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Status do plano</p>
                   <div className="mt-1">
-                    <PremiumBadge planTier={user.planTier} platform={user.premiumPlatform} />
+                    <PremiumBadge planTier={user.planTier} platform={user.premiumPlatform} isPremium={user.isPremium} />
                   </div>
                   {user.premiumUntil && (
                     <p className="text-xs text-gray-400 mt-1">
@@ -1175,7 +1175,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                     <SignupPlatformBadge platform={u.signupPlatform} />
                   </td>
                   <td className="px-4 py-3">
-                    <PremiumBadge planTier={u.planTier} platform={u.premiumPlatform} />
+                    <PremiumBadge planTier={u.planTier} platform={u.premiumPlatform} isPremium={u.isPremium} />
                   </td>
                   <td className={`px-4 py-3 text-right font-medium ${sortBy === 'recipeCount' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{u.recipeCount}</td>
                   <td className={`px-4 py-3 text-right font-medium ${sortBy === 'ingredientCount' ? 'text-primary-600' : 'text-gray-700 dark:text-gray-200'}`}>{u.ingredientCount}</td>

@@ -17,6 +17,16 @@ interface ProductSearchResult {
   storeSlug: string;
 }
 
+interface ExploreStore {
+  storeName: string;
+  slug: string;
+  coverImageUrl: string | null;
+  logoUrl: string | null;
+  city: string | null;
+  deliveryFee: number | null;
+  acceptsDelivery: boolean;
+}
+
 const COLORS: Array<[string, string]> = [
   ['#FDDDE6', '#EA4B92'],
   ['#EDE9FE', '#7C3AED'],
@@ -30,7 +40,7 @@ function ProductInitial({ name }: { name: string }) {
   const [bg, fg] = COLORS[idx];
   return (
     <div
-      className="w-full h-full flex items-center justify-center rounded-2xl text-xl font-black"
+      className="w-full h-full flex items-center justify-center text-xl font-black"
       style={{ backgroundColor: bg, color: fg }}
     >
       {name[0]?.toUpperCase()}
@@ -44,6 +54,19 @@ export function ExplorarPage() {
   const [products, setProducts] = useState<ProductSearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [stores, setStores] = useState<ExploreStore[]>([]);
+  const [storesLoading, setStoresLoading] = useState(true);
+
+  // Lojas exibidas por padrão, antes de qualquer busca
+  useEffect(() => {
+    fetch(`${API_BASE}/public/stores?limit=30`)
+      .then(r => r.json())
+      .then(json => {
+        if (json.success) setStores(json.data.stores);
+      })
+      .catch(() => setStores([]))
+      .finally(() => setStoresLoading(false));
+  }, []);
 
   // Debounce da busca
   useEffect(() => {
@@ -91,14 +114,74 @@ export function ExplorarPage() {
           />
         </div>
 
-        {/* Prompt mínimo */}
+        {/* Lojas em destaque — exibidas antes de qualquer busca */}
         {!searched && (
-          <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
-            <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center">
-              <Search className="w-7 h-7 text-gray-300" strokeWidth={1.5} />
-            </div>
-            <p className="text-gray-400 text-sm">Digite ao menos 2 letras para buscar</p>
-          </div>
+          <>
+            {storesLoading && (
+              <div className="flex flex-col items-center justify-center py-24 gap-3">
+                <div className="w-10 h-10 border-[3px] border-[#EA4B92] border-t-transparent rounded-full animate-spin" />
+                <p className="text-sm text-gray-400">Carregando lojas...</p>
+              </div>
+            )}
+
+            {!storesLoading && stores.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-24 gap-3 text-center">
+                <div className="w-16 h-16 bg-white rounded-full shadow-sm flex items-center justify-center">
+                  <Search className="w-7 h-7 text-gray-300" strokeWidth={1.5} />
+                </div>
+                <p className="text-gray-400 text-sm">Nenhuma loja disponível no momento</p>
+              </div>
+            )}
+
+            {!storesLoading && stores.length > 0 && (
+              <>
+                <div className="flex items-center gap-2.5 mb-3">
+                  <span className="w-1.5 h-5 rounded-full bg-gradient-to-b from-[#EA4B92] to-[#7C3AED]" />
+                  <h2 className="text-[18px] font-black text-gray-900 tracking-tight leading-none">
+                    Todas as lojas
+                  </h2>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {stores.map(store => (
+                    <Link
+                      key={store.slug}
+                      to={`/loja/${store.slug}`}
+                      className="bg-white rounded-2xl shadow-sm overflow-hidden active:scale-[0.97] transition-transform"
+                    >
+                      <div className="h-24 w-full overflow-hidden">
+                        {store.logoUrl || store.coverImageUrl ? (
+                          <img
+                            src={store.logoUrl ?? store.coverImageUrl!}
+                            alt={store.storeName}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <ProductInitial name={store.storeName} />
+                        )}
+                      </div>
+                      <div className="p-3">
+                        <p className="font-bold text-gray-900 text-[13px] leading-tight line-clamp-1">
+                          {store.storeName}
+                        </p>
+                        {store.city && (
+                          <p className="text-[11px] text-gray-400 mt-0.5 truncate">{store.city}</p>
+                        )}
+                        {store.acceptsDelivery && (
+                          <p className={`text-[11px] font-bold mt-1 ${store.deliveryFee === 0 ? 'text-emerald-600' : 'text-[#EA4B92]'}`}>
+                            {store.deliveryFee === 0
+                              ? 'Entrega grátis'
+                              : store.deliveryFee != null
+                              ? `Entrega ${fmt(store.deliveryFee)}`
+                              : 'Faz entrega'}
+                          </p>
+                        )}
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </>
         )}
 
         {/* Loading */}
@@ -119,31 +202,33 @@ export function ExplorarPage() {
           </div>
         )}
 
-        {/* Resultados */}
+        {/* Resultados em duas colunas */}
         {searched && !loading && products.length > 0 && (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-3">
             {products.map(product => (
               <Link
                 key={product.id}
                 to={`/loja/${product.storeSlug}`}
-                className="bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-transform"
+                className="bg-white rounded-2xl shadow-sm overflow-hidden active:scale-[0.97] transition-transform"
               >
-                <div className="w-[64px] h-[64px] rounded-2xl overflow-hidden flex-shrink-0 shadow-sm">
+                <div className="h-28 w-full overflow-hidden">
                   {product.photoUrl ? (
                     <img src={product.photoUrl} alt={product.name} className="w-full h-full object-cover" />
                   ) : (
                     <ProductInitial name={product.name} />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="flex items-center gap-1.5 mb-0.5">
-                    {product.originalPrice != null && (
-                      <span className="text-[11px] text-gray-400 line-through">{fmt(product.originalPrice)}</span>
-                    )}
-                    <span className="text-xs font-semibold text-[#EA4B92]">{fmt(product.price)}</span>
+                <div className="p-3">
+                  <p className="font-bold text-gray-900 text-[13px] leading-tight line-clamp-2 min-h-[32px]">
+                    {product.name}
                   </p>
-                  <p className="font-bold text-gray-900 text-[15px] leading-tight line-clamp-2">{product.name}</p>
-                  <p className="text-[12px] text-gray-400 mt-0.5 truncate">{product.storeName}</p>
+                  <p className="flex items-center gap-1.5 mt-1.5">
+                    {product.originalPrice != null && (
+                      <span className="text-[10px] text-gray-300 line-through">{fmt(product.originalPrice)}</span>
+                    )}
+                    <span className="text-[13px] font-extrabold text-[#EA4B92]">{fmt(product.price)}</span>
+                  </p>
+                  <p className="text-[11px] text-gray-400 mt-1 truncate">{product.storeName}</p>
                 </div>
               </Link>
             ))}

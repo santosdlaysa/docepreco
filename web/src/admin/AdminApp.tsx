@@ -4,6 +4,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SubscriptionsPage } from '../pages/SubscriptionsPage';
 import { UsersPage } from '../pages/UsersPage';
+import { StoresPage } from '../pages/StoresPage';
 import { LogsPage } from '../pages/LogsPage';
 import { RequestLogsPage } from '../pages/RequestLogsPage';
 import { BannersPage } from '../pages/BannersPage';
@@ -71,7 +72,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-type Page = 'dashboard' | 'subscriptions' | 'users' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
+type Page = 'dashboard' | 'subscriptions' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
   | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads';
 
 interface NavItem {
@@ -85,6 +86,7 @@ const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'subscriptions', label: 'Assinaturas', icon: TrendingUp },
   { id: 'users', label: 'Usuários', icon: Users },
+  { id: 'stores', label: 'Lojas', icon: Store },
 
   { id: 'ingredients', label: 'Ingredientes', icon: Package, section: 'Conteúdo' },
   { id: 'recipes', label: 'Receitas destaque', icon: ChefHat },
@@ -441,6 +443,7 @@ export default function AdminApp() {
             {page === 'subscriptions' && <SubscriptionsPage toast={toast} />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
             {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} toast={toast} />}
+            {page === 'stores' && <StoresPage toast={toast} />}
             {page === 'banners' && <BannersPage toast={toast} />}
             {page === 'ads' && <AdsPage toast={toast} />}
             {page === 'notifications' && <NotificationsPage toast={toast} />}

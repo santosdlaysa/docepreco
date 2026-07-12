@@ -32,3 +32,16 @@ export const publicListLimiter = rateLimit({
   legacyHeaders: false,
   message: { success: false, error: 'Muitas requisições. Tente novamente em instantes.' },
 });
+
+/**
+ * Criação de pedido público (sem login) — evita spam de pedidos falsos e o
+ * disparo em massa de push notifications para o lojista. Um cliente real
+ * dificilmente faz mais de alguns pedidos em poucos minutos.
+ */
+export const publicOrderLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutos
+  max: 15,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitos pedidos em sequência. Aguarde alguns minutos e tente novamente.' },
+});

@@ -215,6 +215,86 @@ export class AdminController {
     }
   }
 
+  async listStores(req: Request, res: Response): Promise<void> {
+    const search = req.query.search as string | undefined;
+    const activeFilter = (req.query.active as string) || 'true';
+    const page = Math.max(1, parseInt((req.query.page as string) || '1'));
+    const limit = Math.min(50, parseInt((req.query.limit as string) || '20'));
+    const offset = (page - 1) * limit;
+
+    const conditions: string[] = [];
+    const params: unknown[] = [];
+    let idx = 1;
+
+    if (search) {
+      conditions.push(`(st.store_name ILIKE $${idx} OR st.slug ILIKE $${idx} OR st.city ILIKE $${idx} OR u.company_name ILIKE $${idx} OR u.email ILIKE $${idx})`);
+      params.push(`%${search}%`);
+      idx++;
+    }
+    if (activeFilter === 'true') conditions.push(`st.active = TRUE`);
+    else if (activeFilter === 'false') conditions.push(`st.active = FALSE`);
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    try {
+      const [countRes, totalsRes, storesRes] = await Promise.all([
+        pool.query(
+          `SELECT COUNT(*)::int AS total FROM store_settings st JOIN users u ON u.id = st.user_id ${where}`,
+          params
+        ),
+        pool.query(
+          `SELECT
+            COUNT(*) FILTER (WHERE active = TRUE)::int  AS "activeCount",
+            COUNT(*) FILTER (WHERE active = FALSE)::int AS "inactiveCount"
+          FROM store_settings`
+        ),
+        pool.query(
+          `SELECT
+            st.id,
+            st.store_name        AS "storeName",
+            st.slug,
+            st.active,
+            st.logo_url          AS "logoUrl",
+            st.city,
+            st.category,
+            st.accepts_delivery  AS "acceptsDelivery",
+            st.accepts_pickup    AS "acceptsPickup",
+            st.created_at        AS "createdAt",
+            st.updated_at        AS "updatedAt",
+            u.id                 AS "userId",
+            u.company_name       AS "companyName",
+            u.email,
+            u.phone,
+            u.is_premium         AS "isPremium",
+            u.plan_tier          AS "planTier",
+            (SELECT COUNT(*)::int FROM store_products sp WHERE sp.user_id = u.id) AS "productCount"
+          FROM store_settings st
+          JOIN users u ON u.id = st.user_id
+          ${where}
+          ORDER BY st.updated_at DESC
+          LIMIT $${idx} OFFSET $${idx + 1}`,
+          [...params, limit, offset]
+        ),
+      ]);
+
+      res.json({
+        success: true,
+        data: {
+          stores: storesRes.rows,
+          total: countRes.rows[0].total,
+          activeCount: totalsRes.rows[0].activeCount,
+          inactiveCount: totalsRes.rows[0].inactiveCount,
+          page,
+          limit,
+        },
+      });
+    } catch (error) {
+      console.error('[Admin] listStores error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async setPremium(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
     const { isPremium, premiumUntil, planTier } = req.body as {

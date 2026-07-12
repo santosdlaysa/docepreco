@@ -30,6 +30,7 @@ import { useDemoGuard } from '../hooks/useDemoGuard';
 import { usePaywall } from '../premium/usePaywall';
 import { AdBanner, AdBanner2 } from '../ads';
 import { SupportFab } from '../components/SupportFab';
+import { StoreCityRequiredModal } from '../components/StoreCityRequiredModal';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { bannerApi, Banner, CarouselBanner, PlanBanner } from '../../data/api/bannerApi';
 import { bannerStorage, carouselCache } from '../../data/storage/bannerStorage';
@@ -79,6 +80,7 @@ export const HomeScreen: React.FC = () => {
   const [planBannerIndex, setPlanBannerIndex] = useState(0);
   const [premiumPriceLabel, setPremiumPriceLabel] = useState('R$ 14,90');
   const [masterPriceLabel, setMasterPriceLabel] = useState('R$ 30,00');
+  const [showCityModal, setShowCityModal] = useState(false);
   const planBannerRef = useRef<ScrollView>(null);
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
@@ -110,7 +112,11 @@ export const HomeScreen: React.FC = () => {
     bannerApi.getPlan().then(setPlanBanners).catch(() => {});
     if (isMaster) {
       storeSettingsApi.getSettings()
-        .then(s => setHasMandatoryAlert(getMissingStoreItems(s).length > 0))
+        .then(s => {
+          setHasMandatoryAlert(getMissingStoreItems(s).length > 0);
+          // Loja online sem cidade não aparece no filtro por região do marketplace
+          if (!isDemoMode() && s.active && !s.city?.trim()) setShowCityModal(true);
+        })
         .catch(() => setHasMandatoryAlert(false));
       orderApi.getAll().then(async all => {
         const readIds = await notificationReadStorage.getReadIds();
@@ -698,6 +704,14 @@ export const HomeScreen: React.FC = () => {
       </ScrollView>
       <SupportFab />
       <DemoGuardModal />
+      <StoreCityRequiredModal
+        visible={showCityModal}
+        onFill={() => {
+          setShowCityModal(false);
+          navigation.navigate('StoreSettings');
+        }}
+        onLater={() => setShowCityModal(false)}
+      />
     </SafeAreaView>
   );
 };

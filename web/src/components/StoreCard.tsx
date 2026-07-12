@@ -1,15 +1,25 @@
 import { Link } from 'react-router-dom';
+import { MapPin, Bike, ShoppingBag } from 'lucide-react';
 import { fmt, initials } from '../utils/format';
 
 interface StoreCardProps {
   storeName: string;
   slug: string;
   description: string | null;
-  coverImageUrl: string | null;
+  /** Logo/foto de perfil da loja — usada como miniatura na lista. */
+  logoUrl?: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
   minOrderValue: number | null;
+  deliveryFee?: number | null;
   city: string | null;
+  distanceKm?: number | null;
+}
+
+function fmtDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} m`;
+  if (km < 10) return `${km.toFixed(1).replace('.', ',')} km`;
+  return `${Math.round(km)} km`;
 }
 
 const COLORS: Array<[string, string]> = [
@@ -25,7 +35,7 @@ function StoreInitial({ name }: { name: string }) {
   const [bg, fg] = COLORS[idx];
   return (
     <div
-      className="w-full h-full flex items-center justify-center text-2xl font-black"
+      className="w-full h-full flex items-center justify-center text-lg font-black"
       style={{ backgroundColor: bg, color: fg }}
     >
       {initials(name)}
@@ -37,50 +47,70 @@ export function StoreCard({
   storeName,
   slug,
   description,
-  coverImageUrl,
+  logoUrl,
   acceptsDelivery,
   acceptsPickup,
   minOrderValue,
+  deliveryFee,
   city,
+  distanceKm,
 }: StoreCardProps) {
+  const freeDelivery = acceptsDelivery && deliveryFee === 0;
+
   return (
     <Link
       to={`/loja/${slug}`}
-      className="block bg-white rounded-2xl shadow-sm overflow-hidden active:scale-[0.98] transition-transform"
+      className="block bg-white rounded-2xl shadow-sm p-3.5 active:scale-[0.98] transition-transform"
     >
-      <div className="h-28 w-full bg-gradient-to-br from-[#EA4B92] to-[#7C3AED] rounded-t-2xl overflow-hidden">
-        {coverImageUrl ? (
-          <img src={coverImageUrl} alt={storeName} className="w-full h-full object-cover" />
-        ) : (
-          <StoreInitial name={storeName} />
-        )}
-      </div>
-      <div className="p-4">
-        <p className="font-bold text-gray-900 text-[15px] leading-tight">{storeName}</p>
-        {description && (
-          <p className="text-gray-400 text-sm mt-1 line-clamp-2">{description}</p>
-        )}
-        <div className="flex flex-wrap items-center gap-1.5 mt-3">
-          {acceptsDelivery && (
-            <span className="text-[11px] font-semibold text-[#EA4B92] bg-rose-50 rounded-full px-2.5 py-1">
-              Entrega
-            </span>
+      <div className="flex items-center gap-3.5">
+        {/* Logo da loja (foto de perfil da empresa) */}
+        <div className="w-[68px] h-[68px] rounded-2xl overflow-hidden flex-shrink-0 shadow-sm">
+          {logoUrl ? (
+            <img src={logoUrl} alt={storeName} className="w-full h-full object-cover" />
+          ) : (
+            <StoreInitial name={storeName} />
           )}
-          {acceptsPickup && (
-            <span className="text-[11px] font-semibold text-[#7C3AED] bg-[#EDE9FE] rounded-full px-2.5 py-1">
-              Retirada
-            </span>
+        </div>
+
+        {/* Infos */}
+        <div className="flex-1 min-w-0">
+          <p className="font-extrabold text-gray-900 text-[15px] leading-tight truncate">
+            {storeName}
+          </p>
+          <p className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium mt-0.5 truncate">
+            {distanceKm != null && (
+              <span className="flex items-center gap-0.5 text-sky-600 font-bold flex-shrink-0">
+                <MapPin size={11} strokeWidth={2.5} />
+                {fmtDistance(distanceKm)}
+              </span>
+            )}
+            {distanceKm != null && city && <span className="text-gray-300">•</span>}
+            {city && <span className="truncate">{city}</span>}
+          </p>
+          {description && (
+            <p className="text-gray-400 text-[12px] mt-1 line-clamp-1 leading-relaxed">
+              {description}
+            </p>
           )}
-          {city && (
-            <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
-              {city}
-            </span>
-          )}
-          {minOrderValue != null && (
-            <span className="text-[11px] font-semibold text-gray-500 bg-gray-100 rounded-full px-2.5 py-1">
-              Mín. {fmt(minOrderValue)}
-            </span>
-          )}
+
+          {/* Linha de entrega/retirada */}
+          <div className="flex items-center gap-2.5 mt-1.5 text-[11px] font-bold flex-wrap">
+            {acceptsDelivery && (
+              <span className={`flex items-center gap-1 ${freeDelivery ? 'text-emerald-600' : 'text-[#EA4B92]'}`}>
+                <Bike size={12} strokeWidth={2.4} />
+                {freeDelivery ? 'Grátis' : deliveryFee != null ? fmt(deliveryFee) : 'Entrega'}
+              </span>
+            )}
+            {acceptsPickup && (
+              <span className="flex items-center gap-1 text-[#7C3AED]">
+                <ShoppingBag size={12} strokeWidth={2.4} />
+                Retirada
+              </span>
+            )}
+            {minOrderValue != null && (
+              <span className="font-medium text-gray-400">Mín. {fmt(minOrderValue)}</span>
+            )}
+          </div>
         </div>
       </div>
     </Link>
