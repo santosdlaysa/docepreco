@@ -1080,7 +1080,7 @@ export class AdminController {
             createdAt: row.createdAt
           })),
           timeseries: timeseries.map(row => ({
-            date: row.date,
+            date: row.date instanceof Date ? row.date.toISOString().slice(0, 10) : row.date,
             totalBRL: parseInt(row.totalCents) / 100,
             eventCount: parseInt(row.eventCount),
             uniqueUsers: parseInt(row.uniqueUsers)

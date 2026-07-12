@@ -25,8 +25,9 @@ const fmtBRL = (n: number) =>
   `R$ ${(n ?? 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 // Retorna a data (YYYY-MM-DD) da segunda-feira da semana ISO daquele dia
-function weekStartOf(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00`);
+function weekStartOf(dateStr: string): string | null {
+  const d = new Date(`${dateStr.slice(0, 10)}T00:00:00`);
+  if (isNaN(d.getTime())) return null;
   const day = d.getDay(); // 0 (dom) .. 6 (sáb)
   const diffToMonday = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diffToMonday);
@@ -40,6 +41,7 @@ function bucketWeekly(timeseries: { date: string; totalBRL: number }[]): { label
   const totals = new Map<string, number>();
   for (const point of timeseries) {
     const weekStart = weekStartOf(point.date);
+    if (!weekStart) continue;
     totals.set(weekStart, (totals.get(weekStart) ?? 0) + point.totalBRL);
   }
   return Array.from(totals.entries())
