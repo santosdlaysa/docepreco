@@ -31,6 +31,8 @@ import { usePaywall } from '../premium/usePaywall';
 import { AdBanner, AdBanner2 } from '../ads';
 import { SupportFab } from '../components/SupportFab';
 import { StoreCityRequiredModal } from '../components/StoreCityRequiredModal';
+import { SubscriptionExpiringModal } from '../components/SubscriptionExpiringModal';
+import { subscriptionAlertStorage } from '../../data/storage/subscriptionAlertStorage';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { bannerApi, Banner, CarouselBanner, PlanBanner } from '../../data/api/bannerApi';
 import { bannerStorage, carouselCache } from '../../data/storage/bannerStorage';
@@ -81,6 +83,7 @@ export const HomeScreen: React.FC = () => {
   const [premiumPriceLabel, setPremiumPriceLabel] = useState('R$ 14,90');
   const [masterPriceLabel, setMasterPriceLabel] = useState('R$ 30,00');
   const [showCityModal, setShowCityModal] = useState(false);
+  const [showExpiringModal, setShowExpiringModal] = useState(false);
   const planBannerRef = useRef<ScrollView>(null);
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
@@ -142,6 +145,17 @@ export const HomeScreen: React.FC = () => {
     await loadData();
     setRefreshing(false);
   };
+
+  // Assinatura perto de expirar: avisa uma vez por dia com CTA de renovação.
+  useEffect(() => {
+    if (isDemoMode() || isAdmin || !isPremium) return;
+    if (daysLeft === null || daysLeft > 3) return;
+    subscriptionAlertStorage.wasShownToday().then(shown => {
+      if (shown) return;
+      setShowExpiringModal(true);
+      void subscriptionAlertStorage.markShown();
+    });
+  }, [isPremium, isAdmin, daysLeft]);
 
   useEffect(() => {
     if (isPremium && !isAdmin) return;
@@ -704,6 +718,15 @@ export const HomeScreen: React.FC = () => {
       </ScrollView>
       <SupportFab />
       <DemoGuardModal />
+      <SubscriptionExpiringModal
+        visible={showExpiringModal}
+        daysLeft={daysLeft ?? 0}
+        onRenew={() => {
+          setShowExpiringModal(false);
+          navigation.navigate('Paywall', { trigger: { kind: 'manual' } });
+        }}
+        onLater={() => setShowExpiringModal(false)}
+      />
       <StoreCityRequiredModal
         visible={showCityModal}
         onFill={() => {
