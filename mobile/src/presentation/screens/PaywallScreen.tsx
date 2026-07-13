@@ -339,41 +339,6 @@ export const PaywallScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
-          {/* ── Plans (store) ── */}
-          {loading ? (
-            <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-              <ActivityIndicator size="large" color={accent} />
-            </View>
-          ) : hasStorePlans ? (
-            <View style={st.plans}>
-              {tierPackages.map(pkg => {
-                const on = selected === pkg.identifier;
-                return (
-                  <TouchableOpacity key={pkg.identifier} style={[st.plan, on && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setSelected(pkg.identifier)} activeOpacity={0.8}>
-                    {pkg.badge && <View style={[st.save, isMasterTier && { backgroundColor: PURPLE, shadowColor: PURPLE }]}><Text style={st.saveText}>{pkg.badge}</Text></View>}
-                    <View style={[st.radio, on && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
-                      {on && <Ionicons name="checkmark" size={12} color="#fff" />}
-                    </View>
-                    <Text style={st.planName}>{pkg.title}</Text>
-                    {/* Trial info — só mostra se a Apple confirmou elegibilidade */}
-                    {pkg.isTrialEligible && pkg.hasFreeTrial && pkg.trialDays && (
-                      <Text style={st.planTrial}>
-                        {pkg.trialDays} dias grátis
-                      </Text>
-                    )}
-                    <Text style={st.planPrice}>{pkg.priceLabel}</Text>
-                    {pkg.subtitle && <Text style={st.planPer}>{pkg.subtitle}</Text>}
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          ) : isMasterTier && !pixAvailable ? (
-            <View style={st.soon}>
-              <Ionicons name="time-outline" size={20} color={PURPLE} />
-              <Text style={st.soonText}>O plano Master chega em breve. Fique de olho!</Text>
-            </View>
-          ) : null}
-
           {/* ── Features ── */}
           <View style={st.featCard}>
             {feats.map((f, i) => {
@@ -389,30 +354,12 @@ export const PaywallScreen: React.FC = () => {
             })}
           </View>
 
-          {/* ── Store CTA (only when the store sells this tier) ── */}
-          {hasStorePlans && (
-            <>
-              <TouchableOpacity onPress={handlePurchase} disabled={!!purchasing || !selectedPkg} activeOpacity={0.85}>
-                <LinearGradient colors={isMasterTier ? ['#9B6BF0', PURPLE] : ['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.cta, !selectedPkg && { opacity: 0.5 }]}>
-                  {purchasing ? <ActivityIndicator color="#fff" /> : (
-                    <>
-                      <Ionicons name="trophy" size={20} color="#fff" />
-                      <Text style={st.ctaText}>{selectedPkg ? 'Começar agora' : 'Escolha um plano'}</Text>
-                    </>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <Text style={st.foot}>Cancele quando quiser · sem compromisso</Text>
-            </>
-          )}
-
           {/* ── Pix section (Master only when configured no painel) ── */}
           {pixAvailable && (
             <>
               <View style={st.orDivider}>
                 <View style={st.orLine} />
-                <Text style={st.orText}>{hasStorePlans ? 'ou pague com PIX' : 'pague com PIX'}</Text>
+                <Text style={st.orText}>pague com PIX</Text>
                 <View style={st.orLine} />
               </View>
 
@@ -486,10 +433,69 @@ export const PaywallScreen: React.FC = () => {
             <Text style={st.foot}>Pagamento seguro via Stripe · Visa, Master, Amex</Text>
           </View>
 
-          {/* ── Restore ── */}
-          <TouchableOpacity onPress={handleRestore} disabled={restoring} style={{ alignItems: 'center', paddingVertical: 8 }}>
-            {restoring ? <ActivityIndicator size="small" color={PINK} /> : <Text style={st.link}>Restaurar compra</Text>}
-          </TouchableOpacity>
+          {/* ── Store plans (App Store / Play Store) ── */}
+          {(loading || hasStorePlans || configured) && (
+            <>
+              <View style={st.orDivider}>
+                <View style={st.orLine} />
+                <Text style={st.orText}>
+                  {Platform.OS === 'ios' ? 'ou pela App Store' : 'ou pela loja do celular'}
+                </Text>
+                <View style={st.orLine} />
+              </View>
+
+              {loading ? (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <ActivityIndicator size="large" color={accent} />
+                </View>
+              ) : hasStorePlans ? (
+                <>
+                  <View style={st.plans}>
+                    {tierPackages.map(pkg => {
+                      const on = selected === pkg.identifier;
+                      return (
+                        <TouchableOpacity key={pkg.identifier} style={[st.plan, on && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setSelected(pkg.identifier)} activeOpacity={0.8}>
+                          {pkg.badge && <View style={[st.save, isMasterTier && { backgroundColor: PURPLE, shadowColor: PURPLE }]}><Text style={st.saveText}>{pkg.badge}</Text></View>}
+                          <View style={[st.radio, on && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
+                            {on && <Ionicons name="checkmark" size={12} color="#fff" />}
+                          </View>
+                          <Text style={st.planName}>{pkg.title}</Text>
+                          {/* Trial info — só mostra se a Apple confirmou elegibilidade */}
+                          {pkg.isTrialEligible && pkg.hasFreeTrial && pkg.trialDays && (
+                            <Text style={st.planTrial}>
+                              {pkg.trialDays} dias grátis
+                            </Text>
+                          )}
+                          <Text style={st.planPrice}>{pkg.priceLabel}</Text>
+                          {pkg.subtitle && <Text style={st.planPer}>{pkg.subtitle}</Text>}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  <TouchableOpacity onPress={handlePurchase} disabled={!!purchasing || !selectedPkg} activeOpacity={0.85}>
+                    <LinearGradient colors={isMasterTier ? ['#9B6BF0', PURPLE] : ['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.cta, !selectedPkg && { opacity: 0.5 }]}>
+                      {purchasing ? <ActivityIndicator color="#fff" /> : (
+                        <>
+                          <Ionicons name="trophy" size={20} color="#fff" />
+                          <Text style={st.ctaText}>{selectedPkg ? 'Começar agora' : 'Escolha um plano'}</Text>
+                        </>
+                      )}
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  <Text style={st.foot}>Cancele quando quiser · sem compromisso</Text>
+                </>
+              ) : null}
+
+              {/* ── Restore ── */}
+              {configured && (
+                <TouchableOpacity onPress={handleRestore} disabled={restoring} style={{ alignItems: 'center', paddingVertical: 8 }}>
+                  {restoring ? <ActivityIndicator size="small" color={PINK} /> : <Text style={st.link}>Restaurar compra</Text>}
+                </TouchableOpacity>
+              )}
+            </>
+          )}
 
           {/* ── Legal ── */}
           <View style={st.legal}>
