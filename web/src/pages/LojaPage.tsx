@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import { fmt, initials, STATUS_LABEL } from '../utils/format';
 import { getCustomerProfile, saveCustomerProfile } from '../utils/customerProfile';
 
@@ -30,6 +30,7 @@ const lineKey = (productId: string, addonIds: string[]) =>
 interface StoreData {
   storeName: string;
   slug: string;
+  active?: boolean;
   description: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
@@ -77,15 +78,20 @@ function ProductRow({
   product,
   qty,
   onOpen,
+  disabled = false,
 }: {
   product: StoreProduct;
   qty: number;
   onOpen: () => void;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onOpen}
-      className="w-full text-left bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm active:scale-[0.98] transition-transform"
+      disabled={disabled}
+      className={`w-full text-left bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm transition-transform ${
+        disabled ? 'cursor-default' : 'active:scale-[0.98]'
+      }`}
     >
       {/* Foto circular */}
       <div className="relative flex-shrink-0">
@@ -96,7 +102,7 @@ function ProductRow({
             <ProductInitial name={product.name} />
           )}
         </div>
-        {qty > 0 && (
+        {!disabled && qty > 0 && (
           <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#EA4B92] rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow ring-2 ring-white">
             {qty}
           </div>
@@ -141,6 +147,8 @@ const ORDERS_KEY   = (slug: string) => `dpeco_orders_${slug}`;
 
 export function LojaPage() {
   const { slug } = useParams<{ slug: string }>();
+  const location = useLocation();
+  const previewMode = new URLSearchParams(location.search).get('preview') === '1';
   const [loading, setLoading] = useState(true);
   const [store, setStore] = useState<StoreData | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -184,7 +192,11 @@ export function LojaPage() {
 
   useEffect(() => {
     if (!slug) return;
-    fetch(`${API_BASE}/public/store/${slug}`)
+    const adminSecret = localStorage.getItem('admin_secret') ?? '';
+    const previewQuery = previewMode ? '?preview=1' : '';
+    fetch(`${API_BASE}/public/store/${slug}${previewQuery}`, {
+      headers: previewMode && adminSecret ? { 'x-admin-secret': adminSecret } : undefined,
+    })
       .then(r => r.json())
       .then(json => {
         if (json.success) {
@@ -213,7 +225,7 @@ export function LojaPage() {
       })
       .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
-  }, [slug]);
+  }, [slug, previewMode]);
 
   const addonById = (id: string) => store?.addons?.find(a => a.id === id);
   // Preço unitário de uma linha = produto + adicionais escolhidos
@@ -344,6 +356,7 @@ export function LojaPage() {
   };
 
   const openDetail = (product: StoreProduct) => {
+    if (store?.active === false) return;
     setDetail({ product, qty: 1, addonIds: [] });
   };
 
@@ -362,7 +375,7 @@ export function LojaPage() {
 
   // Move a seleção da folha de detalhes para o carrinho (linhas iguais se somam)
   const addDetailToCart = () => {
-    if (!detail) return;
+    if (!detail || store?.active === false) return;
     const key = lineKey(detail.product.id, detail.addonIds);
     setCart(prev => {
       const idx = prev.findIndex(l => lineKey(l.productId, l.addonIds) === key);
@@ -377,6 +390,10 @@ export function LojaPage() {
     : 0;
 
   const handleSubmit = async () => {
+    if (store?.active === false) {
+      setError('A loja está fechada no momento e não está recebendo pedidos.');
+      return;
+    }
     if (!form.clientName.trim()) { setError('Informe seu nome'); return; }
     if (!form.clientPhone.trim()) { setError('Informe seu WhatsApp'); return; }
     if (form.deliveryType === 'delivery' && !form.deliveryAddress.trim()) {
@@ -475,6 +492,7 @@ export function LojaPage() {
     );
 
   if (!store) return null;
+  const isStoreClosed = store.active === false;
 
   // Modos de entrega disponíveis (para o pill laranja)
   const modes: Array<'delivery' | 'pickup'> = [];
@@ -489,6 +507,9 @@ export function LojaPage() {
     });
   };
   const serviceInfo =
+    isStoreClosed
+      ? 'Loja fechada para pedidos'
+      :
     form.deliveryType === 'delivery'
       ? store.deliveryFee
         ? `Taxa de entrega ${fmt(store.deliveryFee)}`
@@ -632,11 +653,13 @@ export function LojaPage() {
             <div className="mt-4 flex items-center gap-2 bg-[#F5F5F7] rounded-2xl p-1.5">
               <button
                 onClick={cycleMode}
-                disabled={modes.length < 2}
-                className="flex items-center gap-1.5 bg-[#EA4B92] text-white font-bold text-sm pl-4 pr-3 py-2.5 rounded-xl shadow-sm shadow-pink-200 disabled:pr-4 active:scale-95 transition-transform"
+                disabled={isStoreClosed || modes.length < 2}
+                className={`flex items-center gap-1.5 text-white font-bold text-sm pl-4 pr-3 py-2.5 rounded-xl shadow-sm disabled:pr-4 active:scale-95 transition-transform ${
+                  isStoreClosed ? 'bg-gray-500 shadow-gray-200' : 'bg-[#EA4B92] shadow-pink-200'
+                }`}
               >
-                {modeLabel(form.deliveryType)}
-                {modes.length >= 2 && (
+                {isStoreClosed ? 'Fechada' : modeLabel(form.deliveryType)}
+                {!isStoreClosed && modes.length >= 2 && (
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                   </svg>
@@ -644,7 +667,7 @@ export function LojaPage() {
               </button>
               <div className="flex-1 text-center text-[13px] text-gray-500 font-medium leading-tight">
                 {serviceInfo}
-                {store.minOrderValue && (
+                {!isStoreClosed && store.minOrderValue && (
                   <span className="text-gray-400"> • Mín. {fmt(store.minOrderValue)}</span>
                 )}
               </div>
@@ -655,8 +678,26 @@ export function LojaPage() {
           </div>
         </div>
 
+        {isStoreClosed && (
+          <div className="max-w-lg mx-auto px-4 pt-4">
+            <div className="bg-gray-900 text-white rounded-2xl shadow-sm px-4 py-3.5 flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
+                <svg className="w-5 h-5 text-white/80" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M16 11V7a4 4 0 00-8 0v4M5 11h14l-1 10H6L5 11z" />
+                </svg>
+              </div>
+              <div>
+                <p className="text-sm font-bold">Loja fechada</p>
+                <p className="text-xs text-white/70 mt-0.5">
+                  Este cardápio está disponível apenas para visualização. Os pedidos ficam desativados enquanto a loja estiver inativa.
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Banner de histórico */}
-        {savedOrders.length > 0 && (
+        {!isStoreClosed && savedOrders.length > 0 && (
           <div className="max-w-lg mx-auto px-4 pt-4">
             <button
               onClick={() => setStep('history')}
@@ -704,6 +745,7 @@ export function LojaPage() {
                     product={p}
                     qty={productQty(p.id)}
                     onOpen={() => openDetail(p)}
+                    disabled={isStoreClosed}
                   />
                 ))}
               </div>
@@ -717,7 +759,7 @@ export function LojaPage() {
         </div>
 
         {/* Carrinho flutuante */}
-        <div className={`fixed bottom-0 left-0 right-0 transition-all duration-300 ease-out ${cartVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
+        <div className={`fixed bottom-0 left-0 right-0 transition-all duration-300 ease-out ${cartVisible && !isStoreClosed ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
           <div className="px-4 pb-6 pt-2 bg-gradient-to-t from-[#F5F5F7] via-[#F5F5F7]/95 to-transparent">
             <div className="max-w-lg mx-auto">
               <button

@@ -417,7 +417,7 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                   <p className="text-sm text-gray-600 dark:text-gray-300">{store.description}</p>
                 )}
                 <a
-                  href={`/loja/${store.slug}`}
+                  href={`/loja/${store.slug}?preview=1`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-primary-600 hover:text-primary-700 flex items-center gap-1"

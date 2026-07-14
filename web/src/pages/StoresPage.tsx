@@ -238,10 +238,10 @@ export function StoresPage({ toast }: Props) {
                   <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{fmtDate(s.createdAt)}</td>
                   <td className="px-4 py-3">
                     <a
-                      href={`/loja/${s.slug}`}
+                      href={`/loja/${s.slug}?preview=1`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      title="Abrir página pública da loja"
+                      title="Abrir visualização da loja"
                       className="inline-flex items-center gap-1 text-primary-600 hover:text-primary-700 text-xs font-medium whitespace-nowrap"
                     >
                       <ExternalLink size={13} />
