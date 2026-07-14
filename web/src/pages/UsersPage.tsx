@@ -499,6 +499,15 @@ function UserModal({
                     {user.storeActive ? 'Publicada' : 'Não publicada'}
                   </span>
                 </div>
+                {user.storeActive && (
+                  <span className={`inline-flex text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    (user.storeAcceptingOrders ?? true)
+                      ? 'bg-pink-100 text-pink-700'
+                      : 'bg-amber-100 text-amber-700'
+                  }`}>
+                    {(user.storeAcceptingOrders ?? true) ? 'Aberta para pedidos' : 'Fechada para pedidos'}
+                  </span>
+                )}
                 <p className="font-semibold text-gray-900 dark:text-white">{user.storeName}</p>
                 {user.storeDescription && (
                   <p className="text-sm text-gray-600 dark:text-gray-300">{user.storeDescription}</p>

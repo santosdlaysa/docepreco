@@ -1055,6 +1055,10 @@ export async function runMigrations() {
     // Horário de funcionamento: liga/desliga a loja automaticamente conforme o horário cadastrado.
     await addColumnIfMissing(client, 'store_settings', 'use_business_hours', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'store_settings', 'business_hours', "JSONB NOT NULL DEFAULT '[]'::jsonb");
+
+    // Toggle manual de pedidos: a loja continua publicada (active) e visível,
+    // mas fechada para novos pedidos quando accepting_orders = FALSE.
+    await addColumnIfMissing(client, 'store_settings', 'accepting_orders', 'BOOLEAN NOT NULL DEFAULT TRUE');
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_store_settings_marketplace
       ON store_settings (store_name)

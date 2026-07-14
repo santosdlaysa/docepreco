@@ -38,6 +38,22 @@ function StatusBadge({ active }: { active: boolean }) {
   );
 }
 
+function OrderStatusBadge({ active, acceptingOrders }: { active: boolean; acceptingOrders?: boolean }) {
+  if (!active) return <span className="text-xs text-gray-400">—</span>;
+  const open = acceptingOrders ?? true;
+  return open ? (
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-pink-100 text-pink-700 dark:bg-pink-900/30 dark:text-pink-300 px-2 py-0.5 rounded-full">
+      <span className="w-1.5 h-1.5 rounded-full bg-pink-500" />
+      Aberta
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300 px-2 py-0.5 rounded-full">
+      <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+      Fechada
+    </span>
+  );
+}
+
 function PlanBadge({ planTier, isPremium }: { planTier: AdminStore['planTier']; isPremium: boolean }) {
   if (!isPremium || planTier === 'free') return <span className="text-xs text-gray-400">Gratuito</span>;
   return (
@@ -155,6 +171,7 @@ export function StoresPage({ toast }: Props) {
               <tr>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Loja</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Pedidos</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Dono</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Telefone</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Plano</th>
@@ -168,14 +185,14 @@ export function StoresPage({ toast }: Props) {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading && (
                 <tr>
-                  <td colSpan={10}>
+                  <td colSpan={11}>
                     <TableSkeleton rows={8} cols={7} />
                   </td>
                 </tr>
               )}
               {!loading && stores.length === 0 && (
                 <tr>
-                  <td colSpan={10} className="text-center py-8 text-gray-400">Nenhuma loja encontrada</td>
+                  <td colSpan={11} className="text-center py-8 text-gray-400">Nenhuma loja encontrada</td>
                 </tr>
               )}
               {!loading && stores.map((s, i) => (
@@ -201,6 +218,9 @@ export function StoresPage({ toast }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge active={s.active} />
+                  </td>
+                  <td className="px-4 py-3">
+                    <OrderStatusBadge active={s.active} acceptingOrders={s.acceptingOrders} />
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-gray-900 dark:text-white font-medium truncate max-w-44" title={s.companyName}>{s.companyName}</p>

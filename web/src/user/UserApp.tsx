@@ -9,6 +9,7 @@ import {
   Wallet,
   CalendarRange,
   User,
+  Store,
   LogOut,
   Menu,
   X,
@@ -30,8 +31,9 @@ import { CashPage } from './pages/CashPage';
 import { SeasonsPage } from './pages/SeasonsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { StorePage } from './pages/StorePage';
 
-type Page = 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'cash' | 'seasons' | 'profile';
+type Page = 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'cash' | 'seasons' | 'store' | 'profile';
 
 const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'cash', label: 'Caixa', icon: Wallet },
@@ -40,6 +42,7 @@ const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'ingredients', label: 'Ingredientes', icon: Package },
   { id: 'sales', label: 'Vendas', icon: ShoppingCart },
   { id: 'orders', label: 'Encomendas', icon: ClipboardList },
+  { id: 'store', label: 'Loja', icon: Store },
   { id: 'seasons', label: 'Temporadas', icon: CalendarRange },
   { id: 'profile', label: 'Meu perfil', icon: User },
 ];
@@ -195,6 +198,7 @@ function Shell() {
             {page === 'ingredients' && <IngredientsPage toast={toast} />}
             {page === 'sales' && <SalesPage toast={toast} />}
             {page === 'orders' && <OrdersPage toast={toast} />}
+            {page === 'store' && <StorePage toast={toast} />}
             {page === 'cash' && <CashPage toast={toast} />}
             {page === 'seasons' && <SeasonsPage toast={toast} />}
             {page === 'profile' && <ProfilePage toast={toast} />}

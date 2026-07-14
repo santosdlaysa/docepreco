@@ -101,7 +101,7 @@ router.get('/products/featured', publicListLimiter, async (req: Request, res: Re
     // Busca com folga: lojas fechadas pelo horário de funcionamento são filtradas em JS.
     const result = await pool.query(
       `SELECT p.id, p.name, p.photo_url, p.public_price, p.discount_type, p.discount_value,
-              s.store_name, s.slug AS store_slug, s.active, s.use_business_hours, s.business_hours
+              s.store_name, s.slug AS store_slug, s.active, s.accepting_orders, s.use_business_hours, s.business_hours
        FROM store_products p
        JOIN store_settings s ON s.user_id = p.user_id
        WHERE p.available = TRUE AND s.active = TRUE
@@ -111,7 +111,7 @@ router.get('/products/featured', publicListLimiter, async (req: Request, res: Re
       [city, limit * 2]
     );
     const products = result.rows
-      .filter(p => isStoreOpenNow({ active: p.active, use_business_hours: p.use_business_hours, business_hours: p.business_hours }))
+      .filter(p => isStoreOpenNow(p))
       .slice(0, limit)
       .map(p => {
         const publicPrice = Number(p.public_price);
@@ -143,7 +143,7 @@ router.get('/products/search', publicListLimiter, async (req: Request, res: Resp
     const limit = Math.min(Math.max(Number(req.query.limit) || 30, 1), 50);
     const result = await pool.query(
       `SELECT p.id, p.name, p.description, p.photo_url, p.public_price, p.discount_type, p.discount_value,
-              s.store_name, s.slug AS store_slug, s.active, s.use_business_hours, s.business_hours
+              s.store_name, s.slug AS store_slug, s.active, s.accepting_orders, s.use_business_hours, s.business_hours
        FROM store_products p
        JOIN store_settings s ON s.user_id = p.user_id
        WHERE p.available = TRUE AND s.active = TRUE
@@ -155,7 +155,7 @@ router.get('/products/search', publicListLimiter, async (req: Request, res: Resp
     res.json({
       success: true,
       data: {
-        products: result.rows.filter(p => isStoreOpenNow({ active: p.active, use_business_hours: p.use_business_hours, business_hours: p.business_hours })).map(p => {
+        products: result.rows.filter(p => isStoreOpenNow(p)).map(p => {
           const publicPrice = Number(p.public_price);
           const discountAmount = computeDiscountAmount(publicPrice, p.discount_type as DiscountType | null, p.discount_value != null ? Number(p.discount_value) : null);
           return {
@@ -185,11 +185,15 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
       'SELECT * FROM store_settings WHERE slug = $1',
       [slug]
     );
-    if (settingsResult.rows.length === 0 || !isStoreOpenNow(settingsResult.rows[0])) {
+    // Loja despublicada some do ar (404); loja publicada mas fechada (toggle manual
+    // ou fora do horário) continua visível, com acceptingOrders = false para o PWA
+    // mostrar "Loja fechada" e bloquear pedidos.
+    if (settingsResult.rows.length === 0 || !settingsResult.rows[0].active) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
       return;
     }
     const s = settingsResult.rows[0];
+    const acceptingOrders = isStoreOpenNow(s);
     // Buscar info de contato do dono da loja
     const userResult = await pool.query(
       'SELECT phone, instagram_handle FROM users WHERE id = $1',
@@ -211,6 +215,8 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
       data: {
         storeName: s.store_name,
         slug: s.slug,
+        active: s.active,
+        acceptingOrders,
         description: s.description,
         acceptsDelivery: s.accepts_delivery,
         acceptsPickup: s.accepts_pickup,
@@ -260,11 +266,15 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
 
     // Buscar loja
     const settingsResult = await pool.query(
-      'SELECT user_id, store_name, min_order_value, delivery_fee, payment_methods, active, use_business_hours, business_hours FROM store_settings WHERE slug = $1',
+      'SELECT user_id, store_name, min_order_value, delivery_fee, payment_methods, active, accepting_orders, use_business_hours, business_hours FROM store_settings WHERE slug = $1',
       [slug]
     );
-    if (settingsResult.rows.length === 0 || !isStoreOpenNow(settingsResult.rows[0])) {
+    if (settingsResult.rows.length === 0 || !settingsResult.rows[0].active) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
+      return;
+    }
+    if (!isStoreOpenNow(settingsResult.rows[0])) {
+      res.status(403).json({ success: false, error: 'A loja está fechada no momento e não está recebendo pedidos' });
       return;
     }
     const { user_id: userId, store_name: storeName, min_order_value: minOrderValue, delivery_fee: deliveryFeeRaw, payment_methods: paymentMethodsRaw } = settingsResult.rows[0];

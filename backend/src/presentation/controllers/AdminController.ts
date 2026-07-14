@@ -254,6 +254,7 @@ export class AdminController {
             st.store_name        AS "storeName",
             st.slug,
             st.active,
+            st.accepting_orders  AS "acceptingOrders",
             st.logo_url          AS "logoUrl",
             st.city,
             st.category,
@@ -494,6 +495,7 @@ export class AdminController {
             ss.store_name              AS "storeName",
             ss.slug                    AS "storeSlug",
             ss.active                  AS "storeActive",
+            ss.accepting_orders        AS "storeAcceptingOrders",
             ss.description             AS "storeDescription",
             ss.accepts_delivery        AS "storeAcceptsDelivery",
             ss.accepts_pickup          AS "storeAcceptsPickup",
@@ -531,6 +533,7 @@ export class AdminController {
         userData.storeName = settings.storeName;
         userData.storeSlug = settings.slug;
         userData.storeActive = settings.active;
+        userData.storeAcceptingOrders = settings.acceptingOrders;
         userData.storeDescription = settings.description ?? null;
         userData.storeAcceptsDelivery = settings.acceptsDelivery;
         userData.storeAcceptsPickup = settings.acceptsPickup;
@@ -730,6 +733,7 @@ export class AdminController {
         ),
         pool.query(
           `SELECT ss.store_name AS "storeName", ss.slug, ss.active,
+                  ss.accepting_orders AS "acceptingOrders",
                   ss.description, ss.accepts_delivery AS "acceptsDelivery",
                   ss.accepts_pickup AS "acceptsPickup",
                   ss.min_order_value::float AS "minOrderValue",

@@ -4,6 +4,8 @@ import { StoreController } from '../controllers/StoreController';
 const router = Router();
 const controller = new StoreController();
 
+router.get('/my',                (req, res) => controller.getMyStore(req as any, res));
+router.patch('/my',              (req, res) => controller.updateMyStore(req as any, res));
 router.get('/settings',          (req, res) => controller.getSettings(req as any, res));
 router.put('/settings',          (req, res) => controller.updateSettings(req as any, res));
 router.get('/products',          (req, res) => controller.getProducts(req as any, res));

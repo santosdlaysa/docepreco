@@ -405,13 +405,24 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
               <div className="p-4 border-b border-gray-100 dark:border-gray-700 space-y-2">
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <p className="font-semibold text-gray-900 dark:text-white">{store.storeName}</p>
-                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                    store.active
-                      ? 'bg-green-100 text-green-700'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'
-                  }`}>
-                    {store.active ? 'Publicada' : 'Não publicada'}
-                  </span>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      store.active
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'
+                    }`}>
+                      {store.active ? 'Publicada' : 'Não publicada'}
+                    </span>
+                    {store.active && (
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        (store.acceptingOrders ?? true)
+                          ? 'bg-pink-100 text-pink-700'
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {(store.acceptingOrders ?? true) ? 'Aberta para pedidos' : 'Fechada para pedidos'}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 {store.description && (
                   <p className="text-sm text-gray-600 dark:text-gray-300">{store.description}</p>

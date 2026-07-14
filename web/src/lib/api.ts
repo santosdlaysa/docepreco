@@ -177,6 +177,7 @@ export interface AdminUserDetail extends AdminUser {
   storeName: string | null;
   storeSlug: string | null;
   storeActive: boolean | null;
+  storeAcceptingOrders?: boolean | null;
   storeDescription: string | null;
   storeAcceptsDelivery: boolean | null;
   storeAcceptsPickup: boolean | null;
@@ -298,6 +299,7 @@ export interface UserStore {
   storeName: string;
   slug: string;
   active: boolean;
+  acceptingOrders?: boolean;
   description: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
@@ -324,6 +326,7 @@ export interface AdminStore {
   storeName: string;
   slug: string;
   active: boolean;
+  acceptingOrders?: boolean;
   logoUrl: string | null;
   city: string | null;
   category: string | null;

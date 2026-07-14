@@ -303,6 +303,34 @@ export interface PixRequestStatus {
   alreadyExists?: boolean;
 }
 
+export interface StoreProduct {
+  id: string;
+  name: string;
+  description: string | null;
+  photoUrl: string | null;
+  publicPrice: number;
+  available: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface MyStore {
+  storeName: string;
+  slug: string;
+  active: boolean;
+  acceptingOrders?: boolean;
+  description: string | null;
+  acceptsDelivery: boolean;
+  acceptsPickup: boolean;
+  minOrderValue: number | null;
+  deliveryFee: number | null;
+  coverImageUrl: string | null;
+  logoUrl?: string | null;
+  address: string | null;
+  updatedAt?: string;
+  products: StoreProduct[];
+}
+
 /* ── Endpoints ─────────────────────────────────────────────────────────── */
 
 export const userApi = {
@@ -333,6 +361,11 @@ export const userApi = {
   createPixRequest: (planLabel: string, amountCents: number) =>
     req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents }) }),
   getPixStatus: () => req<PixRequestStatus | null>('/pix/status'),
+
+  // Loja online
+  getMyStore: () => req<MyStore | null>('/store/my'),
+  updateMyStore: (data: Partial<Pick<MyStore, 'active' | 'acceptingOrders'>>) =>
+    req<MyStore>('/store/my', { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Receitas
   listRecipes: () => req<Recipe[]>('/recipes'),

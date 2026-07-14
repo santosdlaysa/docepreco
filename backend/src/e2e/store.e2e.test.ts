@@ -433,6 +433,10 @@ describe('POST /public/store/:slug/orders — forma de pagamento', () => {
             min_order_value: null,
             delivery_fee: null,
             payment_methods: paymentMethods,
+            active: true,
+            accepting_orders: true,
+            use_business_hours: false,
+            business_hours: [],
           }],
         });
       }

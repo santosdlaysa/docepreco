@@ -31,6 +31,7 @@ interface StoreData {
   storeName: string;
   slug: string;
   active?: boolean;
+  acceptingOrders?: boolean;
   description: string | null;
   acceptsDelivery: boolean;
   acceptsPickup: boolean;
@@ -55,6 +56,7 @@ interface AdminStorePreviewData {
     storeName: string;
     slug: string;
     active: boolean;
+    acceptingOrders?: boolean;
     description: string | null;
     acceptsDelivery: boolean;
     acceptsPickup: boolean;
@@ -261,6 +263,7 @@ export function LojaPage() {
         storeName: data.store.storeName,
         slug: data.store.slug,
         active: data.store.active,
+        acceptingOrders: data.store.acceptingOrders ?? data.store.active,
         description: data.store.description,
         acceptsDelivery: data.store.acceptsDelivery,
         acceptsPickup: data.store.acceptsPickup,
@@ -574,7 +577,11 @@ export function LojaPage() {
     );
 
   if (!store) return null;
-  const isStoreClosed = store.active === false;
+  const isStoreClosed = store.active === false || store.acceptingOrders === false;
+  const closedText = store.active === false ? 'Loja não publicada' : 'Loja fechada';
+  const closedDescription = store.active === false
+    ? 'Este cardápio está disponível apenas para visualização. Os pedidos ficam desativados enquanto a loja estiver inativa.'
+    : 'A loja está visível, mas não está recebendo novos pedidos no momento.';
 
   // Modos de entrega disponíveis (para o pill laranja)
   const modes: Array<'delivery' | 'pickup'> = [];
@@ -769,9 +776,9 @@ export function LojaPage() {
                 </svg>
               </div>
               <div>
-                <p className="text-sm font-bold">Loja fechada</p>
+                <p className="text-sm font-bold">{closedText}</p>
                 <p className="text-xs text-white/70 mt-0.5">
-                  Este cardápio está disponível apenas para visualização. Os pedidos ficam desativados enquanto a loja estiver inativa.
+                  {closedDescription}
                 </p>
               </div>
             </div>

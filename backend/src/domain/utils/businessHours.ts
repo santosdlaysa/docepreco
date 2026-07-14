@@ -27,9 +27,10 @@ export function isWithinBusinessHours(hours: DayHours[] | null | undefined): boo
   return closeMin > openMin ? minutes >= openMin && minutes < closeMin : minutes >= openMin || minutes < closeMin;
 }
 
-/** Efetivamente aberta agora: precisa estar ativa e, se usar horário automático, dentro do horário cadastrado. */
-export function isStoreOpenNow(row: { active: boolean; use_business_hours: boolean; business_hours: DayHours[] | null }): boolean {
+/** Efetivamente aberta agora: ativa, recebendo pedidos (toggle manual) e, se usar horário automático, dentro do horário cadastrado. */
+export function isStoreOpenNow(row: { active: boolean; accepting_orders?: boolean | null; use_business_hours: boolean; business_hours: DayHours[] | null }): boolean {
   if (!row.active) return false;
+  if (row.accepting_orders === false) return false;
   if (!row.use_business_hours) return true;
   return isWithinBusinessHours(row.business_hours);
 }

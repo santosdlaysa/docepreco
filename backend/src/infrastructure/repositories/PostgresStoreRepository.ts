@@ -6,6 +6,7 @@ export interface StoreSettings {
   id: string;
   userId: string;
   active: boolean;
+  acceptingOrders: boolean;
   storeName: string;
   slug: string;
   storeLink: string;
@@ -89,6 +90,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     id: row.id as string,
     userId: row.user_id as string,
     active: row.active as boolean,
+    acceptingOrders: (row.accepting_orders as boolean) ?? true,
     storeName: row.store_name as string,
     slug,
     storeLink: `${BASE_URL}/${slug}`,
@@ -107,7 +109,7 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     category: (row.category as string | null) ?? null,
     useBusinessHours,
     businessHours,
-    isOpenNow: isStoreOpenNow({ active: row.active as boolean, use_business_hours: useBusinessHours, business_hours: businessHours }),
+    isOpenNow: isStoreOpenNow({ active: row.active as boolean, accepting_orders: (row.accepting_orders as boolean) ?? true, use_business_hours: useBusinessHours, business_hours: businessHours }),
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -196,6 +198,7 @@ export class PostgresStoreRepository {
 
   async updateSettings(userId: string, data: Partial<{
     active: boolean;
+    acceptingOrders: boolean;
     storeName: string;
     description: string | null;
     acceptsDelivery: boolean;
@@ -216,6 +219,7 @@ export class PostgresStoreRepository {
     let idx = 1;
 
     if (data.active !== undefined)         { fields.push(`active = $${idx++}`);           values.push(data.active); }
+    if (data.acceptingOrders !== undefined) { fields.push(`accepting_orders = $${idx++}`); values.push(data.acceptingOrders); }
     if (data.storeName !== undefined)       { fields.push(`store_name = $${idx++}`);       values.push(data.storeName); }
     if ('description' in data)             { fields.push(`description = $${idx++}`);      values.push(data.description ?? null); }
     if (data.acceptsDelivery !== undefined) { fields.push(`accepts_delivery = $${idx++}`); values.push(data.acceptsDelivery); }
@@ -282,7 +286,7 @@ export class PostgresStoreRepository {
       `SELECT * FROM (
          SELECT store_name, slug, description, cover_image_url, logo_url,
                 accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
-                city, category, active, use_business_hours, business_hours,
+                city, category, active, accepting_orders, use_business_hours, business_hours,
                 CASE WHEN $4::double precision IS NOT NULL AND latitude IS NOT NULL AND longitude IS NOT NULL THEN
                   2 * 6371 * asin(sqrt(
                     power(sin(radians((latitude - $4::double precision) / 2)), 2) +
@@ -304,10 +308,10 @@ export class PostgresStoreRepository {
        LIMIT $8 OFFSET $9`,
       [search, category, city ? `%${city}%` : null, lat, lng, freeDelivery, sort, limit, offset]
     );
-    const openRows = rows.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours }));
+    const openRows = rows.rows.filter(r => isStoreOpenNow(r));
 
     const count = await pool.query(
-      `SELECT store_name, active, use_business_hours, business_hours
+      `SELECT store_name, active, accepting_orders, use_business_hours, business_hours
        FROM store_settings
        WHERE active = TRUE
          AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
@@ -316,7 +320,7 @@ export class PostgresStoreRepository {
          AND ($4::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))`,
       [search, category, city ? `%${city}%` : null, freeDelivery]
     );
-    const total = count.rows.filter(r => isStoreOpenNow({ active: r.active, use_business_hours: r.use_business_hours, business_hours: r.business_hours })).length;
+    const total = count.rows.filter(r => isStoreOpenNow(r)).length;
 
     return { stores: openRows.map(mapMarketplaceStore), total };
   }

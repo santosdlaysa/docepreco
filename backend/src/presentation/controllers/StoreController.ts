@@ -31,6 +31,42 @@ export class StoreController {
     }
   }
 
+  // Visão consolidada da loja para o painel web do usuário: settings + produtos.
+  async getMyStore(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const [settings, products] = await Promise.all([
+        repo.getSettings(req.userId!),
+        repo.getProducts(req.userId!),
+      ]);
+      res.json({ success: true, data: { ...settings, products } });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro ao buscar dados da loja' });
+    }
+  }
+
+  // Update parcial de status (publicação e recebimento de pedidos) do painel web.
+  async updateMyStore(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const b = req.body ?? {};
+      const patch: { active?: boolean; acceptingOrders?: boolean } = {};
+      if (typeof b.active === 'boolean')          patch.active          = b.active;
+      if (typeof b.acceptingOrders === 'boolean') patch.acceptingOrders = b.acceptingOrders;
+      if (Object.keys(patch).length === 0) {
+        res.status(400).json({ success: false, error: 'Nenhum campo válido para atualizar' });
+        return;
+      }
+      const [settings, products] = await Promise.all([
+        repo.updateSettings(req.userId!, patch),
+        repo.getProducts(req.userId!),
+      ]);
+      res.json({ success: true, data: { ...settings, products } });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro ao atualizar status da loja' });
+    }
+  }
+
   async updateSettings(req: AuthRequest, res: Response): Promise<void> {
     try {
       const b = req.body ?? {};
@@ -39,6 +75,7 @@ export class StoreController {
       // com valor null/undefined como "limpar o campo").
       const patch: Record<string, unknown> = {};
       if (b.active !== undefined)           patch.active          = b.active;
+      if (b.acceptingOrders !== undefined)  patch.acceptingOrders = b.acceptingOrders;
       if (b.storeName !== undefined)        patch.storeName       = b.storeName;
       if ('description' in b)               patch.description     = b.description ?? null;
       if (b.acceptsDelivery !== undefined)  patch.acceptsDelivery = b.acceptsDelivery;
