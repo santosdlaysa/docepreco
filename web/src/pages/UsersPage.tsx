@@ -505,7 +505,7 @@ function UserModal({
                 )}
                 {user.storeSlug && (
                   <a
-                    href={`/loja/${user.storeSlug}?preview=1`}
+                    href={`/loja/${user.storeSlug}?preview=1&userId=${user.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-sm text-purple-600 hover:text-purple-700 flex items-center gap-1"

@@ -46,6 +46,34 @@ interface StoreData {
   addons: StoreAddon[];
 }
 
+interface AdminStorePreviewData {
+  user: {
+    phone?: string | null;
+    instagramHandle?: string | null;
+  };
+  store: {
+    storeName: string;
+    slug: string;
+    active: boolean;
+    description: string | null;
+    acceptsDelivery: boolean;
+    acceptsPickup: boolean;
+    minOrderValue: number | null;
+    deliveryFee: number | null;
+    coverImageUrl: string | null;
+    logoUrl?: string | null;
+    address: string | null;
+  } | null;
+  storeProducts: Array<{
+    id: string;
+    name: string;
+    description: string | null;
+    photoUrl: string | null;
+    publicPrice: number;
+    available: boolean;
+  }>;
+}
+
 const PAYMENT_METHODS: Array<{ key: string; label: string; emoji: string }> = [
   { key: 'pix', label: 'Pix', emoji: '💠' },
   { key: 'cash', label: 'Dinheiro', emoji: '💵' },
@@ -148,7 +176,9 @@ const ORDERS_KEY   = (slug: string) => `dpeco_orders_${slug}`;
 export function LojaPage() {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
-  const previewMode = new URLSearchParams(location.search).get('preview') === '1';
+  const searchParams = new URLSearchParams(location.search);
+  const previewMode = searchParams.get('preview') === '1';
+  const previewUserId = searchParams.get('userId');
   const [loading, setLoading] = useState(true);
   const [store, setStore] = useState<StoreData | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -192,40 +222,92 @@ export function LojaPage() {
 
   useEffect(() => {
     if (!slug) return;
+    let cancelled = false;
     const adminSecret = localStorage.getItem('admin_secret') ?? '';
     const previewQuery = previewMode ? '?preview=1' : '';
+    const applyStore = (data: StoreData) => {
+      setStore(data);
+      const defaultType = data.acceptsDelivery ? 'delivery' : 'pickup';
+      const methods: string[] = data.paymentMethods ?? [];
+      const defaultPayment = methods.length === 1 ? methods[0] : '';
+      try {
+        const saved = localStorage.getItem(CUSTOMER_KEY(slug!));
+        const customer = saved ? JSON.parse(saved) : null;
+        const profile = getCustomerProfile();
+        setForm(f => ({
+          ...f,
+          deliveryType: defaultType,
+          paymentMethod: defaultPayment,
+          clientName: customer?.name ?? profile.name ?? '',
+          clientPhone: customer?.phone ?? profile.phone ?? '',
+          deliveryAddress: customer?.address ?? profile.address ?? '',
+        }));
+        const orders = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
+        setSavedOrders(orders);
+      } catch {
+        setForm(f => ({ ...f, deliveryType: defaultType, paymentMethod: defaultPayment }));
+      }
+    };
+    const loadAdminPreview = async () => {
+      if (!previewMode || !previewUserId || !adminSecret) return false;
+      const res = await fetch(`${API_BASE}/admin/users/${previewUserId}/data`, {
+        headers: { 'Content-Type': 'application/json', 'x-admin-secret': adminSecret },
+      });
+      const json = await res.json();
+      if (!res.ok || !json.data?.store) return false;
+      const data = json.data as AdminStorePreviewData;
+      if (data.store?.slug !== slug) return false;
+      applyStore({
+        storeName: data.store.storeName,
+        slug: data.store.slug,
+        active: data.store.active,
+        description: data.store.description,
+        acceptsDelivery: data.store.acceptsDelivery,
+        acceptsPickup: data.store.acceptsPickup,
+        minOrderValue: data.store.minOrderValue,
+        phone: data.user.phone ?? null,
+        instagramHandle: data.user.instagramHandle ?? null,
+        deliveryFee: data.store.deliveryFee,
+        coverImageUrl: data.store.coverImageUrl,
+        logoUrl: data.store.logoUrl ?? null,
+        paymentMethods: [],
+        address: data.store.address,
+        products: data.storeProducts.map(p => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          photoUrl: p.photoUrl,
+          price: p.publicPrice,
+        })),
+        addons: [],
+      });
+      return true;
+    };
+
+    setLoading(true);
+    setNotFound(false);
     fetch(`${API_BASE}/public/store/${slug}${previewQuery}`, {
       headers: previewMode && adminSecret ? { 'x-admin-secret': adminSecret } : undefined,
     })
-      .then(r => r.json())
-      .then(json => {
+      .then(async r => {
+        const json = await r.json();
+        if (cancelled) return;
         if (json.success) {
-          setStore(json.data);
-          const defaultType = json.data.acceptsDelivery ? 'delivery' : 'pickup';
-          const methods: string[] = json.data.paymentMethods ?? [];
-          const defaultPayment = methods.length === 1 ? methods[0] : '';
-          try {
-            const saved = localStorage.getItem(CUSTOMER_KEY(slug!));
-            const customer = saved ? JSON.parse(saved) : null;
-            const profile = getCustomerProfile();
-            setForm(f => ({
-              ...f,
-              deliveryType: defaultType,
-              paymentMethod: defaultPayment,
-              clientName: customer?.name ?? profile.name ?? '',
-              clientPhone: customer?.phone ?? profile.phone ?? '',
-              deliveryAddress: customer?.address ?? profile.address ?? '',
-            }));
-            const orders = JSON.parse(localStorage.getItem(ORDERS_KEY(slug!)) ?? '[]');
-            setSavedOrders(orders);
-          } catch {
-            setForm(f => ({ ...f, deliveryType: defaultType, paymentMethod: defaultPayment }));
-          }
-        } else setNotFound(true);
+          applyStore(json.data);
+          return;
+        }
+        const loadedPreview = await loadAdminPreview();
+        if (!loadedPreview && !cancelled) setNotFound(true);
       })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-  }, [slug, previewMode]);
+      .catch(async () => {
+        const loadedPreview = await loadAdminPreview().catch(() => false);
+        if (!loadedPreview && !cancelled) setNotFound(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [slug, previewMode, previewUserId]);
 
   const addonById = (id: string) => store?.addons?.find(a => a.id === id);
   // Preço unitário de uma linha = produto + adicionais escolhidos

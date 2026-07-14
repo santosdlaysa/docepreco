@@ -238,7 +238,7 @@ export function StoresPage({ toast }: Props) {
                   <td className="px-4 py-3 text-gray-400 whitespace-nowrap">{fmtDate(s.createdAt)}</td>
                   <td className="px-4 py-3">
                     <a
-                      href={`/loja/${s.slug}?preview=1`}
+                      href={`/loja/${s.slug}?preview=1&userId=${s.userId}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       title="Abrir visualização da loja"
