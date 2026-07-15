@@ -217,8 +217,9 @@ export async function sendWinbackEmail(email: string, companyName: string, offer
           </table>
 
           <p style="margin:0 0 20px;font-size:15px;color:#5D4037;line-height:1.7;">
-            <strong>Como usar:</strong> abra o app Precifica Doces, toque em <strong>Assinar via PIX</strong> e pronto —
-            o desconto ja e aplicado automaticamente no valor do seu PIX. Nao precisa de cupom.
+            <strong>Como usar:</strong> abra o app Precifica Doces, toque em <strong>Assinar via PIX</strong> e gere o QR de pagamento.
+            O app mostra o preco normal, mas o seu QR PIX ja sai com o desconto aplicado — na hora de pagar,
+            o banco mostra <strong>${offer.discountedPriceLabel}</strong>. Nao precisa de cupom.
           </p>
 
           <!-- Timer -->

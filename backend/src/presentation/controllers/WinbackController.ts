@@ -193,7 +193,8 @@ export class WinbackController {
               `Oi, ${user.company_name}! 💖 Sentimos sua falta no Precifica Doces.\n\n` +
               `Preparamos uma oferta exclusiva para você voltar: *${discountPercent}% de desconto* no primeiro mês — ` +
               `de ${formatBRL(fullCents)} por *${formatBRL(discountedCents)}*.\n\n` +
-              `É só abrir o app e tocar em *Assinar via PIX*: o desconto já é aplicado automaticamente, sem cupom.\n\n` +
+              `É só abrir o app e tocar em *Assinar via PIX*: o app mostra o preço normal, mas o seu QR já sai com o desconto — ` +
+              `na hora de pagar, o banco mostra *${formatBRL(discountedCents)}*. Sem cupom.\n\n` +
               `⏰ Válido até ${validUntilLabel}.`
             );
             whatsOk = true;
