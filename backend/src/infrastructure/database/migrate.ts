@@ -1108,6 +1108,26 @@ export async function runMigrations() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_store_addons_user ON store_addons (user_id)`);
 
+    // Ofertas de win-back: desconto individual para ex-assinantes voltarem.
+    // O desconto é aplicado automaticamente no valor do PIX enquanto a oferta
+    // estiver ativa; ao aprovar o pagamento a oferta vira 'redeemed'.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS winback_offers (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        discount_percent INTEGER NOT NULL DEFAULT 50 CHECK (discount_percent BETWEEN 1 AND 90),
+        status VARCHAR(20) NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'redeemed', 'cancelled')),
+        expires_at TIMESTAMP NOT NULL,
+        push_sent BOOLEAN NOT NULL DEFAULT FALSE,
+        email_sent BOOLEAN NOT NULL DEFAULT FALSE,
+        whatsapp_sent BOOLEAN NOT NULL DEFAULT FALSE,
+        pix_request_id UUID,
+        redeemed_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_winback_user_status ON winback_offers (user_id, status)`);
+
     // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
     // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.
     await client.query(`

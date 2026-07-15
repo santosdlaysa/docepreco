@@ -352,6 +352,40 @@ export interface StoresResponse {
   limit: number;
 }
 
+export interface WinbackEligibleUser {
+  userId: string;
+  companyName: string;
+  email: string;
+  phone: string | null;
+  premiumUntil: string;
+  lastProduct: string | null;
+}
+
+export interface WinbackOffer {
+  id: string;
+  userId: string;
+  companyName: string;
+  email: string;
+  discountPercent: number;
+  status: 'active' | 'redeemed' | 'cancelled' | 'expired';
+  expiresAt: string;
+  pushSent: boolean;
+  emailSent: boolean;
+  whatsappSent: boolean;
+  redeemedAt: string | null;
+  createdAt: string;
+  isPremiumNow: boolean;
+}
+
+export interface WinbackCampaignResult {
+  total: number;
+  offersCreated: number;
+  pushSent: number;
+  emailSent: number;
+  whatsappSent: number;
+  users: Array<{ userId: string; companyName: string; push: boolean; email: boolean; whatsapp: boolean }>;
+}
+
 // ── Endpoints ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -363,6 +397,14 @@ export const api = {
   getStats: () => req<Stats>('/admin/stats'),
 
   getSubscriptionDashboard: () => req<SubscriptionDashboard>('/admin/subscriptions'),
+
+  getWinbackEligible: () => req<WinbackEligibleUser[]>('/admin/winback/eligible'),
+  getWinbackOffers: () => req<WinbackOffer[]>('/admin/winback'),
+  sendWinbackCampaign: (params: { discountPercent?: number; validDays?: number; userIds?: string[]; includeWhatsapp?: boolean } = {}) =>
+    req<WinbackCampaignResult>('/admin/winback/send', {
+      method: 'POST',
+      body: JSON.stringify(params),
+    }),
 
   listUsers: (params: {
     search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;

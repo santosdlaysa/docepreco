@@ -1,10 +1,10 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { api, SubscriptionDashboard, SubscriptionEvent } from '../lib/api';
+import { api, SubscriptionDashboard, SubscriptionEvent, WinbackOffer, WinbackEligibleUser } from '../lib/api';
 import { Skeleton, ModalOverlay, TableSkeleton } from '../components';
 import {
   TrendingUp, TrendingDown, DollarSign, Users, Crown, Zap,
   Download, Filter, X, RefreshCw, Calendar, CheckCircle,
-  Loader2, Eye, ChevronLeft, ChevronRight,
+  Loader2, Eye, ChevronLeft, ChevronRight, Gift, Send, Mail, Bell, MessageCircle,
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
@@ -420,6 +420,219 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   );
 }
 
+const winbackStatusBadge: Record<WinbackOffer['status'], { label: string; cls: string }> = {
+  active: { label: 'Ativa', cls: 'bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400' },
+  redeemed: { label: 'Resgatada 🎉', cls: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/20 dark:text-emerald-400' },
+  expired: { label: 'Expirou', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' },
+  cancelled: { label: 'Cancelada', cls: 'bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400' },
+};
+
+function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'error') => void }) {
+  const [eligible, setEligible] = useState<WinbackEligibleUser[]>([]);
+  const [offers, setOffers] = useState<WinbackOffer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [discountPercent, setDiscountPercent] = useState(50);
+  const [validDays, setValidDays] = useState(7);
+  const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [eligibleResult, offersResult] = await Promise.all([
+        api.getWinbackEligible(),
+        api.getWinbackOffers(),
+      ]);
+      setEligible(eligibleResult);
+      setOffers(offersResult);
+    } catch (e: any) {
+      toast(e.message || 'Erro ao carregar campanha win-back', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const handleSend = async () => {
+    setSending(true);
+    try {
+      const result = await api.sendWinbackCampaign({ discountPercent, validDays, includeWhatsapp });
+      toast(
+        `Campanha enviada: ${result.offersCreated} ofertas (${result.emailSent} e-mails, ${result.pushSent} push${includeWhatsapp ? `, ${result.whatsappSent} WhatsApp` : ''})`,
+        'success'
+      );
+      setConfirmOpen(false);
+      load();
+    } catch (e: any) {
+      toast(e.message || 'Erro ao enviar campanha', 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const redeemedCount = offers.filter(o => o.status === 'redeemed').length;
+
+  return (
+    <div className={card}>
+      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-pink-500 flex items-center justify-center">
+            <Gift size={18} className="text-white" />
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-gray-900 dark:text-white">Campanha Win-back</h3>
+            <p className="text-xs text-gray-400">Oferta de desconto para ex-assinantes voltarem</p>
+          </div>
+        </div>
+        {loading ? (
+          <Loader2 size={16} className="animate-spin text-gray-400" />
+        ) : (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="font-semibold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">
+              {eligible.length} elegíveis
+            </span>
+            {redeemedCount > 0 && (
+              <span className="font-semibold text-emerald-700 bg-emerald-50 dark:bg-emerald-900/20 dark:text-emerald-400 px-2 py-0.5 rounded-md">
+                {redeemedCount} voltaram
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      <div className="px-5 py-4 border-b border-gray-100 dark:border-gray-700/50 flex flex-wrap items-end gap-4">
+        <div>
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Desconto (%)</label>
+          <input
+            type="number"
+            min={1}
+            max={90}
+            value={discountPercent}
+            onChange={e => setDiscountPercent(Number(e.target.value))}
+            className="w-24 h-9 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400"
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">Validade (dias)</label>
+          <input
+            type="number"
+            min={1}
+            max={60}
+            value={validDays}
+            onChange={e => setValidDays(Number(e.target.value))}
+            className="w-24 h-9 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400"
+          />
+        </div>
+        <label className="flex items-center gap-2 h-9 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={includeWhatsapp}
+            onChange={e => setIncludeWhatsapp(e.target.checked)}
+            className="w-4 h-4 accent-pink-500"
+          />
+          <MessageCircle size={14} />
+          Incluir WhatsApp
+        </label>
+        <button
+          onClick={() => setConfirmOpen(true)}
+          disabled={loading || sending || eligible.length === 0}
+          className="inline-flex items-center gap-2 h-9 px-4 text-sm font-semibold text-white bg-pink-500 rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-40"
+        >
+          <Send size={14} />
+          Enviar para {eligible.length} ex-assinantes
+        </button>
+      </div>
+
+      <p className="px-5 py-3 text-xs text-gray-400 border-b border-gray-100 dark:border-gray-700/50">
+        Cada cliente recebe e-mail e push com a oferta. O desconto é aplicado automaticamente no PIX
+        quando ela toca em "Assinar" no app — sem cupom. Ao aprovar o pagamento, a oferta vira "Resgatada".
+      </p>
+
+      {offers.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-700/50">
+                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Cliente</th>
+                <th className="text-center px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Desconto</th>
+                <th className="text-center px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Canais</th>
+                <th className="text-center px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Válida até</th>
+                <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Enviada em</th>
+              </tr>
+            </thead>
+            <tbody>
+              {offers.map(offer => {
+                const badge = winbackStatusBadge[offer.status];
+                return (
+                  <tr key={offer.id} className="border-b border-gray-50 dark:border-gray-700/30 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
+                    <td className="px-5 py-3 max-w-[220px]">
+                      <div className="min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">{offer.companyName}</p>
+                        <p className="text-xs text-gray-400 truncate">{offer.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-center font-semibold text-gray-900 dark:text-white whitespace-nowrap">{offer.discountPercent}%</td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      <div className="flex items-center justify-center gap-2 text-gray-400">
+                        {offer.emailSent && <Mail size={14} className="text-blue-500" aria-label="E-mail enviado" />}
+                        {offer.pushSent && <Bell size={14} className="text-amber-500" aria-label="Push enviado" />}
+                        {offer.whatsappSent && <MessageCircle size={14} className="text-emerald-500" aria-label="WhatsApp enviado" />}
+                        {!offer.emailSent && !offer.pushSent && !offer.whatsappSent && '—'}
+                      </div>
+                    </td>
+                    <td className="px-5 py-3 text-center whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${badge.cls}`}>
+                        {badge.label}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{fmtDate(offer.expiresAt)}</td>
+                    <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{fmtDateTime(offer.createdAt)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {confirmOpen && (
+        <ModalOverlay onClose={() => { if (!sending) setConfirmOpen(false); }}>
+          <div className="p-6 max-w-md">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Confirmar campanha win-back</h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Enviar oferta de <strong>{discountPercent}% de desconto</strong> (válida por {validDays} dias)
+              para <strong>{eligible.length} ex-assinantes</strong> por e-mail e push
+              {includeWhatsapp ? ' e WhatsApp' : ''}?
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmOpen(false)}
+                disabled={sending}
+                className="px-4 py-2 text-sm font-semibold text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleSend}
+                disabled={sending}
+                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-pink-500 rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50"
+              >
+                {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+                {sending ? 'Enviando…' : 'Enviar agora'}
+              </button>
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+    </div>
+  );
+}
+
 export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'success' | 'error') => void }) {
   const [data, setData] = useState<SubscriptionDashboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -566,6 +779,9 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
           <p className="text-xs text-gray-400 mt-3">Assinaturas expiradas</p>
         </div>
       </div>
+
+      {/* Win-back campaign */}
+      <WinbackSection toast={toast} />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

@@ -7,6 +7,7 @@ import { sendPushNotifications } from '../../infrastructure/services/pushService
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { createMpPixPayment, getMpPaymentInfo } from '../../infrastructure/services/mercadoPagoService';
 import { PostgresBannerRepository } from '../../infrastructure/repositories/PostgresBannerRepository';
+import { getActiveOffer, applyDiscount, attachPixRequest, redeemByPixRequest } from '../../infrastructure/services/winbackService';
 
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -32,10 +33,19 @@ export class PixController {
     };
     const tier: 'premium' | 'master' = planTier === 'master' ? 'master' : 'premium';
 
+    // Oferta win-back ativa → o valor do PIX já sai com o desconto aplicado,
+    // sem depender de mudança no app (o QR do Mercado Pago cobra o valor final).
+    const winbackOffer = await getActiveOffer(userId).catch(() => null);
+    const baseCents = amountCents ?? 0;
+    const finalCents = winbackOffer ? applyDiscount(baseCents, winbackOffer.discountPercent) : baseCents;
+    const finalLabel = winbackOffer
+      ? `${planLabel ?? 'Mensal'} • Volta com ${winbackOffer.discountPercent}% OFF`
+      : (planLabel ?? 'Mensal');
+
     try {
       // Check if user already has a pending request
       const existing = await pool.query(
-        `SELECT id, status, mp_qr_code, mp_qr_code_base64 FROM pix_requests WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription' LIMIT 1`,
+        `SELECT id, status, plan_label, amount_cents, mp_qr_code, mp_qr_code_base64 FROM pix_requests WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription' LIMIT 1`,
         [userId]
       );
       if (existing.rows.length > 0) {
@@ -43,13 +53,13 @@ export class PixController {
         let mpQrCode: string | null = row.mp_qr_code;
         let mpQrCodeBase64: string | null = row.mp_qr_code_base64;
 
-        // Pedido antigo sem QR do MP — gera agora
+        // Pedido antigo sem QR do MP — gera agora com o valor gravado no pedido
         if (!mpQrCode) {
           try {
             const user = await userRepo.findById(userId);
             const mp = await createMpPixPayment({
-              amountCents: amountCents ?? 0,
-              description: `DocePreço ${planLabel ?? 'Mensal'} - ${tier}`,
+              amountCents: row.amount_cents ?? finalCents,
+              description: `DocePreço ${row.plan_label ?? finalLabel} - ${tier}`,
               payerEmail: user?.email ?? 'cliente@docepreco.com',
               externalReference: row.id,
             });
@@ -81,10 +91,13 @@ export class PixController {
         `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents)
          VALUES ($1, $2, $3, $4)
          RETURNING id, status, created_at`,
-        [userId, planLabel ?? 'Mensal', tier, amountCents ?? 0]
+        [userId, finalLabel, tier, finalCents]
       );
 
       const pixRequestId: string = result.rows[0].id;
+      if (winbackOffer) {
+        await attachPixRequest(winbackOffer.id, pixRequestId).catch(() => {});
+      }
       const user = await userRepo.findById(userId);
 
       // Gera pagamento PIX no Mercado Pago
@@ -92,8 +105,8 @@ export class PixController {
       let mpQrCodeBase64: string | null = null;
       try {
         const mp = await createMpPixPayment({
-          amountCents: amountCents ?? 0,
-          description: `DocePreço ${planLabel ?? 'Mensal'} - ${tier}`,
+          amountCents: finalCents,
+          description: `DocePreço ${finalLabel} - ${tier}`,
           payerEmail: user?.email ?? 'cliente@docepreco.com',
           externalReference: pixRequestId,
         });
@@ -113,8 +126,8 @@ export class PixController {
       notifyPixRequest(
         user?.companyName ?? 'Usuário',
         user?.email ?? '',
-        planLabel ?? 'Mensal',
-        amountCents ?? 0
+        finalLabel,
+        finalCents
       );
 
       res.status(201).json({
@@ -283,6 +296,9 @@ export class PixController {
       // Grant the chosen tier (manual platform).
       await userRepo.updatePlanTier(userId, tier, premiumUntil, 'manual');
 
+      // Oferta win-back vinculada a este pedido → marca como resgatada
+      await redeemByPixRequest(id).catch(() => {});
+
       // Record premium event (com o valor pago, vindo da própria solicitação PIX)
       const pixAmountCents = reqResult.rows[0].amount_cents ?? null;
       await pool.query(
@@ -395,6 +411,9 @@ export class PixController {
       );
 
       await userRepo.updatePlanTier(userId, tier, premiumUntil, 'manual');
+
+      // Oferta win-back vinculada a este pedido → marca como resgatada
+      await redeemByPixRequest(pixRequestId).catch(() => {});
 
       const pixAmountCents = reqResult.rows[0].amount_cents ?? null;
       await pool.query(
