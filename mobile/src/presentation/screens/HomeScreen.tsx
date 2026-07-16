@@ -82,6 +82,7 @@ export const HomeScreen: React.FC = () => {
   const [planBannerIndex, setPlanBannerIndex] = useState(0);
   const [premiumPriceLabel, setPremiumPriceLabel] = useState('R$ 14,90');
   const [masterPriceLabel, setMasterPriceLabel] = useState('R$ 30,00');
+  const [annualPriceLabel, setAnnualPriceLabel] = useState('R$ 120,00');
   const [showCityModal, setShowCityModal] = useState(false);
   const [showExpiringModal, setShowExpiringModal] = useState(false);
   const planBannerRef = useRef<ScrollView>(null);
@@ -163,6 +164,7 @@ export const HomeScreen: React.FC = () => {
       if (!config) return;
       setPremiumPriceLabel(config.monthly.priceLabel);
       setMasterPriceLabel(config.masterMonthly.priceLabel);
+      setAnnualPriceLabel(config.annual.priceLabel);
     }).catch(() => {});
   }, [isPremium, isAdmin]);
 
@@ -707,7 +709,7 @@ export const HomeScreen: React.FC = () => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={s.proCtaTitle}>Desbloqueie tudo no PRO</Text>
-                <Text style={s.proCtaSub}>Mensal R$ 14,90  ·  Anual R$ 120 no PIX</Text>
+                <Text style={s.proCtaSub}>Mensal {premiumPriceLabel}  ·  Anual {annualPriceLabel} no PIX</Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={PINK} />
             </LinearGradient>

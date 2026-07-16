@@ -87,6 +87,19 @@ export const planConfigApi = {
     }
   },
 
+  /** Preço mensal do plano Premium, gerenciado pelo painel web. */
+  async getPremiumPrice(): Promise<number | null> {
+    try {
+      const { data } = await axios.get<{ success: boolean; data: PlanConfig }>(
+        `${BASE_URL}/admin/settings/plans`,
+        { timeout: 10000 },
+      );
+      return data.data.premiumPrice ?? null;
+    } catch {
+      return null;
+    }
+  },
+
   /** Preço e funcionalidades do plano Master, gerenciados pelo painel web. */
   async getMasterInfo(): Promise<MasterInfo | null> {
     try {

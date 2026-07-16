@@ -68,6 +68,15 @@ const MASTER_EXTRA = [
 
 const PURPLE = '#7C3AED';
 
+// Formata número como moeda (14.9 → "R$ 14,90")
+const fmtBRL = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
+
+// Quebra "R$ 14,90" em parte inteira + centavos para o layout dos cards
+const splitPrice = (label: string): [string, string] => {
+  const i = label.indexOf(',');
+  return i === -1 ? [label, ''] : [label.slice(0, i), label.slice(i)];
+};
+
 export const PaywallScreen: React.FC = () => {
   const { t } = useTranslation();
   const navigation = useNavigation<NavProp>();
@@ -102,7 +111,9 @@ export const PaywallScreen: React.FC = () => {
   // PIX Master mensal já vem embutido no app → sempre disponível, sem depender do backend.
   const masterPixAvailable = true;
   const [masterPrice, setMasterPrice] = useState(30);
-  const [premiumPrice] = useState('R$ 14,90');
+  const [premiumPrice, setPremiumPrice] = useState(14.9);
+  // Equivalente mensal do plano anual (anual ÷ 12), calculado da config do painel
+  const [annualPerMonthLabel, setAnnualPerMonthLabel] = useState('R$ 10,00');
   // Trial days para cada tier
   const [premiumTrialDays, setPremiumTrialDays] = useState<number | null>(null);
   const [masterTrialDays, setMasterTrialDays] = useState<number | null>(null);
@@ -189,9 +200,12 @@ export const PaywallScreen: React.FC = () => {
         setPixAnnualLabel(cfg.annual.priceLabel);
         if (cfg.masterMonthly) setPixMasterMonthlyLabel(cfg.masterMonthly.priceLabel);
         if (cfg.masterAnnual) setPixMasterAnnualLabel(cfg.masterAnnual.priceLabel);
+        if (cfg.annual.amountCents > 0) setAnnualPerMonthLabel(fmtBRL(cfg.annual.amountCents / 100 / 12));
       }
       const mi = await planConfigApi.getMasterInfo();
       if (mi) setMasterPrice(mi.price);
+      const pp = await planConfigApi.getPremiumPrice();
+      if (pp) setPremiumPrice(pp);
 
       // Carrega trial days
       const trial = await planConfigApi.getTrialConfig();
@@ -202,16 +216,14 @@ export const PaywallScreen: React.FC = () => {
     })();
   }, []);
 
-  // Quebra "R$ 14,90" em parte inteira + centavos para o layout dos cards
-  const splitPrice = (label: string): [string, string] => {
-    const i = label.indexOf(',');
-    return i === -1 ? [label, ''] : [label.slice(0, i), label.slice(i)];
-  };
   const isMasterTier = tier === 'master';
   const pixMonthlyShown = isMasterTier ? pixMasterMonthlyLabel : (legacyMonthly ? 'R$ 10,00' : pixMonthlyLabel);
   const pixAnnualShown = isMasterTier ? pixMasterAnnualLabel : pixAnnualLabel;
   const [monthlyMain, monthlyCents] = splitPrice(pixMonthlyShown);
   const [annualMain, annualCents] = splitPrice(pixAnnualShown);
+  // Cards de cartão: mensal usa o preço do tier configurado no painel; anual usa o rótulo anual
+  const [cardMonthlyMain, cardMonthlyCents] = splitPrice(fmtBRL(isMasterTier ? masterPrice : premiumPrice));
+  const [cardAnnualMain, cardAnnualCents] = splitPrice(pixAnnualLabel);
 
   // O Master é só mensal — exclui qualquer pacote/PIX anual do Master.
   const isAnnualId = (id: string) => {
@@ -330,7 +342,7 @@ export const PaywallScreen: React.FC = () => {
           <View style={st.tierTabs}>
             <TouchableOpacity style={[st.tierTab, !isMasterTier && st.tierTabOn]} onPress={() => switchTier('premium')} activeOpacity={0.85}>
               <Text style={[st.tierTabName, !isMasterTier && { color: PINK }]}>Premium</Text>
-              <Text style={st.tierTabPrice}>{premiumPrice}/mês</Text>
+              <Text style={st.tierTabPrice}>{fmtBRL(premiumPrice)}/mês</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.tierTab, isMasterTier && st.tierTabOnMaster]} onPress={() => switchTier('master')} activeOpacity={0.85}>
               <View style={st.tierTabBadge}><Text style={st.tierTabBadgeText}>COMPLETO</Text></View>
@@ -379,7 +391,7 @@ export const PaywallScreen: React.FC = () => {
                     </View>
                     <Text style={st.planName}>Anual</Text>
                     <Text style={st.planPrice}>{annualMain}<Text style={st.planPriceSm}>{annualCents}</Text></Text>
-                    <Text style={st.planPer}>R$ 10,00/mês</Text>
+                    <Text style={st.planPer}>{annualPerMonthLabel}/mês</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -409,7 +421,7 @@ export const PaywallScreen: React.FC = () => {
             >
               <Ionicons name="card-outline" size={18} color={isMasterTier ? PURPLE : PINK} style={{ marginBottom: 4 }} />
               <Text style={st.planName}>Mensal</Text>
-              <Text style={st.planPrice}>{isMasterTier ? 'R$ 30' : 'R$ 14'}<Text style={st.planPriceSm}>{isMasterTier ? ',00' : ',90'}</Text></Text>
+              <Text style={st.planPrice}>{cardMonthlyMain}<Text style={st.planPriceSm}>{cardMonthlyCents}</Text></Text>
               <Text style={st.planPer}>por mês</Text>
             </TouchableOpacity>
             {showAnnual && (
@@ -422,8 +434,8 @@ export const PaywallScreen: React.FC = () => {
                 <View style={[st.save, { backgroundColor: '#2563EB' }]}><Text style={st.saveText}>ECONOMIZE</Text></View>
                 <Ionicons name="card-outline" size={18} color={PINK} style={{ marginBottom: 4 }} />
                 <Text style={st.planName}>Anual</Text>
-                <Text style={st.planPrice}>R$ 120<Text style={st.planPriceSm}>,00</Text></Text>
-                <Text style={st.planPer}>R$ 10/mês</Text>
+                <Text style={st.planPrice}>{cardAnnualMain}<Text style={st.planPriceSm}>{cardAnnualCents}</Text></Text>
+                <Text style={st.planPer}>{annualPerMonthLabel}/mês</Text>
               </TouchableOpacity>
             )}
           </View>
