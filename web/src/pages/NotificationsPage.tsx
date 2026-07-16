@@ -15,9 +15,11 @@ const STATUS_CONFIG: Record<AppNotification['status'], { label: string; color: s
 };
 
 const TARGET_CONFIG: Record<string, { label: string; color: string }> = {
-  all:     { label: 'Todos',    color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' },
-  premium: { label: 'Premium',  color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700' },
-  free:    { label: 'Gratuito', color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' },
+  all:     { label: 'Todos',          color: 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300' },
+  premium: { label: 'Premium',        color: 'bg-yellow-50 dark:bg-yellow-900/20 text-yellow-700' },
+  master:  { label: 'Master',         color: 'bg-purple-50 dark:bg-purple-900/20 text-purple-600' },
+  free:    { label: 'Gratuito',       color: 'bg-blue-50 dark:bg-blue-900/20 text-blue-600' },
+  expired: { label: 'Plano expirado', color: 'bg-amber-50 dark:bg-amber-900/20 text-amber-600' },
 };
 
 function fmtDate(iso: string) {
@@ -229,6 +231,7 @@ export function NotificationsPage({ toast }: Props) {
                   <option value="premium">Premium</option>
                   <option value="master">Master</option>
                   <option value="free">Gratuito</option>
+                  <option value="expired">Plano expirado (ex-assinantes)</option>
                 </select>
               </div>
               <div>

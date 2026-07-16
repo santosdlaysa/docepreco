@@ -185,7 +185,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   title VARCHAR(255) NOT NULL,
   body TEXT NOT NULL,
   data_json TEXT,
-  target VARCHAR(20) NOT NULL DEFAULT 'all' CHECK (target IN ('all', 'premium', 'free')),
+  target VARCHAR(20) NOT NULL DEFAULT 'all' CHECK (target IN ('all', 'premium', 'free', 'master', 'expired')),
   scheduled_at TIMESTAMP,
   sent_at TIMESTAMP,
   status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'scheduled', 'sent', 'failed')),
@@ -522,10 +522,10 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'pix_requests', 'product_type', "VARCHAR(20) NOT NULL DEFAULT 'subscription'");
     await addColumnIfMissing(client, 'pix_requests', 'ref_id', 'UUID NULL');
 
-    // Permite segmentar notificações para o público Master (além de all/premium/free).
+    // Permite segmentar notificações para Master e ex-assinantes com plano expirado (além de all/premium/free).
     await client.query(`ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_target_check`);
     await client.query(
-      `ALTER TABLE notifications ADD CONSTRAINT notifications_target_check CHECK (target IN ('all', 'premium', 'free', 'master'))`
+      `ALTER TABLE notifications ADD CONSTRAINT notifications_target_check CHECK (target IN ('all', 'premium', 'free', 'master', 'expired'))`
     );
 
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');

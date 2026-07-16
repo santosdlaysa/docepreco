@@ -25,9 +25,19 @@ export class PostgresPushTokenRepository {
     return result.rows.map(this.mapRow);
   }
 
-  async findByTarget(target: 'all' | 'premium' | 'free' | 'master'): Promise<PushToken[]> {
+  async findByTarget(target: 'all' | 'premium' | 'free' | 'master' | 'expired'): Promise<PushToken[]> {
     if (target === 'all') {
       return this.findAll();
+    }
+    if (target === 'expired') {
+      // Ex-assinantes: já tiveram plano pago e ele venceu. Não exige is_premium = FALSE
+      // para também alcançar quem o webhook ainda não sincronizou.
+      const result = await pool.query(
+        `SELECT pt.* FROM push_tokens pt
+         JOIN users u ON u.id = pt.user_id
+         WHERE u.premium_until IS NOT NULL AND u.premium_until <= NOW()`
+      );
+      return result.rows.map(this.mapRow);
     }
     if (target === 'master') {
       const result = await pool.query(
