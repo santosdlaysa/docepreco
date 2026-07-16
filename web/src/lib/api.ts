@@ -341,6 +341,8 @@ export interface AdminStore {
   isPremium: boolean;
   planTier: 'free' | 'premium' | 'master';
   productCount: number;
+  onlineOrderCount: number;
+  lastOnlineOrderAt: string | null;
 }
 
 export interface StoresResponse {
@@ -432,11 +434,12 @@ export const api = {
     return req<UsersResponse>(`/admin/users?${q}`);
   },
 
-  listStores: (params: { search?: string; page?: number; active?: boolean | null } = {}) => {
+  listStores: (params: { search?: string; page?: number; active?: boolean | null; hasOnlineOrders?: boolean } = {}) => {
     const q = new URLSearchParams();
     if (params.search) q.set('search', params.search);
     if (params.page) q.set('page', String(params.page));
     q.set('active', params.active == null ? 'all' : String(params.active));
+    if (params.hasOnlineOrders) q.set('hasOnlineOrders', 'true');
     return req<StoresResponse>(`/admin/stores?${q}`);
   },
 

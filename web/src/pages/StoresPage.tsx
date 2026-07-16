@@ -75,6 +75,7 @@ export function StoresPage({ toast }: Props) {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [filter, setFilter] = useState<ActiveFilter>('active');
+  const [onlyWithOrders, setOnlyWithOrders] = useState(false);
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -89,6 +90,7 @@ export function StoresPage({ toast }: Props) {
         search: debouncedSearch || undefined,
         page,
         active: filter === 'all' ? null : filter === 'active',
+        hasOnlineOrders: onlyWithOrders || undefined,
       });
       setStores(data.stores);
       setTotal(data.total);
@@ -99,7 +101,7 @@ export function StoresPage({ toast }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page, filter, toast]);
+  }, [debouncedSearch, page, filter, onlyWithOrders, toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -161,6 +163,18 @@ export function StoresPage({ toast }: Props) {
             </button>
           ))}
         </div>
+        <button
+          onClick={() => { setOnlyWithOrders(v => !v); setPage(1); }}
+          title="Mostrar apenas lojas que já receberam pedidos pela loja online"
+          className={`flex items-center gap-1.5 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+            onlyWithOrders
+              ? 'bg-primary-500 border-primary-500 text-white'
+              : 'bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
+          }`}
+        >
+          <ExternalLink size={14} />
+          Com pedidos no link
+        </button>
       </div>
 
       {/* Tabela */}
@@ -172,6 +186,7 @@ export function StoresPage({ toast }: Props) {
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Loja</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Status</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Pedidos</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">Pedidos no link</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Dono</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Telefone</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-600 dark:text-gray-300">Plano</th>
@@ -185,14 +200,14 @@ export function StoresPage({ toast }: Props) {
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {loading && (
                 <tr>
-                  <td colSpan={11}>
+                  <td colSpan={12}>
                     <TableSkeleton rows={8} cols={7} />
                   </td>
                 </tr>
               )}
               {!loading && stores.length === 0 && (
                 <tr>
-                  <td colSpan={11} className="text-center py-8 text-gray-400">Nenhuma loja encontrada</td>
+                  <td colSpan={12} className="text-center py-8 text-gray-400">Nenhuma loja encontrada</td>
                 </tr>
               )}
               {!loading && stores.map((s, i) => (
@@ -221,6 +236,18 @@ export function StoresPage({ toast }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <OrderStatusBadge active={s.active} acceptingOrders={s.acceptingOrders} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {s.onlineOrderCount > 0 ? (
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">{s.onlineOrderCount}</p>
+                        {s.lastOnlineOrderAt && (
+                          <p className="text-xs text-gray-400 whitespace-nowrap">último em {fmtDate(s.lastOnlineOrderAt)}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-gray-300 dark:text-gray-600">—</span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <p className="text-gray-900 dark:text-white font-medium truncate max-w-44" title={s.companyName}>{s.companyName}</p>

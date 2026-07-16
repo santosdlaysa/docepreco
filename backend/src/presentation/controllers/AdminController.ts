@@ -218,6 +218,7 @@ export class AdminController {
   async listStores(req: Request, res: Response): Promise<void> {
     const search = req.query.search as string | undefined;
     const activeFilter = (req.query.active as string) || 'true';
+    const hasOnlineOrders = req.query.hasOnlineOrders === 'true';
     const page = Math.max(1, parseInt((req.query.page as string) || '1'));
     const limit = Math.min(50, parseInt((req.query.limit as string) || '20'));
     const offset = (page - 1) * limit;
@@ -233,6 +234,8 @@ export class AdminController {
     }
     if (activeFilter === 'true') conditions.push(`st.active = TRUE`);
     else if (activeFilter === 'false') conditions.push(`st.active = FALSE`);
+    // Só lojas que já receberam pedido pela loja online (link do PWA)
+    if (hasOnlineOrders) conditions.push(`EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id AND o.source = 'online')`);
 
     const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -268,7 +271,9 @@ export class AdminController {
             u.phone,
             u.is_premium         AS "isPremium",
             u.plan_tier          AS "planTier",
-            (SELECT COUNT(*)::int FROM store_products sp WHERE sp.user_id = u.id) AS "productCount"
+            (SELECT COUNT(*)::int FROM store_products sp WHERE sp.user_id = u.id) AS "productCount",
+            (SELECT COUNT(*)::int FROM orders o WHERE o.user_id = u.id AND o.source = 'online') AS "onlineOrderCount",
+            (SELECT MAX(o.created_at) FROM orders o WHERE o.user_id = u.id AND o.source = 'online') AS "lastOnlineOrderAt"
           FROM store_settings st
           JOIN users u ON u.id = st.user_id
           ${where}
