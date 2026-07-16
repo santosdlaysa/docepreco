@@ -14,6 +14,8 @@ interface StoreCardProps {
   deliveryFee?: number | null;
   city: string | null;
   distanceKm?: number | null;
+  /** Loja aberta agora — fechada aparece esmaecida com selo "Fechada". */
+  isOpen?: boolean;
 }
 
 function fmtDistance(km: number): string {
@@ -54,6 +56,7 @@ export function StoreCard({
   deliveryFee,
   city,
   distanceKm,
+  isOpen = true,
 }: StoreCardProps) {
   const freeDelivery = acceptsDelivery && deliveryFee === 0;
 
@@ -63,8 +66,8 @@ export function StoreCard({
       className="block bg-white rounded-2xl shadow-sm p-3.5 active:scale-[0.98] transition-transform"
     >
       <div className="flex items-center gap-3.5">
-        {/* Logo da loja (foto de perfil da empresa) */}
-        <div className="w-[68px] h-[68px] rounded-2xl overflow-hidden flex-shrink-0 shadow-sm">
+        {/* Logo da loja (foto de perfil da empresa) — em cinza quando fechada */}
+        <div className={`w-[68px] h-[68px] rounded-2xl overflow-hidden flex-shrink-0 shadow-sm ${isOpen ? '' : 'grayscale opacity-60'}`}>
           {logoUrl ? (
             <img src={logoUrl} alt={storeName} className="w-full h-full object-cover" />
           ) : (
@@ -73,9 +76,14 @@ export function StoreCard({
         </div>
 
         {/* Infos */}
-        <div className="flex-1 min-w-0">
-          <p className="font-extrabold text-gray-900 text-[15px] leading-tight truncate">
-            {storeName}
+        <div className={`flex-1 min-w-0 ${isOpen ? '' : 'opacity-60'}`}>
+          <p className="flex items-center gap-2 font-extrabold text-gray-900 text-[15px] leading-tight">
+            <span className="truncate">{storeName}</span>
+            {!isOpen && (
+              <span className="flex-shrink-0 text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 border border-gray-200 rounded-full px-2 py-0.5">
+                Fechada
+              </span>
+            )}
           </p>
           <p className="flex items-center gap-1.5 text-[11px] text-gray-400 font-medium mt-0.5 truncate">
             {distanceKm != null && (

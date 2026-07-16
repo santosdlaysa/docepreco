@@ -43,6 +43,8 @@ export interface MarketplaceStoreSummary {
   city?: string | null;
   category?: string | null;
   distanceKm?: number | null;
+  /** Loja aberta agora (toggle manual + horário de funcionamento). Fechada aparece na lista, mas esmaecida. */
+  isOpen: boolean;
 }
 
 export interface StoreProduct {
@@ -129,6 +131,7 @@ function mapMarketplaceStore(row: Record<string, unknown>): MarketplaceStoreSumm
     city: (row.city as string | null) ?? null,
     category: (row.category as string | null) ?? null,
     distanceKm: row.distance_km != null ? Math.round(Number(row.distance_km) * 10) / 10 : null,
+    isOpen: isStoreOpenNow(row as Parameters<typeof isStoreOpenNow>[0]),
   };
 }
 
@@ -279,8 +282,9 @@ export class PostgresStoreRepository {
     const limit = Math.min(Math.max(filters.limit, 1), 50);
     const offset = Math.max(filters.page - 1, 0) * limit;
 
-    // Filtra pelo horário de funcionamento em JS: pega uma página extra do banco
-    // (lojas fechadas por horário automático são descartadas) para manter o limite pedido.
+    // Lojas fechadas (toggle manual ou fora do horário) continuam na lista — o PWA
+    // as mostra esmaecidas com selo "Fechada". A ordenação abertas-primeiro é feita
+    // em JS dentro da página, pois o horário de funcionamento é avaliado em JS.
     // distance_km via fórmula de Haversine; lojas sem coordenadas ficam por último (NULLS LAST).
     const rows = await pool.query(
       `SELECT * FROM (
@@ -308,10 +312,8 @@ export class PostgresStoreRepository {
        LIMIT $8 OFFSET $9`,
       [search, category, city ? `%${city}%` : null, lat, lng, freeDelivery, sort, limit, offset]
     );
-    const openRows = rows.rows.filter(r => isStoreOpenNow(r));
-
     const count = await pool.query(
-      `SELECT store_name, active, accepting_orders, use_business_hours, business_hours
+      `SELECT COUNT(*)::int AS total
        FROM store_settings
        WHERE active = TRUE
          AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
@@ -320,9 +322,12 @@ export class PostgresStoreRepository {
          AND ($4::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))`,
       [search, category, city ? `%${city}%` : null, freeDelivery]
     );
-    const total = count.rows.filter(r => isStoreOpenNow(r)).length;
+    const total = count.rows[0]?.total ?? 0;
 
-    return { stores: openRows.map(mapMarketplaceStore), total };
+    const stores = rows.rows
+      .map(mapMarketplaceStore)
+      .sort((a, b) => Number(b.isOpen) - Number(a.isOpen));
+    return { stores, total };
   }
 
   async getProducts(userId: string): Promise<StoreProduct[]> {

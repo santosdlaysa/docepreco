@@ -22,6 +22,7 @@ interface StoreListItem {
   city: string | null;
   category: string | null;
   distanceKm: number | null;
+  isOpen?: boolean;
 }
 
 interface FeaturedProduct {
@@ -500,6 +501,7 @@ export function LojasPage() {
                 deliveryFee={store.deliveryFee}
                 city={store.city}
                 distanceKm={store.distanceKm}
+                isOpen={store.isOpen ?? true}
               />
             ))}
           </div>
