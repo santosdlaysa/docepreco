@@ -271,6 +271,7 @@ export class AdminController {
             u.phone,
             u.is_premium         AS "isPremium",
             u.plan_tier          AS "planTier",
+            (u.plan_tier IN ('premium', 'master') AND (u.premium_until IS NULL OR u.premium_until > NOW())) AS "hasActivePlan",
             (SELECT COUNT(*)::int FROM store_products sp WHERE sp.user_id = u.id) AS "productCount",
             (SELECT COUNT(*)::int FROM orders o WHERE o.user_id = u.id AND o.source = 'online') AS "onlineOrderCount",
             (SELECT MAX(o.created_at) FROM orders o WHERE o.user_id = u.id AND o.source = 'online') AS "lastOnlineOrderAt"

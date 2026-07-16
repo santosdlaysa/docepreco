@@ -233,6 +233,11 @@ export function StoresPage({ toast }: Props) {
                   </td>
                   <td className="px-4 py-3">
                     <StatusBadge active={s.active} />
+                    {s.active && !s.hasActivePlan && (
+                      <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-1 whitespace-nowrap">
+                        Fora do ar — plano expirado
+                      </p>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <OrderStatusBadge active={s.active} acceptingOrders={s.acceptingOrders} />

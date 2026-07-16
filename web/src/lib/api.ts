@@ -340,6 +340,8 @@ export interface AdminStore {
   phone: string | null;
   isPremium: boolean;
   planTier: 'free' | 'premium' | 'master';
+  /** Plano pago vigente — sem ele a loja fica fora do ar no DocePedidos mesmo com active=true. */
+  hasActivePlan: boolean;
   productCount: number;
   onlineOrderCount: number;
   lastOnlineOrderAt: string | null;

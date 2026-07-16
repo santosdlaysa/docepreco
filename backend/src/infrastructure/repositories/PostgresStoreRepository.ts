@@ -1,6 +1,7 @@
 import { pool } from '../database/connection';
 import { DiscountType } from '../../domain/utils/discount';
 import { DayHours, isStoreOpenNow } from '../../domain/utils/businessHours';
+import { PAID_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
 
 export interface StoreSettings {
   id: string;
@@ -285,25 +286,28 @@ export class PostgresStoreRepository {
     // Lojas fechadas (toggle manual ou fora do horário) continuam na lista — o PWA
     // as mostra esmaecidas com selo "Fechada". A ordenação abertas-primeiro é feita
     // em JS dentro da página, pois o horário de funcionamento é avaliado em JS.
+    // Lojas de dono com plano expirado saem do marketplace (PAID_PLAN_ACTIVE_SQL).
     // distance_km via fórmula de Haversine; lojas sem coordenadas ficam por último (NULLS LAST).
     const rows = await pool.query(
       `SELECT * FROM (
-         SELECT store_name, slug, description, cover_image_url, logo_url,
-                accepts_delivery, accepts_pickup, min_order_value, delivery_fee,
-                city, category, active, accepting_orders, use_business_hours, business_hours,
-                CASE WHEN $4::double precision IS NOT NULL AND latitude IS NOT NULL AND longitude IS NOT NULL THEN
+         SELECT st.store_name, st.slug, st.description, st.cover_image_url, st.logo_url,
+                st.accepts_delivery, st.accepts_pickup, st.min_order_value, st.delivery_fee,
+                st.city, st.category, st.active, st.accepting_orders, st.use_business_hours, st.business_hours,
+                CASE WHEN $4::double precision IS NOT NULL AND st.latitude IS NOT NULL AND st.longitude IS NOT NULL THEN
                   2 * 6371 * asin(sqrt(
-                    power(sin(radians((latitude - $4::double precision) / 2)), 2) +
-                    cos(radians($4::double precision)) * cos(radians(latitude)) *
-                    power(sin(radians((longitude - $5::double precision) / 2)), 2)
+                    power(sin(radians((st.latitude - $4::double precision) / 2)), 2) +
+                    cos(radians($4::double precision)) * cos(radians(st.latitude)) *
+                    power(sin(radians((st.longitude - $5::double precision) / 2)), 2)
                   ))
                 END AS distance_km
-         FROM store_settings
-         WHERE active = TRUE
-           AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
-           AND ($2::text IS NULL OR category = $2)
-           AND ($3::text IS NULL OR city ILIKE $3)
-           AND ($6::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))
+         FROM store_settings st
+         JOIN users u ON u.id = st.user_id
+         WHERE st.active = TRUE
+           AND ${PAID_PLAN_ACTIVE_SQL}
+           AND ($1::text IS NULL OR st.store_name ILIKE '%' || $1 || '%')
+           AND ($2::text IS NULL OR st.category = $2)
+           AND ($3::text IS NULL OR st.city ILIKE $3)
+           AND ($6::boolean IS NOT TRUE OR (st.accepts_delivery = TRUE AND st.delivery_fee = 0))
        ) s
        ORDER BY
          CASE WHEN $7::text = 'distance' THEN s.distance_km END ASC NULLS LAST,
@@ -314,12 +318,14 @@ export class PostgresStoreRepository {
     );
     const count = await pool.query(
       `SELECT COUNT(*)::int AS total
-       FROM store_settings
-       WHERE active = TRUE
-         AND ($1::text IS NULL OR store_name ILIKE '%' || $1 || '%')
-         AND ($2::text IS NULL OR category = $2)
-         AND ($3::text IS NULL OR city ILIKE $3)
-         AND ($4::boolean IS NOT TRUE OR (accepts_delivery = TRUE AND delivery_fee = 0))`,
+       FROM store_settings st
+       JOIN users u ON u.id = st.user_id
+       WHERE st.active = TRUE
+         AND ${PAID_PLAN_ACTIVE_SQL}
+         AND ($1::text IS NULL OR st.store_name ILIKE '%' || $1 || '%')
+         AND ($2::text IS NULL OR st.category = $2)
+         AND ($3::text IS NULL OR st.city ILIKE $3)
+         AND ($4::boolean IS NOT TRUE OR (st.accepts_delivery = TRUE AND st.delivery_fee = 0))`,
       [search, category, city ? `%${city}%` : null, freeDelivery]
     );
     const total = count.rows[0]?.total ?? 0;

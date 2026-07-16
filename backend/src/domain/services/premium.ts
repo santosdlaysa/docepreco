@@ -57,6 +57,14 @@ export function hasTier(user: Pick<User, 'planTier' | 'premiumUntil'>, tier: Pla
 }
 
 /**
+ * Fragmento SQL: usuário (alias `u` da tabela users) com plano pago vigente.
+ * Espelha getActiveTier — tier pago com premium_until vencido conta como free.
+ * Usado para esconder lojas de assinantes expirados das listagens públicas.
+ */
+export const PAID_PLAN_ACTIVE_SQL =
+  `(u.plan_tier IN ('premium', 'master') AND (u.premium_until IS NULL OR u.premium_until > NOW()))`;
+
+/**
  * Returns true if the user can create another item of the given feature.
  * Accepts an optional dynamic limit override (from app_settings).
  */
