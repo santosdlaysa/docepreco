@@ -73,6 +73,7 @@ export const StoreProductFormScreen: React.FC = () => {
   const [discountType, setDiscountType] = useState<DiscountType>('fixed');
   const [discountValue, setDiscountValue] = useState('');
   const [available, setAvailable] = useState(true);
+  const [stockText, setStockText] = useState('');
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [recipeId, setRecipeId] = useState<string | undefined>(undefined);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -95,6 +96,7 @@ export const StoreProductFormScreen: React.FC = () => {
             setDiscountValue(found.discountType === 'percent' ? String(found.discountValue) : formatMoney(found.discountValue));
           }
           setAvailable(found.available);
+          setStockText(found.stock != null ? String(found.stock) : '');
           setPhotoUrl(found.photoUrl ?? '');
           setRecipeId(found.recipeId);
         })
@@ -152,6 +154,7 @@ export const StoreProductFormScreen: React.FC = () => {
         photoUrl: photoUrl.trim() || undefined,
         discountType: discountValueNum > 0 ? discountType : null,
         discountValue: discountValueNum > 0 ? discountValueNum : null,
+        stock: stockText.trim() === '' ? null : Math.max(0, parseInt(stockText, 10) || 0),
       };
 
       if (isEditing && productId) {
@@ -347,6 +350,21 @@ export const StoreProductFormScreen: React.FC = () => {
             </View>
           </TouchableOpacity>
 
+          {/* ── Estoque (opcional) ── */}
+          <Text style={st.label}>Estoque para pedidos online (opcional)</Text>
+          <TextInput
+            style={st.input}
+            value={stockText}
+            onChangeText={t => setStockText(t.replace(/[^0-9]/g, ''))}
+            placeholder="Deixe vazio para ilimitado"
+            placeholderTextColor={INK3}
+            keyboardType="number-pad"
+          />
+          <Text style={st.stockHint}>
+            Com um número, o produto aceita pedidos até acabar e aparece como "Esgotado" ao zerar.
+            A cada pedido online o saldo diminui — reponha editando este campo.
+          </Text>
+
         </ScrollView>
 
         {/* ── Save button ── */}
@@ -402,6 +420,7 @@ const st = StyleSheet.create({
   photoRemoveText: { fontSize: 12, color: '#C0392B', fontWeight: '600' },
 
   label: { fontSize: 13, fontWeight: '700', color: INK, marginTop: 12, marginBottom: 6, marginLeft: 2 },
+  stockHint: { fontSize: 11.5, color: INK2, marginTop: 6, marginLeft: 2, lineHeight: 16 },
   input: {
     backgroundColor: '#fff', borderRadius: 14, padding: 14,
     fontSize: 15, color: INK, ...SHADOW,

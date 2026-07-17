@@ -12,6 +12,8 @@ interface StoreProduct {
   photoUrl: string | null;
   price: number;
   originalPrice?: number;
+  /** Saldo restante para pedidos. null = ilimitado; 0 = esgotado. */
+  stock?: number | null;
 }
 interface StoreAddon {
   id: string;
@@ -109,30 +111,33 @@ function ProductRow({
   qty,
   onOpen,
   disabled = false,
+  soldOut = false,
 }: {
   product: StoreProduct;
   qty: number;
   onOpen: () => void;
   disabled?: boolean;
+  soldOut?: boolean;
 }) {
+  const blocked = disabled || soldOut;
   return (
     <button
       onClick={onOpen}
-      disabled={disabled}
+      disabled={blocked}
       className={`w-full text-left bg-white rounded-2xl p-4 flex items-center gap-4 shadow-sm transition-transform ${
-        disabled ? 'cursor-default' : 'active:scale-[0.98]'
+        blocked ? 'cursor-default' : 'active:scale-[0.98]'
       }`}
     >
       {/* Foto circular */}
       <div className="relative flex-shrink-0">
-        <div className="w-[72px] h-[72px] rounded-full overflow-hidden shadow-md">
+        <div className={`w-[72px] h-[72px] rounded-full overflow-hidden shadow-md ${soldOut ? 'grayscale opacity-50' : ''}`}>
           {product.photoUrl ? (
             <img src={product.photoUrl} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <ProductInitial name={product.name} />
           )}
         </div>
-        {!disabled && qty > 0 && (
+        {!blocked && qty > 0 && (
           <div className="absolute -top-1 -right-1 w-5 h-5 bg-[#EA4B92] rounded-full text-white text-[10px] font-bold flex items-center justify-center shadow ring-2 ring-white">
             {qty}
           </div>
@@ -141,18 +146,29 @@ function ProductRow({
 
       {/* Info */}
       <div className="flex-1 min-w-0">
-        <p className="flex items-center gap-1.5 mb-0.5">
-          {product.originalPrice != null && (
-            <span className="text-[11px] text-gray-400 line-through">{fmt(product.originalPrice)}</span>
-          )}
-          <span className="text-xs font-semibold text-[#EA4B92]">{fmt(product.price)}</span>
-        </p>
-        <p className="font-bold text-gray-900 text-[15px] leading-tight line-clamp-2">
+        {soldOut ? (
+          <span className="inline-block text-[10px] font-bold uppercase tracking-wide text-gray-500 bg-gray-100 rounded-full px-2 py-0.5 mb-1">
+            Esgotado
+          </span>
+        ) : (
+          <p className="flex items-center gap-1.5 mb-0.5">
+            {product.originalPrice != null && (
+              <span className="text-[11px] text-gray-400 line-through">{fmt(product.originalPrice)}</span>
+            )}
+            <span className="text-xs font-semibold text-[#EA4B92]">{fmt(product.price)}</span>
+          </p>
+        )}
+        <p className={`font-bold text-[15px] leading-tight line-clamp-2 ${soldOut ? 'text-gray-400' : 'text-gray-900'}`}>
           {product.name}
         </p>
         {product.description && (
           <p className="text-[12px] text-gray-400 mt-1 line-clamp-2 leading-relaxed">
             {product.description}
+          </p>
+        )}
+        {!soldOut && product.stock != null && product.stock - qty <= 5 && product.stock - qty > 0 && (
+          <p className="text-[11px] font-semibold text-amber-600 mt-1">
+            Últimas {product.stock - qty} unidades
           </p>
         )}
       </div>
@@ -323,6 +339,12 @@ export function LojaPage() {
     line.addonIds.map(id => addonById(id)).filter((a): a is StoreAddon => !!a);
   const productQty = (productId: string) =>
     cart.reduce((sum, l) => (l.productId === productId ? sum + l.qty : sum), 0);
+  // Saldo ainda disponível para adicionar (estoque menos o que já está no carrinho).
+  // Infinity quando o produto é ilimitado (stock null).
+  const remainingStock = (productId: string) => {
+    const s = store?.products.find(p => p.id === productId)?.stock;
+    return s == null ? Infinity : Math.max(0, s - productQty(productId));
+  };
 
   const totalItems = cart.reduce((a, l) => a + l.qty, 0);
   const subtotal = cart.reduce((acc, l) => acc + lineUnitPrice(l) * l.qty, 0);
@@ -432,16 +454,26 @@ export function LojaPage() {
   }, [step, orderId, slug, orderStatus]);
 
   // Altera a quantidade de uma linha do carrinho; remove a linha quando zera.
+  // Ao aumentar (+), respeita o estoque do produto — não deixa passar do saldo.
   const changeLineQty = (key: string, delta: number) => {
-    setCart(prev =>
-      prev
+    setCart(prev => {
+      if (delta > 0) {
+        const line = prev.find(l => lineKey(l.productId, l.addonIds) === key);
+        const s = line && store?.products.find(p => p.id === line.productId)?.stock;
+        if (line && s != null) {
+          const totalForProduct = prev.reduce((sum, l) => (l.productId === line.productId ? sum + l.qty : sum), 0);
+          if (totalForProduct + delta > s) return prev; // estoque esgotado — ignora
+        }
+      }
+      return prev
         .map(l => (lineKey(l.productId, l.addonIds) === key ? { ...l, qty: l.qty + delta } : l))
-        .filter(l => l.qty > 0)
-    );
+        .filter(l => l.qty > 0);
+    });
   };
 
   const openDetail = (product: StoreProduct) => {
     if (store?.active === false) return;
+    if (remainingStock(product.id) <= 0) return; // esgotado
     setDetail({ product, qty: 1, addonIds: [] });
   };
 
@@ -473,6 +505,8 @@ export function LojaPage() {
   const detailUnitPrice = detail
     ? detail.product.price + detail.addonIds.reduce((s, id) => s + (addonById(id)?.price ?? 0), 0)
     : 0;
+  // Máximo que ainda dá para adicionar deste produto (Infinity = sem limite de estoque)
+  const detailRemaining = detail ? remainingStock(detail.product.id) : Infinity;
 
   const handleSubmit = async () => {
     if (store?.active === false) {
@@ -513,7 +547,17 @@ export function LojaPage() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? 'Erro ao enviar pedido');
+      if (!res.ok) {
+        // Estoque mudou desde que o cardápio carregou: re-sincroniza para refletir o saldo atual.
+        if (json.code === 'OUT_OF_STOCK') {
+          try {
+            const r2 = await fetch(`${API_BASE}/public/store/${slug}`);
+            const j2 = await r2.json();
+            if (j2.success) setStore(j2.data);
+          } catch {}
+        }
+        throw new Error(json.error ?? 'Erro ao enviar pedido');
+      }
       setOrderId(json.data.orderId);
       setOrderStatus('pending');
       // Salvar cliente e pedido no localStorage
@@ -835,6 +879,7 @@ export function LojaPage() {
                     qty={productQty(p.id)}
                     onOpen={() => openDetail(p)}
                     disabled={isStoreClosed}
+                    soldOut={remainingStock(p.id) <= 0}
                   />
                 ))}
               </div>
@@ -971,9 +1016,10 @@ export function LojaPage() {
                   </button>
                   <span className="w-5 text-center text-sm font-bold text-gray-800 tabular-nums">{detail.qty}</span>
                   <button
-                    onClick={() => setDetail(d => (d ? { ...d, qty: d.qty + 1 } : d))}
+                    onClick={() => setDetail(d => (d && d.qty < detailRemaining ? { ...d, qty: d.qty + 1 } : d))}
+                    disabled={detail.qty >= detailRemaining}
                     aria-label="Aumentar quantidade"
-                    className="w-7 h-7 rounded-full text-[#EA4B92] font-bold text-lg flex items-center justify-center leading-none active:scale-90 transition-transform"
+                    className="w-7 h-7 rounded-full text-[#EA4B92] font-bold text-lg flex items-center justify-center leading-none active:scale-90 transition-transform disabled:opacity-30 disabled:active:scale-100"
                   >
                     +
                   </button>

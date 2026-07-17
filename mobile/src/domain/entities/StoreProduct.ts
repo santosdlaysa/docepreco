@@ -12,6 +12,8 @@ export interface StoreProduct {
   recipeId?: string;
   discountType?: DiscountType | null;
   discountValue?: number | null;
+  /** Saldo de estoque para pedidos online. null/undefined = ilimitado. */
+  stock?: number | null;
   createdAt: string;
   updatedAt: string;
 }

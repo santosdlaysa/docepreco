@@ -59,6 +59,8 @@ export interface StoreProduct {
   recipeId?: string | null;
   discountType?: DiscountType | null;
   discountValue?: number | null;
+  /** Saldo de estoque para pedidos online. NULL = ilimitado. */
+  stock?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -160,6 +162,7 @@ function mapProduct(row: Record<string, unknown>): StoreProduct {
     recipeId: row.recipe_id as string | null,
     discountType: (row.discount_type as DiscountType | null) ?? null,
     discountValue: row.discount_value != null ? Number(row.discount_value) : null,
+    stock: row.stock != null ? Number(row.stock) : null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -353,12 +356,13 @@ export class PostgresStoreRepository {
     recipeId?: string | null;
     discountType?: DiscountType | null;
     discountValue?: number | null;
+    stock?: number | null;
   }): Promise<StoreProduct> {
     const result = await pool.query(
-      `INSERT INTO store_products (user_id, name, description, photo_url, public_price, available, recipe_id, discount_type, discount_value)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `INSERT INTO store_products (user_id, name, description, photo_url, public_price, available, recipe_id, discount_type, discount_value, stock)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
        RETURNING *`,
-      [userId, data.name, data.description ?? null, data.photoUrl ?? null, data.publicPrice, data.available, data.recipeId ?? null, data.discountType ?? null, data.discountValue ?? null]
+      [userId, data.name, data.description ?? null, data.photoUrl ?? null, data.publicPrice, data.available, data.recipeId ?? null, data.discountType ?? null, data.discountValue ?? null, data.stock ?? null]
     );
     return mapProduct(result.rows[0]);
   }
@@ -372,6 +376,7 @@ export class PostgresStoreRepository {
     recipeId: string | null;
     discountType: DiscountType | null;
     discountValue: number | null;
+    stock: number | null;
   }>): Promise<StoreProduct | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -385,6 +390,7 @@ export class PostgresStoreRepository {
     if ('recipeId' in data)             { fields.push(`recipe_id = $${idx++}`);    values.push(data.recipeId ?? null); }
     if ('discountType' in data)         { fields.push(`discount_type = $${idx++}`); values.push(data.discountType ?? null); }
     if ('discountValue' in data)        { fields.push(`discount_value = $${idx++}`); values.push(data.discountValue ?? null); }
+    if ('stock' in data)                { fields.push(`stock = $${idx++}`);          values.push(data.stock ?? null); }
 
     if (fields.length === 0) return this.getProductById(id, userId);
 

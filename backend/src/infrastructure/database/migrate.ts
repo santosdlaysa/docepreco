@@ -1085,6 +1085,11 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_products', 'discount_type', 'VARCHAR(10) NULL');
     await addColumnIfMissing(client, 'store_products', 'discount_value', 'DECIMAL(10,2) NULL');
 
+    // Limite de estoque por produto do cardápio online (opcional). NULL = ilimitado
+    // (comportamento padrão). Com número, o pedido online dá baixa e o produto some do
+    // catálogo ao zerar; a reposição é manual (o dono edita o produto e informa o novo saldo).
+    await addColumnIfMissing(client, 'store_products', 'stock', 'INTEGER NULL');
+
     // Limpeza de segurança: logs antigos de rotas de auth gravaram senhas em claro no
     // request_body (e tokens no response_body) antes da redação ser implementada.
     await client.query(`

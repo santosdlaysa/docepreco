@@ -222,7 +222,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     const u = userResult.rows[0] ?? {};
     // Buscar produtos disponíveis
     const productsResult = await pool.query(
-      'SELECT id, name, description, photo_url, public_price, discount_type, discount_value FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
+      'SELECT id, name, description, photo_url, public_price, discount_type, discount_value, stock FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
       [s.user_id]
     );
     // Itens adicionais disponíveis — o cliente escolhe no detalhe do produto
@@ -258,6 +258,8 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
             photoUrl: p.photo_url,
             price: publicPrice - discountAmount,
             originalPrice: discountAmount > 0 ? publicPrice : undefined,
+            // NULL = ilimitado; número = saldo restante (o PWA limita a quantidade e marca "Esgotado")
+            stock: p.stock != null ? Number(p.stock) : null,
           };
         }),
         addons: addonsResult.rows.map(a => ({
@@ -318,7 +320,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
     // Buscar preços dos produtos (nunca confiar no preço enviado pelo cliente)
     const productIds = b.items.map((i: any) => i.productId);
     const productsResult = await pool.query(
-      'SELECT id, name, public_price, recipe_id, discount_type, discount_value FROM store_products WHERE id = ANY($1) AND user_id = $2 AND available = TRUE',
+      'SELECT id, name, public_price, recipe_id, discount_type, discount_value, stock FROM store_products WHERE id = ANY($1) AND user_id = $2 AND available = TRUE',
       [productIds, userId]
     );
     const productMap = new Map(productsResult.rows.map(p => [p.id, p]));
@@ -368,32 +370,79 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
     // Criar pedido (delivery_date = hoje, pois não há data específica no pedido online)
     const deliveryDate = new Date().toISOString().split('T')[0];
     const firstItem = items[0];
-    const result = await pool.query(
-      `INSERT INTO orders
-        (user_id, client_name, client_phone, recipe_name, quantity, unit_price, total_price,
-         delivery_date, status, paid, paid_amount, payments, items, notes, source, delivery_address,
-         payment_method, change_for, order_number)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online',$11,$12,$13,
-         (SELECT COALESCE(MAX(order_number), 0) + 1 FROM orders WHERE user_id = $1))
-       RETURNING id, order_number`,
-      [
-        userId,
-        String(b.clientName).trim(),
-        b.clientPhone ? String(b.clientPhone).trim() : null,
-        firstItem.recipeName,
-        firstItem.quantity,
-        firstItem.unitPrice,
-        totalWithFee,
-        deliveryDate,
-        JSON.stringify(items.map(i => ({ productId: i.productId, recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount, addons: i.addons }))),
-        b.notes ? String(b.notes).trim() : null,
-        b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
-        paymentMethod,
-        changeFor,
-      ]
-    );
-    const orderId = result.rows[0].id;
-    const orderNumber = result.rows[0].order_number != null ? Number(result.rows[0].order_number) : null;
+
+    // Agrega a quantidade por produto (o mesmo produto pode aparecer em linhas com
+    // adicionais diferentes) e ordena os ids para evitar deadlock entre pedidos concorrentes.
+    const qtyByProduct = new Map<string, number>();
+    for (const it of items) qtyByProduct.set(it.productId, (qtyByProduct.get(it.productId) ?? 0) + it.quantity);
+
+    // Transação: dá baixa no estoque dos produtos com limite e cria o pedido de forma
+    // atômica. A baixa condicional (stock >= necessário) impede que dois clientes levem a
+    // última unidade ao mesmo tempo. Produtos com stock NULL são ilimitados (baixa ignorada).
+    const client = await pool.connect();
+    let orderId: string | null = null;
+    let orderNumber: number | null = null;
+    let outOfStock: { name: string; productId: string } | null = null;
+    try {
+      await client.query('BEGIN');
+      for (const pid of [...qtyByProduct.keys()].sort()) {
+        const product = productMap.get(pid);
+        if (!product || product.stock == null) continue; // ilimitado
+        const need = qtyByProduct.get(pid)!;
+        const dec = await client.query(
+          `UPDATE store_products SET stock = stock - $1, updated_at = NOW()
+           WHERE id = $2 AND user_id = $3 AND stock >= $1`,
+          [need, pid, userId]
+        );
+        if ((dec.rowCount ?? 0) === 0) { outOfStock = { name: product.name, productId: pid }; break; }
+      }
+      if (outOfStock) {
+        await client.query('ROLLBACK');
+      } else {
+        const result = await client.query(
+          `INSERT INTO orders
+            (user_id, client_name, client_phone, recipe_name, quantity, unit_price, total_price,
+             delivery_date, status, paid, paid_amount, payments, items, notes, source, delivery_address,
+             payment_method, change_for, order_number)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'pending',FALSE,0,'[]',$9,$10,'online',$11,$12,$13,
+             (SELECT COALESCE(MAX(order_number), 0) + 1 FROM orders WHERE user_id = $1))
+           RETURNING id, order_number`,
+          [
+            userId,
+            String(b.clientName).trim(),
+            b.clientPhone ? String(b.clientPhone).trim() : null,
+            firstItem.recipeName,
+            firstItem.quantity,
+            firstItem.unitPrice,
+            totalWithFee,
+            deliveryDate,
+            JSON.stringify(items.map(i => ({ productId: i.productId, recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity, unitPrice: i.unitPrice, discount: i.discount, addons: i.addons }))),
+            b.notes ? String(b.notes).trim() : null,
+            b.deliveryAddress ? String(b.deliveryAddress).trim() : null,
+            paymentMethod,
+            changeFor,
+          ]
+        );
+        await client.query('COMMIT');
+        orderId = result.rows[0].id;
+        orderNumber = result.rows[0].order_number != null ? Number(result.rows[0].order_number) : null;
+      }
+    } catch (txErr) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw txErr;
+    } finally {
+      client.release();
+    }
+
+    if (outOfStock || !orderId) {
+      res.status(409).json({
+        success: false,
+        error: `"${outOfStock?.name ?? 'Um item'}" está esgotado ou sem estoque suficiente. Ajuste a quantidade e tente novamente.`,
+        code: 'OUT_OF_STOCK',
+        productId: outOfStock?.productId,
+      });
+      return;
+    }
 
     // Push notification para o dono da loja (fire-and-forget)
     try {

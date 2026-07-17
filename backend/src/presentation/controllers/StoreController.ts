@@ -127,6 +127,7 @@ export class StoreController {
         recipeId:      b.recipeId ?? null,
         discountType:  b.discountType ?? null,
         discountValue: b.discountValue != null ? Number(b.discountValue) : null,
+        stock:         b.stock != null ? Math.max(0, Math.floor(Number(b.stock))) : null,
       });
       res.status(201).json({ success: true, data: product });
     } catch (error) {
@@ -147,6 +148,7 @@ export class StoreController {
       if ('recipeId' in b)             patch.recipeId    = b.recipeId ?? null;
       if ('discountType' in b)         patch.discountType = b.discountType ?? null;
       if ('discountValue' in b)        patch.discountValue = b.discountValue != null ? Number(b.discountValue) : null;
+      if ('stock' in b)                patch.stock = b.stock != null ? Math.max(0, Math.floor(Number(b.stock))) : null;
       const product = await repo.updateProduct(req.params.id, req.userId!, patch as any);
       if (!product) {
         res.status(404).json({ success: false, message: 'Produto não encontrado' });
