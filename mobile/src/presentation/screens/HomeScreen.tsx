@@ -256,9 +256,9 @@ export const HomeScreen: React.FC = () => {
             <View style={s.logoBadge}>
               <Image source={require('../../../assets/icon.png')} style={s.logoImg} />
             </View>
-            <View>
+            <View style={s.topbarTextWrap}>
               <Text style={s.dateText}>{dateLabel}</Text>
-              <Text style={s.greeting}>Oi, {firstName}!</Text>
+              <Text style={s.greeting} numberOfLines={1}>Oi, {firstName}!</Text>
             </View>
           </View>
           <View style={s.topbarRight}>
@@ -764,8 +764,9 @@ const s = StyleSheet.create({
     paddingTop: 6,
     paddingBottom: 14,
   },
-  topbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  topbarLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 },
+  topbarRight: { flexDirection: 'row', alignItems: 'center', gap: 10, flexShrink: 0 },
+  topbarTextWrap: { flexShrink: 1 },
   logoBadge: {
     width: 46,
     height: 46,
