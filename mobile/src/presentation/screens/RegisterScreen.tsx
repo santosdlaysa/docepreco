@@ -139,6 +139,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               value={companyName}
               onChangeText={(v) => { setCompanyName(v); if (errors.companyName) setErrors(prev => ({ ...prev, companyName: '' })); }}
               error={errors.companyName}
+              maxLength={30}
             />
             <Input
               label={t('register.emailLabel')}

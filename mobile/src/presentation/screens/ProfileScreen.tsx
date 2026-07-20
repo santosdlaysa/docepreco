@@ -115,20 +115,32 @@ export const ProfileScreen: React.FC = () => {
     finally { setSendingSuggestion(false); }
   };
 
-  const handleLogout = () => Alert.alert('Sair', 'Deseja sair da sua conta?', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Sair', style: 'destructive', onPress: logout }]);
+  const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Deseja sair da sua conta?')) logout();
+      return;
+    }
+    Alert.alert('Sair', 'Deseja sair da sua conta?', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Sair', style: 'destructive', onPress: logout }]);
+  };
+
+  const runDeleteAccount = async () => {
+    setDeletingAccount(true);
+    try { await deleteAccount(); }
+    catch { Alert.alert('Erro', 'Não foi possível excluir.'); }
+    finally { setDeletingAccount(false); }
+  };
 
   const handleDeleteAccount = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('Todos os seus dados serão apagados permanentemente. Essa ação não pode ser desfeita. Deseja excluir sua conta?')) runDeleteAccount();
+      return;
+    }
     Alert.alert('Excluir conta', 'Todos os seus dados serão apagados permanentemente.', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Excluir', style: 'destructive', onPress: () => {
         Alert.alert('Tem certeza?', 'Essa ação não pode ser desfeita.', [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Sim, excluir', style: 'destructive', onPress: async () => {
-            setDeletingAccount(true);
-            try { await deleteAccount(); }
-            catch { Alert.alert('Erro', 'Não foi possível excluir.'); }
-            finally { setDeletingAccount(false); }
-          }},
+          { text: 'Sim, excluir', style: 'destructive', onPress: runDeleteAccount },
         ]);
       }},
     ]);
