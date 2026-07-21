@@ -77,11 +77,18 @@ let webhookConfigured = false;
 const messageStatuses = new Map<string, { status: string; updatedAt: number }>();
 
 export function recordMessageUpdate(payload: unknown): void {
-  const root = payload as { data?: { key?: { id?: string }; status?: unknown }; key?: { id?: string }; status?: unknown };
+  type MessageUpdate = { key?: { id?: string; remoteJid?: string }; status?: unknown; update?: { status?: unknown } };
+  const root = payload as { data?: MessageUpdate } & MessageUpdate;
   const data = root.data ?? root;
   const id = data.key?.id;
-  if (!id || data.status === undefined) return;
-  messageStatuses.set(id, { status: String(data.status).toUpperCase(), updatedAt: Date.now() });
+  const rawStatus = data.status ?? data.update?.status;
+  if (!id || rawStatus === undefined) return;
+  const status = String(rawStatus).toUpperCase();
+  const remoteJid = data.key?.remoteJid ?? 'unknown';
+  messageStatuses.set(id, { status, updatedAt: Date.now() });
+  const log = `[WhatsApp] Message status: ${status} | id=${id} | remoteJid=${remoteJid}`;
+  if (status === 'ERROR') console.error(log);
+  else console.log(log);
 }
 
 export function getMessageStatus(id: string): { status: string; updatedAt: number } | null {
