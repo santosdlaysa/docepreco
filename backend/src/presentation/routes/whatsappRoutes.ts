@@ -7,6 +7,7 @@ import {
   sendWhatsAppMessage,
   resetInstanceState,
   logoutInstance,
+  getMessageStatus,
 } from '../../infrastructure/services/whatsappService';
 
 const router = Router();
@@ -74,6 +75,10 @@ router.post('/send', async (req: Request, res: Response) => {
     const status = msg.includes('inválido') || msg.includes('obrigatório') ? 400 : 500;
     res.status(status).json({ error: msg });
   }
+});
+
+router.get('/message-status/:id', async (req: Request, res: Response) => {
+  res.json({ data: getMessageStatus(req.params.id) });
 });
 
 export default router;

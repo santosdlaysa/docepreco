@@ -1,6 +1,7 @@
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'docepreco-evo-secret-key';
 const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'docepreco';
+const EVOLUTION_WEBHOOK_URL = process.env.EVOLUTION_WEBHOOK_URL || 'https://docepreco.onrender.com/api/webhooks/evolution';
 
 class EvolutionApiError extends Error {
   constructor(message: string, readonly status?: number) {
@@ -72,6 +73,36 @@ async function evoFetchWithColdStartRetry(path: string, body?: unknown): Promise
 }
 
 let instanceVerified = false;
+let webhookConfigured = false;
+const messageStatuses = new Map<string, { status: string; updatedAt: number }>();
+
+export function recordMessageUpdate(payload: unknown): void {
+  const root = payload as { data?: { key?: { id?: string }; status?: unknown }; key?: { id?: string }; status?: unknown };
+  const data = root.data ?? root;
+  const id = data.key?.id;
+  if (!id || data.status === undefined) return;
+  messageStatuses.set(id, { status: String(data.status).toUpperCase(), updatedAt: Date.now() });
+}
+
+export function getMessageStatus(id: string): { status: string; updatedAt: number } | null {
+  return messageStatuses.get(id) ?? null;
+}
+
+async function configureWebhook(): Promise<void> {
+  if (webhookConfigured) return;
+  try {
+    await evoFetch(`/webhook/set/${EVOLUTION_INSTANCE}`, {
+      enabled: true,
+      url: EVOLUTION_WEBHOOK_URL,
+      events: ['MESSAGES_UPDATE', 'SEND_MESSAGE', 'CONNECTION_UPDATE'],
+      base64: false,
+    });
+    webhookConfigured = true;
+    console.log(`[WhatsApp] Webhook configurado: ${EVOLUTION_WEBHOOK_URL}`);
+  } catch (error) {
+    console.error('[WhatsApp] Não foi possível configurar o webhook:', error);
+  }
+}
 
 // Reset instance state se necessário (força recriação)
 export function resetInstanceState(): void {
@@ -85,6 +116,7 @@ async function ensureInstance(): Promise<void> {
     console.log(`[WhatsApp] Verificando instância ${EVOLUTION_INSTANCE}`);
     await evoFetchWithColdStartRetry(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
     instanceVerified = true;
+    await configureWebhook();
     console.log(`[WhatsApp] Instância verificada com sucesso`);
   } catch (err: unknown) {
     // Somente 404 significa que a instancia nao existe. Timeout, autenticacao e
@@ -100,6 +132,7 @@ async function ensureInstance(): Promise<void> {
         qrcode: true,
       });
       instanceVerified = true;
+      await configureWebhook();
       console.log(`[WhatsApp] Instância criada com sucesso`);
     } catch (createErr) {
       console.error(`[WhatsApp] Erro ao criar instância:`, createErr);
@@ -152,6 +185,9 @@ export async function sendWhatsAppMessage(phone: string, message: string): Promi
       number: cleanPhone,
       textMessage: { text: message },
     });
+    if (result?.key?.id) {
+      messageStatuses.set(result.key.id, { status: String(result.status ?? 'PENDING').toUpperCase(), updatedAt: Date.now() });
+    }
     console.log(`[WhatsApp] Mensagem enviada com sucesso para ${cleanPhone}`);
     return result;
   } catch (err) {

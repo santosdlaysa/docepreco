@@ -675,6 +675,8 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ phone, message }),
     }),
+  whatsappMessageStatus: (id: string) =>
+    req<{ status: string; updatedAt: number } | null>(`/admin/whatsapp/message-status/${id}`),
 
   // ── PIX Requests ──
   listPixRequests: (status: string = 'pending') =>

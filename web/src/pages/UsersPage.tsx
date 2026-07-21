@@ -718,7 +718,23 @@ function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; 
         throw new Error('O WhatsApp recusou o envio da mensagem. Tente reconectar a instância e enviar novamente.');
       }
       if (result.status === 'PENDING') {
-        toast.success(`Mensagem aceita e aguardando confirmação para ${contactName}.`);
+        if (result.key?.id) {
+          let finalStatus: string | null = null;
+          for (let attempt = 0; attempt < 15; attempt++) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            const current = await api.whatsappMessageStatus(result.key.id);
+            finalStatus = current?.status ?? null;
+            if (finalStatus === 'ERROR') {
+              throw new Error('O WhatsApp recusou o envio da mensagem. Tente reconectar a instância e enviar novamente.');
+            }
+            if (finalStatus === 'SERVER_ACK' || finalStatus === 'DELIVERY_ACK' || finalStatus === 'READ') break;
+          }
+          if (finalStatus !== 'SERVER_ACK' && finalStatus !== 'DELIVERY_ACK' && finalStatus !== 'READ') {
+            toast.error('O envio não foi confirmado pelo WhatsApp.');
+            return;
+          }
+        }
+        toast.success(`Mensagem enviada para ${contactName}!`);
       } else {
         toast.success(`Mensagem enviada para ${contactName}!`);
       }
