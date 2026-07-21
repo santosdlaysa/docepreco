@@ -129,6 +129,15 @@ export async function resetInstance(): Promise<void> {
     // já foi encerrada. Nesse caso ainda devemos continuar até o connect/QR.
     console.warn('[WhatsApp] Logout anterior não exigiu encerramento adicional:', error);
   }
+  try {
+    await deleteInstance();
+    console.log(`[WhatsApp] Instância ${EVOLUTION_INSTANCE} excluída para limpar a sessão antiga`);
+  } catch (error) {
+    // A instância pode já ter sido removida pelo monitor da Evolution.
+    if (!(error instanceof EvolutionApiError && error.status === 404)) {
+      console.warn('[WhatsApp] Não foi possível excluir a instância antiga:', error);
+    }
+  }
 }
 
 async function ensureInstance(): Promise<void> {
@@ -171,6 +180,10 @@ export async function createInstance(): Promise<unknown> {
 
 export async function logoutInstance(): Promise<unknown> {
   return evoFetch(`/instance/logout/${EVOLUTION_INSTANCE}`, undefined, 60_000, 'DELETE');
+}
+
+export async function deleteInstance(): Promise<unknown> {
+  return evoFetch(`/instance/delete/${EVOLUTION_INSTANCE}`, undefined, 60_000, 'DELETE');
 }
 
 export async function getQrCode(): Promise<{ base64: string; code: string }> {
