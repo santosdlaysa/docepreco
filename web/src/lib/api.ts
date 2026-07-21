@@ -664,6 +664,8 @@ export const api = {
   // ── WhatsApp ──
   whatsappCreateInstance: () =>
     req<unknown>('/admin/whatsapp/instance', { method: 'POST' }),
+  whatsappResetInstance: () =>
+    req<unknown>('/admin/whatsapp/reset', { method: 'POST' }),
   whatsappGetQrCode: () =>
     req<{ base64: string; code: string }>('/admin/whatsapp/qrcode'),
   whatsappGetStatus: () =>

@@ -6,6 +6,7 @@ import {
   getInstanceStatus,
   sendWhatsAppMessage,
   resetInstanceState,
+  logoutInstance,
 } from '../../infrastructure/services/whatsappService';
 
 const router = Router();
@@ -25,10 +26,11 @@ router.post('/instance', async (_req: Request, res: Response) => {
 // Reset da instância (força recriação na próxima requisição)
 router.post('/reset', async (_req: Request, res: Response) => {
   try {
+    await logoutInstance();
     resetInstanceState();
-    res.json({ data: 'Instance state resetado. A próxima requisição irá recriar a instância.' });
+    res.json({ data: 'WhatsApp desconectado. A próxima requisição irá recriar a instância e gerar um novo QR code.' });
   } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao resetar' });
+    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao desconectar o WhatsApp' });
   }
 });
 

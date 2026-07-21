@@ -16,13 +16,13 @@ class EvolutionTimeoutError extends Error {
   }
 }
 
-async function evoFetch(path: string, body?: unknown, timeoutMs = 60_000): Promise<any> {
+async function evoFetch(path: string, body?: unknown, timeoutMs = 60_000, method?: 'GET' | 'POST' | 'DELETE'): Promise<any> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     console.log(`[EvolutionAPI] ${body ? 'POST' : 'GET'} ${path}`);
     const res = await fetch(`${EVOLUTION_API_URL}${path}`, {
-      method: body ? 'POST' : 'GET',
+      method: method ?? (body ? 'POST' : 'GET'),
       headers: {
         'Content-Type': 'application/json',
         apikey: EVOLUTION_API_KEY,
@@ -113,6 +113,10 @@ export async function createInstance(): Promise<unknown> {
     instanceName: EVOLUTION_INSTANCE,
     qrcode: true,
   });
+}
+
+export async function logoutInstance(): Promise<unknown> {
+  return evoFetch(`/instance/logout/${EVOLUTION_INSTANCE}`, undefined, 60_000, 'DELETE');
 }
 
 export async function getQrCode(): Promise<{ base64: string; code: string }> {

@@ -9,6 +9,7 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
   const [qr, setQr] = useState<{ base64: string; code: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [qrLoading, setQrLoading] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -60,6 +61,21 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
     toast.success('QR code atualizado');
   };
 
+  const handleReconnect = async () => {
+    setReconnecting(true);
+    setQr(null);
+    try {
+      await api.whatsappResetInstance();
+      toast.success('Reconexão iniciada. Gerando QR code...');
+      await fetchStatus();
+      await fetchQr();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Erro ao reconectar o WhatsApp');
+    } finally {
+      setReconnecting(false);
+    }
+  };
+
   const connected = status === 'open';
 
   if (loading) {
@@ -94,6 +110,14 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
           title="Atualizar status"
         >
           <RefreshCw size={16} className={connected ? 'text-green-600' : 'text-red-500'} />
+        </button>
+        <button
+          onClick={handleReconnect}
+          disabled={reconnecting}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-white/70 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
+        >
+          <RefreshCw size={13} className={reconnecting ? 'animate-spin' : ''} />
+          {reconnecting ? 'Reconectando...' : 'Reconectar / novo QR'}
         </button>
       </div>
 
