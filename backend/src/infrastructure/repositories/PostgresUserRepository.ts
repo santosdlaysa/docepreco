@@ -253,6 +253,7 @@ export class PostgresUserRepository {
       isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
       trial_used_at: trialUsedAt ? trialUsedAt.toISOString() : null,
       signupPlatform: (row.signup_platform as 'ios' | 'android' | null) ?? null,
+      defaultHourlyRate: row.default_hourly_rate == null ? null : Number(row.default_hourly_rate),
     };
   }
 }
