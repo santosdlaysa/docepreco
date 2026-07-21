@@ -2,7 +2,7 @@ import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator, TextInput, RefreshControl, ScrollView,
+  StyleSheet, ActivityIndicator, TextInput, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,6 +22,7 @@ const PLATFORM_LABELS: Record<string, string> = {
   pix: 'PIX',
 };
 const platformLabel = (p: string) => PLATFORM_LABELS[p] ?? p;
+const PLATFORM_OPTIONS = ['ios', 'android', 'manual', 'card', 'pix'];
 
 // Rótulos amigáveis para o nível de plano (planTier)
 const PLAN_TIER_LABELS: Record<string, string> = {
@@ -30,6 +31,7 @@ const PLAN_TIER_LABELS: Record<string, string> = {
   master: 'Master',
 };
 const planTierLabel = (p: string) => PLAN_TIER_LABELS[p] ?? p;
+const PLAN_TIER_OPTIONS = ['free', 'premium', 'master'];
 
 type SortBy = 'recent' | 'revenue' | 'sales';
 const SORT_OPTIONS: { key: SortBy; label: string }[] = [
@@ -55,25 +57,19 @@ export const AdminUsersScreen: React.FC = () => {
     } catch {}
   }, []);
 
-  // Plataformas presentes entre os assinantes carregados (para os chips de filtro)
-  const platforms = useMemo(() => {
-    const set = new Set<string>();
-    users.forEach(u => { if (u.premiumPlatform) set.add(u.premiumPlatform); });
-    return Array.from(set).sort();
-  }, [users]);
-
-  // Níveis de plano presentes entre os usuários carregados (para os chips de filtro)
-  const planTiers = useMemo(() => {
-    const set = new Set<string>();
-    users.forEach(u => { if (u.planTier) set.add(u.planTier); });
-    return Array.from(set).sort();
-  }, [users]);
-
   // Lista exibida: aplica os filtros de plataforma e plano sobre os usuários carregados
   const filtered = useMemo(() => {
     let list = users;
     if (platform) list = list.filter(u => u.premiumPlatform === platform);
-    if (planTier) list = list.filter(u => u.planTier === planTier);
+    if (planTier === 'free') {
+      // Usuários antigos podem não ter planTier salvo, mas ainda são gratuitos.
+      list = list.filter(u => u.planTier === 'free' || (!u.planTier && !u.isPremium));
+    } else if (planTier === 'premium') {
+      // Compatibilidade com registros antigos que só possuem isPremium.
+      list = list.filter(u => u.planTier === 'premium' || (!u.planTier && u.isPremium));
+    } else if (planTier === 'master') {
+      list = list.filter(u => u.planTier === 'master');
+    }
     return list;
   }, [users, platform, planTier]);
 
@@ -87,15 +83,6 @@ export const AdminUsersScreen: React.FC = () => {
     });
     return arr;
   }, [filtered, sortBy]);
-
-  // Se o filtro ativo deixar de existir nos dados, volta para "Todas"
-  useEffect(() => {
-    if (platform && !platforms.includes(platform)) setPlatform(null);
-  }, [platforms, platform]);
-
-  useEffect(() => {
-    if (planTier && !planTiers.includes(planTier)) setPlanTier(null);
-  }, [planTiers, planTier]);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
@@ -135,12 +122,7 @@ export const AdminUsersScreen: React.FC = () => {
         )}
       </View>
 
-      {platforms.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
+      <View style={styles.chipsRow}>
           <TouchableOpacity
             onPress={() => setPlatform(null)}
             style={[styles.chip, platform === null && styles.chipActive]}
@@ -148,25 +130,25 @@ export const AdminUsersScreen: React.FC = () => {
           >
             <Text style={[styles.chipText, platform === null && styles.chipTextActive]}>Todas</Text>
           </TouchableOpacity>
-          {platforms.map(p => (
+          {PLATFORM_OPTIONS.map(p => (
             <TouchableOpacity
               key={p}
               onPress={() => setPlatform(p)}
               style={[styles.chip, platform === p && styles.chipActive]}
               activeOpacity={0.8}
             >
-              <Text style={[styles.chipText, platform === p && styles.chipTextActive]}>{platformLabel(p)}</Text>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[styles.chipText, platform === p && styles.chipTextActive]}
+              >
+                {platformLabel(p)}
+              </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      )}
+      </View>
 
-      {planTiers.length > 0 && (
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.chipsRow}
-        >
+      <View style={styles.chipsRow}>
           <TouchableOpacity
             onPress={() => setPlanTier(null)}
             style={[styles.chip, planTier === null && styles.chipActive]}
@@ -174,24 +156,25 @@ export const AdminUsersScreen: React.FC = () => {
           >
             <Text style={[styles.chipText, planTier === null && styles.chipTextActive]}>Todos os planos</Text>
           </TouchableOpacity>
-          {planTiers.map(p => (
+          {PLAN_TIER_OPTIONS.map(p => (
             <TouchableOpacity
               key={p}
               onPress={() => setPlanTier(p)}
               style={[styles.chip, planTier === p && styles.chipActive]}
               activeOpacity={0.8}
             >
-              <Text style={[styles.chipText, planTier === p && styles.chipTextActive]}>{planTierLabel(p)}</Text>
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={[styles.chipText, planTier === p && styles.chipTextActive]}
+              >
+                {planTierLabel(p)}
+              </Text>
             </TouchableOpacity>
           ))}
-        </ScrollView>
-      )}
+      </View>
 
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}
-      >
+      <View style={styles.chipsRow}>
         {SORT_OPTIONS.map(opt => (
           <TouchableOpacity
             key={opt.key}
@@ -208,7 +191,7 @@ export const AdminUsersScreen: React.FC = () => {
             <Text style={[styles.chipText, sortBy === opt.key && styles.chipTextActive]}>{opt.label}</Text>
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
 
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
@@ -258,10 +241,10 @@ const styles = StyleSheet.create({
   countText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   searchWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, height: 44, fontSize: 14, color: colors.text },
-  chipsRow: { paddingHorizontal: 20, paddingBottom: 12, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, paddingBottom: 8, gap: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', maxWidth: '100%', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  chipText: { flexShrink: 1, maxWidth: 180, fontSize: 13, fontWeight: '600', color: colors.textMuted },
   chipTextActive: { color: '#fff' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },

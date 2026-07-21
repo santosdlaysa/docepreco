@@ -93,6 +93,45 @@ export interface AdminUser {
   totalRevenue: number;
 }
 
+type RawAdminUser = Partial<AdminUser> & {
+  company_name?: string;
+  is_premium?: boolean;
+  plan_tier?: string | null;
+  premium_until?: string | null;
+  premium_platform?: string | null;
+  is_active?: boolean;
+  created_at?: string;
+  last_seen_at?: string | null;
+  recipe_count?: number;
+  ingredient_count?: number;
+  sale_count?: number;
+  total_revenue?: number;
+};
+
+const normalizeAdminUser = (raw: RawAdminUser): AdminUser => {
+  const isPremium = raw.isPremium ?? raw.is_premium ?? false;
+  const planTier = raw.planTier ?? raw.plan_tier ?? (isPremium ? 'premium' : 'free');
+  const premiumPlatform = raw.premiumPlatform ?? raw.premium_platform ?? null;
+
+  return {
+    id: raw.id ?? '',
+    companyName: raw.companyName ?? raw.company_name ?? '',
+    email: raw.email ?? '',
+    phone: raw.phone ?? null,
+    isPremium,
+    planTier: planTier?.toLowerCase() as AdminUser['planTier'],
+    premiumUntil: raw.premiumUntil ?? raw.premium_until ?? null,
+    premiumPlatform: premiumPlatform?.toLowerCase() ?? null,
+    isActive: raw.isActive ?? raw.is_active ?? true,
+    createdAt: raw.createdAt ?? raw.created_at ?? '',
+    lastSeenAt: raw.lastSeenAt ?? raw.last_seen_at ?? null,
+    recipeCount: raw.recipeCount ?? raw.recipe_count ?? 0,
+    ingredientCount: raw.ingredientCount ?? raw.ingredient_count ?? 0,
+    saleCount: raw.saleCount ?? raw.sale_count ?? 0,
+    totalRevenue: raw.totalRevenue ?? raw.total_revenue ?? 0,
+  };
+};
+
 export interface PremiumEvent {
   id: string;
   eventType: string;
@@ -227,15 +266,32 @@ export const adminApi = {
 
   // Backend retorna { data: { users: [...], total, page, limit } }
   async listUsers(search?: string): Promise<AdminUser[]> {
-    const params: Record<string, string> = { limit: '100' };
+    const params: Record<string, string> = { limit: '50', page: '1' };
     if (search) params.search = search;
-    const { data } = await adminClient.get('/admin/users', { params });
-    return data.data.users ?? [];
+    const firstResponse = await adminClient.get('/admin/users', { params });
+    const firstPage = firstResponse.data.data;
+    const total = Number(firstPage.total ?? firstPage.users?.length ?? 0);
+    const pageSize = Number(firstPage.limit ?? 50);
+    const pageCount = Math.ceil(total / pageSize);
+
+    const remainingPages = await Promise.all(
+      Array.from({ length: Math.max(0, pageCount - 1) }, (_, index) =>
+        adminClient.get('/admin/users', {
+          params: { ...params, page: String(index + 2) },
+        }),
+      ),
+    );
+
+    const users = [
+      ...(firstPage.users ?? []),
+      ...remainingPages.flatMap(response => response.data.data.users ?? []),
+    ];
+    return users.map(normalizeAdminUser);
   },
 
   async getUser(id: string): Promise<AdminUser> {
     const { data } = await adminClient.get(`/admin/users/${id}`);
-    return data.data;
+    return normalizeAdminUser(data.data);
   },
 
   // Emite um token curto do usuário-alvo para o admin "ver como empresa"
