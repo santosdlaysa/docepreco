@@ -713,8 +713,15 @@ function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; 
     if (!message.trim()) return;
     setSending(true);
     try {
-      await api.whatsappSend(phone, message.trim());
-      toast.success(`Mensagem enviada para ${contactName}!`);
+      const result = await api.whatsappSend(phone, message.trim());
+      if (result.status === 'ERROR') {
+        throw new Error('O WhatsApp recusou o envio da mensagem. Tente reconectar a instância e enviar novamente.');
+      }
+      if (result.status === 'PENDING') {
+        toast.success(`Mensagem aceita e aguardando confirmação para ${contactName}.`);
+      } else {
+        toast.success(`Mensagem enviada para ${contactName}!`);
+      }
       onClose();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Erro ao enviar';

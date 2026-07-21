@@ -671,7 +671,10 @@ export const api = {
   whatsappGetStatus: () =>
     req<{ state: string }>('/admin/whatsapp/status'),
   whatsappSend: (phone: string, message: string) =>
-    req<unknown>('/admin/whatsapp/send', { method: 'POST', body: JSON.stringify({ phone, message }) }),
+    req<{ status?: string; key?: { id?: string } }>('/admin/whatsapp/send', {
+      method: 'POST',
+      body: JSON.stringify({ phone, message }),
+    }),
 
   // ── PIX Requests ──
   listPixRequests: (status: string = 'pending') =>
