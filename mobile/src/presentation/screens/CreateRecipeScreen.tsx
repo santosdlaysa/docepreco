@@ -24,6 +24,7 @@ import { recipeApi } from '../../data/api/recipeApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
+import { laborSettingsStorage } from '../../data/storage/laborSettingsStorage';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { RecipeIngredient, AdditionalCost, SubRecipe } from '../../domain/entities/Recipe';
 import { Recipe } from '../../domain/entities/Recipe';
@@ -159,6 +160,9 @@ export const CreateRecipeScreen: React.FC = () => {
   const [laborExpanded, setLaborExpanded] = useState(false);
   const [hourlyRate, setHourlyRate] = useState('');
   const [prepTimeMinutes, setPrepTimeMinutes] = useState('');
+  // Valor de mão de obra carregado ao editar (a API guarda só o custo calculado,
+  // não a hora/tempo). Serve para preservar o valor ao salvar de novo.
+  const [initialLaborCost, setInitialLaborCost] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [applyingSuggestion, setApplyingSuggestion] = useState(false);
   const [subRecipes, setSubRecipes] = useState<SubRecipe[]>([]);
@@ -215,6 +219,16 @@ export const CreateRecipeScreen: React.FC = () => {
     }).catch(() => {});
   }, []);
 
+  // Pré-preenche o custo por hora salvo como padrão (só em receitas novas)
+  useEffect(() => {
+    if (isEditing) return;
+    laborSettingsStorage.get()
+      .then(s => {
+        if (s.hourlyRate) setHourlyRate(prev => (prev ? prev : s.hourlyRate));
+      })
+      .catch(() => {});
+  }, []);
+
   useEffect(() => {
     if (!recipeId) return;
     rApi.getById(recipeId)
@@ -236,10 +250,11 @@ export const CreateRecipeScreen: React.FC = () => {
           }, {} as Record<string, string>)
         );
         setSubRecipes(recipe.subRecipes || []);
-        // Restore labor cost fields if present
-        const laborCost = recipe.additionalCosts.find(c => c.name === 'Mão de obra (profissional)');
+        // Restore labor cost fields if present (inclui dados antigos com nome corrompido)
+        const laborCost = recipe.additionalCosts.find(c => isProfessionalLaborCost(c.name));
         if (laborCost && laborCost.value > 0) {
           setLaborExpanded(true);
+          setInitialLaborCost(laborCost.value);
         }
       })
       .catch(() => showToast(t('createRecipe.loadError'), 'error'))
@@ -249,6 +264,12 @@ export const CreateRecipeScreen: React.FC = () => {
   // Offer to restore draft on first load
   useEffect(() => {
     if (isEditing || isDraftLoading || !recipeDraft) return;
+    // Só oferece restaurar se o rascunho tem conteúdo real (não apenas o custo/hora padrão)
+    const hasContent =
+      !!recipeDraft.name?.trim() ||
+      (recipeDraft.ingredients?.length ?? 0) > 0 ||
+      (recipeDraft.subRecipes?.length ?? 0) > 0;
+    if (!hasContent) return;
     Alert.alert(
       'Rascunho salvo',
       'Você tem uma receita começada. Deseja restaurar o preenchimento?',
@@ -513,6 +534,9 @@ export const CreateRecipeScreen: React.FC = () => {
     return 0;
   })();
 
+  // Usa o cálculo (hora × tempo) quando preenchido; senão preserva o valor salvo (edição).
+  const effectiveLaborCost = laborCostValue > 0 ? laborCostValue : initialLaborCost;
+
   const handleSelectSuggestion = async (suggestion: SuggestedRecipe) => {
     if (!requirePremium('smartShoppingList')) return;
     setShowSuggestions(false);
@@ -623,8 +647,8 @@ export const CreateRecipeScreen: React.FC = () => {
       if (cost.value > 0) finalCosts.push(cost);
     }
 
-    if (laborCostValue > 0) {
-      finalCosts.push({ name: 'MÃ£o de obra (profissional)', value: laborCostValue });
+    if (effectiveLaborCost > 0) {
+      finalCosts.push({ name: 'Mão de obra (profissional)', value: effectiveLaborCost });
     }
 
     return finalCosts;
@@ -633,6 +657,10 @@ export const CreateRecipeScreen: React.FC = () => {
   const handleConfirmSave = async () => {
     setShowConfirmModal(false);
     setLoading(true);
+    // Lembra o custo por hora como padrão para as próximas receitas
+    if (parseLocaleNumber(hourlyRate) > 0) {
+      laborSettingsStorage.save({ hourlyRate }).catch(() => {});
+    }
     try {
       const payload = {
         name: name.trim(),
@@ -1108,6 +1136,66 @@ export const CreateRecipeScreen: React.FC = () => {
                 <Text style={{ fontSize: 11.5, color: INK3, marginTop: 4, lineHeight: 16 }}>{cost.hint}</Text>
               </View>
             ))}
+          </View>
+
+          {/* ── Custos profissionais (calculador de mão de obra) ── */}
+          <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 15, ...SH }}>
+            <TouchableOpacity onPress={handleToggleLabor} style={styles.laborHeader} activeOpacity={0.7}>
+              <View style={styles.laborHeaderLeft}>
+                <Ionicons name="construct-outline" size={20} color={laborExpanded ? PINK : INK2} />
+                <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>{t('createRecipe.professionalCosts')}</Text>
+              </View>
+              <View style={styles.laborHeaderRight}>
+                {!isPremium && (
+                  <View style={styles.premiumBadge}>
+                    <Ionicons name="sparkles" size={10} color="#fff" />
+                    <Text style={styles.premiumBadgeText}>Premium</Text>
+                  </View>
+                )}
+                <Ionicons name={laborExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={INK3} />
+              </View>
+            </TouchableOpacity>
+            {laborExpanded && (
+              <View style={styles.laborContent}>
+                <Text style={styles.laborDesc}>{t('createRecipe.laborDescription')}</Text>
+                <View style={{ flexDirection: 'row' }}>
+                  <View style={{ flex: 1, marginRight: 8 }}>
+                    <Input
+                      label={t('createRecipe.hourlyRate')}
+                      placeholder="25,00"
+                      value={hourlyRate}
+                      onChangeText={setHourlyRate}
+                      keyboardType="decimal-pad"
+                      suffix="R$/h"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label={t('createRecipe.prepTime')}
+                      placeholder="120"
+                      value={prepTimeMinutes}
+                      onChangeText={setPrepTimeMinutes}
+                      keyboardType="number-pad"
+                      suffix="min"
+                    />
+                  </View>
+                </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <Ionicons name="bookmark-outline" size={13} color={INK3} />
+                  <Text style={{ flex: 1, fontSize: 11.5, color: INK3, lineHeight: 16 }}>
+                    O custo por hora fica salvo como padrão para as próximas receitas.
+                  </Text>
+                </View>
+                {effectiveLaborCost > 0 && (
+                  <View style={styles.laborResult}>
+                    <Ionicons name="calculator-outline" size={16} color={PINK} />
+                    <Text style={styles.laborResultText}>
+                      {t('createRecipe.laborCost', { value: effectiveLaborCost.toFixed(2) })}
+                    </Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {/* ── Save button ── */}
