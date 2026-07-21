@@ -131,6 +131,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
   const navigation = useNavigation<Nav>();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [subDash, setSubDash] = useState<SubscriptionDashboard | null>(null);
+  const [installedPlatforms, setInstalledPlatforms] = useState({ ios: 0, android: 0, unknown: 0 });
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -152,6 +153,14 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
     }
     try {
       setSubDash(await adminApi.getSubscriptionDashboard());
+    } catch {}
+    try {
+      const users = await adminApi.listUsers();
+      setInstalledPlatforms({
+        ios: users.filter(user => user.signupPlatform === 'ios').length,
+        android: users.filter(user => user.signupPlatform === 'android').length,
+        unknown: users.filter(user => !user.signupPlatform).length,
+      });
     } catch {}
     try {
       setUnread(await adminApi.getUnreadCount());
@@ -230,6 +239,27 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
               icon="calendar-outline" bg="#FFF7ED" iconColor="#EA580C"
             />
           </View>
+        )}
+
+        {/* ── Instalações do app ── */}
+        {!loading && (
+          <>
+            <Text style={st.sectionLabel}>Instalações do app</Text>
+            <View style={st.miniRow}>
+              <MiniCard
+                label="iOS" value={installedPlatforms.ios}
+                icon="logo-apple" bg="#F3F4F6" iconColor="#111827"
+              />
+              <MiniCard
+                label="Android" value={installedPlatforms.android}
+                icon="logo-google-playstore" bg="#F0FDF4" iconColor="#16A34A"
+              />
+              <MiniCard
+                label="Não identificado" value={installedPlatforms.unknown}
+                icon="help-circle-outline" bg="#FFF7ED" iconColor="#EA580C"
+              />
+            </View>
+          </>
         )}
 
         {/* ── Assinaturas: MRR/ARR/MoM ── */}

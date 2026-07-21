@@ -84,6 +84,7 @@ export interface AdminUser {
   planTier?: 'free' | 'premium' | 'master';
   premiumUntil: string | null;
   premiumPlatform: string | null;
+  signupPlatform?: 'ios' | 'android' | null;
   isActive: boolean;
   createdAt: string;
   lastSeenAt: string | null;
@@ -99,6 +100,8 @@ type RawAdminUser = Partial<AdminUser> & {
   plan_tier?: string | null;
   premium_until?: string | null;
   premium_platform?: string | null;
+  signupPlatform?: string | null;
+  signup_platform?: string | null;
   is_active?: boolean;
   created_at?: string;
   last_seen_at?: string | null;
@@ -122,6 +125,7 @@ const normalizeAdminUser = (raw: RawAdminUser): AdminUser => {
     planTier: planTier?.toLowerCase() as AdminUser['planTier'],
     premiumUntil: raw.premiumUntil ?? raw.premium_until ?? null,
     premiumPlatform: premiumPlatform?.toLowerCase() ?? null,
+    signupPlatform: ((raw.signupPlatform ?? raw.signup_platform)?.toLowerCase() as AdminUser['signupPlatform']) ?? null,
     isActive: raw.isActive ?? raw.is_active ?? true,
     createdAt: raw.createdAt ?? raw.created_at ?? '',
     lastSeenAt: raw.lastSeenAt ?? raw.last_seen_at ?? null,

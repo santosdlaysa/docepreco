@@ -16,6 +16,8 @@ export interface User {
   isActive: boolean;
   trial_used_at?: string | null;
   signupPlatform: 'ios' | 'android' | null;
+  /** Custo por hora padrão de mão de obra (para pré-preencher receitas). */
+  defaultHourlyRate: number | null;
 }
 
 export interface RegisterDTO {
