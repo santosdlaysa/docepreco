@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
@@ -23,13 +24,13 @@ import { supportApi, SupportMessage } from '../../data/api/supportApi';
 import { useTranslation } from 'react-i18next';
 
 // ── Design tokens ──
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const PINK = colors.primary;
+const GREEN = colors.green;
 
 // ── Typing indicator ──
 function TypingDots() {
@@ -159,7 +160,7 @@ export const SupportChatScreen: React.FC = () => {
       <View style={[s.msgRow, isUser ? s.msgRowRight : s.msgRowLeft]}>
         {isUser ? (
           <LinearGradient
-            colors={['#FF6AAE', PINK]}
+            colors={[colors.pinkBright, PINK]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={[s.bubble, s.bubbleUser]}
@@ -192,7 +193,7 @@ export const SupportChatScreen: React.FC = () => {
           <Ionicons name="chevron-back" size={20} color={INK} />
         </TouchableOpacity>
         <LinearGradient
-          colors={['#FF8FB6', PINK]}
+          colors={[colors.pinkSoft, PINK]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={s.headerAvatar}
@@ -280,7 +281,7 @@ export const SupportChatScreen: React.FC = () => {
             activeOpacity={0.8}
           >
             <LinearGradient
-              colors={['#FF6AAE', PINK]}
+              colors={[colors.pinkBright, PINK]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={[s.sendBtn, ((!newMessage.trim() && !selectedImage) || sending) && s.sendBtnDisabled]}
@@ -462,7 +463,7 @@ const s = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 24,
-    backgroundColor: '#FFF0F6',
+    backgroundColor: colors.pinkBg2,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,

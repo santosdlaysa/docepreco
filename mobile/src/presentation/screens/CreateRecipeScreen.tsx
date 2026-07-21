@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -26,7 +27,6 @@ import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { RecipeIngredient, AdditionalCost, SubRecipe } from '../../domain/entities/Recipe';
 import { Recipe } from '../../domain/entities/Recipe';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -712,12 +712,12 @@ export const CreateRecipeScreen: React.FC = () => {
     };
   })();
 
-  const INK = '#3D2233';
-  const INK2 = '#9A7E8C';
-  const INK3 = '#C4B0BB';
-  const PINK = '#EA4B92';
-  const CREAM2 = '#FFF6F0';
-  const LINE2 = '#F1E2DA';
+  const INK = colors.text;
+  const INK2 = colors.textSecondary;
+  const INK3 = colors.textMuted;
+  const PINK = colors.primary;
+  const CREAM2 = colors.pinkBg3;
+  const LINE2 = colors.border;
   const SH = { shadowColor: INK, shadowOffset: { width: 0, height: 2 } as const, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 };
 
   if (loadingData) {
@@ -782,9 +782,9 @@ export const CreateRecipeScreen: React.FC = () => {
           contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 14 }}>
 
           {/* ── Info banner ── */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: '#EEF8FD', borderWidth: 1, borderColor: '#DCF1FB', borderRadius: 20, padding: 15 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 13, backgroundColor: colors.blueBg, borderWidth: 1, borderColor: colors.blueBgSoft, borderRadius: 20, padding: 15 }}>
             <View style={{ width: 36, height: 36, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' }}>
-              <Ionicons name="information-circle" size={18} color="#2BA7DD" />
+              <Ionicons name="information-circle" size={18} color={colors.blue} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>Preencha os dados</Text>
@@ -877,7 +877,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   borderRadius: 14,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: yieldMode === 'manual' ? '#FFF0F6' : '#fff',
+                  backgroundColor: yieldMode === 'manual' ? colors.pinkBg2 : '#fff',
                   borderWidth: 2,
                   borderColor: yieldMode === 'manual' ? PINK : 'transparent',
                   ...SH,
@@ -896,7 +896,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   borderRadius: 14,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: yieldMode === 'estimated' ? '#FFF0F6' : '#fff',
+                  backgroundColor: yieldMode === 'estimated' ? colors.pinkBg2 : '#fff',
                   borderWidth: 2,
                   borderColor: yieldMode === 'estimated' ? PINK : 'transparent',
                   ...SH,
@@ -940,7 +940,7 @@ export const CreateRecipeScreen: React.FC = () => {
                             borderRadius: 9,
                             paddingVertical: 6,
                             alignItems: 'center',
-                            backgroundColor: totalReadyUnit === unit ? '#FFF0F6' : CREAM2,
+                            backgroundColor: totalReadyUnit === unit ? colors.pinkBg2 : CREAM2,
                             borderWidth: 1,
                             borderColor: totalReadyUnit === unit ? PINK : LINE2,
                           }}
@@ -973,7 +973,7 @@ export const CreateRecipeScreen: React.FC = () => {
                             borderRadius: 9,
                             paddingVertical: 6,
                             alignItems: 'center',
-                            backgroundColor: weightPerUnitUnit === unit ? '#FFF0F6' : CREAM2,
+                            backgroundColor: weightPerUnitUnit === unit ? colors.pinkBg2 : CREAM2,
                             borderWidth: 1,
                             borderColor: weightPerUnitUnit === unit ? PINK : LINE2,
                           }}
@@ -1011,7 +1011,7 @@ export const CreateRecipeScreen: React.FC = () => {
                 const selected = String(preset.value) === profitMargin || Number(profitMargin) === preset.value;
                 return (
                   <TouchableOpacity key={preset.value} onPress={() => setProfitMargin(String(preset.value))} activeOpacity={0.8}
-                    style={{ flex: 1, backgroundColor: selected ? '#FFF0F6' : '#fff', borderRadius: 14, padding: 11, alignItems: 'center', borderWidth: 2, borderColor: selected ? PINK : 'transparent', ...SH }}>
+                    style={{ flex: 1, backgroundColor: selected ? colors.pinkBg2 : '#fff', borderRadius: 14, padding: 11, alignItems: 'center', borderWidth: 2, borderColor: selected ? PINK : 'transparent', ...SH }}>
                     <Text style={{ fontSize: 19, fontWeight: '800', color: PINK, lineHeight: 22 }}>{preset.value}%</Text>
                     <Text style={{ fontSize: 10.5, color: INK2, fontWeight: '600', marginTop: 3 }}>{preset.label}</Text>
                   </TouchableOpacity>
@@ -1023,7 +1023,7 @@ export const CreateRecipeScreen: React.FC = () => {
                 const selected = String(preset.value) === profitMargin || Number(profitMargin) === preset.value;
                 return (
                   <TouchableOpacity key={preset.value} onPress={() => setProfitMargin(String(preset.value))} activeOpacity={0.8}
-                    style={{ flex: 1, backgroundColor: selected ? '#FFF0F6' : '#fff', borderRadius: 14, padding: 11, alignItems: 'center', borderWidth: 2, borderColor: selected ? PINK : 'transparent', ...SH }}>
+                    style={{ flex: 1, backgroundColor: selected ? colors.pinkBg2 : '#fff', borderRadius: 14, padding: 11, alignItems: 'center', borderWidth: 2, borderColor: selected ? PINK : 'transparent', ...SH }}>
                     <Text style={{ fontSize: 19, fontWeight: '800', color: PINK, lineHeight: 22 }}>{preset.value}%</Text>
                     <Text style={{ fontSize: 10.5, color: INK2, fontWeight: '600', marginTop: 3 }}>{preset.label}</Text>
                   </TouchableOpacity>
@@ -1045,7 +1045,7 @@ export const CreateRecipeScreen: React.FC = () => {
                     <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{ing.quantityUsed} {formatUnitLabel(ing.unit)}</Text>
                   </View>
                   <TouchableOpacity onPress={() => removeIngredient(ing.ingredientId)}>
-                    <Ionicons name="close-circle" size={20} color="#C0392B" />
+                    <Ionicons name="close-circle" size={20} color={colors.redDark} />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -1053,7 +1053,7 @@ export const CreateRecipeScreen: React.FC = () => {
           )}
           {errors.ingredients && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.ingredients}</Text>}
           <TouchableOpacity onPress={() => setShowIngredientModal(true)} activeOpacity={0.7}
-            style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#FFE3EF', borderRadius: 14, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: colors.pinkBg, borderRadius: 14, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Ionicons name="add" size={18} color={PINK} />
             <Text style={{ color: PINK, fontWeight: '700', fontSize: 14 }}>Adicionar ingrediente</Text>
           </TouchableOpacity>
@@ -1072,14 +1072,14 @@ export const CreateRecipeScreen: React.FC = () => {
                     <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{sub.quantityUsed} {sub.unit}</Text>
                   </View>
                   <TouchableOpacity onPress={() => removeSubRecipe(sub.subRecipeId)}>
-                    <Ionicons name="close-circle" size={20} color="#C0392B" />
+                    <Ionicons name="close-circle" size={20} color={colors.redDark} />
                   </TouchableOpacity>
                 </View>
               ))}
             </View>
           )}
           <TouchableOpacity onPress={() => setShowSubRecipeModal(true)} activeOpacity={0.7}
-            style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: '#FFE3EF', borderRadius: 14, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+            style={{ borderWidth: 2, borderStyle: 'dashed', borderColor: colors.pinkBg, borderRadius: 14, padding: 13, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
             <Ionicons name="add" size={18} color={PINK} />
             <Text style={{ color: PINK, fontWeight: '700', fontSize: 14 }}>Adicionar receita para juntar</Text>
           </TouchableOpacity>
@@ -1425,12 +1425,12 @@ export const CreateRecipeScreen: React.FC = () => {
           <View style={styles.confirmBox}>
             {ingredientConfirm?.type === 'warning-high' && (
               <View style={[styles.confirmIconCircle, { backgroundColor: '#FFF3E0' }]}>
-                <Ionicons name="alert-circle" size={32} color="#FF9800" />
+                <Ionicons name="alert-circle" size={32} color={colors.warning} />
               </View>
             )}
             {ingredientConfirm?.type === 'warning-low' && (
               <View style={[styles.confirmIconCircle, { backgroundColor: '#FFF3E0' }]}>
-                <Ionicons name="alert-circle" size={32} color="#FF9800" />
+                <Ionicons name="alert-circle" size={32} color={colors.warning} />
               </View>
             )}
             {ingredientConfirm?.type === 'confirm' && (
@@ -1500,7 +1500,7 @@ export const CreateRecipeScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.confirmAddBtn, ingredientConfirm?.type !== 'confirm' && { backgroundColor: '#FF9800' }]}
+                style={[styles.confirmAddBtn, ingredientConfirm?.type !== 'confirm' && { backgroundColor: colors.warning }]}
                 onPress={() => {
                   setIngredientConfirm(null);
                   confirmAndAddIngredient();

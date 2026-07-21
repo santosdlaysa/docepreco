@@ -1,6 +1,6 @@
+import { colors } from '../theme/colors';
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { colors } from '../theme/colors';
 import type { DiscountType } from '../utils/discount';
 
 interface DiscountInputProps {

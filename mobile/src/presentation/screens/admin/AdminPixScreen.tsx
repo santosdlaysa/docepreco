@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
@@ -7,12 +8,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { adminApi, PixRequest } from '../../../data/api/adminApi';
-import { colors } from '../../theme/colors';
 
 const STATUS = {
   pending: { label: 'Pendente', color: '#F59E0B', icon: 'hourglass-outline' as const },
   approved: { label: 'Aprovado', color: '#22C55E', icon: 'checkmark-circle' as const },
-  rejected: { label: 'Recusado', color: '#EF4444', icon: 'close-circle' as const },
+  rejected: { label: 'Recusado', color: colors.red, icon: 'close-circle' as const },
 };
 
 const fmtCents = (c: number) => (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -159,8 +159,8 @@ const styles = StyleSheet.create({
   cardPlan: { fontSize: 13, color: colors.textSecondary, marginBottom: 2 },
   cardDate: { fontSize: 11, color: colors.textMuted, marginBottom: 12 },
   actions: { flexDirection: 'row', gap: 10 },
-  rejectBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: '#EF4444', alignItems: 'center' },
-  rejectText: { color: '#EF4444', fontWeight: '700' },
+  rejectBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, borderWidth: 1.5, borderColor: colors.red, alignItems: 'center' },
+  rejectText: { color: colors.red, fontWeight: '700' },
   approveBtn: { flex: 1, paddingVertical: 10, borderRadius: 10, backgroundColor: '#22C55E', alignItems: 'center' },
   approveText: { color: '#fff', fontWeight: '700' },
 });

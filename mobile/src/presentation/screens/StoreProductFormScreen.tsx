@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -33,12 +34,12 @@ import { DiscountInput } from '../components/DiscountInput';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'StoreProductForm'>;
 
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const PINK = '#EA4B92';
-const PINK_LIGHT = '#FF6AAE';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const PINK = colors.primary;
+const PINK_LIGHT = colors.pinkBright;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -213,7 +214,7 @@ export const StoreProductFormScreen: React.FC = () => {
           <Text style={st.headerTitle}>{isEditing ? 'Editar produto' : 'Novo produto'}</Text>
           {isEditing ? (
             <TouchableOpacity onPress={handleDelete} style={st.backBtn}>
-              <Ionicons name="trash-outline" size={20} color="#C0392B" />
+              <Ionicons name="trash-outline" size={20} color={colors.redDark} />
             </TouchableOpacity>
           ) : (
             <View style={{ width: 38 }} />
@@ -236,7 +237,7 @@ export const StoreProductFormScreen: React.FC = () => {
           </TouchableOpacity>
           {photoUrl ? (
             <TouchableOpacity style={st.photoRemoveBtn} onPress={() => setPhotoUrl('')} activeOpacity={0.7}>
-              <Ionicons name="trash-outline" size={14} color="#C0392B" />
+              <Ionicons name="trash-outline" size={14} color={colors.redDark} />
               <Text style={st.photoRemoveText}>Remover foto</Text>
             </TouchableOpacity>
           ) : null}
@@ -417,7 +418,7 @@ const st = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-end', marginTop: 6, paddingVertical: 4, paddingHorizontal: 8,
   },
-  photoRemoveText: { fontSize: 12, color: '#C0392B', fontWeight: '600' },
+  photoRemoveText: { fontSize: 12, color: colors.redDark, fontWeight: '600' },
 
   label: { fontSize: 13, fontWeight: '700', color: INK, marginTop: 12, marginBottom: 6, marginLeft: 2 },
   stockHint: { fontSize: 11.5, color: INK2, marginTop: 6, marginLeft: 2, lineHeight: 16 },
@@ -461,7 +462,7 @@ const st = StyleSheet.create({
   recipePickerTitle: { fontSize: 15, fontWeight: '700', color: INK },
   recipePickerItem: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 10, borderTopWidth: 1, borderTopColor: '#F1E2DA',
+    paddingVertical: 10, borderTopWidth: 1, borderTopColor: colors.border,
   },
   recipePickerItemText: { fontSize: 14, color: INK, fontWeight: '500' },
 

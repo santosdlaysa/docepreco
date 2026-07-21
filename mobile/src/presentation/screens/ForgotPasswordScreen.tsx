@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -12,7 +13,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../data/api/authApi';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Button } from '../components/Button';
 import { Input } from '../components/Input';
@@ -307,7 +307,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.greenBgSoft,
     borderRadius: 10,
     padding: 12,
     marginBottom: 16,

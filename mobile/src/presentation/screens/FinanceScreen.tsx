@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -23,14 +24,14 @@ import { Recipe } from '../../domain/entities/Recipe';
 import { Sale } from '../../domain/entities/Sale';
 
 /* ─── Design tokens ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const GREEN = '#43BE6E';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const GREEN = colors.green;
 const RED = '#E8537A';
-const PURPLE = '#7C3AED';
+const PURPLE = colors.purple;
 const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 12, elevation: 4 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -287,9 +288,9 @@ const s = StyleSheet.create({
   bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
   headerTitle: { fontSize: 22, fontWeight: '700', color: INK },
   headerSub: { fontSize: 12.5, color: INK2, marginTop: 1 },
-  expensesBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#EDE4FB', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginRight: 6 },
+  expensesBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.purpleBg, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginRight: 6 },
   expensesBtnTxt: { fontSize: 12, fontWeight: '700', color: PURPLE },
-  masterBadge: { backgroundColor: '#EDE4FB', borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
+  masterBadge: { backgroundColor: colors.purpleBg, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
   masterBadgeTxt: { fontSize: 10, fontWeight: '800', color: PURPLE, letterSpacing: 0.5 },
 
   seg: { flexDirection: 'row', backgroundColor: '#F3E9F0', borderRadius: 13, padding: 4, marginBottom: 16 },

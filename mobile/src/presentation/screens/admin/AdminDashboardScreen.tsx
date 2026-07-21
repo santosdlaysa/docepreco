@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -9,15 +10,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { adminApi, AdminStats, SubscriptionDashboard } from '../../../data/api/adminApi';
-import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
 
 type Nav = NativeStackNavigationProp<AdminStackParamList>;
 
 const PINK  = colors.primary;
-const INK   = '#3D2233';
-const INK2  = '#9A7E8C';
-const CREAM = '#FFF6F0';
+const INK   = colors.text;
+const INK2  = colors.textSecondary;
+const CREAM = colors.pinkBg3;
 const GREEN = '#16A34A';
 const RED   = '#DC2626';
 
@@ -223,7 +223,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
             />
             <MiniCard
               label="Esta semana" value={stats?.newUsersWeek ?? 0}
-              icon="trending-up-outline" bg="#EFF6FF" iconColor="#2563EB"
+              icon="trending-up-outline" bg="#EFF6FF" iconColor={colors.indigo}
             />
             <MiniCard
               label="Este mês" value={stats?.newUsersMonth ?? 0}
@@ -239,11 +239,11 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
             <View style={st.miniRow}>
               <MiniCard
                 label="MRR" value={fmtBRL(subDash.overview.mrr)}
-                icon="cash-outline" bg="#F5F3FF" iconColor="#7C3AED"
+                icon="cash-outline" bg="#F5F3FF" iconColor={colors.purple}
               />
               <MiniCard
                 label="ARR" value={fmtBRL(subDash.overview.arr)}
-                icon="trending-up-outline" bg="#EFF6FF" iconColor="#2563EB"
+                icon="trending-up-outline" bg="#EFF6FF" iconColor={colors.indigo}
               />
               <MiniCard
                 label="Cresc. mensal"
@@ -284,11 +284,11 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
                           <View style={st.barTrack}>
                             {isLast ? (
                               <LinearGradient
-                                colors={['#FF6AAE', PINK, '#C7367A']}
+                                colors={[colors.pinkBright, PINK, colors.primaryDark]}
                                 style={[st.bar, { height: `${barHeight}%` }]}
                               />
                             ) : (
-                              <View style={[st.bar, { height: `${barHeight}%`, backgroundColor: '#FFE3EF' }]} />
+                              <View style={[st.bar, { height: `${barHeight}%`, backgroundColor: colors.pinkBg }]} />
                             )}
                           </View>
                           <Text style={st.barLabel}>{week.label}</Text>
@@ -373,7 +373,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
           <NavTile
             icon="pricetag-outline" label="Cupons"
             sub="Descontos promocionais"
-            color="#7C3AED"
+            color={colors.purple}
             onPress={() => navigation.navigate('AdminCoupons')}
           />
         </View>
@@ -477,7 +477,7 @@ const st = StyleSheet.create({
   premiumBadge: { backgroundColor: PINK, borderRadius: 6, paddingHorizontal: 7, paddingVertical: 3 },
   premiumText:  { color: '#fff', fontSize: 10, fontWeight: '800' },
   rankBadge:    { width: 28, height: 28, borderRadius: 8, backgroundColor: '#F5F0FF', alignItems: 'center', justifyContent: 'center' },
-  rankText:     { fontSize: 12, fontWeight: '800', color: '#7C3AED' },
+  rankText:     { fontSize: 12, fontWeight: '800', color: colors.purple },
   revenueText:  { fontSize: 13, fontWeight: '700', color: '#16A34A' },
 
   // weekly revenue chart (mesmo padrão do ReportsScreen)

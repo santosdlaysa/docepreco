@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   AppState,
@@ -17,7 +18,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
 import {
@@ -38,13 +38,13 @@ type NavProp = NativeStackNavigationProp<RootStackParamList, 'Paywall'>;
 type RouteType = RouteProp<RootStackParamList, 'Paywall'>;
 
 /* ─── Design tokens ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 2 } as const, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 };
 
 const FEATS = [
@@ -66,7 +66,7 @@ const MASTER_EXTRA = [
   'Dicas de vendas e precificação',
 ];
 
-const PURPLE = '#7C3AED';
+const PURPLE = colors.purple;
 
 // Formata número como moeda (14.9 → "R$ 14,90")
 const fmtBRL = (value: number) => `R$ ${value.toFixed(2).replace('.', ',')}`;
@@ -302,7 +302,7 @@ export const PaywallScreen: React.FC = () => {
 
         {/* ── Hero (pink gradient) ── */}
         <LinearGradient
-          colors={['#FF6AAE', PINK, '#B92C6B']}
+          colors={[colors.pinkBright, PINK, '#B92C6B']}
           locations={[0, 0.48, 1]}
           start={{ x: 0.2, y: 0 }}
           end={{ x: 0.8, y: 1 }}
@@ -357,7 +357,7 @@ export const PaywallScreen: React.FC = () => {
               const isExtra = isMasterTier && i >= FEATS.length;
               return (
                 <View key={i} style={[st.feat, i > 0 && { borderTopWidth: 1, borderTopColor: LINE }]}>
-                  <View style={[st.featCheck, isExtra && { backgroundColor: '#EDE4FB' }]}>
+                  <View style={[st.featCheck, isExtra && { backgroundColor: colors.purpleBg }]}>
                     <Ionicons name={isExtra ? 'star' : 'checkmark'} size={16} color={isExtra ? PURPLE : GREEN} />
                   </View>
                   <Text style={st.featText}>{f}</Text>
@@ -431,7 +431,7 @@ export const PaywallScreen: React.FC = () => {
                 activeOpacity={0.8}
                 disabled={cardLoading}
               >
-                <View style={[st.save, { backgroundColor: '#2563EB' }]}><Text style={st.saveText}>ECONOMIZE</Text></View>
+                <View style={[st.save, { backgroundColor: colors.indigo }]}><Text style={st.saveText}>ECONOMIZE</Text></View>
                 <Ionicons name="card-outline" size={18} color={PINK} style={{ marginBottom: 4 }} />
                 <Text style={st.planName}>Anual</Text>
                 <Text style={st.planPrice}>{cardAnnualMain}<Text style={st.planPriceSm}>{cardAnnualCents}</Text></Text>
@@ -486,7 +486,7 @@ export const PaywallScreen: React.FC = () => {
                   </View>
 
                   <TouchableOpacity onPress={handlePurchase} disabled={!!purchasing || !selectedPkg} activeOpacity={0.85}>
-                    <LinearGradient colors={isMasterTier ? ['#9B6BF0', PURPLE] : ['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.cta, !selectedPkg && { opacity: 0.5 }]}>
+                    <LinearGradient colors={isMasterTier ? ['#9B6BF0', PURPLE] : [colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[st.cta, !selectedPkg && { opacity: 0.5 }]}>
                       {purchasing ? <ActivityIndicator color="#fff" /> : (
                         <>
                           <Ionicons name="trophy" size={20} color="#fff" />
@@ -706,7 +706,7 @@ const st = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 9,
-    backgroundColor: '#DCF6E5',
+    backgroundColor: colors.greenBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -741,7 +741,7 @@ const st = StyleSheet.create({
   },
 
   cardCtaRow: { alignItems: 'center', gap: 4 },
-  link: { fontSize: 13.5, fontWeight: '700', color: '#2BA7DD' },
+  link: { fontSize: 13.5, fontWeight: '700', color: colors.blue },
 
   legal: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 },
   legalLink: { fontSize: 12.5, fontWeight: '600', color: INK2 },

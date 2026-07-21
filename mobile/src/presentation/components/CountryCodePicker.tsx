@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState } from 'react';
 import {
   View,
@@ -10,7 +11,6 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
 interface Country {

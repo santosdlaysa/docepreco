@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
@@ -8,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { adminApi, AdminUser, PremiumEvent } from '../../../data/api/adminApi';
 import { useAuth } from '../../../context/AuthContext';
-import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
 
 type Route = RouteProp<AdminStackParamList, 'AdminUserDetail'>;
@@ -169,9 +169,9 @@ export const AdminUserDetailScreen: React.FC = () => {
           <View style={styles.tags}>
             {user.isPremium && (
               user.planTier === 'master' ? (
-                <View style={[styles.tag, { backgroundColor: '#EDE4FB' }]}>
-                  <Ionicons name="diamond" size={12} color="#7C3AED" />
-                  <Text style={[styles.tagText, { color: '#7C3AED' }]}>Master</Text>
+                <View style={[styles.tag, { backgroundColor: colors.purpleBg }]}>
+                  <Ionicons name="diamond" size={12} color={colors.purple} />
+                  <Text style={[styles.tagText, { color: colors.purple }]}>Master</Text>
                 </View>
               ) : (
                 <View style={[styles.tag, { backgroundColor: '#FEF3C7' }]}>
@@ -187,7 +187,7 @@ export const AdminUserDetailScreen: React.FC = () => {
             )}
             {user.premiumPlatform && (
               <View style={[styles.tag, { backgroundColor: '#EDE9FE' }]}>
-                <Text style={[styles.tagText, { color: '#7C3AED' }]}>{PLATFORM_LABELS[user.premiumPlatform] ?? user.premiumPlatform}</Text>
+                <Text style={[styles.tagText, { color: colors.purple }]}>{PLATFORM_LABELS[user.premiumPlatform] ?? user.premiumPlatform}</Text>
               </View>
             )}
           </View>
@@ -247,13 +247,13 @@ export const AdminUserDetailScreen: React.FC = () => {
                 <ActionBtn label="Conceder Premium (30d)" icon="star" color="#D97706" onPress={handleGrantPremium} />
               )}
               {user.planTier !== 'master' && (
-                <ActionBtn label="Conceder Master (30d)" icon="diamond" color="#7C3AED" onPress={handleGrantMaster} />
+                <ActionBtn label="Conceder Master (30d)" icon="diamond" color={colors.purple} onPress={handleGrantMaster} />
               )}
               {user.isPremium && (
                 <ActionBtn label="Remover acesso" icon="close-circle-outline" color={colors.error} onPress={handleRevokePremium} />
               )}
-              <ActionBtn label="Conceder Trial" icon="gift-outline" color="#43BE6E" onPress={handleTrial} />
-              <ActionBtn label="Redefinir senha" icon="key-outline" color="#2563EB" onPress={() => setShowResetModal(true)} />
+              <ActionBtn label="Conceder Trial" icon="gift-outline" color={colors.green} onPress={handleTrial} />
+              <ActionBtn label="Redefinir senha" icon="key-outline" color={colors.indigo} onPress={() => setShowResetModal(true)} />
               <ActionBtn
                 label={user.isActive ? 'Desativar conta' : 'Ativar conta'}
                 icon={user.isActive ? 'ban-outline' : 'checkmark-circle-outline'}

@@ -21,34 +21,35 @@ import { statsApi } from '../../data/api/statsApi';
 import { demoStatsApi } from '../../data/demo/demoApi';
 import { useTranslation } from 'react-i18next';
 import { useAdInterstitial } from '../ads';
+import { colors, fonts } from '../theme';
 
 const GUIDE_DISMISSED_KEY = '@docepreco_beginner_guide_dismissed';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-// ── Design tokens (Doce Preço — Onboarding) ──
-const PRIMARY = '#E91E8C';
-const PRIMARY_LIGHT = '#F8BBD9';
-const PRIMARY_DARK = '#C2185B';
-const SECONDARY = '#8B4513';
-const SECONDARY_LIGHT = '#D2B48C';
-const BACKGROUND = '#FFFFFF';
-const SURFACE = '#FFFFFF';
-const TEXT = '#2D1B14';
-const TEXT_SECONDARY = '#8B7355';
-const TEXT_MUTED = '#B5A090';
-const SUCCESS = '#4CAF50';
-const BORDER = '#F0D5DC';
-const BEIGE = '#F5E6D0';
-const CREAM = '#FFF8F0';
+// ── Design tokens (do tema central) ──
+const PRIMARY = colors.primary;
+const PRIMARY_LIGHT = colors.primaryLight;
+const PRIMARY_DARK = colors.primaryDark;
+const SECONDARY = colors.secondary;
+const SECONDARY_LIGHT = colors.secondaryLight;
+const BACKGROUND = colors.background;
+const SURFACE = colors.surface;
+const TEXT = colors.text;
+const TEXT_SECONDARY = colors.textSecondary;
+const TEXT_MUTED = colors.textMuted;
+const SUCCESS = colors.success;
+const BORDER = colors.border;
+const BEIGE = colors.beige;
+const CREAM = colors.cream;
 
-// ── Tipografia ──
-const SERIF = 'PlayfairDisplay_700Bold';
-const SERIF_ITALIC = 'PlayfairDisplay_400Regular_Italic';
-const SANS = 'DMSans_400Regular';
-const SANS_MED = 'DMSans_500Medium';
-const SANS_SEMI = 'DMSans_600SemiBold';
-const SANS_BOLD = 'DMSans_700Bold';
+// ── Tipografia (do tema central) ──
+const SERIF = fonts.serif;
+const SERIF_ITALIC = fonts.serifItalic;
+const SANS = fonts.regular;
+const SANS_MED = fonts.medium;
+const SANS_SEMI = fonts.semibold;
+const SANS_BOLD = fonts.bold;
 
 type StepStatus = 'done' | 'current' | 'lock';
 
@@ -60,7 +61,7 @@ const SHADOW = {
   elevation: 3,
 };
 
-const CONFETTI_COLORS = [PRIMARY, SUCCESS, '#FF9800', SECONDARY, PRIMARY_LIGHT, SECONDARY_LIGHT];
+const CONFETTI_COLORS = [PRIMARY, SUCCESS, colors.warning, SECONDARY, PRIMARY_LIGHT, SECONDARY_LIGHT];
 
 // ── Confetti ──
 interface ConfettiConf {

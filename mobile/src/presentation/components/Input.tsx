@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React from 'react';
 import {
   View,
@@ -7,7 +8,6 @@ import {
   TextInputProps,
   ViewStyle,
 } from 'react-native';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 
 interface InputProps extends TextInputProps {

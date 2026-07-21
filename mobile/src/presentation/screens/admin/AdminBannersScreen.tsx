@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator,
@@ -7,10 +8,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { adminApi, Banner } from '../../../data/api/adminApi';
-import { colors } from '../../theme/colors';
 
 const TYPES: { value: Banner['type']; label: string; color: string; icon: keyof typeof Ionicons.glyphMap }[] = [
-  { value: 'info', label: 'Info', color: '#2563EB', icon: 'information-circle-outline' },
+  { value: 'info', label: 'Info', color: colors.indigo, icon: 'information-circle-outline' },
   { value: 'warning', label: 'Aviso', color: '#F59E0B', icon: 'warning-outline' },
   { value: 'promo', label: 'Promoção', color: colors.primary, icon: 'megaphone-outline' },
   { value: 'update', label: 'Atualização', color: '#16A34A', icon: 'sparkles-outline' },
@@ -141,7 +141,7 @@ export const AdminBannersScreen: React.FC = () => {
                   )}
                   <View style={{ flex: 1 }} />
                   <TouchableOpacity onPress={() => handleDelete(b)} hitSlop={8}>
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    <Ionicons name="trash-outline" size={18} color={colors.red} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.cardTitle} numberOfLines={1}>{b.title}</Text>

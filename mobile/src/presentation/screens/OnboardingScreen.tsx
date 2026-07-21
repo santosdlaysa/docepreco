@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useRef, useState } from 'react';
 import {
   View,
@@ -11,7 +12,6 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useTranslation } from 'react-i18next';
 
@@ -48,11 +48,11 @@ export const OnboardingScreen: React.FC<Props> = ({ onDone }) => {
       title: t('onboarding.slide2Title'), description: t('onboarding.slide2Desc'),
     },
     {
-      id: '3', icon: 'trending-up-outline', iconColor: '#4CAF50', iconBg: '#E8F5E9',
+      id: '3', icon: 'trending-up-outline', iconColor: '#4CAF50', iconBg: colors.greenBgSoft,
       title: t('onboarding.slide3Title'), description: t('onboarding.slide3Desc'),
     },
     {
-      id: '4', icon: 'cash-outline', iconColor: '#FF9800', iconBg: '#FFF3E0',
+      id: '4', icon: 'cash-outline', iconColor: colors.warning, iconBg: '#FFF3E0',
       title: t('onboarding.slide4Title'), description: t('onboarding.slide4Desc'),
     },
   ];

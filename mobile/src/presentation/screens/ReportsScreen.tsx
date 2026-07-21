@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -25,13 +26,13 @@ import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const PINK = colors.primary;
+const GREEN = colors.green;
 const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.07, shadowRadius: 12, elevation: 4 };
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -190,7 +191,7 @@ export const ReportsScreen: React.FC = () => {
 
       const recipeRows = topRecipes.map((r, i) => `
         <tr>
-          <td style="font-weight:700;color:${i === 0 ? '#E91E63' : '#333'}">${i + 1}º</td>
+          <td style="font-weight:700;color:${i === 0 ? colors.primary : '#333'}">${i + 1}º</td>
           <td>${r.recipeName}</td>
           <td>${r.quantity} un</td>
           <td style="text-align:right;font-weight:600;color:#E91E63">${formatCurrency(r.revenue)}</td>
@@ -377,7 +378,7 @@ export const ReportsScreen: React.FC = () => {
       <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
         {/* Hero Card */}
         <LinearGradient
-          colors={['#FF6AAE', PINK, '#C7367A']}
+          colors={[colors.pinkBright, PINK, colors.primaryDark]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.heroCard}
@@ -427,11 +428,11 @@ export const ReportsScreen: React.FC = () => {
                   <View style={styles.barTrack}>
                     {isLast ? (
                       <LinearGradient
-                        colors={['#FF6AAE', PINK, '#C7367A']}
+                        colors={[colors.pinkBright, PINK, colors.primaryDark]}
                         style={[styles.bar, { height: `${barHeight}%` }]}
                       />
                     ) : (
-                      <View style={[styles.bar, { height: `${barHeight}%`, backgroundColor: '#FFE3EF' }]} />
+                      <View style={[styles.bar, { height: `${barHeight}%`, backgroundColor: colors.pinkBg }]} />
                     )}
                   </View>
                   <Text style={styles.barLabel}>{month.label}</Text>
@@ -504,7 +505,7 @@ export const ReportsScreen: React.FC = () => {
         {/* Download Button */}
         <TouchableOpacity onPress={handleDownload} disabled={downloading} activeOpacity={0.8}>
           <LinearGradient
-            colors={['#FF6AAE', PINK, '#C7367A']}
+            colors={[colors.pinkBright, PINK, colors.primaryDark]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.downloadButton}

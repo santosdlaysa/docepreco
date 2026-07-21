@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React from 'react';
 import {
   View,
@@ -15,14 +16,14 @@ import { RootStackParamList } from '../navigation/types';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // Design tokens
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const BLUE = '#2BA7DD';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const BLUE = colors.blue;
 const ORANGE = '#F5A623';
 
 const SHADOW = {

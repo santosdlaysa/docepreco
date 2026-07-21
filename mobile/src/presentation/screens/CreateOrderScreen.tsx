@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -27,7 +28,6 @@ import { clientStorage } from '../../data/storage/clientStorage';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
-import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { computeDiscountAmount, DiscountType } from '../utils/discount';
@@ -37,13 +37,13 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditOrder'>;
 
 /* ─── Design tokens ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -66,11 +66,11 @@ const num = (s: string) => {
 const toCents = (value: number) => Math.round(value * 100);
 
 const STATUS_OPTIONS: { key: OrderStatus; label: string; bg: string; color: string }[] = [
-  { key: 'pending', label: 'Pendente', bg: '#FFF1CE', color: '#8A5A00' },
-  { key: 'in_progress', label: 'Produção', bg: '#DCF1FB', color: '#1A6F96' },
-  { key: 'done', label: 'Saiu para entrega', bg: '#FFE3EF', color: '#BC2A6C' },
-  { key: 'delivered', label: 'Entregue', bg: '#DCF6E5', color: '#1F8A48' },
-  { key: 'cancelled', label: 'Cancelado', bg: '#FBE0E0', color: '#C0392B' },
+  { key: 'pending', label: 'Pendente', bg: colors.amberBg, color: '#8A5A00' },
+  { key: 'in_progress', label: 'Produção', bg: colors.blueBgSoft, color: colors.blueDark },
+  { key: 'done', label: 'Saiu para entrega', bg: colors.pinkBg, color: '#BC2A6C' },
+  { key: 'delivered', label: 'Entregue', bg: colors.greenBg, color: colors.greenDark },
+  { key: 'cancelled', label: 'Cancelado', bg: '#FBE0E0', color: colors.redDark },
 ];
 
 const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
@@ -80,7 +80,7 @@ const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.gly
   { key: 'debit', icon: 'card-outline', label: 'Débito' },
 ];
 
-const THUMB_COLORS = ['#FF8FB6', '#EA4B92', '#2BA7DD', '#FFB01F', '#43BE6E', '#7B68EE'];
+const THUMB_COLORS = [colors.pinkSoft, colors.primary, colors.blue, colors.amber, colors.green, '#7B68EE'];
 
 export const CreateOrderScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
@@ -338,7 +338,7 @@ export const CreateOrderScreen: React.FC = () => {
                   >
                     {item.recipeName ? (
                       <>
-                        <LinearGradient colors={['#FF8FB6', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                        <LinearGradient colors={[colors.pinkSoft, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                           style={{ width: 30, height: 30, borderRadius: 9, alignItems: 'center', justifyContent: 'center' }}>
                           <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{item.recipeName.slice(0, 2).toUpperCase()}</Text>
                         </LinearGradient>
@@ -351,7 +351,7 @@ export const CreateOrderScreen: React.FC = () => {
                   </TouchableOpacity>
                   {!isLocked && items.length > 1 && (
                     <TouchableOpacity onPress={() => setItems(prev => prev.filter((_, i) => i !== idx))}>
-                      <Ionicons name="close-circle" size={22} color="#C0392B" />
+                      <Ionicons name="close-circle" size={22} color={colors.redDark} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -461,8 +461,8 @@ export const CreateOrderScreen: React.FC = () => {
             <View style={st.gcard}>
               {payments.map((p, i) => (
                 <View key={p.id} style={[st.grow, i > 0 && { borderTopWidth: 1, borderTopColor: LINE }]}>
-                  <View style={[st.gi, { backgroundColor: '#EEF8FD' }]}>
-                    <Ionicons name={PAYMENT_METHODS.find(m => m.key === p.method)?.icon || 'cash-outline'} size={16} color="#2BA7DD" />
+                  <View style={[st.gi, { backgroundColor: colors.blueBg }]}>
+                    <Ionicons name={PAYMENT_METHODS.find(m => m.key === p.method)?.icon || 'cash-outline'} size={16} color={colors.blue} />
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={st.growB}>{PAYMENT_METHODS.find(m => m.key === p.method)?.label || p.method}</Text>
@@ -471,7 +471,7 @@ export const CreateOrderScreen: React.FC = () => {
                   <Text style={[st.growV, { color: GREEN }]}>{fmtCurrency(p.amount)}</Text>
                   {!isLocked && (
                     <TouchableOpacity onPress={() => setPayments(prev => prev.filter(x => x.id !== p.id))}>
-                      <Ionicons name="close-circle" size={18} color="#C0392B" />
+                      <Ionicons name="close-circle" size={18} color={colors.redDark} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -517,7 +517,7 @@ export const CreateOrderScreen: React.FC = () => {
                   <Text style={{ color: INK2, fontWeight: '600' }}>Cancelar</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={handleAddPayment} activeOpacity={0.85}>
-                  <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                  <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                     style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12 }}>
                     <Ionicons name="checkmark" size={16} color="#fff" />
                     <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Adicionar</Text>
@@ -530,7 +530,7 @@ export const CreateOrderScreen: React.FC = () => {
           {/* ── Endereço de entrega (pedidos online) ── */}
           {deliveryAddress ? (
             <View style={st.addressCard}>
-              <Ionicons name="location-outline" size={16} color="#1A6F96" />
+              <Ionicons name="location-outline" size={16} color={colors.blueDark} />
               <View style={{ flex: 1 }}>
                 <Text style={st.addressLabel}>Endereço de entrega</Text>
                 <Text style={st.addressText}>{deliveryAddress}</Text>
@@ -541,7 +541,7 @@ export const CreateOrderScreen: React.FC = () => {
           {/* ── Forma de pagamento escolhida pelo cliente (pedidos online) ── */}
           {orderPaymentMethod ? (
             <View style={st.addressCard}>
-              <Ionicons name={PAYMENT_METHODS.find(m => m.key === orderPaymentMethod)?.icon ?? 'wallet-outline'} size={16} color="#1A6F96" />
+              <Ionicons name={PAYMENT_METHODS.find(m => m.key === orderPaymentMethod)?.icon ?? 'wallet-outline'} size={16} color={colors.blueDark} />
               <View style={{ flex: 1 }}>
                 <Text style={st.addressLabel}>Forma de pagamento escolhida</Text>
                 <Text style={st.addressText}>
@@ -563,7 +563,7 @@ export const CreateOrderScreen: React.FC = () => {
           {/* ── Save button ── */}
           {!isLocked && (
             <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
-              <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.btn}>
+              <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.btn}>
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>{isEditing ? 'Atualizar encomenda' : 'Salvar encomenda'}</Text>}
               </LinearGradient>
             </TouchableOpacity>
@@ -578,8 +578,8 @@ export const CreateOrderScreen: React.FC = () => {
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 }}>
             {/* Título */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DCF6E5', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="checkmark-circle" size={22} color="#1F8A48" />
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.greenBg, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="checkmark-circle" size={22} color={colors.greenDark} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>Confirmar entrega</Text>
@@ -591,7 +591,7 @@ export const CreateOrderScreen: React.FC = () => {
             </View>
 
             {/* Resumo de pagamento */}
-            <View style={{ backgroundColor: '#F5F5F7', borderRadius: 14, padding: 14, gap: 6 }}>
+            <View style={{ backgroundColor: colors.grayBg, borderRadius: 14, padding: 14, gap: 6 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 13, color: INK2 }}>Total da encomenda</Text>
                 <Text style={{ fontSize: 13, fontWeight: '600', color: INK }}>R$ {totalPrice.toFixed(2).replace('.', ',')}</Text>
@@ -599,19 +599,19 @@ export const CreateOrderScreen: React.FC = () => {
               {totalPaid > 0 && (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ fontSize: 13, color: INK2 }}>Já recebido</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>R$ {totalPaid.toFixed(2).replace('.', ',')}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.greenDark }}>R$ {totalPaid.toFixed(2).replace('.', ',')}</Text>
                 </View>
               )}
               {remaining > 0 && (
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingTop: 6, marginTop: 2 }}>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.grayBorder, paddingTop: 6, marginTop: 2 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: INK }}>Restante a receber</Text>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: PINK }}>R$ {remaining.toFixed(2).replace('.', ',')}</Text>
                 </View>
               )}
               {remaining === 0 && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingTop: 6, marginTop: 2 }}>
-                  <Ionicons name="checkmark-circle" size={14} color="#1F8A48" />
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>Pedido já quitado</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, borderTopWidth: 1, borderTopColor: colors.grayBorder, paddingTop: 6, marginTop: 2 }}>
+                  <Ionicons name="checkmark-circle" size={14} color={colors.greenDark} />
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.greenDark }}>Pedido já quitado</Text>
                 </View>
               )}
             </View>
@@ -624,8 +624,8 @@ export const CreateOrderScreen: React.FC = () => {
                   {PAYMENT_METHODS.map(m => (
                     <TouchableOpacity key={m.key} onPress={() => setDeliveryModalMethod(m.key)} activeOpacity={0.8}
                       style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
-                        backgroundColor: deliveryModalMethod === m.key ? PINK : '#F5F5F7',
-                        borderWidth: deliveryModalMethod === m.key ? 0 : 1, borderColor: '#E5E5E5' }}>
+                        backgroundColor: deliveryModalMethod === m.key ? PINK : colors.grayBg,
+                        borderWidth: deliveryModalMethod === m.key ? 0 : 1, borderColor: colors.grayBorder }}>
                       <Ionicons name={m.icon} size={15} color={deliveryModalMethod === m.key ? '#fff' : INK2} />
                       <Text style={{ fontSize: 13, fontWeight: '600', color: deliveryModalMethod === m.key ? '#fff' : INK2 }}>{m.label}</Text>
                     </TouchableOpacity>
@@ -643,7 +643,7 @@ export const CreateOrderScreen: React.FC = () => {
             {/* Botões */}
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
               <TouchableOpacity onPress={() => setShowDeliveryModal(false)} activeOpacity={0.8}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E5E5E5' }}>
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.grayBorder }}>
                 <Text style={{ fontWeight: '600', color: INK2 }}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleDeliveryConfirm} disabled={loading} activeOpacity={0.85} style={{ flex: 2 }}>
@@ -708,11 +708,11 @@ const st = StyleSheet.create({
 
   addressCard: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 10,
-    backgroundColor: '#EEF8FD', borderRadius: 14, padding: 14,
+    backgroundColor: colors.blueBg, borderRadius: 14, padding: 14,
     borderWidth: 1, borderColor: '#B8DDEF',
   },
-  addressLabel: { fontSize: 11, fontWeight: '700', color: '#1A6F96', marginBottom: 2 },
-  addressText: { fontSize: 14, color: '#1A6F96', lineHeight: 20 },
+  addressLabel: { fontSize: 11, fontWeight: '700', color: colors.blueDark, marginBottom: 2 },
+  addressText: { fontSize: 14, color: colors.blueDark, lineHeight: 20 },
 
   sec: { fontSize: 16, fontWeight: '700', color: INK, marginTop: 6, marginBottom: -2, marginLeft: 2 },
   field: { gap: 7 },
@@ -725,7 +725,7 @@ const st = StyleSheet.create({
 
   two: { flexDirection: 'row', gap: 11 },
 
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF1CE', borderRadius: 14, padding: 14, marginTop: -4 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.amberBg, borderRadius: 14, padding: 14, marginTop: -4 },
   totalLabel: { fontSize: 14, fontWeight: '600', color: '#8A5A00' },
   totalValue: { fontSize: 18, fontWeight: '800', color: PINK },
 

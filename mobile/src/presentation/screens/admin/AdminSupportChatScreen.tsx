@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
@@ -8,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { adminApi, AdminMessage } from '../../../data/api/adminApi';
-import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
 
 type Route = RouteProp<AdminStackParamList, 'AdminSupportChat'>;

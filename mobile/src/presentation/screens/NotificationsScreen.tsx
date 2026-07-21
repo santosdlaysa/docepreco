@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -40,13 +41,13 @@ const formatOrderTime = (iso: string) => {
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const RED = '#C0392B';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const RED = colors.redDark;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -56,10 +57,10 @@ const SHADOW = {
 };
 
 const BANNER_CONFIG: Record<Banner['type'], { bg: string; border: string; icon: string; iconColor: string }> = {
-  info:    { bg: '#EEF8FD', border: '#B8DDEF', icon: 'information-circle-outline', iconColor: '#2BA7DD' },
+  info:    { bg: colors.blueBg, border: '#B8DDEF', icon: 'information-circle-outline', iconColor: colors.blue },
   warning: { bg: '#FFF8E1', border: '#FFE082', icon: 'warning-outline',            iconColor: '#F57F17' },
-  promo:   { bg: '#FFF0F6', border: '#FFD6E9', icon: 'gift-outline',               iconColor: PINK },
-  update:  { bg: '#DCF6E5', border: '#A8E6C0', icon: 'arrow-up-circle-outline',    iconColor: '#43BE6E' },
+  promo:   { bg: colors.pinkBg2, border: '#FFD6E9', icon: 'gift-outline',               iconColor: PINK },
+  update:  { bg: colors.greenBg, border: '#A8E6C0', icon: 'arrow-up-circle-outline',    iconColor: colors.green },
 };
 
 export const NotificationsScreen: React.FC = () => {
@@ -316,7 +317,7 @@ const st = StyleSheet.create({
   /* empty */
   empty: { alignItems: 'center', paddingTop: 30, paddingBottom: 20, gap: 8 },
   emptyIco: {
-    width: 64, height: 64, borderRadius: 22, backgroundColor: '#FFF0F6',
+    width: 64, height: 64, borderRadius: 22, backgroundColor: colors.pinkBg2,
     alignItems: 'center', justifyContent: 'center',
   },
   emptyTitle: { fontSize: 16, fontWeight: '700', color: INK },

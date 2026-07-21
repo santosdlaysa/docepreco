@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator,
@@ -7,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { adminApi, AppNotification } from '../../../data/api/adminApi';
-import { colors } from '../../theme/colors';
 
 const TARGETS: { value: 'all' | 'premium' | 'free'; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -18,9 +18,9 @@ const targetLabel = (t: AppNotification['target']) => TARGETS.find(x => x.value 
 
 const STATUS: Record<AppNotification['status'], { label: string; color: string }> = {
   pending: { label: 'Pendente', color: '#F59E0B' },
-  scheduled: { label: 'Agendada', color: '#2563EB' },
+  scheduled: { label: 'Agendada', color: colors.indigo },
   sent: { label: 'Enviada', color: '#22C55E' },
-  failed: { label: 'Falhou', color: '#EF4444' },
+  failed: { label: 'Falhou', color: colors.red },
 };
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString('pt-BR');
@@ -126,7 +126,7 @@ export const AdminNotificationsScreen: React.FC = () => {
                   </View>
                   <View style={{ flex: 1 }} />
                   <TouchableOpacity onPress={() => handleDelete(n)} hitSlop={8}>
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    <Ionicons name="trash-outline" size={18} color={colors.red} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.cardTitle} numberOfLines={1}>{n.title}</Text>

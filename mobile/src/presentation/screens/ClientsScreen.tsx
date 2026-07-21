@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -25,13 +26,13 @@ import { useTranslation } from 'react-i18next';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // ── Design tokens ──
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const PINK = colors.primary;
+const GREEN = colors.green;
 
 const SHADOW = {
   shadowColor: INK,
@@ -42,10 +43,10 @@ const SHADOW = {
 };
 
 const AVATAR_GRADIENTS: [string, string][] = [
-  ['#FF8FB6', '#EA4B92'],
-  ['#2BA7DD', '#1A6F96'],
-  ['#FFB01F', '#F2960B'],
-  ['#43BE6E', '#2BA060'],
+  [colors.pinkSoft, colors.primary],
+  [colors.blue, colors.blueDark],
+  [colors.amber, '#F2960B'],
+  [colors.green, '#2BA060'],
   ['#7B68EE', '#5A4BD1'],
   ['#FF6B6B', '#E04848'],
 ];
@@ -212,7 +213,7 @@ export const ClientsScreen: React.FC = () => {
                   onLongPress={() => handleDelete(client)}
                 >
                   <View style={[s.row, idx > 0 && s.rowBorder]}>
-                    <LinearGradient colors={birthdaySoon ? ['#FF8FB6', PINK] : grad} style={s.avatar}>
+                    <LinearGradient colors={birthdaySoon ? [colors.pinkSoft, PINK] : grad} style={s.avatar}>
                       {birthdaySoon ? (
                         <Ionicons name="gift" size={20} color="#fff" />
                       ) : (
@@ -327,7 +328,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 3,
-    backgroundColor: '#FFE3EF',
+    backgroundColor: colors.pinkBg,
     paddingHorizontal: 7,
     paddingVertical: 2,
     borderRadius: 8,
@@ -339,7 +340,7 @@ const s = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 10,
-    backgroundColor: '#DCF6E5',
+    backgroundColor: colors.greenBg,
     alignItems: 'center',
     justifyContent: 'center',
   },

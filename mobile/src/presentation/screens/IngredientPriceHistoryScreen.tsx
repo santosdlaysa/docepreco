@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -5,7 +6,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../navigation/types';
 import { priceHistoryApi, PriceEntry } from '../../data/api/priceHistoryApi';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Skeleton } from '../components/Skeleton';
@@ -69,7 +69,7 @@ export const IngredientPriceHistoryScreen: React.FC = () => {
           <View style={styles.unitCol}>
             <Text style={styles.unitPrice}>{formatCurrencyUnit(pricePerUnit)}/{formatUnitLabel(item.unit)}</Text>
             {pct !== null && (
-              <View style={[styles.diffBadge, { backgroundColor: pct > 0 ? '#FFEBEE' : '#E8F5E9' }]}>
+              <View style={[styles.diffBadge, { backgroundColor: pct > 0 ? '#FFEBEE' : colors.greenBgSoft }]}>
                 <Ionicons
                   name={pct > 0 ? 'arrow-up' : 'arrow-down'}
                   size={10}

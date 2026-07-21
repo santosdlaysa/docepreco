@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
@@ -41,11 +42,11 @@ type RouteProps = RouteProp<RootStackParamList, 'Store'>;
 type StoreTab = 'catalog' | 'orders' | 'settings';
 
 const ORDER_STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
-  pending:     { label: 'Pendente',    color: '#C8870B', bg: '#FFF1CE' },
-  in_progress: { label: 'Em preparo',  color: '#7C3AED', bg: '#EDE4FB' },
-  done:        { label: 'Saiu para entrega', color: '#BC2A6C', bg: '#FFE3EF' },
-  delivered:   { label: 'Entregue',    color: '#2E9E5B', bg: '#DCF6E5' },
-  cancelled:   { label: 'Cancelado',   color: '#C0392B', bg: '#FBE4E0' },
+  pending:     { label: 'Pendente',    color: colors.amberDark, bg: colors.amberBg },
+  in_progress: { label: 'Em preparo',  color: colors.purple, bg: colors.purpleBg },
+  done:        { label: 'Saiu para entrega', color: '#BC2A6C', bg: colors.pinkBg },
+  delivered:   { label: 'Entregue',    color: '#2E9E5B', bg: colors.greenBg },
+  cancelled:   { label: 'Cancelado',   color: colors.redDark, bg: '#FBE4E0' },
 };
 
 // Etapas do fluxo de um pedido e a ação que leva à próxima etapa.
@@ -56,13 +57,13 @@ const NEXT_ACTION: Partial<Record<OrderStatus, { next: OrderStatus; label: strin
   done:        { next: 'delivered',   label: 'Marcar como entregue',  icon: 'bag-check-outline' },
 };
 
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const PINK_LIGHT = '#FF6AAE';
-const GREEN = '#43BE6E';
-const CREAM = '#FFF6F0';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const PINK_LIGHT = colors.pinkBright;
+const GREEN = colors.green;
+const CREAM = colors.pinkBg3;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -397,7 +398,7 @@ export const StoreScreen: React.FC = () => {
           <View style={{ width: 38 }} />
         </View>
         <View style={st.pendingWrap}>
-          <LinearGradient colors={['#FFE3EF', '#FFD0E4']} style={st.pendingCard}>
+          <LinearGradient colors={[colors.pinkBg, '#FFD0E4']} style={st.pendingCard}>
             <Ionicons name="storefront-outline" size={48} color={PINK} />
             <Text style={st.pendingTitle}>Loja em ativação</Text>
             <Text style={st.pendingDesc}>
@@ -439,15 +440,15 @@ export const StoreScreen: React.FC = () => {
           <RefreshControl
             refreshing={loading}
             onRefresh={() => { load(); loadOrders(); }}
-            colors={['#EA4B92']}
-            tintColor="#EA4B92"
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
       >
 
         {/* ── Status card ── */}
         <LinearGradient
-          colors={settings?.active ? ['#FFE3EF', '#FFD0E4'] : ['#FFF6FA', '#FFEDF4']}
+          colors={settings?.active ? [colors.pinkBg, '#FFD0E4'] : ['#FFF6FA', '#FFEDF4']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={st.statusCard}
@@ -973,11 +974,11 @@ export const StoreScreen: React.FC = () => {
           <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, gap: 16 }}>
             {/* Título */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: '#DCF6E5', alignItems: 'center', justifyContent: 'center' }}>
-                <Ionicons name="checkmark-circle" size={22} color="#1F8A48" />
+              <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.greenBg, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name="checkmark-circle" size={22} color={colors.greenDark} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 16, fontWeight: '700', color: '#3D2233' }}>Confirmar entrega</Text>
+                <Text style={{ fontSize: 16, fontWeight: '700', color: colors.text }}>Confirmar entrega</Text>
                 <Text style={{ fontSize: 12, color: INK2, marginTop: 1 }}>de {deliveryOrder?.clientName ?? ''}</Text>
               </View>
               <TouchableOpacity onPress={() => setDeliveryOrder(null)}>
@@ -991,27 +992,27 @@ export const StoreScreen: React.FC = () => {
               const remaining = Math.max(deliveryOrder.totalPrice - paid, 0);
               return (
                 <>
-                  <View style={{ backgroundColor: '#F5F5F7', borderRadius: 14, padding: 14, gap: 6 }}>
+                  <View style={{ backgroundColor: colors.grayBg, borderRadius: 14, padding: 14, gap: 6 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                       <Text style={{ fontSize: 13, color: INK2 }}>Total do pedido</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '600', color: '#3D2233' }}>{fmtCurrency(deliveryOrder.totalPrice)}</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: colors.text }}>{fmtCurrency(deliveryOrder.totalPrice)}</Text>
                     </View>
                     {paid > 0 && (
                       <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                         <Text style={{ fontSize: 13, color: INK2 }}>Já recebido</Text>
-                        <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>{fmtCurrency(paid)}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '600', color: colors.greenDark }}>{fmtCurrency(paid)}</Text>
                       </View>
                     )}
-                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: '#E5E5E5', paddingTop: 6, marginTop: 2 }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.grayBorder, paddingTop: 6, marginTop: 2 }}>
                       {remaining > 0 ? (
                         <>
-                          <Text style={{ fontSize: 13, fontWeight: '700', color: '#3D2233' }}>Restante a receber</Text>
+                          <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Restante a receber</Text>
                           <Text style={{ fontSize: 13, fontWeight: '700', color: PINK }}>{fmtCurrency(remaining)}</Text>
                         </>
                       ) : (
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          <Ionicons name="checkmark-circle" size={14} color="#1F8A48" />
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1F8A48' }}>Pedido já quitado</Text>
+                          <Ionicons name="checkmark-circle" size={14} color={colors.greenDark} />
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.greenDark }}>Pedido já quitado</Text>
                         </View>
                       )}
                     </View>
@@ -1019,22 +1020,22 @@ export const StoreScreen: React.FC = () => {
 
                   {remaining > 0 && (
                     <>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#3D2233' }}>Forma de pagamento</Text>
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text }}>Forma de pagamento</Text>
                       <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
                         {PAYMENT_METHODS.map(m => (
                           <TouchableOpacity key={m.key} onPress={() => setDeliveryModalMethod(m.key)} activeOpacity={0.8}
                             style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10,
-                              backgroundColor: deliveryModalMethod === m.key ? PINK : '#F5F5F7',
-                              borderWidth: deliveryModalMethod === m.key ? 0 : 1, borderColor: '#E5E5E5' }}>
+                              backgroundColor: deliveryModalMethod === m.key ? PINK : colors.grayBg,
+                              borderWidth: deliveryModalMethod === m.key ? 0 : 1, borderColor: colors.grayBorder }}>
                             <Ionicons name={m.icon} size={15} color={deliveryModalMethod === m.key ? '#fff' : INK2} />
                             <Text style={{ fontSize: 13, fontWeight: '600', color: deliveryModalMethod === m.key ? '#fff' : INK2 }}>{m.label}</Text>
                           </TouchableOpacity>
                         ))}
                       </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#F5F5F7', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.grayBg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12 }}>
                         <Ionicons name="cash-outline" size={18} color={INK2} />
                         <TextInput
-                          style={{ flex: 1, fontSize: 15, fontWeight: '600', color: '#3D2233' }}
+                          style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.text }}
                           value={deliveryModalAmount}
                           onChangeText={setDeliveryModalAmount}
                           keyboardType="decimal-pad"
@@ -1051,7 +1052,7 @@ export const StoreScreen: React.FC = () => {
             {/* Botões */}
             <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
               <TouchableOpacity onPress={() => setDeliveryOrder(null)} activeOpacity={0.8}
-                style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: '#E5E5E5' }}>
+                style={{ flex: 1, alignItems: 'center', paddingVertical: 14, borderRadius: 14, borderWidth: 1, borderColor: colors.grayBorder }}>
                 <Text style={{ fontWeight: '600', color: INK2 }}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={handleDeliveryConfirm} disabled={deliveryModalLoading} activeOpacity={0.85} style={{ flex: 2 }}>
@@ -1276,7 +1277,7 @@ const st = StyleSheet.create({
   addonExplain: { fontSize: 12, color: INK2, lineHeight: 17, marginBottom: 12, marginTop: -4 },
   addonInputBox: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: '#F5F5F7', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    backgroundColor: colors.grayBg, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
   },
   addonInput: { flex: 1, fontSize: 15, fontWeight: '600', color: INK },
 
@@ -1339,7 +1340,7 @@ const st = StyleSheet.create({
   modalTotalValue: { fontSize: 17, fontWeight: '800', color: PINK },
 
   modalNotes: {
-    backgroundColor: '#FFF1CE', borderRadius: 12, padding: 12, marginTop: 10,
+    backgroundColor: colors.amberBg, borderRadius: 12, padding: 12, marginTop: 10,
   },
   modalNotesText: { fontSize: 13, color: '#8A6D1B', lineHeight: 18 },
 
@@ -1350,7 +1351,7 @@ const st = StyleSheet.create({
   },
   primaryActionText: { fontSize: 16, fontWeight: '700', color: '#fff' },
   cancelAction: { alignItems: 'center', paddingVertical: 12 },
-  cancelActionText: { fontSize: 14, fontWeight: '700', color: '#C0392B' },
+  cancelActionText: { fontSize: 14, fontWeight: '700', color: colors.redDark },
   modalFinal: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingVertical: 14,

@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -28,13 +29,13 @@ import { usePaywall } from '../premium/usePaywall';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const PINK = '#EA4B92';
-const PINK_LIGHT = '#FF6AAE';
-const GREEN = '#43BE6E';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const PINK = colors.primary;
+const PINK_LIGHT = colors.pinkBright;
+const GREEN = colors.green;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -240,7 +241,7 @@ export const StoreSettingsScreen: React.FC = () => {
           </TouchableOpacity>
           {coverImageUrl ? (
             <TouchableOpacity style={st.coverRemoveBtn} onPress={() => setCoverImageUrl('')} activeOpacity={0.7}>
-              <Ionicons name="trash-outline" size={14} color="#C0392B" />
+              <Ionicons name="trash-outline" size={14} color={colors.redDark} />
               <Text style={st.coverRemoveText}>Remover imagem</Text>
             </TouchableOpacity>
           ) : null}
@@ -289,7 +290,7 @@ export const StoreSettingsScreen: React.FC = () => {
             returnKeyType="next"
           />
           <View style={st.slugCard}>
-            <Ionicons name="storefront-outline" size={18} color="#2BA7DD" />
+            <Ionicons name="storefront-outline" size={18} color={colors.blue} />
             <Text style={st.slugText}>
               Toda loja ativa aparece automaticamente na vitrine de lojas do DocePreço. A cidade ajuda o cliente a te encontrar.
             </Text>
@@ -334,7 +335,7 @@ export const StoreSettingsScreen: React.FC = () => {
 
           <TouchableOpacity style={st.toggleRow} onPress={() => setAcceptsDelivery(v => !v)} activeOpacity={0.7}>
             <View style={st.toggleLeft}>
-              <View style={[st.toggleIcon, { backgroundColor: acceptsDelivery ? '#FFE3EF' : '#F5F5F5' }]}>
+              <View style={[st.toggleIcon, { backgroundColor: acceptsDelivery ? colors.pinkBg : colors.gray }]}>
                 <Ionicons name="bicycle-outline" size={20} color={acceptsDelivery ? PINK : INK3} />
               </View>
               <View>
@@ -366,7 +367,7 @@ export const StoreSettingsScreen: React.FC = () => {
 
           <TouchableOpacity style={st.toggleRow} onPress={() => setAcceptsPickup(v => !v)} activeOpacity={0.7}>
             <View style={st.toggleLeft}>
-              <View style={[st.toggleIcon, { backgroundColor: acceptsPickup ? '#FFE3EF' : '#F5F5F5' }]}>
+              <View style={[st.toggleIcon, { backgroundColor: acceptsPickup ? colors.pinkBg : colors.gray }]}>
                 <Ionicons name="bag-outline" size={20} color={acceptsPickup ? PINK : INK3} />
               </View>
               <View>
@@ -386,7 +387,7 @@ export const StoreSettingsScreen: React.FC = () => {
             return (
               <TouchableOpacity key={m.key} style={st.toggleRow} onPress={() => togglePaymentMethod(m.key)} activeOpacity={0.7}>
                 <View style={st.toggleLeft}>
-                  <View style={[st.toggleIcon, { backgroundColor: on ? '#FFE3EF' : '#F5F5F5' }]}>
+                  <View style={[st.toggleIcon, { backgroundColor: on ? colors.pinkBg : colors.gray }]}>
                     <Ionicons name={m.icon} size={20} color={on ? PINK : INK3} />
                   </View>
                   <View>
@@ -404,7 +405,7 @@ export const StoreSettingsScreen: React.FC = () => {
           {/* ── Horário de funcionamento ── */}
           <TouchableOpacity style={[st.toggleRow, { marginTop: 20 }]} onPress={() => setUseBusinessHours(v => !v)} activeOpacity={0.7}>
             <View style={st.toggleLeft}>
-              <View style={[st.toggleIcon, { backgroundColor: useBusinessHours ? '#FFE3EF' : '#F5F5F5' }]}>
+              <View style={[st.toggleIcon, { backgroundColor: useBusinessHours ? colors.pinkBg : colors.gray }]}>
                 <Ionicons name="time-outline" size={20} color={useBusinessHours ? PINK : INK3} />
               </View>
               <View>
@@ -459,7 +460,7 @@ export const StoreSettingsScreen: React.FC = () => {
                 </View>
               ))}
               <View style={st.slugCard}>
-                <Ionicons name="information-circle-outline" size={18} color="#2BA7DD" />
+                <Ionicons name="information-circle-outline" size={18} color={colors.blue} />
                 <Text style={st.slugText}>
                   Use o formato 24h (ex: 08:00, 18:30). Fora do horário cadastrado, sua loja some da vitrine e não recebe pedidos automaticamente.
                 </Text>
@@ -470,7 +471,7 @@ export const StoreSettingsScreen: React.FC = () => {
           {/* ── Slug info ── */}
           {settings?.slug && (
             <View style={st.slugCard}>
-              <Ionicons name="information-circle-outline" size={18} color="#2BA7DD" />
+              <Ionicons name="information-circle-outline" size={18} color={colors.blue} />
               <Text style={st.slugText}>
                 URL da loja: <Text style={{ fontWeight: '700' }}>…/loja/{settings.slug}</Text>
               </Text>
@@ -530,7 +531,7 @@ const st = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-end', marginTop: 6, paddingVertical: 4, paddingHorizontal: 8,
   },
-  coverRemoveText: { fontSize: 12, color: '#C0392B', fontWeight: '600' },
+  coverRemoveText: { fontSize: 12, color: colors.redDark, fontWeight: '600' },
 
   label: { fontSize: 13, fontWeight: '700', color: INK, marginTop: 12, marginBottom: 6, marginLeft: 2 },
   input: {
@@ -561,9 +562,9 @@ const st = StyleSheet.create({
   categoryWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   categoryChip: {
     paddingVertical: 8, paddingHorizontal: 14, borderRadius: 20,
-    backgroundColor: '#F5F5F5', borderWidth: 1, borderColor: '#F5F5F5',
+    backgroundColor: colors.gray, borderWidth: 1, borderColor: colors.gray,
   },
-  categoryChipOn: { backgroundColor: '#FFE3EF', borderColor: PINK },
+  categoryChipOn: { backgroundColor: colors.pinkBg, borderColor: PINK },
   categoryChipText: { fontSize: 13, fontWeight: '600', color: INK2 },
   categoryChipTextOn: { color: PINK },
 
@@ -572,9 +573,9 @@ const st = StyleSheet.create({
   },
   dayHeadRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   dayLabel: { fontSize: 14, fontWeight: '700', color: INK },
-  dayClosedChip: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 20, backgroundColor: '#DCF6E5' },
-  dayClosedChipOn: { backgroundColor: '#F5F5F5' },
-  dayClosedChipText: { fontSize: 12, fontWeight: '700', color: '#1F8A48' },
+  dayClosedChip: { paddingVertical: 5, paddingHorizontal: 12, borderRadius: 20, backgroundColor: colors.greenBg },
+  dayClosedChipOn: { backgroundColor: colors.gray },
+  dayClosedChipText: { fontSize: 12, fontWeight: '700', color: colors.greenDark },
   dayClosedChipTextOn: { color: INK2 },
   dayTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 8 },
   dayTimeInput: {
@@ -585,10 +586,10 @@ const st = StyleSheet.create({
 
   slugCard: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
-    backgroundColor: '#EEF8FD', borderRadius: 12, padding: 12,
+    backgroundColor: colors.blueBg, borderRadius: 12, padding: 12,
     marginTop: 16, borderWidth: 1, borderColor: '#B8DDEF',
   },
-  slugText: { flex: 1, fontSize: 12.5, color: '#1A6F96', lineHeight: 18 },
+  slugText: { flex: 1, fontSize: 12.5, color: colors.blueDark, lineHeight: 18 },
 
   footer: { paddingHorizontal: 18, paddingBottom: 20, paddingTop: 8, backgroundColor: CREAM },
   saveBtn: {

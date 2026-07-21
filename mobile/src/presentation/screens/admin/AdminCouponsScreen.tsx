@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator,
@@ -7,7 +8,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { adminApi, Coupon } from '../../../data/api/adminApi';
-import { colors } from '../../theme/colors';
 
 const fmtDate = (iso: string) =>
   new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -15,7 +15,7 @@ const fmtDate = (iso: string) =>
 function getStatus(c: Coupon): { label: string; color: string } {
   if (!c.isActive) return { label: 'Inativo', color: colors.textMuted };
   if (c.expiresAt && new Date(c.expiresAt).getTime() < Date.now()) return { label: 'Expirado', color: '#F59E0B' };
-  if (c.maxUses > 0 && c.usedCount >= c.maxUses) return { label: 'Esgotado', color: '#EF4444' };
+  if (c.maxUses > 0 && c.usedCount >= c.maxUses) return { label: 'Esgotado', color: colors.red };
   return { label: 'Ativo', color: '#22C55E' };
 }
 
@@ -131,7 +131,7 @@ export const AdminCouponsScreen: React.FC = () => {
                     <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
                   </View>
                   <TouchableOpacity onPress={() => handleDelete(c)} hitSlop={8}>
-                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                    <Ionicons name="trash-outline" size={18} color={colors.red} />
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.discount}>{c.discountPercent}% de desconto</Text>

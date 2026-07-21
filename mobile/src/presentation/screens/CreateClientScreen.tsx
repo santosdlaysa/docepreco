@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -24,12 +25,12 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditClient'>;
 
 // ── Design tokens ──
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const PINK = '#EA4B92';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const PINK = colors.primary;
 
 const SHADOW = {
   shadowColor: INK,
@@ -214,7 +215,7 @@ export const CreateClientScreen: React.FC = () => {
 
           {/* ── Save button ── */}
           <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
-            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={s.btn}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.btnText}>Salvar cliente</Text>}
             </LinearGradient>
@@ -244,7 +245,7 @@ const s = StyleSheet.create({
   /* ── Field ── */
   field: { gap: 7 },
   label: { fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 },
-  err: { fontSize: 12, color: '#F44336', marginLeft: 2 },
+  err: { fontSize: 12, color: colors.error, marginLeft: 2 },
 
   /* ── Input ── */
   input: {
@@ -258,7 +259,7 @@ const s = StyleSheet.create({
     ...SHADOW,
   },
   inputArea: { alignItems: 'flex-start', minHeight: 74 },
-  inputErr: { borderWidth: 1.5, borderColor: '#F44336' },
+  inputErr: { borderWidth: 1.5, borderColor: colors.error },
   inputText: { flex: 1, fontSize: 15, color: INK, padding: 0 },
 
   /* ── Two cols ── */

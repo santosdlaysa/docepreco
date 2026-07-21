@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -16,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { authApi } from '../../data/api/authApi';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
-import { colors } from '../theme/colors';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';

@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -16,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useToast } from '../context/ToastContext';
 import { bannerApi } from '../../data/api/bannerApi';
@@ -260,7 +260,7 @@ export const AnnounceBannerScreen: React.FC = () => {
                     <Text style={styles.copyLabel}>PIX copia-e-cola</Text>
                     <Text style={styles.copyValue} numberOfLines={1} ellipsizeMode="middle">{dynamicQr.copyPaste}</Text>
                   </View>
-                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: '#E8F5E9' }]}>
+                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: colors.greenBgSoft }]}>
                     <Text style={[styles.copyBtnText, copied && { color: colors.success }]}>{copied ? 'Copiado' : 'Copiar'}</Text>
                   </View>
                 </TouchableOpacity>

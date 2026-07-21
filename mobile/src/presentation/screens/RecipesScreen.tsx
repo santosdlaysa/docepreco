@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import {
   View,
@@ -24,7 +25,6 @@ import { CalculationResult } from '../../domain/entities/Calculation';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi } from '../../data/demo/demoApi';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { EmptyState } from '../components/EmptyState';
 import { Skeleton } from '../components/Skeleton';
@@ -689,7 +689,7 @@ const styles = StyleSheet.create({
 
   // Margin badge
   marginBadge: {
-    backgroundColor: '#E8F5E9',
+    backgroundColor: colors.greenBgSoft,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,

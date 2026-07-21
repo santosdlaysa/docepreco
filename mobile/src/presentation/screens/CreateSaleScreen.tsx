@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -26,7 +27,6 @@ import { customProductStorage } from '../../data/storage/customProductStorage';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { PaymentMethod } from '../../domain/entities/Sale';
-import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
@@ -34,13 +34,13 @@ import { computeDiscountAmount, DiscountType } from '../utils/discount';
 import { DiscountInput } from '../components/DiscountInput';
 
 /* ─── Design tokens ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -49,7 +49,7 @@ const SHADOW = {
   elevation: 3,
 };
 
-const THUMB_COLORS = ['#5E3A23', '#8B5E3C', '#EA4B92', '#F9C74F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4'];
+const THUMB_COLORS = ['#5E3A23', '#8B5E3C', colors.primary, '#F9C74F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4'];
 
 const PAYMENT_METHODS: { key: PaymentMethod; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { key: 'pix', icon: 'qr-code-outline', label: 'Pix' },
@@ -368,7 +368,7 @@ export const CreateSaleScreen: React.FC = () => {
 
           {/* ── Save button ── */}
           <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
-            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={st.btn}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>Salvar venda</Text>}
             </LinearGradient>

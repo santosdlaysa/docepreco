@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -21,7 +22,6 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { demoIngredientApi } from '../../data/demo/demoApi';
 import { Unit } from '../../domain/entities/Ingredient';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { priceHistoryApi } from '../../data/api/priceHistoryApi';
 import { useTranslation } from 'react-i18next';
@@ -42,13 +42,13 @@ const fmtBRL = (v: number): string => {
 };
 
 /* ─── Design tokens ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -215,7 +215,7 @@ export const CreateIngredientScreen: React.FC = () => {
           {/* ── Banner informativo ── */}
           <View style={st.infoBanner}>
             <View style={st.infoBannerIcon}>
-              <Ionicons name="information-circle" size={18} color="#2BA7DD" />
+              <Ionicons name="information-circle" size={18} color={colors.blue} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={st.infoBannerTitle}>
@@ -273,7 +273,7 @@ export const CreateIngredientScreen: React.FC = () => {
           </View>
 
           {/* ── Aviso sobre unidades ── */}
-          <View style={[st.infoBanner, { backgroundColor: '#E8F5E9', borderColor: '#4CAF50' }]}>
+          <View style={[st.infoBanner, { backgroundColor: colors.greenBgSoft, borderColor: '#4CAF50' }]}>
             <Ionicons name="checkmark-circle" size={18} color="#2E7D32" />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={{ fontSize: 13, fontWeight: '600', color: '#2E7D32', marginBottom: 4 }}>
@@ -344,7 +344,7 @@ export const CreateIngredientScreen: React.FC = () => {
 
           {/* ── Save button ── */}
           <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
-            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={st.btn}>
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>{isEditing ? 'Atualizar ingrediente' : 'Salvar ingrediente'}</Text>}
             </LinearGradient>
@@ -421,7 +421,7 @@ const st = StyleSheet.create({
     padding: 15,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#DCF1FB',
+    borderColor: colors.blueBgSoft,
     ...SHADOW,
     shadowOpacity: 0.04,
   },

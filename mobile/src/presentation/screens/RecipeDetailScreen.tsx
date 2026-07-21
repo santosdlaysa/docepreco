@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -41,13 +42,13 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
 
 // ── Design tokens ──
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const PINK = colors.primary;
+const GREEN = colors.green;
 
 const SHADOW = {
   shadowColor: INK,
@@ -284,9 +285,9 @@ export const RecipeDetailScreen: React.FC = () => {
                 disabled={deleting}
               >
                 {deleting ? (
-                  <ActivityIndicator size="small" color="#F44336" />
+                  <ActivityIndicator size="small" color={colors.error} />
                 ) : (
-                  <Ionicons name="trash-outline" size={16} color="#F44336" />
+                  <Ionicons name="trash-outline" size={16} color={colors.error} />
                 )}
               </TouchableOpacity>
             </View>
@@ -307,7 +308,7 @@ export const RecipeDetailScreen: React.FC = () => {
             </TouchableOpacity>
             <View style={s.heroActions}>
               <TouchableOpacity onPress={handleDeleteRecipe} style={s.heroActionBtn} activeOpacity={0.7}>
-                <Ionicons name="trash-outline" size={16} color="#F44336" />
+                <Ionicons name="trash-outline" size={16} color={colors.error} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => guardAction(() => navigation.navigate('EditRecipe', { recipeId: recipe.id }))}
@@ -323,9 +324,9 @@ export const RecipeDetailScreen: React.FC = () => {
                 disabled={deleting}
               >
                 {deleting ? (
-                  <ActivityIndicator size="small" color="#F44336" />
+                  <ActivityIndicator size="small" color={colors.error} />
                 ) : (
-                  <Ionicons name="trash-outline" size={16} color="#F44336" />
+                  <Ionicons name="trash-outline" size={16} color={colors.error} />
                 )}
               </TouchableOpacity>
             </View>
@@ -407,11 +408,11 @@ export const RecipeDetailScreen: React.FC = () => {
                 const isLabor = cost.name.toLowerCase().includes('mão de obra') || cost.name.toLowerCase().includes('mao de obra');
                 return (
                   <View key={idx} style={s.ledgerRow}>
-                    <View style={[s.ledgerDot, { backgroundColor: isLabor ? '#FFF0F6' : '#EEF8FD' }]}>
+                    <View style={[s.ledgerDot, { backgroundColor: isLabor ? colors.pinkBg2 : colors.blueBg }]}>
                       <Ionicons
                         name={isLabor ? 'construct' : 'cube'}
                         size={17}
-                        color={isLabor ? PINK : '#2BA7DD'}
+                        color={isLabor ? PINK : colors.blue}
                       />
                     </View>
                     <View style={s.ledgerInfo}>
@@ -516,7 +517,7 @@ export const RecipeDetailScreen: React.FC = () => {
               </TouchableOpacity>
               <TouchableOpacity activeOpacity={0.85} onPress={() => guardAction(handleShareQuote)} disabled={sharing}>
                 <LinearGradient
-                  colors={['#FF6AAE', PINK]}
+                  colors={[colors.pinkBright, PINK]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={s.btnPrimary}
@@ -785,12 +786,12 @@ const s = StyleSheet.create({
   },
   calculationErrorTitle: { color: INK, fontSize: 14, fontWeight: '700', marginBottom: 2 },
   calculationStatusText: { color: INK2, fontSize: 13, lineHeight: 18, flexShrink: 1 },
-  retryButton: { backgroundColor: '#FFF0F6', borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
+  retryButton: { backgroundColor: colors.pinkBg2, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 9 },
   retryButtonText: { color: PINK, fontSize: 13, fontWeight: '700' },
   slider: {
     height: 10,
     borderRadius: 99,
-    backgroundColor: '#FFE3EF',
+    backgroundColor: colors.pinkBg,
     position: 'relative',
   },
   sliderFill: {
@@ -886,7 +887,7 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFF0F6',
+    backgroundColor: colors.pinkBg2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -913,7 +914,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#FFF0F6',
+    backgroundColor: colors.pinkBg2,
     borderRadius: 8,
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -944,7 +945,7 @@ const s = StyleSheet.create({
   scaleSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   scaleSummaryLabel: { fontSize: 15, color: INK2 },
   scaleSummaryValue: { fontSize: 15, color: INK, fontWeight: '700' },
-  scaleError: { fontSize: 13, color: '#F44336', marginTop: 4 },
+  scaleError: { fontSize: 13, color: colors.error, marginTop: 4 },
 
   /* ── Skeleton ── */
   skeletonBody: { padding: 18, gap: 12 },

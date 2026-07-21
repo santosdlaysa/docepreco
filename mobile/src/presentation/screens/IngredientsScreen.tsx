@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -30,14 +31,14 @@ import { formatUnitLabel } from '../utils/units';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // ── Design tokens ──
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const BLUE = '#2BA7DD';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const BLUE = colors.blue;
 
 const SHADOW = {
   shadowColor: INK,
@@ -294,7 +295,7 @@ const s = StyleSheet.create({
     padding: 15,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#DCF1FB',
+    borderColor: colors.blueBgSoft,
     ...SHADOW,
     shadowOpacity: 0.04,
   },
@@ -334,7 +335,7 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#DCF6E5',
+    backgroundColor: colors.greenBg,
     alignItems: 'center',
     justifyContent: 'center',
   },

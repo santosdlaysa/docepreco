@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React from 'react';
 import {
   View,
@@ -8,7 +9,6 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useTranslation } from 'react-i18next';
 

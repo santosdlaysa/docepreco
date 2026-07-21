@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,12 +12,12 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const UNIT_SYSTEMS: UnitSystem[] = ['metric', 'imperial'];
 
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -47,7 +48,7 @@ export const UnitSettingsScreen: React.FC = () => {
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <View style={styles.notice}>
-          <Ionicons name="information-circle" size={18} color="#2BA7DD" />
+          <Ionicons name="information-circle" size={18} color={colors.blue} />
           <Text style={styles.noticeText}>
             Ingredientes já cadastrados continuam com as unidades atuais. Esta escolha só muda os próximos cadastros.
           </Text>
@@ -115,9 +116,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    backgroundColor: '#EEF8FD',
+    backgroundColor: colors.blueBg,
     borderWidth: 1,
-    borderColor: '#DCF1FB',
+    borderColor: colors.blueBgSoft,
     borderRadius: 16,
     padding: 14,
   },
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFF0F6',
+    backgroundColor: colors.pinkBg2,
     alignItems: 'center',
     justifyContent: 'center',
   },

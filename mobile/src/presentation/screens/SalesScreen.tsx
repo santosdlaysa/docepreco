@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View,
@@ -17,7 +18,6 @@ import { Sale } from '../../domain/entities/Sale';
 import { saleApi } from '../../data/api/saleApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoSaleApi } from '../../data/demo/demoApi';
-import { colors } from '../theme/colors';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
@@ -26,13 +26,13 @@ import { Skeleton } from '../components/Skeleton';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 /* ─── Design tokens ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -236,7 +236,7 @@ export const SalesScreen: React.FC = () => {
             <Text style={st.emptyTitle}>Nenhuma venda</Text>
             <Text style={st.emptyDesc}>Registre suas vendas para acompanhar o faturamento.</Text>
             <TouchableOpacity onPress={() => guardAction(() => navigation.navigate('CreateSale'))} activeOpacity={0.85}>
-              <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.emptyBtn}>
+              <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.emptyBtn}>
                 <Text style={st.emptyBtnText}>Registrar venda</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -246,7 +246,7 @@ export const SalesScreen: React.FC = () => {
 
       {/* ── FAB ── */}
       <TouchableOpacity style={st.fab} onPress={() => guardAction(() => navigation.navigate('CreateSale'))} activeOpacity={0.85}>
-        <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.fabInner}>
+        <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.fabInner}>
           <Ionicons name="add" size={26} color="#fff" />
         </LinearGradient>
       </TouchableOpacity>
@@ -305,7 +305,7 @@ const st = StyleSheet.create({
   },
   sep: { height: 1, backgroundColor: LINE, marginLeft: 52 },
   gi: {
-    width: 40, height: 40, borderRadius: 12, backgroundColor: '#DCF6E5',
+    width: 40, height: 40, borderRadius: 12, backgroundColor: colors.greenBg,
     alignItems: 'center', justifyContent: 'center',
   },
   gt: { flex: 1 },
@@ -321,7 +321,7 @@ const st = StyleSheet.create({
   /* empty */
   empty: { alignItems: 'center', paddingTop: 60, gap: 10, paddingHorizontal: 24 },
   emptyIco: {
-    width: 72, height: 72, borderRadius: 24, backgroundColor: '#FFF0F6',
+    width: 72, height: 72, borderRadius: 24, backgroundColor: colors.pinkBg2,
     alignItems: 'center', justifyContent: 'center',
   },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: INK },

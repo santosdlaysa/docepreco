@@ -3,17 +3,10 @@ import { AppState, AppStateStatus, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  DMSans_400Regular,
-  DMSans_500Medium,
-  DMSans_600SemiBold,
-  DMSans_700Bold,
-} from '@expo-google-fonts/dm-sans';
-import {
-  PlayfairDisplay_400Regular,
-  PlayfairDisplay_700Bold,
-  PlayfairDisplay_400Regular_Italic,
-} from '@expo-google-fonts/playfair-display';
+import { applyGlobalFont, fontAssets } from './src/presentation/theme';
+
+// Aplica DM Sans como fonte padrão de todo o app (antes de qualquer render).
+applyGlobalFont();
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
 import './src/i18n';
@@ -38,13 +31,7 @@ initUxCam();
 function App() {
   const [fontsLoaded] = useFonts({
     ...Ionicons.font,
-    DMSans_400Regular,
-    DMSans_500Medium,
-    DMSans_600SemiBold,
-    DMSans_700Bold,
-    PlayfairDisplay_400Regular,
-    PlayfairDisplay_700Bold,
-    PlayfairDisplay_400Regular_Italic,
+    ...fontAssets,
   });
 
   const appState = useRef<AppStateStatus>(AppState.currentState);

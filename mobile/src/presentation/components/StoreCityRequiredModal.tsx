@@ -1,7 +1,7 @@
+import { colors } from '../theme/colors';
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../theme/colors';
 
 interface Props {
   visible: boolean;

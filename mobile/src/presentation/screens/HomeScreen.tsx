@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   View,
@@ -47,17 +48,17 @@ const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PLAN_BANNER_WIDTH = SCREEN_WIDTH - 36;
 
 // ── Design tokens (from reference) ──
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const CREAM = '#FFF6F0';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const CREAM = colors.pinkBg3;
+const PINK = colors.primary;
+const GREEN = colors.green;
 
 const BANNER_CONFIG: Record<Banner['type'], { bg: string; border: string; icon: string; iconColor: string }> = {
-  info:    { bg: '#EEF8FD', border: '#B8DDEF', icon: 'information-circle-outline', iconColor: '#2BA7DD' },
+  info:    { bg: colors.blueBg, border: '#B8DDEF', icon: 'information-circle-outline', iconColor: colors.blue },
   warning: { bg: '#FFF8E1', border: '#FFE082', icon: 'warning-outline',            iconColor: '#F57F17' },
-  promo:   { bg: '#FFF0F6', border: '#FFD6E9', icon: 'gift-outline',               iconColor: PINK },
-  update:  { bg: '#DCF6E5', border: '#A8E6C0', icon: 'arrow-up-circle-outline',    iconColor: GREEN },
+  promo:   { bg: colors.pinkBg2, border: '#FFD6E9', icon: 'gift-outline',               iconColor: PINK },
+  update:  { bg: colors.greenBg, border: '#A8E6C0', icon: 'arrow-up-circle-outline',    iconColor: GREEN },
 };
 
 const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -268,7 +269,7 @@ export const HomeScreen: React.FC = () => {
                 activeOpacity={0.8}
               >
                 <LinearGradient
-                  colors={['#FFC53D', '#FFB01F']}
+                  colors={['#FFC53D', colors.amber]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={s.proChip}
@@ -285,7 +286,7 @@ export const HomeScreen: React.FC = () => {
             >
               <Ionicons name="notifications-outline" size={22} color={INK} />
               {(banners.length > 0 || hasMandatoryAlert || hasUnreadOrders) && (
-                <View style={[s.bellDot, hasMandatoryAlert && { backgroundColor: '#C0392B' }]} />
+                <View style={[s.bellDot, hasMandatoryAlert && { backgroundColor: colors.redDark }]} />
               )}
             </TouchableOpacity>
             <TouchableOpacity
@@ -304,7 +305,7 @@ export const HomeScreen: React.FC = () => {
 
         {/* ═══════ TRIAL BANNER ═══════ */}
         {isInTrial && daysLeft !== null && (
-          <View style={[s.trialBanner, { backgroundColor: '#FFF0F6', borderColor: '#FFD6E9' }]}>
+          <View style={[s.trialBanner, { backgroundColor: colors.pinkBg2, borderColor: '#FFD6E9' }]}>
             <Ionicons name="gift-outline" size={24} color={PINK} />
             <View style={{ flex: 1, marginLeft: 12 }}>
               <Text style={s.trialBannerTitle}>
@@ -333,7 +334,7 @@ export const HomeScreen: React.FC = () => {
               {(!isPremium || isAdmin) && ([
                 {
                   key: 'premium',
-                  gradient: ['#FF8FC0', '#EA4B92', '#C42C74'] as const,
+                  gradient: ['#FF8FC0', colors.primary, '#C42C74'] as const,
                   accent: PINK,
                   titleColor: '#FFFFFF',
                   eyebrowColor: 'rgba(255,255,255,0.85)',
@@ -347,8 +348,8 @@ export const HomeScreen: React.FC = () => {
                 },
                 {
                   key: 'master',
-                  gradient: ['#A97BF0', '#7C3AED', '#5B21B6'] as const,
-                  accent: '#7C3AED',
+                  gradient: ['#A97BF0', colors.purple, '#5B21B6'] as const,
+                  accent: colors.purple,
                   titleColor: '#FFFFFF',
                   eyebrowColor: 'rgba(255,255,255,0.85)',
                   blob: 'rgba(255,255,255,0.16)',
@@ -480,7 +481,7 @@ export const HomeScreen: React.FC = () => {
         {/* ═══════ HERO REVENUE ═══════ */}
         <View style={s.heroWrap}>
           <LinearGradient
-            colors={['#E23B87', '#EA4B92', '#F56FAC']}
+            colors={['#E23B87', colors.primary, '#F56FAC']}
             locations={[0, 0.52, 1]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
@@ -545,13 +546,13 @@ export const HomeScreen: React.FC = () => {
         <View style={s.qaGrid}>
           <View style={s.qaGridRow}>
             <TouchableOpacity style={s.qaItem} onPress={() => guardAction(() => navigation.navigate('CreateIngredient'))} activeOpacity={0.7}>
-              <View style={[s.qaIco, { backgroundColor: '#FFF1CE' }]}>
-                <Ionicons name="basket-outline" size={22} color="#C8870B" />
+              <View style={[s.qaIco, { backgroundColor: colors.amberBg }]}>
+                <Ionicons name="basket-outline" size={22} color={colors.amberDark} />
               </View>
               <Text style={s.qaLabel}>Cadastrar ingrediente</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.qaItem} onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))} activeOpacity={0.7}>
-              <View style={[s.qaIco, { backgroundColor: '#FFF0F6' }]}>
+              <View style={[s.qaIco, { backgroundColor: colors.pinkBg2 }]}>
                 <Ionicons name="restaurant-outline" size={22} color={PINK} />
               </View>
               <Text style={s.qaLabel}>Nova receita</Text>
@@ -559,17 +560,17 @@ export const HomeScreen: React.FC = () => {
           </View>
           <View style={s.qaGridRow}>
             <TouchableOpacity style={s.qaItem} onPress={() => guardAction(() => navigation.navigate('CreateSale'))} activeOpacity={0.7}>
-              <View style={[s.qaIco, { backgroundColor: '#DCF6E5' }]}>
+              <View style={[s.qaIco, { backgroundColor: colors.greenBg }]}>
                 <Ionicons name="cart-outline" size={22} color={GREEN} />
               </View>
               <Text style={s.qaLabel}>Registrar venda</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.qaItem} onPress={() => guardAction(() => { if (!requirePremium('ordersManagement')) return; navigation.navigate('CreateOrder'); })} activeOpacity={0.7}>
-              <View style={[s.qaIco, { backgroundColor: '#EEF8FD' }]}>
-                <Ionicons name="document-text-outline" size={22} color="#2BA7DD" />
+              <View style={[s.qaIco, { backgroundColor: colors.blueBg }]}>
+                <Ionicons name="document-text-outline" size={22} color={colors.blue} />
               </View>
               <Text style={s.qaLabel}>Nova encomenda</Text>
-              {!isPremium && <Ionicons name="lock-closed" size={12} color="#C8870B" />}
+              {!isPremium && <Ionicons name="lock-closed" size={12} color={colors.amberDark} />}
             </TouchableOpacity>
           </View>
         </View>
@@ -626,11 +627,11 @@ export const HomeScreen: React.FC = () => {
                   )}
                   {isToday2 ? (
                     <LinearGradient
-                      colors={['#FF6AAE', PINK]}
+                      colors={[colors.pinkBright, PINK]}
                       style={[s.chartBar, { height: h }]}
                     />
                   ) : (
-                    <View style={[s.chartBar, { height: h, backgroundColor: '#FFE3EF' }]} />
+                    <View style={[s.chartBar, { height: h, backgroundColor: colors.pinkBg }]} />
                   )}
                   <Text style={[s.chartLbl, isToday2 && { color: PINK, fontWeight: '700' }]}>{weeklyDayLabels[i]}</Text>
                 </View>
@@ -653,13 +654,13 @@ export const HomeScreen: React.FC = () => {
 
         <View style={s.proGrid}>
           {([
-            { icon: 'storefront-outline' as const, bg: '#EDE4FB', ic: '#7C3AED', title: 'Loja Online', sub: 'Link de pedidos para clientes', route: 'Store', master: true },
-            { icon: 'bar-chart-outline' as const, bg: '#FFF0F6', ic: PINK, title: 'Relatórios', sub: 'Gráficos e análises', route: 'Reports' },
-            { icon: 'people-outline' as const, bg: '#EEF8FD', ic: '#2BA7DD', title: 'Clientes', sub: 'Contatos e aniversários', route: 'Clients' },
-            { icon: 'clipboard-outline' as const, bg: '#DCF6E5', ic: GREEN, title: 'Encomendas', sub: 'Entregas e pagamento', route: 'Orders' },
-            { icon: 'pricetag-outline' as const, bg: '#FFF1CE', ic: '#C8870B', title: 'Épocas', sub: 'Ajuste sazonal de preços', route: 'Seasons' },
-            { icon: 'cash-outline' as const, bg: '#EDE4FB', ic: '#7C3AED', title: 'Financeiro', sub: 'Resultado e DRE', route: 'Finance', master: true },
-            { icon: 'cube-outline' as const, bg: '#E9F6FF', ic: '#2BA7DD', title: 'Estoque', sub: 'Baixa automática', route: 'Stock', master: true },
+            { icon: 'storefront-outline' as const, bg: colors.purpleBg, ic: colors.purple, title: 'Loja Online', sub: 'Link de pedidos para clientes', route: 'Store', master: true },
+            { icon: 'bar-chart-outline' as const, bg: colors.pinkBg2, ic: PINK, title: 'Relatórios', sub: 'Gráficos e análises', route: 'Reports' },
+            { icon: 'people-outline' as const, bg: colors.blueBg, ic: colors.blue, title: 'Clientes', sub: 'Contatos e aniversários', route: 'Clients' },
+            { icon: 'clipboard-outline' as const, bg: colors.greenBg, ic: GREEN, title: 'Encomendas', sub: 'Entregas e pagamento', route: 'Orders' },
+            { icon: 'pricetag-outline' as const, bg: colors.amberBg, ic: colors.amberDark, title: 'Épocas', sub: 'Ajuste sazonal de preços', route: 'Seasons' },
+            { icon: 'cash-outline' as const, bg: colors.purpleBg, ic: colors.purple, title: 'Financeiro', sub: 'Resultado e DRE', route: 'Finance', master: true },
+            { icon: 'cube-outline' as const, bg: '#E9F6FF', ic: colors.blue, title: 'Estoque', sub: 'Baixa automática', route: 'Stock', master: true },
             { icon: 'bulb-outline' as const, bg: '#FFF6D6', ic: '#D99A00', title: 'Dicas de vendas', sub: 'Precificação inteligente e modelos de story para Instagram', route: 'SalesTips', master: true },
           ] as const).map(item => {
             const isMasterItem = 'master' in item && item.master;
@@ -672,8 +673,8 @@ export const HomeScreen: React.FC = () => {
                 activeOpacity={0.8}
               >
                 {locked && (
-                  <View style={[s.proLock, isMasterItem && { backgroundColor: '#EDE4FB' }]}>
-                    <Ionicons name="lock-closed" size={10} color={isMasterItem ? '#7C3AED' : '#C8870B'} />
+                  <View style={[s.proLock, isMasterItem && { backgroundColor: colors.purpleBg }]}>
+                    <Ionicons name="lock-closed" size={10} color={isMasterItem ? colors.purple : colors.amberDark} />
                   </View>
                 )}
                 {!locked && (
@@ -699,7 +700,7 @@ export const HomeScreen: React.FC = () => {
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#FFF1CE', '#FFE3EF']}
+              colors={[colors.amberBg, colors.pinkBg]}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={s.proCta}
@@ -787,7 +788,7 @@ const s = StyleSheet.create({
     height: 26,
     paddingHorizontal: 9,
     borderRadius: 999,
-    shadowColor: '#FFB01F',
+    shadowColor: colors.amber,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
@@ -881,7 +882,7 @@ const s = StyleSheet.create({
     width: '100%',
     height: 168,
     borderRadius: 22,
-    backgroundColor: '#F1E2DA',
+    backgroundColor: colors.border,
     overflow: 'hidden',
   },
   sponsoredFallback: { alignItems: 'flex-start', justifyContent: 'center', padding: 18 },
@@ -902,7 +903,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 14,
     paddingHorizontal: 18,
-    backgroundColor: '#FFF0F6',
+    backgroundColor: colors.pinkBg2,
     borderWidth: 1.5,
     borderColor: '#FFD6E9',
     borderStyle: 'dashed',
@@ -1047,7 +1048,7 @@ const s = StyleSheet.create({
 
   /* ── PRO section ── */
   premBadge: {
-    backgroundColor: '#FFF1CE',
+    backgroundColor: colors.amberBg,
     borderRadius: 999,
     paddingHorizontal: 8,
     paddingVertical: 2,
@@ -1076,7 +1077,7 @@ const s = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 7,
-    backgroundColor: '#FFF1CE',
+    backgroundColor: colors.amberBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1087,7 +1088,7 @@ const s = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 7,
-    backgroundColor: '#DCF6E5',
+    backgroundColor: colors.greenBg,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -1147,7 +1148,7 @@ const s = StyleSheet.create({
     padding: 14,
     paddingHorizontal: 16,
     borderWidth: 1,
-    borderColor: '#FFE3EF',
+    borderColor: colors.pinkBg,
     ...SHADOW,
     shadowOpacity: 0.04,
   },
@@ -1155,7 +1156,7 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#FFF0F6',
+    backgroundColor: colors.pinkBg2,
     alignItems: 'center',
     justifyContent: 'center',
   },

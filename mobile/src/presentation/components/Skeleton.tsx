@@ -1,6 +1,6 @@
+import { colors } from '../theme/colors';
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, ViewStyle } from 'react-native';
-import { colors } from '../theme/colors';
 
 interface SkeletonProps {
   width: number | `${number}%`;

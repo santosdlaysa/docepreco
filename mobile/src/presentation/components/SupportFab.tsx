@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect, useCallback } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,7 +6,6 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { supportApi } from '../../data/api/supportApi';
-import { colors } from '../theme/colors';
 
 export const SupportFab: React.FC = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
@@ -86,7 +86,7 @@ const styles = StyleSheet.create({
     minWidth: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#EF4444',
+    backgroundColor: colors.red,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 5,

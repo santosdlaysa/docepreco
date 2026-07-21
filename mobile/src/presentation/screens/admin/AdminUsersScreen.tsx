@@ -1,3 +1,4 @@
+import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
@@ -8,7 +9,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { adminApi, AdminUser } from '../../../data/api/adminApi';
-import { colors } from '../../theme/colors';
 import { AdminStackParamList } from './types';
 
 type Nav = NativeStackNavigationProp<AdminStackParamList>;

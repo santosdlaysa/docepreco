@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -15,7 +16,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { RootStackParamList } from '../navigation/types';
 import { PdfSettings, pdfSettingsStorage } from '../../data/storage/pdfSettingsStorage';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
@@ -40,18 +40,18 @@ export const PdfSettingsScreen: React.FC = () => {
   const { companyLogo } = useAuth();
 
   const COLOR_PRESETS = [
-    { color: '#E91E63', label: t('pdfSettings.colorRosa') },
-    { color: '#F44336', label: t('pdfSettings.colorVermelho') },
+    { color: colors.primary, label: t('pdfSettings.colorRosa') },
+    { color: colors.error, label: t('pdfSettings.colorVermelho') },
     { color: '#9C27B0', label: t('pdfSettings.colorRoxo') },
     { color: '#2196F3', label: t('pdfSettings.colorAzul') },
     { color: '#4CAF50', label: t('pdfSettings.colorVerde') },
-    { color: '#FF9800', label: t('pdfSettings.colorLaranja') },
+    { color: colors.warning, label: t('pdfSettings.colorLaranja') },
     { color: '#795548', label: t('pdfSettings.colorMarrom') },
     { color: '#607D8B', label: t('pdfSettings.colorCinza') },
   ];
 
   const [settings, setSettings] = useState<PdfSettings>({
-    brandColor: '#E91E63',
+    brandColor: colors.primary,
     hideWatermark: false,
   });
   const [customColor, setCustomColor] = useState('');

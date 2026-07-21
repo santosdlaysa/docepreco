@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -18,21 +19,21 @@ import * as ClipboardModule from 'expo-clipboard';
 import { referralApi, ReferralData, ReferralStatus } from '../../data/api/referralApi';
 
 /* ─── Design tokens (alinhados ao ProfileScreen) ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const AMBER = '#C8870B';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const AMBER = colors.amberDark;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 2 } as const, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3 };
 
 const STATUS_META: Record<ReferralStatus, { label: string; color: string; bg: string; icon: keyof typeof Ionicons.glyphMap }> = {
-  pending: { label: 'Aguardando 1ª receita', color: AMBER, bg: '#FFF1CE', icon: 'hourglass-outline' },
-  valid: { label: 'Validada', color: GREEN, bg: '#DCF6E5', icon: 'checkmark-circle-outline' },
-  rewarded: { label: 'Recompensada', color: PINK, bg: '#FFF0F6', icon: 'gift-outline' },
-  invalid: { label: 'Cancelada', color: INK3, bg: '#F1E2DA', icon: 'close-circle-outline' },
+  pending: { label: 'Aguardando 1ª receita', color: AMBER, bg: colors.amberBg, icon: 'hourglass-outline' },
+  valid: { label: 'Validada', color: GREEN, bg: colors.greenBg, icon: 'checkmark-circle-outline' },
+  rewarded: { label: 'Recompensada', color: PINK, bg: colors.pinkBg2, icon: 'gift-outline' },
+  invalid: { label: 'Cancelada', color: INK3, bg: colors.border, icon: 'close-circle-outline' },
 };
 
 export const ReferralScreen: React.FC = () => {
@@ -212,7 +213,7 @@ const st = StyleSheet.create({
   bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
 
   hero: { alignItems: 'center', paddingHorizontal: 28, paddingTop: 4, paddingBottom: 22 },
-  heroIco: { width: 64, height: 64, borderRadius: 22, backgroundColor: '#FFF0F6', alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
+  heroIco: { width: 64, height: 64, borderRadius: 22, backgroundColor: colors.pinkBg2, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
   heroTitle: { fontSize: 24, fontWeight: '800', color: INK },
   heroSub: { fontSize: 13.5, color: INK2, textAlign: 'center', marginTop: 6, lineHeight: 19 },
 
@@ -221,7 +222,7 @@ const st = StyleSheet.create({
   code: { fontSize: 36, fontWeight: '800', color: INK, letterSpacing: 4, marginTop: 6, marginBottom: 16 },
   codeBtns: { flexDirection: 'row', gap: 10, alignSelf: 'stretch' },
   codeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: PINK, borderRadius: 14, paddingVertical: 13 },
-  codeBtnGhost: { backgroundColor: '#FFF0F6' },
+  codeBtnGhost: { backgroundColor: colors.pinkBg2 },
   codeBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
   gcard: { backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SHADOW },

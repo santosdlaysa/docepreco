@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useCallback, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -28,7 +29,6 @@ import { ingredientApi } from '../../data/api/ingredientApi';
 import { applySaleDeduction } from '../../data/stock/stockStorage';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
-import { colors } from '../theme/colors';
 import { Skeleton } from '../components/Skeleton';
 import { usePaywall } from '../premium/usePaywall';
 import { useToast } from '../context/ToastContext';
@@ -38,13 +38,13 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'Orders'>;
 
 /* ─── Design tokens ─── */
-const INK = '#3D2233';
-const INK2 = '#9A7E8C';
-const INK3 = '#C4B0BB';
-const PINK = '#EA4B92';
-const GREEN = '#43BE6E';
-const CREAM = '#FFF6F0';
-const LINE = '#F1E2DA';
+const INK = colors.text;
+const INK2 = colors.textSecondary;
+const INK3 = colors.textMuted;
+const PINK = colors.primary;
+const GREEN = colors.green;
+const CREAM = colors.pinkBg3;
+const LINE = colors.border;
 const SHADOW = {
   shadowColor: INK,
   shadowOffset: { width: 0, height: 2 } as const,
@@ -274,7 +274,7 @@ export const OrdersScreen: React.FC = () => {
             <View style={{ alignItems: 'flex-end' }}>
               <Text style={st.cardTotal}>{fmtCurrency(item.totalPrice)}</Text>
               <View style={[st.badge, item.paid ? st.badgeGreen : st.badgeYellow]}>
-                <Text style={[st.badgeText, { color: item.paid ? '#1F8A48' : '#8A5A00' }]}>{item.paid ? 'Pago' : 'Não pago'}</Text>
+                <Text style={[st.badgeText, { color: item.paid ? colors.greenDark : '#8A5A00' }]}>{item.paid ? 'Pago' : 'Não pago'}</Text>
               </View>
             </View>
           </View>
@@ -294,7 +294,7 @@ export const OrdersScreen: React.FC = () => {
           {/* Status stages */}
           {isCancelled ? (
             <View style={st.cancelledRow}>
-              <Ionicons name="close-circle" size={16} color="#C0392B" />
+              <Ionicons name="close-circle" size={16} color={colors.redDark} />
               <Text style={st.cancelledText}>Cancelado</Text>
             </View>
           ) : (
@@ -405,7 +405,7 @@ export const OrdersScreen: React.FC = () => {
             <Text style={st.emptyTitle}>Nenhuma encomenda</Text>
             <Text style={st.emptyDesc}>Organize seus pedidos, entregas e pagamentos.</Text>
             <TouchableOpacity onPress={() => navigation.navigate('CreateOrder')} activeOpacity={0.85}>
-              <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.emptyBtn}>
+              <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.emptyBtn}>
                 <Text style={st.emptyBtnText}>Nova encomenda</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -417,7 +417,7 @@ export const OrdersScreen: React.FC = () => {
       <Modal visible={!!saleConfirmOrder} animationType="fade" transparent statusBarTranslucent>
         <View style={st.saleOverlay}>
           <View style={st.saleCard}>
-            <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleIconGrad}>
+            <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleIconGrad}>
               <Ionicons name="storefront-outline" size={32} color="#fff" />
             </LinearGradient>
             <Text style={st.saleTitle}>Lançar nas vendas do dia?</Text>
@@ -446,7 +446,7 @@ export const OrdersScreen: React.FC = () => {
                   if (saleConfirmOrder) await registerSale(saleConfirmOrder);
                   setSaleConfirmOrder(null);
                 }}>
-                <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleBtnYes}>
+                <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleBtnYes}>
                   <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
                   <Text style={st.saleBtnYesText}>Sim, registrar</Text>
                 </LinearGradient>
@@ -493,7 +493,7 @@ export const OrdersScreen: React.FC = () => {
                   })}
                 </View>
                 <TouchableOpacity onPress={handleAddPayment} activeOpacity={0.85}>
-                  <LinearGradient colors={['#FF6AAE', PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.payConfirmBtn}>
+                  <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.payConfirmBtn}>
                     <Ionicons name="checkmark" size={18} color="#fff" />
                     <Text style={st.payConfirmText}>Adicionar pagamento</Text>
                   </LinearGradient>
@@ -539,16 +539,16 @@ const st = StyleSheet.create({
 
   /* badges */
   badge: { marginTop: 4, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 8 },
-  badgeGreen: { backgroundColor: '#DCF6E5' },
-  badgeYellow: { backgroundColor: '#FFF1CE' },
+  badgeGreen: { backgroundColor: colors.greenBg },
+  badgeYellow: { backgroundColor: colors.amberBg },
   badgeText: { fontSize: 11, fontWeight: '700' },
-  onlineBadge: { backgroundColor: '#EDE4FB', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
-  onlineBadgeText: { fontSize: 10, fontWeight: '700', color: '#7C3AED' },
+  onlineBadge: { backgroundColor: colors.purpleBg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+  onlineBadgeText: { fontSize: 10, fontWeight: '700', color: colors.purple },
 
   /* partial payments */
   partialRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 8, flexWrap: 'wrap' },
-  partialBadge: { backgroundColor: '#DCF1FB', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  partialBadgeText: { fontSize: 11, fontWeight: '700', color: '#1A6F96' },
+  partialBadge: { backgroundColor: colors.blueBgSoft, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  partialBadgeText: { fontSize: 11, fontWeight: '700', color: colors.blueDark },
   partialRemaining: { fontSize: 11.5, color: INK2, fontWeight: '600' },
 
   /* status stages */
@@ -560,7 +560,7 @@ const st = StyleSheet.create({
 
   /* cancelled */
   cancelledRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 11, paddingTop: 10, borderTopWidth: 1, borderTopColor: LINE },
-  cancelledText: { fontSize: 13, fontWeight: '700', color: '#C0392B' },
+  cancelledText: { fontSize: 13, fontWeight: '700', color: colors.redDark },
 
   /* delivery */
   deliveryRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, },
@@ -572,7 +572,7 @@ const st = StyleSheet.create({
 
   /* empty */
   empty: { alignItems: 'center', paddingTop: 60, gap: 10, paddingHorizontal: 24 },
-  emptyIco: { width: 72, height: 72, borderRadius: 24, backgroundColor: '#FFF0F6', alignItems: 'center', justifyContent: 'center' },
+  emptyIco: { width: 72, height: 72, borderRadius: 24, backgroundColor: colors.pinkBg2, alignItems: 'center', justifyContent: 'center' },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: INK },
   emptyDesc: { fontSize: 13, color: INK2, fontWeight: '500', textAlign: 'center', lineHeight: 19, maxWidth: 240 },
   emptyBtn: { height: 48, borderRadius: 14, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center', marginTop: 8 },

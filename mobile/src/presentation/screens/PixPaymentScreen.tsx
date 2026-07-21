@@ -1,3 +1,4 @@
+import { colors } from '../theme/colors';
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -16,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { colors } from '../theme/colors';
 import { typography } from '../theme/typography';
 import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
@@ -74,7 +74,7 @@ const MASTER_MONTHLY: PixPlan = {
 };
 const MASTER_ANNUAL: PixPlan = { label: 'Anual', price: 'R$ 300,00', priceCents: 30000, pixCopyPaste: '', qrImage: ANNUAL.qrImage };
 
-const MASTER_PURPLE = '#7C3AED';
+const MASTER_PURPLE = colors.purple;
 
 // Converte a config vinda do painel web no formato usado pela tela.
 // Mantém o QR embutido quando o admin não enviou uma imagem própria.
@@ -337,7 +337,7 @@ export const PixPaymentScreen: React.FC = () => {
                       {dynamicQr.copyPaste}
                     </Text>
                   </View>
-                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: '#E8F5E9' }]}>
+                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: colors.greenBgSoft }]}>
                     <Text style={[styles.copyBtnText, copied && { color: colors.success }]}>
                       {copied ? t('pix.copied') : t('pix.copy')}
                     </Text>
@@ -381,7 +381,7 @@ export const PixPaymentScreen: React.FC = () => {
                       {plan.pixCopyPaste}
                     </Text>
                   </View>
-                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: '#E8F5E9' }]}>
+                  <View style={[styles.copyBtnSmall, copied && { backgroundColor: colors.greenBgSoft }]}>
                     <Text style={[styles.copyBtnText, copied && { color: colors.success }]}>
                       {copied ? t('pix.copied') : t('pix.copy')}
                     </Text>
@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     marginBottom: 16,
   },
-  tierBannerText: { ...typography.body, color: '#7C3AED', fontWeight: '800' },
+  tierBannerText: { ...typography.body, color: colors.purple, fontWeight: '800' },
 
   // Plan selector
   planSelector: {
