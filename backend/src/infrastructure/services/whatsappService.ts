@@ -77,8 +77,8 @@ let webhookConfigured = false;
 const messageStatuses = new Map<string, { status: string; updatedAt: number }>();
 
 export function recordMessageUpdate(payload: unknown): void {
-  type MessageUpdate = { id?: string; remoteJid?: string; key?: { id?: string; remoteJid?: string }; status?: unknown; update?: { status?: unknown } };
-  const root = payload as { data?: MessageUpdate } & MessageUpdate;
+  type MessageUpdate = { id?: string; remoteJid?: string; key?: { id?: string; remoteJid?: string }; status?: unknown; statusReason?: unknown; error?: unknown; update?: { status?: unknown; error?: unknown } };
+  const root = payload as { data?: MessageUpdate; error?: unknown } & MessageUpdate;
   const data = root.data ?? root;
   const id = data.key?.id ?? data.id;
   const rawStatus = data.status ?? data.update?.status;
@@ -87,7 +87,8 @@ export function recordMessageUpdate(payload: unknown): void {
   const remoteJid = data.key?.remoteJid ?? data.remoteJid ?? 'unknown';
   messageStatuses.set(id, { status, updatedAt: Date.now() });
   const log = `[WhatsApp] Message status: ${status} | id=${id} | remoteJid=${remoteJid}`;
-  if (status === 'ERROR') console.error(log);
+  const detail = data.error ?? data.update?.error ?? data.statusReason ?? root.error;
+  if (status === 'ERROR') console.error(detail ? `${log} | detail=${JSON.stringify(detail)}` : log);
   else console.log(log);
 }
 
@@ -114,7 +115,20 @@ async function configureWebhook(): Promise<void> {
 // Reset instance state se necessário (força recriação)
 export function resetInstanceState(): void {
   instanceVerified = false;
+  webhookConfigured = false;
   console.log('[WhatsApp] Instance state resetado - será recriada na próxima requisição');
+}
+
+/** Desconecta a sessão atual e deixa a próxima leitura pronta para gerar outro QR. */
+export async function resetInstance(): Promise<void> {
+  resetInstanceState();
+  try {
+    await logoutInstance();
+  } catch (error) {
+    // Depois de um logout/401 a Evolution pode responder erro porque a sessão
+    // já foi encerrada. Nesse caso ainda devemos continuar até o connect/QR.
+    console.warn('[WhatsApp] Logout anterior não exigiu encerramento adicional:', error);
+  }
 }
 
 async function ensureInstance(): Promise<void> {
@@ -161,7 +175,12 @@ export async function logoutInstance(): Promise<unknown> {
 
 export async function getQrCode(): Promise<{ base64: string; code: string }> {
   await ensureInstance();
-  return evoFetch(`/instance/connect/${EVOLUTION_INSTANCE}`);
+  const res = await evoFetch(`/instance/connect/${EVOLUTION_INSTANCE}`) as Record<string, unknown>;
+  const nested = (res.qrcode ?? {}) as Record<string, unknown>;
+  return {
+    base64: String(res.base64 ?? nested.base64 ?? ''),
+    code: String(res.code ?? res.pairingCode ?? nested.code ?? ''),
+  };
 }
 
 export async function getInstanceStatus(): Promise<{ state: string }> {
@@ -174,6 +193,12 @@ export async function sendWhatsAppMessage(phone: string, message: string): Promi
   console.log(`[WhatsApp] Tentando enviar mensagem para ${phone}`);
 
   await ensureInstance();
+  const connection = await getInstanceStatus();
+  if (connection.state !== 'open') {
+    const error = `WhatsApp não está conectado (estado: ${connection.state}). Reconecte e escaneie um novo QR code antes de enviar.`;
+    console.error(`[WhatsApp] ${error}`);
+    throw new Error(error);
+  }
   let cleanPhone = phone.replace(/\D/g, '');
   if (!cleanPhone.startsWith('55')) cleanPhone = `55${cleanPhone}`;
 
