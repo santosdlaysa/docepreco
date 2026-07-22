@@ -10,6 +10,8 @@ export interface Sale {
   totalRevenue: number;
   discount: number;
   saleDate: string;
+  /** Cliente da venda (opcional): "vendido para fulano". */
+  clientName?: string | null;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
   orderId?: string | null;
@@ -25,6 +27,8 @@ export interface CreateSaleDTO {
   /** Valor do desconto já resolvido em R$ (não percentual). */
   discount?: number;
   saleDate: string;
+  /** Cliente da venda (opcional). */
+  clientName?: string | null;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
   orderId?: string | null;

@@ -77,6 +77,7 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {s.quantitySold}× · {formatDate(s.saleDate)}
                   {s.paymentMethod ? ` · ${PAYMENT_LABEL[s.paymentMethod] || s.paymentMethod}` : ''}
+                  {s.clientName && !s.orderId ? ` · Vendido para ${s.clientName}` : ''}
                   {s.notes ? ` · ${s.notes}` : ''}
                 </p>
               </div>
@@ -127,6 +128,7 @@ export function SaleForm({
   const [quantity, setQuantity] = useState('1');
   const [price, setPrice] = useState('');
   const [date, setDate] = useState(todayISO());
+  const [clientName, setClientName] = useState('');
   const [notes, setNotes] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'credito' | 'debito' | 'pix'>('dinheiro');
   const [saving, setSaving] = useState(false);
@@ -140,6 +142,7 @@ export function SaleForm({
       quantitySold: parseLocaleNumber(quantity) || 1,
       salePrice: parseLocaleNumber(price),
       saleDate: date,
+      clientName: clientName.trim() || undefined,
       notes: notes.trim() || undefined,
       paymentMethod,
     };
@@ -208,6 +211,15 @@ export function SaleForm({
             </select>
           </FormField>
         </div>
+
+        <FormField label="Vendido para (opcional)">
+          <input
+            value={clientName}
+            onChange={e => setClientName(e.target.value)}
+            placeholder="Ex: Dona Ana"
+            className={inputClass}
+          />
+        </FormField>
 
         <FormField label="Observações (opcional)">
           <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />

@@ -91,6 +91,7 @@ export const CreateSaleScreen: React.FC = () => {
   const [discountValue, setDiscountValue] = useState('');
   const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
+  const [clientName, setClientName] = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -139,6 +140,7 @@ export const CreateSaleScreen: React.FC = () => {
           discount,
           saleDate,
           paymentMethod,
+          clientName: clientName.trim() || undefined,
           notes: notes.trim() || undefined,
         });
         let lowStock: { name: string }[] = [];
@@ -160,6 +162,7 @@ export const CreateSaleScreen: React.FC = () => {
           discount,
           saleDate,
           paymentMethod,
+          clientName: clientName.trim() || undefined,
           notes: notes.trim() || undefined,
         });
         await customProductStorage.add(customName.trim());
@@ -341,6 +344,27 @@ export const CreateSaleScreen: React.FC = () => {
                   </TouchableOpacity>
                 );
               })}
+            </View>
+          </View>
+
+          {/* ── Vendido para ── */}
+          <View style={st.field}>
+            <Text style={st.label}>Vendido para (opcional)</Text>
+            <View style={st.input}>
+              <Ionicons name="person-outline" size={18} color={INK3} />
+              <TextInput
+                style={st.inputText}
+                value={clientName}
+                onChangeText={setClientName}
+                placeholder="Ex: Dona Ana"
+                placeholderTextColor={INK3}
+                returnKeyType="done"
+              />
+              {clientName.length > 0 && (
+                <TouchableOpacity onPress={() => setClientName('')}>
+                  <Ionicons name="close-circle" size={18} color={INK3} />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
 

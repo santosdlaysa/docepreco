@@ -161,6 +161,7 @@ export interface Sale {
   salePrice: number;
   totalRevenue: number;
   saleDate: string;
+  clientName?: string | null;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
   orderId?: string | null;
@@ -171,6 +172,7 @@ export interface CreateSaleDTO {
   quantitySold: number;
   salePrice: number;
   saleDate: string;
+  clientName?: string | null;
   notes?: string;
   paymentMethod?: PaymentMethod | null;
 }

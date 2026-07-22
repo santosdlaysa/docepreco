@@ -1,15 +1,16 @@
 import { colors } from '../../theme/colors';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, ActivityIndicator, RefreshControl, Platform,
+  StyleSheet, ActivityIndicator, RefreshControl, Platform, Modal, Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { adminApi, AdminStats, SubscriptionDashboard } from '../../../data/api/adminApi';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { adminApi, AdminStats, SubscriptionDashboard, AdminLogEntry } from '../../../data/api/adminApi';
 import { AdminStackParamList } from './types';
 
 type Nav = NativeStackNavigationProp<AdminStackParamList>;
@@ -52,6 +53,142 @@ function bucketWeekly(timeseries: { date: string; totalBRL: number }[]): { label
       value,
     }));
 }
+
+// ── Sino de notificações (mesmo feed de eventos do admin web) ────────────────
+const EVENT_CONFIG: Record<AdminLogEntry['type'], {
+  icon: keyof typeof Ionicons.glyphMap; color: string; bg: string; label: string;
+}> = {
+  new_user:    { icon: 'person-add-outline',  color: '#16A34A',       bg: '#F0FDF4', label: 'Novo cadastro' },
+  sale:        { icon: 'cart-outline',        color: '#2563EB',       bg: '#EFF6FF', label: 'Nova venda' },
+  premium_on:  { icon: 'star',                color: colors.primary,  bg: colors.primaryLight, label: 'Novo premium' },
+  premium_off: { icon: 'star-outline',        color: '#6B7280',       bg: '#F3F4F6', label: 'Cancelou premium' },
+  suggestion:  { icon: 'chatbubbles-outline', color: '#6366F1',       bg: '#EEF2FF', label: 'Nova sugestão' },
+  pix_request: { icon: 'qr-code-outline',     color: '#CA8A04',       bg: '#FEFCE8', label: 'Solicitação PIX' },
+};
+
+const NOTIF_LAST_SEEN_KEY = '@docepreco_admin_notif_last_seen';
+
+function formatTimeAgo(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'agora';
+  if (mins < 60) return `${mins}min`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+const NotificationBell: React.FC = () => {
+  const [open, setOpen] = useState(false);
+  const [logs, setLogs] = useState<AdminLogEntry[]>([]);
+  const [unread, setUnread] = useState(0);
+  // null = ainda não carregado do AsyncStorage; '' = carregado, mas nunca visto
+  const lastSeenRef = useRef<string | null>(null);
+  const [seenAtOpen, setSeenAtOpen] = useState<string | null>(null);
+
+  const fetchLogs = useCallback(async () => {
+    try {
+      if (lastSeenRef.current === null) {
+        lastSeenRef.current = (await AsyncStorage.getItem(NOTIF_LAST_SEEN_KEY)) ?? '';
+      }
+      const data = await adminApi.getLogs(20);
+      setLogs(data);
+      if (lastSeenRef.current) {
+        setUnread(data.filter(l => l.ts > lastSeenRef.current!).length);
+      } else {
+        setUnread(0);
+        if (data.length > 0) {
+          lastSeenRef.current = data[0].ts;
+          await AsyncStorage.setItem(NOTIF_LAST_SEEN_KEY, data[0].ts);
+        }
+      }
+    } catch { /* silencioso, igual ao web */ }
+  }, []);
+
+  useEffect(() => {
+    fetchLogs();
+    const interval = setInterval(fetchLogs, 30000);
+    return () => clearInterval(interval);
+  }, [fetchLogs]);
+
+  const handleOpen = () => {
+    setSeenAtOpen(lastSeenRef.current || null);
+    setOpen(true);
+    if (logs.length > 0) {
+      lastSeenRef.current = logs[0].ts;
+      AsyncStorage.setItem(NOTIF_LAST_SEEN_KEY, logs[0].ts).catch(() => {});
+      setUnread(0);
+    }
+  };
+
+  return (
+    <>
+      <TouchableOpacity onPress={handleOpen} hitSlop={8} style={bell.btn}>
+        <Ionicons name="notifications-outline" size={22} color="rgba(255,255,255,0.9)" />
+        {unread > 0 && (
+          <View style={bell.badge}>
+            <Text style={bell.badgeText}>{unread > 99 ? '99+' : unread}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <Pressable style={bell.overlay} onPress={() => setOpen(false)}>
+          <Pressable style={bell.panel} onPress={() => {}}>
+            <View style={bell.panelHeader}>
+              <Text style={bell.panelTitle}>Notificações</Text>
+              <TouchableOpacity onPress={() => setOpen(false)} hitSlop={8}>
+                <Ionicons name="close" size={20} color={colors.textMuted} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+              {logs.length === 0 ? (
+                <Text style={bell.empty}>Nenhuma notificação</Text>
+              ) : (
+                logs.map((l, i) => {
+                  const cfg = EVENT_CONFIG[l.type] ?? EVENT_CONFIG.new_user;
+                  const isNew = seenAtOpen ? l.ts > seenAtOpen : false;
+                  return (
+                    <View key={`${l.ts}-${i}`} style={[bell.row, isNew && bell.rowNew, i > 0 && bell.rowBorder]}>
+                      <View style={[bell.iconWrap, { backgroundColor: cfg.bg }]}>
+                        <Ionicons name={cfg.icon} size={14} color={cfg.color} />
+                      </View>
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={bell.rowType}>{cfg.label}</Text>
+                        <Text style={bell.rowLabel} numberOfLines={1}>{l.label}</Text>
+                        {!!l.detail && <Text style={bell.rowDetail} numberOfLines={1}>{l.detail}</Text>}
+                      </View>
+                      <Text style={bell.rowTime}>{formatTimeAgo(l.ts)}</Text>
+                    </View>
+                  );
+                })
+              )}
+            </ScrollView>
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+};
+
+const bell = StyleSheet.create({
+  btn:         { padding: 6 },
+  badge:       { position: 'absolute', top: 0, right: 0, minWidth: 16, height: 16, borderRadius: 8, backgroundColor: '#EF4444', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3 },
+  badgeText:   { color: '#fff', fontSize: 9, fontWeight: '800' },
+  overlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'flex-end', paddingTop: Platform.OS === 'ios' ? 96 : 72, paddingHorizontal: 16 },
+  panel:       { width: 320, maxWidth: '100%', backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  panelHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
+  panelTitle:  { fontSize: 14, fontWeight: '700', color: colors.text },
+  empty:       { textAlign: 'center', color: colors.textMuted, fontSize: 13, paddingVertical: 32 },
+  row:         { flexDirection: 'row', alignItems: 'flex-start', gap: 10, paddingHorizontal: 16, paddingVertical: 10 },
+  rowNew:      { backgroundColor: colors.primaryLight + '55' },
+  rowBorder:   { borderTopWidth: 1, borderTopColor: colors.border },
+  iconWrap:    { width: 30, height: 30, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  rowType:     { fontSize: 10.5, fontWeight: '700', color: colors.textMuted },
+  rowLabel:    { fontSize: 13, fontWeight: '600', color: colors.text, marginTop: 1 },
+  rowDetail:   { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  rowTime:     { fontSize: 10.5, color: colors.textMuted, marginTop: 2 },
+});
 
 // ── Stat Hero (big card no topo) ─────────────────────────────────────────────
 function HeroStat({ value, label }: { value: string | number; label: string }) {
@@ -196,6 +333,7 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
               <Text style={st.headerTitle}>Painel Admin</Text>
               <Text style={st.headerSub}>Doce Preço</Text>
             </View>
+            <NotificationBell />
             <TouchableOpacity onPress={onLogout} hitSlop={8} style={st.logoutBtn}>
               <Ionicons name="log-out-outline" size={22} color="rgba(255,255,255,0.8)" />
             </TouchableOpacity>

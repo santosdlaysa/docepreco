@@ -55,10 +55,10 @@ export class PostgresSaleRepository implements ISaleRepository {
     );
     const sessionId = openSession.rows[0]?.id ?? null;
     const result = await pool.query(`
-      INSERT INTO sales (user_id, recipe_id, product_name, quantity_sold, sale_price, total_revenue, discount, sale_date, notes, payment_method, session_id, order_id)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      INSERT INTO sales (user_id, recipe_id, product_name, quantity_sold, sale_price, total_revenue, discount, sale_date, client_name, notes, payment_method, session_id, order_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
-    `, [userId, data.recipeId || null, data.productName?.trim() || null, data.quantitySold, data.salePrice, totalRevenue, discount, data.saleDate, data.notes || null, data.paymentMethod || null, sessionId, data.orderId || null]);
+    `, [userId, data.recipeId || null, data.productName?.trim() || null, data.quantitySold, data.salePrice, totalRevenue, discount, data.saleDate, data.clientName?.trim() || null, data.notes || null, data.paymentMethod || null, sessionId, data.orderId || null]);
     return this.findById(result.rows[0].id, userId) as Promise<Sale>;
   }
 
@@ -117,6 +117,7 @@ export class PostgresSaleRepository implements ISaleRepository {
       totalRevenue: parseFloat(row.total_revenue as string),
       discount: parseFloat((row.discount as string) ?? '0'),
       saleDate: (row.sale_date as Date).toISOString().split('T')[0],
+      clientName: (row.client_name as string) ?? null,
       notes: row.notes as string | undefined,
       paymentMethod: (row.payment_method as Sale['paymentMethod']) ?? null,
       orderId: (row.order_id as string) ?? null,

@@ -193,12 +193,19 @@ export interface Banner {
   updatedAt: string;
 }
 
+export interface AdminLogEntry {
+  type: 'new_user' | 'sale' | 'premium_on' | 'premium_off' | 'suggestion' | 'pix_request';
+  label: string;
+  detail: string | null;
+  ts: string;
+}
+
 export interface AppNotification {
   id: string;
   title: string;
   body: string;
   dataJson: string | null;
-  target: 'all' | 'premium' | 'free' | 'master';
+  target: 'all' | 'premium' | 'free' | 'master' | 'expired';
   scheduledAt: string | null;
   sentAt: string | null;
   status: 'pending' | 'scheduled' | 'sent' | 'failed';
@@ -417,6 +424,12 @@ export const adminApi = {
 
   async deleteBanner(id: string): Promise<void> {
     await adminClient.delete(`/banners/${id}`);
+  },
+
+  // ── Eventos recentes (sino de notificações, mesmo feed do admin web) ──
+  async getLogs(limit = 20): Promise<AdminLogEntry[]> {
+    const { data } = await adminClient.get(`/admin/logs?limit=${limit}`);
+    return data.data ?? [];
   },
 
   // ── Notificações ── (rota NÃO é /admin/notifications, apenas /notifications)

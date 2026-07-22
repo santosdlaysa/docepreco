@@ -249,6 +249,7 @@ export const demoSaleApi = {
       totalRevenue: data.quantitySold * data.salePrice - discount,
       discount,
       saleDate: data.saleDate,
+      clientName: data.clientName ?? null,
       notes: data.notes,
       paymentMethod: data.paymentMethod,
       createdAt: now(),

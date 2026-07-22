@@ -224,6 +224,11 @@ export const SalesScreen: React.FC = () => {
                     <Ionicons name="calendar-outline" size={11} color="#B04A85" />
                     <Text style={st.orderBadgeText} numberOfLines={1}>{item.notes || 'Encomenda'}</Text>
                   </View>
+                ) : item.clientName ? (
+                  <View style={st.orderBadge}>
+                    <Ionicons name="person-outline" size={11} color="#B04A85" />
+                    <Text style={st.orderBadgeText} numberOfLines={1}>Vendido para {item.clientName}</Text>
+                  </View>
                 ) : null}
               </View>
               <Text style={st.gv}>{fmtCurrency(item.totalRevenue)}</Text>

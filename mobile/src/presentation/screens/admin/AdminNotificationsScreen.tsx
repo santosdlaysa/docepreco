@@ -2,19 +2,29 @@ import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator,
-  Alert, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView,
+  Alert, RefreshControl, Modal, TextInput, KeyboardAvoidingView, Platform, ScrollView, Switch,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { adminApi, AppNotification } from '../../../data/api/adminApi';
 
-const TARGETS: { value: 'all' | 'premium' | 'free'; label: string }[] = [
+const TARGETS: { value: AppNotification['target']; label: string }[] = [
   { value: 'all', label: 'Todos' },
   { value: 'premium', label: 'Premium' },
-  { value: 'free', label: 'Grátis' },
+  { value: 'master', label: 'Master' },
+  { value: 'free', label: 'Gratuito' },
+  { value: 'expired', label: 'Plano expirado' },
 ];
 const targetLabel = (t: AppNotification['target']) => TARGETS.find(x => x.value === t)?.label ?? t;
+
+const TARGET_COLORS: Record<AppNotification['target'], string> = {
+  all: colors.textSecondary,
+  premium: '#B45309',
+  master: '#9333EA',
+  free: '#2563EB',
+  expired: '#D97706',
+};
 
 const STATUS: Record<AppNotification['status'], { label: string; color: string }> = {
   pending: { label: 'Pendente', color: '#F59E0B' },
@@ -25,7 +35,23 @@ const STATUS: Record<AppNotification['status'], { label: string; color: string }
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleString('pt-BR');
 
-const EMPTY_FORM = { title: '', body: '', target: 'all' as 'all' | 'premium' | 'free' };
+const EMPTY_FORM = {
+  title: '',
+  body: '',
+  target: 'all' as AppNotification['target'],
+  schedule: false,
+  scheduledAt: '',
+};
+
+// Aceita "DD/MM/AAAA HH:MM" (não há date picker nativo no projeto)
+const parseSchedule = (raw: string): Date | null => {
+  const m = raw.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})[\s,]+(\d{2}):(\d{2})$/);
+  if (!m) return null;
+  const [dd, mm, yyyy, hh, min] = m.slice(1).map(Number);
+  const d = new Date(yyyy, mm - 1, dd, hh, min);
+  if (d.getDate() !== dd || d.getMonth() !== mm - 1 || hh > 23 || min > 59) return null;
+  return d;
+};
 
 export const AdminNotificationsScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -51,13 +77,22 @@ export const AdminNotificationsScreen: React.FC = () => {
       Alert.alert('Atenção', 'Preencha o título e o corpo da notificação.');
       return;
     }
+    let scheduledAt: string | undefined;
+    if (form.schedule) {
+      const d = parseSchedule(form.scheduledAt);
+      if (!d) {
+        Alert.alert('Atenção', 'Informe a data de agendamento no formato DD/MM/AAAA HH:MM.');
+        return;
+      }
+      scheduledAt = d.toISOString();
+    }
     setSaving(true);
     try {
-      // scheduledAt omitido de propósito: envia imediatamente ao criar (sem UI de agendamento nesta versão)
       await adminApi.createNotification({
         title: form.title.trim(),
         body: form.body.trim(),
         target: form.target,
+        scheduledAt,
       });
       setModalVisible(false);
       await load();
@@ -118,8 +153,8 @@ export const AdminNotificationsScreen: React.FC = () => {
             return (
               <View style={[styles.card, isActing && { opacity: 0.5 }]}>
                 <View style={styles.cardHeader}>
-                  <View style={styles.targetBadge}>
-                    <Text style={styles.targetText}>{targetLabel(n.target)}</Text>
+                  <View style={[styles.targetBadge, { backgroundColor: TARGET_COLORS[n.target] + '20' }]}>
+                    <Text style={[styles.targetText, { color: TARGET_COLORS[n.target] }]}>{targetLabel(n.target)}</Text>
                   </View>
                   <View style={[styles.statusBadge, { backgroundColor: status.color + '20' }]}>
                     <Text style={[styles.statusText, { color: status.color }]}>{status.label}</Text>
@@ -135,6 +170,9 @@ export const AdminNotificationsScreen: React.FC = () => {
                   <Text style={styles.metaText}>{fmtDate(n.createdAt)}</Text>
                   {n.status === 'sent' && <Text style={styles.metaText}>{n.recipientsCount} destinatário(s)</Text>}
                 </View>
+                {!!n.scheduledAt && n.status !== 'sent' && (
+                  <Text style={styles.metaText}>Agendada para {fmtDate(n.scheduledAt)}</Text>
+                )}
                 {canSend && (
                   <TouchableOpacity onPress={() => handleResend(n)} disabled={isActing} style={styles.sendBtn}>
                     {isActing ? <ActivityIndicator size="small" color="#fff" /> : (
@@ -203,11 +241,31 @@ export const AdminNotificationsScreen: React.FC = () => {
                 ))}
               </View>
 
-              <Text style={styles.hint}>A notificação é enviada imediatamente ao criar (agendamento não está disponível neste app).</Text>
+              <View style={styles.scheduleRow}>
+                <Text style={styles.scheduleLabel}>Agendar envio</Text>
+                <Switch
+                  value={form.schedule}
+                  onValueChange={v => setForm(f => ({ ...f, schedule: v }))}
+                  trackColor={{ false: colors.border, true: colors.primary }}
+                  thumbColor="#fff"
+                />
+              </View>
+              {form.schedule ? (
+                <TextInput
+                  style={styles.input}
+                  value={form.scheduledAt}
+                  onChangeText={t => setForm(f => ({ ...f, scheduledAt: t }))}
+                  placeholder="DD/MM/AAAA HH:MM"
+                  placeholderTextColor={colors.textMuted}
+                  keyboardType="numbers-and-punctuation"
+                />
+              ) : (
+                <Text style={styles.hint}>Sem agendamento, a notificação é enviada imediatamente ao criar.</Text>
+              )}
 
               <TouchableOpacity onPress={handleSend} disabled={saving} style={styles.saveBtn}>
                 {saving ? <ActivityIndicator size="small" color="#fff" /> : (
-                  <Text style={styles.saveText}>Enviar notificação</Text>
+                  <Text style={styles.saveText}>{form.schedule ? 'Agendar notificação' : 'Enviar notificação'}</Text>
                 )}
               </TouchableOpacity>
             </ScrollView>
@@ -250,6 +308,8 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   chipTextActive: { color: '#fff' },
   hint: { fontSize: 11, color: colors.textMuted, marginTop: 10 },
+  scheduleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 },
+  scheduleLabel: { fontSize: 13, fontWeight: '600', color: colors.textSecondary },
   saveBtn: { backgroundColor: colors.primary, borderRadius: 12, paddingVertical: 14, alignItems: 'center', marginTop: 20, marginBottom: 12 },
   saveText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

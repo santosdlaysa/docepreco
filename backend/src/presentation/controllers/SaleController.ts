@@ -29,7 +29,7 @@ export class SaleController {
 
   async create(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const { recipeId, productName, quantitySold, salePrice, discount, saleDate, notes, paymentMethod } = req.body;
+      const { recipeId, productName, quantitySold, salePrice, discount, saleDate, clientName, notes, paymentMethod } = req.body;
       if ((!recipeId && !productName?.trim()) || !quantitySold || !salePrice || !saleDate) {
         res.status(400).json({ success: false, error: 'recipeId ou productName, quantitySold, salePrice e saleDate são obrigatórios' });
         return;
@@ -44,7 +44,7 @@ export class SaleController {
         }
       }
       const sale = await saleRepo.create(
-        { recipeId: recipeId || null, productName: productName?.trim() || null, quantitySold: Number(quantitySold), salePrice: Number(salePrice), discount: discount != null ? Number(discount) : undefined, saleDate, notes, paymentMethod },
+        { recipeId: recipeId || null, productName: productName?.trim() || null, quantitySold: Number(quantitySold), salePrice: Number(salePrice), discount: discount != null ? Number(discount) : undefined, saleDate, clientName: typeof clientName === 'string' ? clientName.trim() || null : null, notes, paymentMethod },
         req.userId!
       );
 
