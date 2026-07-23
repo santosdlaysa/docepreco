@@ -1137,6 +1137,42 @@ export async function runMigrations() {
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_winback_user_status ON winback_offers (user_id, status)`);
 
+    // Assinaturas recorrentes via Pix Automático (Mercado Pago preapproval).
+    // O usuário autoriza uma vez pelo init_point; cada cobrança aprovada chega
+    // pelo webhook 'subscription_authorized_payment' e estende o premium.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pix_subscriptions (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        mp_preapproval_id VARCHAR(100),
+        plan_tier VARCHAR(20) NOT NULL DEFAULT 'premium',
+        plan_label VARCHAR(100) NOT NULL DEFAULT 'Mensal',
+        amount_cents INTEGER NOT NULL,
+        frequency_months INTEGER NOT NULL DEFAULT 1,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'authorized', 'paused', 'cancelled')),
+        init_point TEXT,
+        last_charge_at TIMESTAMP,
+        created_at TIMESTAMP DEFAULT NOW(),
+        updated_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pix_subscriptions_user ON pix_subscriptions (user_id, created_at DESC)`);
+    await client.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_pix_subscriptions_preapproval ON pix_subscriptions (mp_preapproval_id) WHERE mp_preapproval_id IS NOT NULL`);
+
+    // Cobranças individuais da recorrência. O UNIQUE em mp_payment_id garante
+    // que webhooks reenviados pelo MP não estendam o premium duas vezes.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS pix_subscription_charges (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        subscription_id UUID NOT NULL REFERENCES pix_subscriptions(id) ON DELETE CASCADE,
+        mp_payment_id VARCHAR(100) NOT NULL UNIQUE,
+        amount_cents INTEGER,
+        status VARCHAR(30) NOT NULL,
+        created_at TIMESTAMP DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_pix_sub_charges_sub ON pix_subscription_charges (subscription_id, created_at DESC)`);
+
     // Backfill idempotente dos valores já registrados (só toca linhas sem valor).
     // Stripe: o product_id codifica tier+plano (ex.: 'stripe_premium_monthly') → preço fixo conhecido.
     await client.query(`

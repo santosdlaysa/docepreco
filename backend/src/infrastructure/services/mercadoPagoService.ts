@@ -67,6 +67,143 @@ export async function createMpPixPayment(opts: {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Assinaturas (preapproval) — renovação automática via Pix Automático.
+// O pagador autoriza uma única vez pelo init_point (checkout do MP) e as
+// cobranças seguintes acontecem sozinhas na recorrência definida.
+// ---------------------------------------------------------------------------
+
+export interface MpPreapproval {
+  preapprovalId: string;
+  initPoint: string; // link onde o pagador autoriza a recorrência
+  status: string;    // 'pending' | 'authorized' | 'paused' | 'cancelled'
+}
+
+/**
+ * Cria uma assinatura (preapproval) sem meio de pagamento definido.
+ * O pagador escolhe Pix Automático (ou cartão) ao abrir o init_point.
+ * @param externalReference - ID da pix_subscription no nosso banco
+ */
+export async function createMpPreapproval(opts: {
+  amountCents: number;
+  reason: string;
+  payerEmail: string;
+  externalReference: string;
+  frequencyMonths: number; // 1 = mensal, 12 = anual
+  backUrl: string;
+}): Promise<MpPreapproval> {
+  const token = getAccessToken();
+
+  const response = await fetch(`${MP_BASE_URL}/preapproval`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      'X-Idempotency-Key': opts.externalReference,
+    },
+    body: JSON.stringify({
+      reason: opts.reason,
+      external_reference: opts.externalReference,
+      payer_email: opts.payerEmail,
+      auto_recurring: {
+        frequency: opts.frequencyMonths,
+        frequency_type: 'months',
+        transaction_amount: opts.amountCents / 100,
+        currency_id: 'BRL',
+      },
+      back_url: opts.backUrl,
+      status: 'pending',
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`[MercadoPago] Erro ao criar assinatura: ${err}`);
+  }
+
+  const data = await response.json() as any;
+  return {
+    preapprovalId: String(data.id),
+    initPoint: data.init_point ?? '',
+    status: data.status ?? 'pending',
+  };
+}
+
+/** Consulta o status atual de uma assinatura no Mercado Pago. */
+export async function getMpPreapproval(preapprovalId: string): Promise<{
+  status: string;
+  externalReference: string;
+  nextPaymentDate: string | null;
+}> {
+  const token = getAccessToken();
+
+  const response = await fetch(`${MP_BASE_URL}/preapproval/${preapprovalId}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`[MercadoPago] Erro ao consultar assinatura ${preapprovalId}: ${err}`);
+  }
+
+  const data = await response.json() as any;
+  return {
+    status: data.status ?? 'pending',
+    externalReference: data.external_reference ?? '',
+    nextPaymentDate: data.next_payment_date ?? null,
+  };
+}
+
+/** Cancela uma assinatura no Mercado Pago (o pagador para de ser cobrado). */
+export async function cancelMpPreapproval(preapprovalId: string): Promise<void> {
+  const token = getAccessToken();
+
+  const response = await fetch(`${MP_BASE_URL}/preapproval/${preapprovalId}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({ status: 'cancelled' }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`[MercadoPago] Erro ao cancelar assinatura ${preapprovalId}: ${err}`);
+  }
+}
+
+/**
+ * Consulta uma cobrança recorrente (authorized payment) de uma assinatura.
+ * O webhook 'subscription_authorized_payment' entrega só o id — os detalhes
+ * (assinatura dona, status do pagamento) vêm desta consulta.
+ */
+export async function getMpAuthorizedPayment(authorizedPaymentId: string): Promise<{
+  preapprovalId: string;
+  amountCents: number;
+  paymentId: string | null;
+  paymentStatus: string | null;
+}> {
+  const token = getAccessToken();
+
+  const response = await fetch(`${MP_BASE_URL}/authorized_payments/${authorizedPaymentId}`, {
+    headers: { 'Authorization': `Bearer ${token}` },
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`[MercadoPago] Erro ao consultar cobrança ${authorizedPaymentId}: ${err}`);
+  }
+
+  const data = await response.json() as any;
+  return {
+    preapprovalId: String(data.preapproval_id ?? ''),
+    amountCents: Math.round((data.transaction_amount ?? 0) * 100),
+    paymentId: data.payment?.id ? String(data.payment.id) : null,
+    paymentStatus: data.payment?.status ?? null,
+  };
+}
+
 /**
  * Consulta o status de um pagamento no Mercado Pago.
  * Retorna o status ('approved', 'pending', 'rejected', etc.) e o external_reference.

@@ -5,7 +5,14 @@ import { notifyPremiumEvent, notifyPixRequest } from '../../infrastructure/servi
 import { AuthRequest } from '../middleware/authMiddleware';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
-import { createMpPixPayment, getMpPaymentInfo } from '../../infrastructure/services/mercadoPagoService';
+import {
+  createMpPixPayment,
+  getMpPaymentInfo,
+  createMpPreapproval,
+  getMpPreapproval,
+  cancelMpPreapproval,
+  getMpAuthorizedPayment,
+} from '../../infrastructure/services/mercadoPagoService';
 import { PostgresBannerRepository } from '../../infrastructure/repositories/PostgresBannerRepository';
 import { getActiveOffer, applyDiscount, attachPixRequest, redeemByPixRequest } from '../../infrastructure/services/winbackService';
 
@@ -178,6 +185,289 @@ export class PixController {
   }
 
   /**
+   * User creates a recurring subscription via Pix Automático (mobile).
+   * POST /api/pix/subscription
+   * Body: { planLabel?: string, amountCents: number, planTier?: 'premium'|'master', frequencyMonths?: number }
+   *
+   * Cria um preapproval no Mercado Pago e devolve o init_point — o link onde o
+   * usuário autoriza a recorrência uma única vez (Pix Automático ou cartão).
+   * As cobranças seguintes chegam pelo webhook e estendem o premium sozinhas.
+   */
+  async createSubscription(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    const { planLabel, amountCents, planTier, frequencyMonths } = req.body as {
+      planLabel?: string;
+      amountCents?: number;
+      planTier?: 'premium' | 'master';
+      frequencyMonths?: number;
+    };
+    const tier: 'premium' | 'master' = planTier === 'master' ? 'master' : 'premium';
+    const months = frequencyMonths === 12 ? 12 : 1;
+    const label = planLabel ?? (months === 12 ? 'Anual' : 'Mensal');
+
+    if (!amountCents || amountCents <= 0) {
+      res.status(400).json({ success: false, error: 'amountCents is required' });
+      return;
+    }
+
+    try {
+      // Já existe assinatura em andamento → devolve ela (com o link, se ainda pendente)
+      const existing = await pool.query(
+        `SELECT id, status, plan_label, plan_tier, amount_cents, frequency_months, init_point
+         FROM pix_subscriptions
+         WHERE user_id = $1 AND status IN ('pending', 'authorized')
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId]
+      );
+      if (existing.rows.length > 0) {
+        const row = existing.rows[0];
+        res.json({
+          success: true,
+          data: {
+            id: row.id,
+            status: row.status,
+            planLabel: row.plan_label,
+            planTier: row.plan_tier,
+            amountCents: row.amount_cents,
+            frequencyMonths: row.frequency_months,
+            initPoint: row.status === 'pending' ? row.init_point : null,
+            alreadyExists: true,
+          },
+        });
+        return;
+      }
+
+      const user = await userRepo.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      const inserted = await pool.query(
+        `INSERT INTO pix_subscriptions (user_id, plan_tier, plan_label, amount_cents, frequency_months)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        [userId, tier, label, amountCents, months]
+      );
+      const subscriptionId: string = inserted.rows[0].id;
+
+      let mp;
+      try {
+        mp = await createMpPreapproval({
+          amountCents,
+          reason: `DocePreço ${tier === 'master' ? 'Master' : 'Premium'} ${label} (renovação automática)`,
+          payerEmail: user.email,
+          externalReference: subscriptionId,
+          frequencyMonths: months,
+          backUrl: `${process.env.APP_BASE_URL}/api/pix/subscription/return`,
+        });
+      } catch (mpErr) {
+        // Sem preapproval não há assinatura — remove a linha para o usuário poder tentar de novo
+        await pool.query(`DELETE FROM pix_subscriptions WHERE id = $1`, [subscriptionId]);
+        console.error('[PIX] Erro ao criar assinatura no MP:', mpErr);
+        res.status(502).json({ success: false, error: 'Não foi possível criar a assinatura no Mercado Pago. Tente novamente.' });
+        return;
+      }
+
+      await pool.query(
+        `UPDATE pix_subscriptions SET mp_preapproval_id = $1, init_point = $2, updated_at = NOW() WHERE id = $3`,
+        [mp.preapprovalId, mp.initPoint, subscriptionId]
+      );
+
+      res.status(201).json({
+        success: true,
+        data: {
+          id: subscriptionId,
+          status: 'pending',
+          planLabel: label,
+          planTier: tier,
+          amountCents,
+          frequencyMonths: months,
+          initPoint: mp.initPoint,
+        },
+      });
+    } catch (error) {
+      console.error('[PIX] Create subscription error:', error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
+   * User checks their subscription (mobile).
+   * GET /api/pix/subscription
+   *
+   * Enquanto pendente, sincroniza o status direto no MP — assim a autorização
+   * aparece no app mesmo se o webhook atrasar ou se perder.
+   */
+  async getSubscription(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT id, status, plan_label, plan_tier, amount_cents, frequency_months,
+                init_point, mp_preapproval_id, last_charge_at, created_at
+         FROM pix_subscriptions
+         WHERE user_id = $1 AND status <> 'cancelled'
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId]
+      );
+
+      if (result.rows.length === 0) {
+        res.json({ success: true, data: null });
+        return;
+      }
+
+      const row = result.rows[0];
+      let status: string = row.status;
+      let nextPaymentDate: string | null = null;
+
+      if (row.mp_preapproval_id) {
+        try {
+          const mp = await getMpPreapproval(row.mp_preapproval_id);
+          nextPaymentDate = mp.nextPaymentDate;
+          if (mp.status !== status && ['pending', 'authorized', 'paused', 'cancelled'].includes(mp.status)) {
+            status = mp.status;
+            await pool.query(
+              `UPDATE pix_subscriptions SET status = $1, updated_at = NOW() WHERE id = $2`,
+              [status, row.id]
+            );
+          }
+        } catch (mpErr) {
+          console.error('[PIX] Erro ao sincronizar assinatura no MP:', mpErr);
+        }
+      }
+
+      res.json({
+        success: true,
+        data: {
+          id: row.id,
+          status,
+          planLabel: row.plan_label,
+          planTier: row.plan_tier,
+          amountCents: row.amount_cents,
+          frequencyMonths: row.frequency_months,
+          initPoint: status === 'pending' ? row.init_point : null,
+          lastChargeAt: row.last_charge_at,
+          nextPaymentDate,
+          createdAt: row.created_at,
+        },
+      });
+    } catch (error) {
+      console.error('[PIX] Get subscription error:', error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
+   * User cancels their recurring subscription (mobile).
+   * DELETE /api/pix/subscription
+   *
+   * Cancela só a recorrência — o período já pago continua valendo até o
+   * premium_until, e o usuário volta a renovar manualmente se quiser.
+   */
+  async cancelSubscription(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const result = await pool.query(
+        `SELECT id, mp_preapproval_id FROM pix_subscriptions
+         WHERE user_id = $1 AND status IN ('pending', 'authorized', 'paused')
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId]
+      );
+      if (result.rows.length === 0) {
+        res.status(404).json({ success: false, error: 'No active subscription' });
+        return;
+      }
+
+      const row = result.rows[0];
+      if (row.mp_preapproval_id) {
+        try {
+          await cancelMpPreapproval(row.mp_preapproval_id);
+        } catch (mpErr) {
+          console.error('[PIX] Erro ao cancelar assinatura no MP:', mpErr);
+        }
+      }
+
+      await pool.query(
+        `UPDATE pix_subscriptions SET status = 'cancelled', updated_at = NOW() WHERE id = $1`,
+        [row.id]
+      );
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error('[PIX] Cancel subscription error:', error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
+   * Página de retorno do checkout de assinatura (back_url do Mercado Pago).
+   * GET /api/pix/subscription/return
+   */
+  async subscriptionReturn(_req: Request, res: Response): Promise<void> {
+    res.status(200).send(`<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DocePreço</title>
+<style>body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#FFF8F0;color:#3D2C29;text-align:center;padding:24px}div{max-width:340px}h1{font-size:22px}p{color:#7A6663}</style>
+</head><body><div>
+<h1>Tudo certo! 🎉</h1>
+<p>Recebemos sua autorização. Pode fechar esta página e voltar para o app DocePreço — a confirmação aparece em instantes.</p>
+</div></body></html>`);
+  }
+
+  /**
+   * Admin lists recurring PIX subscriptions.
+   * GET /api/admin/pix-subscriptions
+   */
+  async listSubscriptions(_req: Request, res: Response): Promise<void> {
+    try {
+      const result = await pool.query(
+        `SELECT s.id, s.user_id, s.status, s.plan_label, s.plan_tier, s.amount_cents,
+                s.frequency_months, s.last_charge_at, s.created_at,
+                u.company_name, u.email, u.premium_until
+         FROM pix_subscriptions s
+         JOIN users u ON u.id = s.user_id
+         ORDER BY s.created_at DESC
+         LIMIT 200`
+      );
+      res.json({
+        success: true,
+        data: result.rows.map(r => ({
+          id: r.id,
+          userId: r.user_id,
+          status: r.status,
+          planLabel: r.plan_label,
+          planTier: r.plan_tier,
+          amountCents: r.amount_cents,
+          frequencyMonths: r.frequency_months,
+          lastChargeAt: r.last_charge_at,
+          createdAt: r.created_at,
+          companyName: r.company_name,
+          email: r.email,
+          premiumUntil: r.premium_until,
+        })),
+      });
+    } catch (error) {
+      console.error('[PIX] List subscriptions error:', error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
    * Admin lists PIX requests.
    * GET /api/admin/pix-requests?status=pending
    */
@@ -337,11 +627,25 @@ export class PixController {
     res.status(200).json({ received: true });
 
     try {
-      const { type, data } = req.body as { type?: string; data?: { id?: string } };
+      const body = req.body as { type?: string; topic?: string; data?: { id?: string } };
+      const type = body.type ?? body.topic;
+      const dataId = body.data?.id ? String(body.data.id) : null;
 
-      if (type !== 'payment' || !data?.id) return;
+      if (!type || !dataId) return;
 
-      const paymentId = String(data.id);
+      // Eventos de assinatura recorrente (Pix Automático)
+      if (type === 'subscription_preapproval') {
+        await this.handlePreapprovalEvent(dataId);
+        return;
+      }
+      if (type === 'subscription_authorized_payment') {
+        await this.handleSubscriptionChargeEvent(dataId);
+        return;
+      }
+
+      if (type !== 'payment') return;
+
+      const paymentId = dataId;
 
       // Consulta o pagamento no MP para confirmar status
       let mpInfo: { status: string; externalReference: string };
@@ -440,6 +744,140 @@ export class PixController {
     } catch (err) {
       console.error('[PIX Webhook] Erro inesperado:', err);
     }
+  }
+
+  /**
+   * Webhook 'subscription_preapproval' — mudança de status da assinatura
+   * (autorizada, pausada ou cancelada pelo usuário no banco/MP).
+   */
+  private async handlePreapprovalEvent(preapprovalId: string): Promise<void> {
+    let mp: { status: string; externalReference: string };
+    try {
+      mp = await getMpPreapproval(preapprovalId);
+    } catch (err) {
+      console.error('[PIX Webhook] Erro ao consultar preapproval no MP:', err);
+      return;
+    }
+
+    const result = await pool.query(
+      `SELECT id, user_id, status FROM pix_subscriptions WHERE mp_preapproval_id = $1`,
+      [preapprovalId]
+    );
+    if (result.rows.length === 0) {
+      console.warn(`[PIX Webhook] Assinatura não encontrada para preapproval ${preapprovalId}`);
+      return;
+    }
+
+    const row = result.rows[0];
+    if (!['pending', 'authorized', 'paused', 'cancelled'].includes(mp.status) || mp.status === row.status) return;
+
+    await pool.query(
+      `UPDATE pix_subscriptions SET status = $1, updated_at = NOW() WHERE id = $2`,
+      [mp.status, row.id]
+    );
+    console.log(`[PIX Webhook] Assinatura ${row.id}: ${row.status} → ${mp.status}`);
+
+    // Recém-autorizada → avisa o usuário que a renovação automática está ativa
+    if (mp.status === 'authorized' && row.status === 'pending') {
+      const tokens = await pushTokenRepo.findByUserId(row.user_id);
+      if (tokens.length > 0) {
+        await sendPushNotifications(
+          tokens.map(t => t.token),
+          'Renovação automática ativada! 🎉',
+          'Seu Pix Automático foi autorizado. Sua assinatura do DocePreço agora renova sozinha.',
+          { screen: 'Home' }
+        );
+      }
+    }
+  }
+
+  /**
+   * Webhook 'subscription_authorized_payment' — cobrança recorrente da
+   * assinatura. Cada cobrança aprovada estende o premium pelo período do plano.
+   */
+  private async handleSubscriptionChargeEvent(authorizedPaymentId: string): Promise<void> {
+    let charge: { preapprovalId: string; amountCents: number; paymentId: string | null; paymentStatus: string | null };
+    try {
+      charge = await getMpAuthorizedPayment(authorizedPaymentId);
+    } catch (err) {
+      console.error('[PIX Webhook] Erro ao consultar cobrança recorrente no MP:', err);
+      return;
+    }
+
+    if (charge.paymentStatus !== 'approved' || !charge.preapprovalId) return;
+
+    const result = await pool.query(
+      `SELECT id, user_id, plan_tier, plan_label, amount_cents, frequency_months, status
+       FROM pix_subscriptions WHERE mp_preapproval_id = $1`,
+      [charge.preapprovalId]
+    );
+    if (result.rows.length === 0) {
+      console.warn(`[PIX Webhook] Assinatura não encontrada para cobrança ${authorizedPaymentId}`);
+      return;
+    }
+
+    const sub = result.rows[0];
+    // O MP reenvia webhooks — o UNIQUE em mp_payment_id garante crédito único por cobrança
+    const chargeKey = charge.paymentId ?? `authorized_${authorizedPaymentId}`;
+    const insertResult = await pool.query(
+      `INSERT INTO pix_subscription_charges (subscription_id, mp_payment_id, amount_cents, status)
+       VALUES ($1, $2, $3, 'approved')
+       ON CONFLICT (mp_payment_id) DO NOTHING
+       RETURNING id`,
+      [sub.id, chargeKey, charge.amountCents || sub.amount_cents]
+    );
+    if (insertResult.rows.length === 0) {
+      console.log(`[PIX Webhook] Cobrança ${chargeKey} já processada`);
+      return;
+    }
+
+    const tier: 'premium' | 'master' = sub.plan_tier === 'master' ? 'master' : 'premium';
+    const months: number = sub.frequency_months ?? 1;
+    const premiumDays = months === 12 ? 365 : 30 * months;
+    const premiumUntil = new Date();
+    premiumUntil.setDate(premiumUntil.getDate() + premiumDays);
+
+    await userRepo.updatePlanTier(sub.user_id, tier, premiumUntil, 'manual');
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*)::int AS total FROM pix_subscription_charges WHERE subscription_id = $1`,
+      [sub.id]
+    );
+    const isFirstCharge = (countResult.rows[0]?.total ?? 1) <= 1;
+
+    await pool.query(
+      `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents)
+       VALUES ($1, $2, 'pix', 'manual', $3, $4, 'PIX', $5)`,
+      [
+        sub.user_id,
+        isFirstCharge ? 'INITIAL_PURCHASE' : 'RENEWAL',
+        tier === 'master' ? 'pix_auto_master' : 'pix_auto_premium',
+        premiumUntil,
+        charge.amountCents || sub.amount_cents,
+      ]
+    );
+
+    await pool.query(
+      `UPDATE pix_subscriptions SET status = 'authorized', last_charge_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      [sub.id]
+    );
+
+    const tokens = await pushTokenRepo.findByUserId(sub.user_id);
+    if (tokens.length > 0) {
+      await sendPushNotifications(
+        tokens.map(t => t.token),
+        isFirstCharge ? 'Pagamento aprovado! 🎉' : 'Assinatura renovada! 🎉',
+        isFirstCharge
+          ? 'Seu Pix Automático foi confirmado. Aproveite o DocePreço Premium!'
+          : 'Sua assinatura do DocePreço foi renovada automaticamente via Pix. Bons negócios!',
+        { screen: 'Home' }
+      );
+    }
+
+    const user = await userRepo.findById(sub.user_id);
+    notifyPremiumEvent(user?.companyName ?? 'Usuário', isFirstCharge ? 'PIX_AUTO_APPROVED' : 'PIX_AUTO_RENEWAL', 'pix');
+
+    console.log(`[PIX Webhook] Assinatura ${sub.id} ${isFirstCharge ? 'iniciada' : 'renovada'} — premium até ${premiumUntil.toISOString()}`);
   }
 
   /**

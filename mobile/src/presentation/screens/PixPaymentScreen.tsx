@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   ImageSourcePropType,
+  Linking,
 } from 'react-native';
 import * as ClipboardModule from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -20,7 +21,7 @@ import { RootStackParamList } from '../navigation/types';
 import { typography } from '../theme/typography';
 import { useToast } from '../context/ToastContext';
 import { usePremium } from '../context/PremiumContext';
-import { pixApi, LEGACY_MONTHLY_CENTS } from '../../data/api/pixApi';
+import { pixApi, LEGACY_MONTHLY_CENTS, PixSubscription } from '../../data/api/pixApi';
 import { planConfigApi, PixPlanConfig } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
 
@@ -113,6 +114,11 @@ export const PixPaymentScreen: React.FC = () => {
   const [serverAnnual, setServerAnnual] = useState<PixPlan | null>(null);
   const [serverMasterMonthly, setServerMasterMonthly] = useState<PixPlan | null>(null);
   const [serverMasterAnnual, setServerMasterAnnual] = useState<PixPlan | null>(null);
+  // Renovação automática (Pix Automático): 'auto' assina; 'once' gera o QR avulso
+  const [mode, setMode] = useState<'auto' | 'once'>('auto');
+  const [subscription, setSubscription] = useState<PixSubscription | null>(null);
+  // Link de autorização aberto no navegador — aguardando o usuário confirmar
+  const [subWaiting, setSubWaiting] = useState(false);
 
   const monthlyPlan = isMaster
     ? (serverMasterMonthly ?? MASTER_MONTHLY)
@@ -137,6 +143,18 @@ export const PixPaymentScreen: React.FC = () => {
           if (status.mp_qr_code && status.mp_qr_code_base64) {
             setDynamicQr({ copyPaste: status.mp_qr_code, base64: status.mp_qr_code_base64 });
           }
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Assinatura recorrente existente (ativa ou aguardando autorização)
+  useEffect(() => {
+    (async () => {
+      try {
+        const sub = await pixApi.getSubscription();
+        if (sub && (sub.status === 'authorized' || sub.status === 'pending')) {
+          setSubscription(sub);
         }
       } catch {}
     })();
@@ -181,6 +199,81 @@ export const PixPaymentScreen: React.FC = () => {
     }
   };
 
+  // Cria a assinatura e abre o link do Mercado Pago onde o usuário autoriza
+  // o Pix Automático uma única vez — depois disso renova sozinho.
+  const handleSubscribe = async () => {
+    setSending(true);
+    try {
+      const frequencyMonths = selectedPlan === 'annual' && showAnnual ? 12 : 1;
+      const sub = await pixApi.subscribe(plan.label, plan.priceCents, tier, frequencyMonths);
+      setSubscription(sub);
+      if (sub.status === 'authorized') {
+        showToast('Sua renovação automática já está ativa!', 'success');
+        return;
+      }
+      if (sub.initPoint) {
+        setSubWaiting(true);
+        await Linking.openURL(sub.initPoint);
+      } else {
+        showToast('Não foi possível gerar o link de autorização. Tente novamente.', 'error');
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : t('pix.requestError');
+      showToast(msg, 'error');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleOpenAuthorization = async () => {
+    if (subscription?.initPoint) {
+      await Linking.openURL(subscription.initPoint);
+    }
+  };
+
+  const handleCheckSubscription = useCallback(async () => {
+    setChecking(true);
+    try {
+      const sub = await pixApi.getSubscription();
+      if (sub) setSubscription(sub);
+      if (sub?.status === 'authorized') {
+        showToast('Renovação automática ativada! 🎉', 'success');
+        await refresh();
+        setSubWaiting(false);
+      } else {
+        showToast('Autorização ainda não confirmada. Conclua no site do Mercado Pago ou no app do seu banco.', 'info');
+      }
+    } catch {
+      showToast(t('pix.checkError'), 'error');
+    } finally {
+      setChecking(false);
+    }
+  }, [refresh, showToast, t]);
+
+  const handleCancelSubscription = () => {
+    Alert.alert(
+      'Cancelar renovação automática',
+      'Seu plano continua ativo até o fim do período já pago. Deseja mesmo cancelar a renovação automática?',
+      [
+        { text: 'Manter', style: 'cancel' },
+        {
+          text: 'Cancelar renovação',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await pixApi.cancelSubscription();
+              setSubscription(null);
+              setSubWaiting(false);
+              showToast('Renovação automática cancelada.', 'success');
+            } catch {
+              showToast('Não foi possível cancelar. Tente novamente.', 'error');
+            }
+          },
+        },
+      ]
+    );
+  };
+
   const handleCheckStatus = useCallback(async () => {
     setChecking(true);
     try {
@@ -221,6 +314,24 @@ export const PixPaymentScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [sent, refresh, navigation, showToast, t]);
 
+  // Poll da autorização do Pix Automático a cada 5s enquanto o link está aberto
+  useEffect(() => {
+    if (!subWaiting) return;
+    const interval = setInterval(async () => {
+      try {
+        const sub = await pixApi.getSubscription();
+        if (sub?.status === 'authorized') {
+          clearInterval(interval);
+          setSubscription(sub);
+          setSubWaiting(false);
+          showToast('Renovação automática ativada! 🎉', 'success');
+          await refresh();
+        }
+      } catch {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [subWaiting, refresh, showToast]);
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.headerBar}>
@@ -232,7 +343,73 @@ export const PixPaymentScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {!sent ? (
+        {subscription?.status === 'authorized' ? (
+          /* Renovação automática ativa — painel de gestão */
+          <View style={styles.waitingContainer}>
+            <View style={[styles.waitingIcon, { backgroundColor: colors.greenBgSoft }]}>
+              <Ionicons name="sync-circle" size={52} color={colors.success} />
+            </View>
+            <Text style={styles.waitingTitle}>Renovação automática ativa</Text>
+            <Text style={styles.waitingSubtitle}>
+              Sua assinatura {subscription.planLabel.toLowerCase()} renova sozinha via Pix Automático
+              {subscription.nextPaymentDate
+                ? ` — próxima cobrança em ${new Date(subscription.nextPaymentDate).toLocaleDateString('pt-BR')}`
+                : ''}.
+            </Text>
+            <View style={styles.waitingSteps}>
+              <View style={styles.waitingStep}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                <Text style={styles.waitingStepText}>Autorização confirmada no seu banco</Text>
+              </View>
+              <View style={styles.waitingStep}>
+                <Ionicons name="sync" size={24} color={colors.success} />
+                <Text style={styles.waitingStepText}>Cobrança automática — sem esquecer o pagamento</Text>
+              </View>
+            </View>
+            <TouchableOpacity style={styles.cancelSubBtn} onPress={handleCancelSubscription} activeOpacity={0.7}>
+              <Text style={styles.cancelSubText}>Cancelar renovação automática</Text>
+            </TouchableOpacity>
+          </View>
+        ) : subWaiting ? (
+          /* Link de autorização aberto — aguardando o usuário confirmar */
+          <View style={styles.waitingContainer}>
+            <View style={styles.waitingIcon}>
+              <Ionicons name="phone-portrait-outline" size={44} color={accent} />
+            </View>
+            <Text style={styles.waitingTitle}>Autorize o Pix Automático</Text>
+            <Text style={styles.waitingSubtitle}>
+              Conclua a autorização na página que abrimos. Você autoriza uma única vez — depois a assinatura renova sozinha.
+            </Text>
+            <View style={styles.waitingSteps}>
+              <View style={styles.waitingStep}>
+                <Ionicons name="checkmark-circle" size={24} color={colors.success} />
+                <Text style={styles.waitingStepText}>Link de autorização gerado</Text>
+              </View>
+              <View style={styles.waitingStep}>
+                <ActivityIndicator size="small" color={accent} style={{ width: 24 }} />
+                <Text style={styles.waitingStepText}>Aguardando autorização...</Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={[styles.cta, { marginTop: 24, alignSelf: 'stretch', backgroundColor: accent, shadowColor: accent }]}
+              onPress={handleCheckSubscription}
+              disabled={checking}
+              activeOpacity={0.85}
+            >
+              {checking ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <>
+                  <Ionicons name="refresh" size={20} color="#fff" />
+                  <Text style={styles.ctaText}>Já autorizei — verificar</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.linkBtn} onPress={handleOpenAuthorization} activeOpacity={0.7}>
+              <Text style={[styles.linkBtnText, { color: accent }]}>Abrir link de autorização novamente</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !sent ? (
           <>
             {/* Tier banner */}
             {isMaster && (
@@ -273,27 +450,77 @@ export const PixPaymentScreen: React.FC = () => {
               )}
             </View>
 
+            {/* Modo de pagamento: renovação automática (Pix Automático) ou avulso */}
+            <View style={styles.modeSelector}>
+              <TouchableOpacity
+                style={[styles.modeCard, mode === 'auto' && [styles.modeCardActive, { borderColor: accent }]]}
+                onPress={() => setMode('auto')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.modeHeader}>
+                  <Ionicons name="sync" size={18} color={mode === 'auto' ? accent : colors.textMuted} />
+                  <Text style={[styles.modeTitle, mode === 'auto' && { color: colors.text }]}>Pix Automático</Text>
+                  <View style={[styles.recommendBadge, { backgroundColor: accent }]}>
+                    <Text style={styles.recommendBadgeText}>Recomendado</Text>
+                  </View>
+                </View>
+                <Text style={styles.modeDesc}>
+                  Autorize uma única vez e a assinatura renova sozinha — sem risco de esquecer o pagamento.
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeCard, mode === 'once' && [styles.modeCardActive, { borderColor: accent }]]}
+                onPress={() => setMode('once')}
+                activeOpacity={0.8}
+              >
+                <View style={styles.modeHeader}>
+                  <Ionicons name="qr-code-outline" size={18} color={mode === 'once' ? accent : colors.textMuted} />
+                  <Text style={[styles.modeTitle, mode === 'once' && { color: colors.text }]}>Pix comum</Text>
+                </View>
+                <Text style={styles.modeDesc}>Pague com QR agora e renove manualmente a cada período.</Text>
+              </TouchableOpacity>
+            </View>
+
             {/* Instrução breve */}
             <View style={styles.infoCard}>
               <Text style={styles.infoTitle}>{t('pix.howToPay')}</Text>
-              <View style={styles.step}>
-                <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
-                <Text style={styles.stepText}>Clique em "Gerar QR de Pagamento" abaixo</Text>
-              </View>
-              <View style={styles.step}>
-                <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
-                <Text style={styles.stepText}>Escaneie o QR ou copie o código no seu banco</Text>
-              </View>
-              <View style={styles.step}>
-                <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
-                <Text style={styles.stepText}>Confirme o pagamento — o acesso é liberado automaticamente</Text>
-              </View>
+              {mode === 'auto' ? (
+                <>
+                  <View style={styles.step}>
+                    <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
+                    <Text style={styles.stepText}>Clique em "Ativar renovação automática" abaixo</Text>
+                  </View>
+                  <View style={styles.step}>
+                    <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
+                    <Text style={styles.stepText}>Autorize o Pix Automático na página do Mercado Pago</Text>
+                  </View>
+                  <View style={styles.step}>
+                    <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
+                    <Text style={styles.stepText}>Pronto — o acesso é liberado e renova sozinho todo período</Text>
+                  </View>
+                </>
+              ) : (
+                <>
+                  <View style={styles.step}>
+                    <View style={styles.stepNumber}><Text style={styles.stepNumberText}>1</Text></View>
+                    <Text style={styles.stepText}>Clique em "Gerar QR de Pagamento" abaixo</Text>
+                  </View>
+                  <View style={styles.step}>
+                    <View style={styles.stepNumber}><Text style={styles.stepNumberText}>2</Text></View>
+                    <Text style={styles.stepText}>Escaneie o QR ou copie o código no seu banco</Text>
+                  </View>
+                  <View style={styles.step}>
+                    <View style={styles.stepNumber}><Text style={styles.stepNumberText}>3</Text></View>
+                    <Text style={styles.stepText}>Confirme o pagamento — o acesso é liberado automaticamente</Text>
+                  </View>
+                </>
+              )}
             </View>
 
-            {/* CTA — gera QR no Mercado Pago */}
+            {/* CTA — assina (Pix Automático) ou gera QR avulso no Mercado Pago */}
             <TouchableOpacity
               style={[styles.cta, { backgroundColor: accent, shadowColor: accent }]}
-              onPress={handleGenerateQr}
+              onPress={mode === 'auto' ? handleSubscribe : handleGenerateQr}
               disabled={sending}
               activeOpacity={0.85}
             >
@@ -301,8 +528,10 @@ export const PixPaymentScreen: React.FC = () => {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Ionicons name="qr-code-outline" size={20} color="#fff" />
-                  <Text style={styles.ctaText}>Gerar QR de Pagamento</Text>
+                  <Ionicons name={mode === 'auto' ? 'sync' : 'qr-code-outline'} size={20} color="#fff" />
+                  <Text style={styles.ctaText}>
+                    {mode === 'auto' ? 'Ativar renovação automática' : 'Gerar QR de Pagamento'}
+                  </Text>
                 </>
               )}
             </TouchableOpacity>
@@ -481,6 +710,33 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   saveBadgeText: { ...typography.caption, color: '#fff', fontWeight: '800', fontSize: 10 },
+
+  // Mode selector (Pix Automático × Pix comum)
+  modeSelector: { gap: 10, marginBottom: 24 },
+  modeCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 2,
+    borderColor: colors.border,
+  },
+  modeCardActive: { backgroundColor: colors.cream },
+  modeHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  modeTitle: { ...typography.body, color: colors.textSecondary, fontWeight: '700' },
+  modeDesc: { ...typography.bodySmall, color: colors.textMuted, marginTop: 6 },
+  recommendBadge: {
+    marginLeft: 'auto',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
+  },
+  recommendBadgeText: { ...typography.caption, color: '#fff', fontWeight: '800', fontSize: 10 },
+
+  // Subscription management
+  cancelSubBtn: { marginTop: 24, paddingVertical: 12, paddingHorizontal: 16 },
+  cancelSubText: { ...typography.body, color: colors.error, fontWeight: '600' },
+  linkBtn: { marginTop: 14, paddingVertical: 8 },
+  linkBtnText: { ...typography.body, fontWeight: '600' },
 
   // QR Code
   qrContainer: { alignItems: 'center', marginBottom: 16 },
