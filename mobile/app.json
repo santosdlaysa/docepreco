@@ -63,7 +63,8 @@
           "androidAppId": "ca-app-pub-6632812168210069~8756904139",
           "iosAppId": "ca-app-pub-6632812168210069~2824966319"
         }
-      ]
+      ],
+      "expo-web-browser"
     ]
   }
 }

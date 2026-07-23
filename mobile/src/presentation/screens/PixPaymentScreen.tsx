@@ -10,8 +10,8 @@ import {
   Alert,
   Image,
   ImageSourcePropType,
-  Linking,
 } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
 import * as ClipboardModule from 'expo-clipboard';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -213,7 +213,9 @@ export const PixPaymentScreen: React.FC = () => {
       }
       if (sub.initPoint) {
         setSubWaiting(true);
-        await Linking.openURL(sub.initPoint);
+        // Browser embutido: o checkout do MP abre por cima do app e, ao fechar,
+        // o usuário volta direto para a tela de "aguardando autorização"
+        await WebBrowser.openBrowserAsync(sub.initPoint);
       } else {
         showToast('Não foi possível gerar o link de autorização. Tente novamente.', 'error');
       }
@@ -227,7 +229,7 @@ export const PixPaymentScreen: React.FC = () => {
 
   const handleOpenAuthorization = async () => {
     if (subscription?.initPoint) {
-      await Linking.openURL(subscription.initPoint);
+      await WebBrowser.openBrowserAsync(subscription.initPoint);
     }
   };
 
