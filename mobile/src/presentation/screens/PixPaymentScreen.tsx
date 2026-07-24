@@ -99,6 +99,11 @@ export const PixPaymentScreen: React.FC = () => {
   const tier: 'premium' | 'master' = route.params?.tier === 'master' ? 'master' : 'premium';
   const isMaster = tier === 'master';
   const accent = isMaster ? MASTER_PURPLE : colors.primary;
+  // Upgrade Premium → Master pagando só a diferença: a cobrança já foi criada no
+  // backend antes de navegar. Aqui só mostramos o QR (o getStatus abaixo o carrega).
+  const isUpgrade = route.params?.upgrade === true;
+  const upgradeDiffCents = route.params?.diffCents;
+  const fmtCents = (c?: number) => (typeof c === 'number' ? `R$ ${(c / 100).toFixed(2).replace('.', ',')}` : '');
 
   const [selectedPlan, setSelectedPlan] = useState<PlanType>(route.params?.plan === 'annual' ? 'annual' : 'monthly');
   const [sending, setSending] = useState(false);
@@ -345,7 +350,13 @@ export const PixPaymentScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {subscription?.status === 'authorized' ? (
+        {isUpgrade && !sent ? (
+          /* Upgrade: cobrança sendo carregada (criada no backend antes de navegar) */
+          <View style={styles.waitingContainer}>
+            <ActivityIndicator size="large" color={accent} />
+            <Text style={[styles.waitingSubtitle, { marginTop: 16 }]}>Gerando a cobrança da diferença…</Text>
+          </View>
+        ) : !isUpgrade && subscription?.status === 'authorized' ? (
           /* Renovação automática ativa — painel de gestão */
           <View style={styles.waitingContainer}>
             <View style={[styles.waitingIcon, { backgroundColor: colors.greenBgSoft }]}>
@@ -543,9 +554,21 @@ export const PixPaymentScreen: React.FC = () => {
           <View style={styles.waitingContainer}>
             {dynamicQr ? (
               <>
-                <Text style={[styles.waitingTitle, { marginBottom: 4 }]}>Pague com PIX</Text>
+                <Text style={[styles.waitingTitle, { marginBottom: 4 }]}>
+                  {isUpgrade ? 'Falta só a diferença' : 'Pague com PIX'}
+                </Text>
+                {isUpgrade && (
+                  <View style={[styles.tierBanner, { marginBottom: 12 }]}>
+                    <Ionicons name="diamond" size={15} color={MASTER_PURPLE} />
+                    <Text style={styles.tierBannerText}>
+                      Upgrade para Master{upgradeDiffCents ? ` · ${fmtCents(upgradeDiffCents)}` : ''}
+                    </Text>
+                  </View>
+                )}
                 <Text style={[styles.waitingSubtitle, { marginBottom: 16 }]}>
-                  Escaneie o QR ou copie o código abaixo. O acesso é liberado automaticamente após o pagamento.
+                  {isUpgrade
+                    ? 'Pague a diferença abaixo e seu plano vira Master automaticamente após a confirmação.'
+                    : 'Escaneie o QR ou copie o código abaixo. O acesso é liberado automaticamente após o pagamento.'}
                 </Text>
 
                 {/* QR dinâmico do Mercado Pago */}

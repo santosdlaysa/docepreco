@@ -14,6 +14,8 @@ router.get('/pix/subscription/return', (req, res) => controller.subscriptionRetu
 
 // Mobile endpoints (JWT-authenticated)
 router.post('/pix/request', authMiddleware, (req, res) => controller.createRequest(req as any, res));
+router.get('/pix/upgrade/preview', authMiddleware, (req, res) => controller.previewUpgrade(req as any, res));
+router.post('/pix/upgrade', authMiddleware, (req, res) => controller.createUpgradeRequest(req as any, res));
 router.get('/pix/status', authMiddleware, (req, res) => controller.getStatus(req as any, res));
 
 // Assinatura recorrente via Pix Automático

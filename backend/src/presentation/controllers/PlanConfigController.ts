@@ -35,7 +35,7 @@ interface PlanConfig {
   adBanner: AdBannerConfig;
 }
 
-const DEFAULT_PIX: PixConfig = {
+export const DEFAULT_PIX: PixConfig = {
   monthly: {
     amountCents: 1490,
     priceLabel: 'R$ 14,90',
@@ -77,6 +77,43 @@ const DEFAULTS: PlanConfig = {
   pix: DEFAULT_PIX,
   adBanner: DEFAULT_AD_BANNER,
 };
+
+/**
+ * Lê os valores (em centavos) dos 4 planos PIX direto do app_settings, com
+ * fallback para os defaults. Fonte canônica de preço no servidor — usada, por
+ * exemplo, para calcular a diferença de um upgrade Premium → Master sem confiar
+ * em valor enviado pelo app.
+ */
+export async function getPixAmountCents(): Promise<{
+  monthly: number;
+  annual: number;
+  masterMonthly: number;
+  masterAnnual: number;
+}> {
+  const result = await pool.query(
+    `SELECT key, value FROM app_settings
+     WHERE key IN ('plan_pix_monthly', 'plan_pix_annual', 'plan_pix_monthly_master', 'plan_pix_annual_master')`
+  );
+  const settings: Record<string, string> = {};
+  for (const row of result.rows) settings[row.key] = row.value;
+
+  const parse = (raw: string | undefined, fallback: number): number => {
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw) as Partial<PixPlanConfig>;
+      return typeof parsed.amountCents === 'number' && parsed.amountCents > 0 ? parsed.amountCents : fallback;
+    } catch {
+      return fallback;
+    }
+  };
+
+  return {
+    monthly: parse(settings.plan_pix_monthly, DEFAULT_PIX.monthly.amountCents),
+    annual: parse(settings.plan_pix_annual, DEFAULT_PIX.annual.amountCents),
+    masterMonthly: parse(settings.plan_pix_monthly_master, DEFAULT_PIX.masterMonthly.amountCents),
+    masterAnnual: parse(settings.plan_pix_annual_master, DEFAULT_PIX.masterAnnual.amountCents),
+  };
+}
 
 /** Faz merge raso de um PixPlanConfig parcial com o default correspondente. */
 function mergePixPlan(stored: Partial<PixPlanConfig> | undefined, fallback: PixPlanConfig): PixPlanConfig {

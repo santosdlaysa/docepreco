@@ -29,7 +29,7 @@ import {
   isRevenueCatConfigured,
 } from '../../data/premium/revenueCat';
 import { authApi } from '../../data/api/authApi';
-import { pixApi, LEGACY_MONTHLY_CENTS } from '../../data/api/pixApi';
+import { pixApi, LEGACY_MONTHLY_CENTS, UpgradePreview } from '../../data/api/pixApi';
 import { stripeApi } from '../../data/api/stripeApi';
 import { planConfigApi } from '../../data/api/planConfigApi';
 import { useTranslation } from 'react-i18next';
@@ -118,6 +118,10 @@ export const PaywallScreen: React.FC = () => {
   const [premiumTrialDays, setPremiumTrialDays] = useState<number | null>(null);
   const [masterTrialDays, setMasterTrialDays] = useState<number | null>(null);
 
+  // Upgrade Premium → Master pela diferença (só quem comprou o Premium hoje é elegível)
+  const [upgradeInfo, setUpgradeInfo] = useState<UpgradePreview | null>(null);
+  const [upgrading, setUpgrading] = useState(false);
+
   // Troca de nível: limpa as seleções para não carregar um plano de outro tier
   const switchTier = (next: 'premium' | 'master') => {
     setTier(next);
@@ -152,6 +156,17 @@ export const PaywallScreen: React.FC = () => {
       } catch {}
     })();
   }, []);
+
+  // Quem já é Premium (comprado hoje) pode migrar para o Master pagando só a
+  // diferença. Consulta o backend uma vez — sem criar cobrança.
+  useEffect(() => {
+    if (!isPremium) return;
+    (async () => {
+      try {
+        setUpgradeInfo(await pixApi.previewUpgrade());
+      } catch {}
+    })();
+  }, [isPremium]);
 
   // Mantém o premiumRef em dia para o loop de polling poder encerrar cedo
   useEffect(() => { premiumRef.current = isPremium; }, [isPremium]);
@@ -238,6 +253,24 @@ export const PaywallScreen: React.FC = () => {
   const accent = isMasterTier ? PURPLE : PINK;
   // PIX disponível para o nível: Premium sempre; Master só após configuração no painel
   const pixAvailable = isMasterTier ? masterPixAvailable : true;
+
+  // Cria a cobrança da diferença e leva para a tela de PIX já com o QR do upgrade.
+  const handleUpgrade = async () => {
+    setUpgrading(true);
+    try {
+      const result = await pixApi.upgradeToMaster();
+      navigation.navigate('PixPayment', {
+        tier: 'master',
+        upgrade: true,
+        diffCents: result.diff_cents ?? result.amount_cents,
+      });
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || 'Não foi possível iniciar o upgrade. Assine o Master normalmente.';
+      showToast(msg, 'error');
+    } finally {
+      setUpgrading(false);
+    }
+  };
 
   const handleCardPayment = async (plan: 'monthly' | 'annual') => {
     setCardLoading(true);
@@ -350,6 +383,24 @@ export const PaywallScreen: React.FC = () => {
               <Text style={st.tierTabPrice}>R$ {masterPrice.toFixed(2).replace('.', ',')}/mês</Text>
             </TouchableOpacity>
           </View>
+
+          {/* ── Upgrade Premium → Master pela diferença (só quem comprou o Premium hoje) ── */}
+          {isMasterTier && upgradeInfo?.eligible && typeof upgradeInfo.diffCents === 'number' && (
+            <View style={st.upgradeBanner}>
+              <View style={st.upgradeIcon}>
+                <Ionicons name="sparkles" size={18} color={PURPLE} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.upgradeTitle}>Você já é Premium!</Text>
+                <Text style={st.upgradeText}>
+                  Migre para o Master pagando só a diferença de {fmtBRL(upgradeInfo.diffCents / 100)}.
+                </Text>
+              </View>
+              <TouchableOpacity onPress={handleUpgrade} disabled={upgrading} activeOpacity={0.85} style={st.upgradeBtn}>
+                {upgrading ? <ActivityIndicator color="#fff" size="small" /> : <Text style={st.upgradeBtnText}>Pagar diferença</Text>}
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* ── Features ── */}
           <View style={st.featCard}>
@@ -634,6 +685,37 @@ const st = StyleSheet.create({
     borderRadius: 999,
   },
   tierTabBadgeText: { fontSize: 9.5, fontWeight: '800', color: '#fff', letterSpacing: 0.4 },
+
+  /* upgrade Premium → Master pela diferença */
+  upgradeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#F4EEFD',
+    borderRadius: 16,
+    padding: 14,
+    borderWidth: 1.5,
+    borderColor: PURPLE,
+  },
+  upgradeIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeTitle: { fontSize: 14, fontWeight: '800', color: PURPLE },
+  upgradeText: { fontSize: 12.5, fontWeight: '600', color: INK2, marginTop: 2, lineHeight: 16 },
+  upgradeBtn: {
+    backgroundColor: PURPLE,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  upgradeBtnText: { fontSize: 13, fontWeight: '800', color: '#fff' },
 
   /* "em breve" (Master ainda não vendável) */
   soon: {

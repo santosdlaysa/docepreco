@@ -33,6 +33,20 @@ export interface PixSubscription {
  *  esse valor mantêm o preço de R$ 10,00 na renovação (preço "grandfathered"). */
 export const LEGACY_MONTHLY_CENTS = 1000;
 
+/** Elegibilidade e valor de um upgrade Premium → Master pela diferença. */
+export interface UpgradePreview {
+  eligible: boolean;
+  /** Diferença a pagar, em centavos (só quando eligible). */
+  diffCents?: number;
+  /** Preço cheio do Master, em centavos (só quando eligible). */
+  masterCents?: number;
+  /** Valor pago hoje no Premium, em centavos (só quando eligible). */
+  premiumPaidCents?: number;
+  isAnnual?: boolean;
+  /** Código do motivo quando não elegível (ex.: PREMIUM_NOT_TODAY). */
+  reason?: string;
+}
+
 export const pixApi = {
   createRequest: async (
     planLabel: string,
@@ -45,6 +59,18 @@ export const pixApi = {
 
   getStatus: async (): Promise<PixRequest | null> => {
     const response = await apiClient.get('/pix/status');
+    return response.data.data;
+  },
+
+  /** Consulta (sem cobrar) se dá para migrar de Premium para Master pagando só a diferença. */
+  previewUpgrade: async (): Promise<UpgradePreview> => {
+    const response = await apiClient.get('/pix/upgrade/preview');
+    return response.data.data;
+  },
+
+  /** Cria a cobrança PIX do upgrade Premium → Master (só a diferença) e devolve o QR. */
+  upgradeToMaster: async (): Promise<PixRequest & { diff_cents?: number; master_cents?: number }> => {
+    const response = await apiClient.post('/pix/upgrade', {});
     return response.data.data;
   },
 

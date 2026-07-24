@@ -681,10 +681,10 @@ export const api = {
   // ── PIX Requests ──
   listPixRequests: (status: string = 'pending') =>
     req<PixRequestItem[]>(`/admin/pix-requests?status=${status}`),
-  approvePixRequest: (id: string, days: number = 30, planTier?: 'premium' | 'master') =>
+  approvePixRequest: (id: string, days: number = 30, planTier?: 'premium' | 'master', amountCents?: number) =>
     req<{ userId: string; premiumUntil: string }>(`/admin/pix-requests/${id}/approve`, {
       method: 'POST',
-      body: JSON.stringify({ days, planTier }),
+      body: JSON.stringify({ days, planTier, amountCents }),
     }),
   rejectPixRequest: (id: string) =>
     req<void>(`/admin/pix-requests/${id}/reject`, { method: 'POST' }),

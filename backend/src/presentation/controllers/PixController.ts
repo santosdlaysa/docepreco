@@ -15,6 +15,8 @@ import {
 } from '../../infrastructure/services/mercadoPagoService';
 import { PostgresBannerRepository } from '../../infrastructure/repositories/PostgresBannerRepository';
 import { getActiveOffer, applyDiscount, attachPixRequest, redeemByPixRequest } from '../../infrastructure/services/winbackService';
+import { getActiveTier } from '../../domain/services/premium';
+import { getPixAmountCents } from './PlanConfigController';
 
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -147,6 +149,211 @@ export class PixController {
       });
     } catch (error) {
       console.error('[PIX] Create request error:', error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
+   * Calcula a elegibilidade e o valor de um upgrade Premium → Master pela
+   * DIFERENÇA. Regras (todas exigidas):
+   * - Usuário com Premium vigente AGORA (não free, não já master).
+   * - Compra do Premium feita no MESMO DIA (fuso de Brasília). Fora disso, o
+   *   cliente assina o Master normalmente pelo valor cheio.
+   * - Diferença = (preço Master do ciclo) − (valor exato pago hoje no Premium),
+   *   tudo calculado no servidor. Nunca confia em valor enviado pelo app.
+   *
+   * Retorna erro estruturado (com código) ou os valores em centavos.
+   */
+  private async computeUpgrade(
+    userId: string
+  ): Promise<
+    | { ok: false; status: number; error: string; message: string }
+    | { ok: true; diffCents: number; masterCents: number; premiumPaidCents: number; isAnnual: boolean; label: string }
+  > {
+    const user = await userRepo.findById(userId);
+    if (!user) return { ok: false, status: 404, error: 'USER_NOT_FOUND', message: 'Usuário não encontrado.' };
+
+    const activeTier = getActiveTier(user);
+    if (activeTier === 'master') {
+      return { ok: false, status: 409, error: 'ALREADY_MASTER', message: 'Você já tem o plano Master ativo.' };
+    }
+    if (activeTier !== 'premium') {
+      return {
+        ok: false,
+        status: 409,
+        error: 'NO_ACTIVE_PREMIUM',
+        message: 'O upgrade com diferença é só para quem está com o Premium vigente. Assine o Master normalmente.',
+      };
+    }
+
+    // Compra de Premium feita HOJE (fuso de Brasília) — base para a diferença.
+    // Aceita PIX avulso ('pix_premium') e Pix Automático ('pix_auto_premium').
+    const premiumBuy = await pool.query(
+      `SELECT amount_cents FROM premium_events
+       WHERE user_id = $1
+         AND source = 'pix'
+         AND product_id IS NOT NULL AND product_id NOT ILIKE '%master%'
+         AND amount_cents IS NOT NULL AND amount_cents > 0
+         AND (created_at AT TIME ZONE 'America/Sao_Paulo')::date
+             = (NOW() AT TIME ZONE 'America/Sao_Paulo')::date
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    if (premiumBuy.rows.length === 0) {
+      return {
+        ok: false,
+        status: 409,
+        error: 'PREMIUM_NOT_TODAY',
+        message: 'A diferença só vale no mesmo dia da compra do Premium. Para trocar agora, assine o Master normalmente.',
+      };
+    }
+    const premiumPaidCents: number = premiumBuy.rows[0].amount_cents;
+
+    // Ciclo (mensal/anual) inferido pelo valor pago — mais próximo de qual preço de tabela.
+    const prices = await getPixAmountCents();
+    const isAnnual = Math.abs(premiumPaidCents - prices.annual) < Math.abs(premiumPaidCents - prices.monthly);
+    const masterCents = isAnnual ? prices.masterAnnual : prices.masterMonthly;
+    const diffCents = masterCents - premiumPaidCents;
+
+    if (diffCents <= 0) {
+      return { ok: false, status: 400, error: 'NO_DIFFERENCE', message: 'Não há diferença a cobrar para este upgrade.' };
+    }
+
+    return {
+      ok: true,
+      diffCents,
+      masterCents,
+      premiumPaidCents,
+      isAnnual,
+      label: `Upgrade para Master (${isAnnual ? 'Anual' : 'Mensal'})`,
+    };
+  }
+
+  /**
+   * Consulta se o usuário pode fazer upgrade pela diferença e quanto seria,
+   * SEM criar cobrança (dry-run). Usado para exibir o banner no paywall.
+   * GET /api/pix/upgrade/preview
+   */
+  async previewUpgrade(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+    try {
+      const calc = await this.computeUpgrade(userId);
+      if (!calc.ok) {
+        res.json({ success: true, data: { eligible: false, reason: calc.error } });
+        return;
+      }
+      res.json({
+        success: true,
+        data: {
+          eligible: true,
+          diffCents: calc.diffCents,
+          masterCents: calc.masterCents,
+          premiumPaidCents: calc.premiumPaidCents,
+          isAnnual: calc.isAnnual,
+        },
+      });
+    } catch (error) {
+      console.error('[PIX] Preview upgrade error:', error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    }
+  }
+
+  /**
+   * Cria a cobrança PIX do upgrade Premium → Master pela diferença (mobile).
+   * POST /api/pix/upgrade
+   *
+   * Ao aprovar (webhook/admin), o fluxo normal já concede 'master' por 30 dias
+   * novos — é o comportamento "renovar 30 dias + diferença".
+   */
+  async createUpgradeRequest(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const calc = await this.computeUpgrade(userId);
+      if (!calc.ok) {
+        res.status(calc.status).json({ success: false, error: calc.error, message: calc.message });
+        return;
+      }
+      const { diffCents, masterCents, label } = calc;
+
+      const user = await userRepo.findById(userId);
+
+      // Reaproveita um pedido de upgrade ainda pendente e com o mesmo valor (evita QR duplicado).
+      const existing = await pool.query(
+        `SELECT id, status, amount_cents, mp_qr_code, mp_qr_code_base64 FROM pix_requests
+         WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription' AND plan_tier = 'master'
+         ORDER BY created_at DESC LIMIT 1`,
+        [userId]
+      );
+      if (existing.rows.length > 0 && existing.rows[0].amount_cents === diffCents && existing.rows[0].mp_qr_code) {
+        const row = existing.rows[0];
+        res.json({
+          success: true,
+          data: {
+            id: row.id,
+            status: row.status,
+            alreadyExists: true,
+            amount_cents: row.amount_cents,
+            diff_cents: diffCents,
+            master_cents: masterCents,
+            mp_qr_code: row.mp_qr_code,
+            mp_qr_code_base64: row.mp_qr_code_base64,
+          },
+        });
+        return;
+      }
+
+      const inserted = await pool.query(
+        `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents)
+         VALUES ($1, $2, 'master', $3)
+         RETURNING id, status, created_at`,
+        [userId, label, diffCents]
+      );
+      const pixRequestId: string = inserted.rows[0].id;
+
+      let mpQrCode: string | null = null;
+      let mpQrCodeBase64: string | null = null;
+      try {
+        const mp = await createMpPixPayment({
+          amountCents: diffCents,
+          description: `DocePreço ${label}`,
+          payerEmail: user?.email ?? 'cliente@docepreco.com',
+          externalReference: pixRequestId,
+        });
+        mpQrCode = mp.qrCode;
+        mpQrCodeBase64 = mp.qrCodeBase64;
+        await pool.query(
+          `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3 WHERE id = $4`,
+          [mp.paymentId, mpQrCode, mpQrCodeBase64, pixRequestId]
+        );
+      } catch (mpErr) {
+        console.error('[PIX] Erro ao gerar QR de upgrade no Mercado Pago:', mpErr);
+      }
+
+      notifyPixRequest(user?.companyName ?? 'Usuário', user?.email ?? '', label, diffCents);
+
+      res.status(201).json({
+        success: true,
+        data: {
+          ...inserted.rows[0],
+          amount_cents: diffCents,
+          diff_cents: diffCents,
+          master_cents: masterCents,
+          mp_qr_code: mpQrCode,
+          mp_qr_code_base64: mpQrCodeBase64,
+        },
+      });
+    } catch (error) {
+      console.error('[PIX] Create upgrade request error:', error);
       res.status(500).json({ success: false, error: 'Internal error' });
     }
   }
@@ -525,8 +732,19 @@ export class PixController {
    */
   async approveRequest(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { days, planTier } = req.body as { days?: number; planTier?: 'premium' | 'master' };
+    const { days, planTier, amountCents } = req.body as {
+      days?: number;
+      planTier?: 'premium' | 'master';
+      amountCents?: number | null;
+    };
     const premiumDays = days ?? 30;
+
+    // Valor realmente recebido (ex.: upgrade cobrando só a diferença). Opcional:
+    // quando ausente, mantém o valor cheio gravado na própria solicitação.
+    if (amountCents != null && (!Number.isInteger(amountCents) || amountCents < 0)) {
+      res.status(400).json({ success: false, error: 'amountCents deve ser um inteiro >= 0 ou nulo' });
+      return;
+    }
 
     try {
       // Get the request
@@ -576,11 +794,16 @@ export class PixController {
       const premiumUntil = new Date();
       premiumUntil.setDate(premiumUntil.getDate() + premiumDays);
 
-      // Update request status
+      // Valor a registrar como receita: o que o admin informou ter recebido
+      // (ex.: upgrade cobrando só a diferença) ou, na ausência, o valor cheio
+      // da própria solicitação. Evita contar receita a mais no dashboard.
+      const receivedCents = amountCents != null ? amountCents : (reqResult.rows[0].amount_cents ?? null);
+
+      // Update request status (e alinha o valor da solicitação ao recebido).
       await pool.query(
-        `UPDATE pix_requests SET status = 'approved', reviewed_at = NOW(), reviewed_by = 'admin'
+        `UPDATE pix_requests SET status = 'approved', reviewed_at = NOW(), reviewed_by = 'admin', amount_cents = $2
          WHERE id = $1`,
-        [id]
+        [id, receivedCents]
       );
 
       // Grant the chosen tier (manual platform).
@@ -589,8 +812,8 @@ export class PixController {
       // Oferta win-back vinculada a este pedido → marca como resgatada
       await redeemByPixRequest(id).catch(() => {});
 
-      // Record premium event (com o valor pago, vindo da própria solicitação PIX)
-      const pixAmountCents = reqResult.rows[0].amount_cents ?? null;
+      // Record premium event (com o valor efetivamente recebido)
+      const pixAmountCents = receivedCents;
       await pool.query(
         `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents)
          VALUES ($1, 'INITIAL_PURCHASE', 'pix', 'manual', $2, $3, 'PIX', $4)`,

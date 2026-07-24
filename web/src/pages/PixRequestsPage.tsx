@@ -18,6 +18,20 @@ function fmtMoney(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Converte "10,10" / "10.10" / "R$ 1.234,56" em centavos inteiros. Retorna null se inválido.
+function parseBRLToCents(value: string): number | null {
+  let cleaned = value.replace(/[^\d.,]/g, '');
+  if (!cleaned) return null;
+  if (cleaned.includes(',')) {
+    // Padrão BR: vírgula é decimal, ponto é separador de milhar.
+    cleaned = cleaned.replace(/\./g, '').replace(',', '.');
+  }
+  // Sem vírgula: o ponto (se houver) é tratado como decimal.
+  const reais = Number(cleaned);
+  if (!Number.isFinite(reais) || reais < 0) return null;
+  return Math.round(reais * 100);
+}
+
 function timeSince(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -41,7 +55,14 @@ export function PixRequestsPage({ toast }: Props) {
   const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
   const [approving, setApproving] = useState<string | null>(null);
   const [confirmApprove, setConfirmApprove] = useState<PixRequestItem | null>(null);
+  const [approveAmount, setApproveAmount] = useState('');
   const [confirmReject, setConfirmReject] = useState<PixRequestItem | null>(null);
+
+  // Abre o modal de aprovação já com o valor da solicitação preenchido (editável).
+  const openApprove = (item: PixRequestItem) => {
+    setApproveAmount((item.amountCents / 100).toFixed(2).replace('.', ','));
+    setConfirmApprove(item);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -64,6 +85,18 @@ export function PixRequestsPage({ toast }: Props) {
   }, [load]);
 
   const handleApprove = async (item: PixRequestItem) => {
+    // Assinatura: usa o valor recebido informado (default = valor da solicitação).
+    // Anúncio: sem valor editável, aprova direto.
+    let receivedCents: number | undefined;
+    if (item.productType !== 'ad_banner') {
+      const parsed = parseBRLToCents(approveAmount);
+      if (parsed == null) {
+        toast.error('Informe um valor recebido válido (ex.: 10,10)');
+        return;
+      }
+      receivedCents = parsed;
+    }
+
     setApproving(item.id);
     try {
       if (item.productType === 'ad_banner') {
@@ -71,9 +104,9 @@ export function PixRequestsPage({ toast }: Props) {
         toast.success(`Anúncio de ${item.companyName} publicado!`);
       } else {
         const premiumDays = item.planLabel === 'Anual' ? 365 : 30;
-        await api.approvePixRequest(item.id, premiumDays, item.planTier);
+        await api.approvePixRequest(item.id, premiumDays, item.planTier, receivedCents);
         const tierLabel = item.planTier === 'master' ? 'Master' : 'Premium';
-        toast.success(`${tierLabel} liberado para ${item.companyName}!`);
+        toast.success(`${tierLabel} liberado para ${item.companyName}! (${fmtMoney(receivedCents!)})`);
       }
       load();
     } catch (e: any) {
@@ -222,7 +255,7 @@ export function PixRequestsPage({ toast }: Props) {
                   {req.status === 'pending' && (
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => setConfirmApprove(req)}
+                        onClick={() => openApprove(req)}
                         disabled={approving === req.id}
                         className="flex items-center gap-1.5 px-4 py-2 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
                       >
@@ -250,15 +283,13 @@ export function PixRequestsPage({ toast }: Props) {
         </div>
       )}
 
-      {/* Approve modal */}
+      {/* Approve modal — anúncio (sem valor editável) */}
       <ConfirmModal
-        open={!!confirmApprove}
-        title={confirmApprove?.productType === 'ad_banner' ? 'Aprovar anúncio' : 'Aprovar pagamento PIX'}
+        open={!!confirmApprove && confirmApprove.productType === 'ad_banner'}
+        title="Aprovar anúncio"
         message={
           confirmApprove
-            ? confirmApprove.productType === 'ad_banner'
-              ? `Confirma a publicação do anúncio de ${confirmApprove.companyName} (${confirmApprove.bannerDurationDays ?? '?'} dias - ${fmtMoney(confirmApprove.amountCents)})? O banner ficará ativo no carrossel da Home.`
-              : `Confirma a liberação do ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'} para ${confirmApprove.companyName} (${confirmApprove.planLabel} - ${fmtMoney(confirmApprove.amountCents)})? O usuário receberá ${confirmApprove.planLabel === 'Anual' ? '365' : '30'} dias de ${confirmApprove.planTier === 'master' ? 'Master' : 'Premium'}.`
+            ? `Confirma a publicação do anúncio de ${confirmApprove.companyName} (${confirmApprove.bannerDurationDays ?? '?'} dias - ${fmtMoney(confirmApprove.amountCents)})? O banner ficará ativo no carrossel da Home.`
             : ''
         }
         confirmLabel="Aprovar"
@@ -266,6 +297,65 @@ export function PixRequestsPage({ toast }: Props) {
         onConfirm={() => confirmApprove && handleApprove(confirmApprove)}
         onCancel={() => setConfirmApprove(null)}
       />
+
+      {/* Approve modal — assinatura (valor recebido editável) */}
+      {confirmApprove && confirmApprove.productType !== 'ad_banner' && (() => {
+        const item = confirmApprove;
+        const tierLabel = item.planTier === 'master' ? 'Master' : 'Premium';
+        const dias = item.planLabel === 'Anual' ? '365' : '30';
+        const parsed = parseBRLToCents(approveAmount);
+        const diff = parsed != null && parsed !== item.amountCents;
+        return (
+          <div
+            className="fixed inset-0 bg-black/40 flex items-center justify-center z-[60] p-4 animate-fade-in"
+            onClick={() => !approving && setConfirmApprove(null)}
+          >
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-sm p-6 animate-scale-in" onClick={e => e.stopPropagation()}>
+              <h3 className="font-bold text-gray-900 dark:text-white text-lg">Aprovar pagamento PIX</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
+                Liberar <span className="font-semibold">{tierLabel}</span> ({item.planLabel} · {dias} dias) para{' '}
+                <span className="font-semibold">{item.companyName}</span>.
+              </p>
+
+              <label className="block mt-4 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Valor recebido
+              </label>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-gray-500 dark:text-gray-400 text-sm">R$</span>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  autoFocus
+                  value={approveAmount}
+                  onChange={e => setApproveAmount(e.target.value)}
+                  className="flex-1 h-10 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 text-sm font-medium text-gray-900 dark:text-white outline-none focus:border-primary-400"
+                />
+              </div>
+              <p className="text-xs text-gray-400 mt-1.5">
+                Cobrança do valor cheio: {fmtMoney(item.amountCents)}.
+                {diff ? ' Use a diferença quando o cliente já pagou parte (ex.: upgrade).' : ' Ajuste se recebeu um valor diferente.'}
+              </p>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button
+                  onClick={() => setConfirmApprove(null)}
+                  disabled={!!approving}
+                  className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={() => handleApprove(item)}
+                  disabled={!!approving || parsed == null}
+                  className="text-sm px-4 py-2 rounded-lg font-medium bg-primary-500 hover:bg-primary-600 text-white transition-colors disabled:opacity-50"
+                >
+                  Aprovar {parsed != null ? fmtMoney(parsed) : ''}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Reject modal */}
       <ConfirmModal
