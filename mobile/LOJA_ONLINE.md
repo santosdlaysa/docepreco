@@ -1,131 +1,74 @@
-# Loja Online — Plano Master
+# Loja Online e Marketplace
 
-## Visão geral
+## O que está disponível
 
-Empresas com plano **Master** recebem uma loja virtual pública com link compartilhável. Clientes acessam a loja pelo browser, escolhem produtos e fazem pedidos. A empresa recebe notificações push no celular e gerencia os pedidos pelo app.
+A Loja Online é um recurso de assinatura paga. A confeitaria configura a vitrine no app ou na área web; clientes acessam uma URL pública, montam o pedido e acompanham seu status no navegador. A loja também pode aparecer no marketplace do DocePreço.
 
-## Fluxo completo
+O backend é a autoridade para acesso: operações de escrita em `/api/store` exigem um plano pago válido. Lojas inativas ou de assinantes com plano vencido deixam de ser públicas.
 
-```
-Empresa (Master)
-  └─ configura loja (nome, produtos, opções de entrega)
-  └─ copia/compartilha o link (docepreco.com/loja/[slug])
-         ↓
-Cliente (browser)
-  └─ vê catálogo de produtos
-  └─ seleciona itens e preenche dados de contato
-  └─ confirma pedido
-         ↓
-Empresa recebe notificação push → abre app → gerencia pedido
-```
+## Fluxo do pedido
 
-## Arquitetura
-
-### Mobile (este repo)
-
-| Arquivo | Propósito |
-|---------|-----------|
-| `src/domain/entities/StoreProduct.ts` | Entidades `StoreProduct` e `StoreSettings` |
-| `src/data/api/storeApi.ts` | CRUD de produtos e configurações da loja |
-| `src/presentation/screens/StoreScreen.tsx` | Painel da loja: status, link, lista de produtos |
-| `src/presentation/screens/StoreProductFormScreen.tsx` | Criar / editar produto do catálogo |
-| `src/presentation/screens/StoreSettingsScreen.tsx` | Configurar nome, entrega, retirada, valor mínimo |
-| `src/domain/entities/Order.ts` | Campo `source: 'manual' \| 'online'` adicionado |
-| `src/presentation/screens/OrdersScreen.tsx` | Badge "Online" + filtro por origem |
-| `src/presentation/utils/notifications.ts` | Canal Android `orders` com importância HIGH |
-| `src/presentation/navigation/types.ts` | Rotas: Store, StoreProductForm, StoreSettings |
-| `src/presentation/navigation/AppNavigator.tsx` | Registro das telas + listener de notificação de pedido |
-| `src/presentation/screens/HomeScreen.tsx` | Tile "Loja Online" no grid Master |
-
-### Backend (endpoints esperados)
-
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/store/settings` | Retorna configurações + link da loja |
-| PUT | `/store/settings` | Atualiza configurações |
-| GET | `/store/products` | Lista produtos do catálogo |
-| POST | `/store/products` | Cria produto |
-| PUT | `/store/products/:id` | Atualiza produto |
-| DELETE | `/store/products/:id` | Remove produto |
-
-### Push notifications (pedido novo)
-
-O backend deve enviar um push com o seguinte payload:
-
-```json
-{
-  "title": "Novo pedido recebido! 🛍️",
-  "body": "João Silva fez um pedido de R$ 45,00",
-  "data": {
-    "type": "new_order",
-    "orderId": "abc123"
-  }
-}
+```text
+Confeitaria configura loja e catálogo
+        ↓
+Cliente acessa /loja/:slug, escolhe produtos e adicionais
+        ↓
+API recalcula preço, desconto, frete e valida horário/estoque
+        ↓
+Pedido online é criado e o estoque é baixado numa transação
+        ↓
+Push avisa a confeitaria; gestão continua em Pedidos
 ```
 
-O app navega automaticamente para a tela de Encomendas ao tocar na notificação.
+O preço recebido do navegador nunca é usado como fonte de verdade. A API obtém produtos e adicionais do banco, aplica descontos e calcula o valor final. Quando um produto possui estoque limitado, a baixa condicional dentro da transação impede venda acima do disponível.
 
-## Entidades
+## Recursos
 
-### StoreProduct
+- Nome, slug, descrição, logo, capa, endereço, telefone e Instagram da loja.
+- Publicação, aceita pedidos, entrega/retirada, pedido mínimo, taxa de entrega e formas de pagamento.
+- Horários comerciais configuráveis; a loja continua visível quando fechada, mas pedidos são bloqueados.
+- Produtos com receita opcional, foto por URL, disponibilidade, preço público, desconto percentual ou fixo e estoque limitado ou ilimitado.
+- Adicionais por item.
+- Pedido público com nome, telefone, endereço, observação, forma de pagamento e troco.
+- Histórico de pedidos públicos por telefone e acompanhamento de pedido por URL.
+- Marketplace com filtros de texto, cidade, categoria, entrega grátis, taxa, distância, vitrine e busca de produtos.
 
-```typescript
-interface StoreProduct {
-  id: string;
-  name: string;
-  description?: string;
-  photoUrl?: string;
-  publicPrice: number;
-  available: boolean;
-  recipeId?: string;      // vínculo opcional com receita existente
-  createdAt: string;
-  updatedAt: string;
-}
-```
+## Rotas
 
-### StoreSettings
+### Confeitaria autenticada — `/api/store`
 
-```typescript
-interface StoreSettings {
-  active: boolean;
-  storeName: string;
-  slug: string;           // gerado pelo backend
-  storeLink: string;      // URL pública completa
-  description?: string;
-  acceptsDelivery: boolean;
-  acceptsPickup: boolean;
-  minOrderValue?: number;
-}
-```
+| Método | Rota | Plano pago para escrita |
+| --- | --- | --- |
+| GET | `/my`, `/settings` | Não |
+| PATCH | `/my` | Sim |
+| PUT | `/settings` | Sim |
+| GET/POST | `/products` | POST sim |
+| PUT/DELETE | `/products/:id` | Sim |
+| GET/POST | `/addons` | POST sim |
+| PUT/DELETE | `/addons/:id` | Sim |
 
-### Order (campo adicionado)
+### Público — `/api/public`
 
-```typescript
-interface Order {
-  // ... campos existentes ...
-  source?: 'manual' | 'online';   // 'online' = veio pelo link público
-  clientEmail?: string;           // disponível em pedidos online
-}
-```
+| Método | Rota | Finalidade |
+| --- | --- | --- |
+| GET | `/stores` | Lista do marketplace com paginação e filtros |
+| GET | `/products/featured`, `/products/search` | Vitrine e busca de produtos |
+| GET | `/store/:slug` | Catálogo e configurações públicas da loja |
+| POST | `/store/:slug/orders` | Cria pedido público |
+| GET | `/store/:slug/orders/:orderId` | Acompanha pedido |
+| GET | `/customer/orders?phone=` | Histórico público por telefone |
 
-## Configuração de notificações Android
+## Onde fica no código
 
-Canal `orders` com importância HIGH garante som e vibração para novos pedidos mesmo com o app em background.
+| Camada | Arquivos principais |
+| --- | --- |
+| API autenticada | `backend/src/presentation/routes/storeRoutes.ts` e `StoreController.ts` |
+| API pública | `backend/src/presentation/routes/publicRoutes.ts` |
+| Regras | `backend/src/domain/utils/discount.ts`, `businessHours.ts` e serviço de planos |
+| Banco | `store_settings`, `store_products`, `store_addons` e `orders` |
+| Mobile | `mobile/src/presentation/screens/Store*.tsx` e `OrdersScreen.tsx` |
+| Web | `web/src/pages/LojaPage.tsx`, `LojasPage.tsx`, `ExplorarPage.tsx` e `MeusPedidosPage.tsx` |
 
-## Gate de feature
+## Notificações
 
-Toda a funcionalidade de loja é exclusiva do plano **Master** (`isMaster === true` no PremiumContext). Tentativas de acesso de planos inferiores redirecionam para o Paywall com `trigger: { kind: 'master' }`.
-
-## Status de implementação
-
-- [x] Entidade `StoreProduct` + `StoreSettings`
-- [x] API `storeApi.ts`
-- [x] `StoreScreen` (painel principal)
-- [x] `StoreProductFormScreen` (criar/editar produto)
-- [x] `StoreSettingsScreen` (configurações)
-- [x] Navegação registrada
-- [x] Tile "Loja Online" na HomeScreen (Master)
-- [x] Badge "Online" e filtro no OrdersScreen
-- [x] Canal Android `orders` + handler de navegação por notificação
-- [ ] Upload de foto de produto (aguarda endpoint de upload no backend)
-- [ ] Página web pública (backend)
+Um pedido online aprovado pela API tenta enviar um push ao proprietário com `type: "new_order"` e `orderId`. No Android, o app registra o canal `orders` para que a notificação tenha alta prioridade; ao ser aberta, conduz a pessoa para a gestão de encomendas.
