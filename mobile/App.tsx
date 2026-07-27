@@ -29,7 +29,7 @@ configureRevenueCat();
 initUxCam();
 
 function App() {
-  const [fontsLoaded] = useFonts({
+  const [fontsLoaded, fontError] = useFonts({
     ...Ionicons.font,
     ...fontAssets,
   });
@@ -76,7 +76,7 @@ function App() {
     };
   }, []);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded && !fontError) {
     return <View style={{ flex: 1, backgroundColor: '#FFF0F3' }} />;
   }
 

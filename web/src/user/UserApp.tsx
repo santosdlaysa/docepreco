@@ -6,6 +6,7 @@ import {
   Package,
   ShoppingCart,
   ClipboardList,
+  CookingPot,
   Wallet,
   CalendarRange,
   User,
@@ -32,6 +33,7 @@ import { RecipesPage } from './pages/RecipesPage';
 import { IngredientsPage } from './pages/IngredientsPage';
 import { SalesPage } from './pages/SalesPage';
 import { OrdersPage } from './pages/OrdersPage';
+import { ProductionPage } from './pages/ProductionPage';
 import { CashPage } from './pages/CashPage';
 import { SeasonsPage } from './pages/SeasonsPage';
 import { ReportsPage } from './pages/ReportsPage';
@@ -43,6 +45,7 @@ import { StockPage } from './pages/StockPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { SalesTipsPage } from './pages/SalesTipsPage';
 
+type Page = 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production' | 'cash' | 'seasons' | 'store' | 'profile';
 type Page =
   | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'cash'
   | 'seasons' | 'store' | 'profile' | 'finance' | 'expenses' | 'stock'
@@ -58,6 +61,7 @@ const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'stock', label: 'Estoque', icon: Boxes },
   { id: 'sales', label: 'Vendas', icon: ShoppingCart },
   { id: 'orders', label: 'Encomendas', icon: ClipboardList },
+  { id: 'production', label: 'Produção', icon: CookingPot },
   { id: 'clients', label: 'Clientes', icon: Users },
   { id: 'store', label: 'Loja', icon: Store },
   { id: 'seasons', label: 'Temporadas', icon: CalendarRange },
@@ -219,6 +223,7 @@ function Shell() {
             {page === 'stock' && <StockPage toast={toast} />}
             {page === 'sales' && <SalesPage toast={toast} />}
             {page === 'orders' && <OrdersPage toast={toast} />}
+            {page === 'production' && <ProductionPage toast={toast} />}
             {page === 'clients' && <ClientsPage toast={toast} />}
             {page === 'store' && <StorePage toast={toast} />}
             {page === 'cash' && <CashPage toast={toast} />}

@@ -5,7 +5,7 @@ const spec = {
   openapi: '3.0.3',
   info: {
     title: 'DocePreço API',
-    version: '2.3.0',
+    version: '2.12.0',
     description: 'API do aplicativo DocePreço — precificação de doces para confeiteiras.',
   },
   servers: [
