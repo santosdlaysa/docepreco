@@ -26,7 +26,7 @@ import { orderApi as orderStorage } from '../../data/api/orderApi';
 import { saleApi } from '../../data/api/saleApi';
 import { recipeApi } from '../../data/api/recipeApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
-import { applySaleDeduction } from '../../data/stock/stockStorage';
+import { applySaleDeduction } from '../../data/api/stockApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
 import { Skeleton } from '../components/Skeleton';

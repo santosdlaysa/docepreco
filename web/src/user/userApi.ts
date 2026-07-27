@@ -333,6 +333,98 @@ export interface MyStore {
   products: StoreProduct[];
 }
 
+/* ── Despesas ──────────────────────────────────────────────────────────── */
+
+export type ExpenseCostType = 'fixed' | 'variable';
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  costType: ExpenseCostType;
+  isRecurring: boolean;
+  recurrenceDay: number | null;
+  expenseDate: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CreateExpenseDTO {
+  description: string;
+  amount: number;
+  category: string;
+  costType: ExpenseCostType;
+  isRecurring: boolean;
+  recurrenceDay?: number | null;
+  expenseDate: string;
+  notes?: string | null;
+}
+export interface ExpenseSummary {
+  totalExpenses: number;
+  byCategory: { category: string; total: number }[];
+}
+
+export const EXPENSE_CATEGORIES: { key: string; label: string }[] = [
+  { key: 'aluguel', label: 'Aluguel' },
+  { key: 'energia', label: 'Energia' },
+  { key: 'agua', label: 'Água' },
+  { key: 'internet', label: 'Internet' },
+  { key: 'embalagem', label: 'Embalagem' },
+  { key: 'marketing', label: 'Marketing' },
+  { key: 'transporte', label: 'Transporte' },
+  { key: 'equipamento', label: 'Equipamento' },
+  { key: 'funcionario', label: 'Funcionário' },
+  { key: 'outros', label: 'Outros' },
+];
+
+/* ── Clientes ──────────────────────────────────────────────────────────── */
+
+export interface Client {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  /** Aniversário no formato "MM-DD" (sem ano). */
+  birthday: string | null;
+  address: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+export interface CreateClientDTO {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  birthday?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+/* ── Estoque ───────────────────────────────────────────────────────────── */
+
+export interface StockItem {
+  ingredientId: string;
+  /** Saldo atual na unidade base do ingrediente. */
+  quantity: number;
+  /** Estoque mínimo para alerta de reposição. */
+  minQuantity: number;
+  unit: string;
+  updatedAt: string;
+}
+export interface StockMovement {
+  id: string;
+  ingredientId: string;
+  /** 'in' reposição/entrada, 'out' baixa/venda, 'set' ajuste de inventário. */
+  type: 'in' | 'out' | 'set';
+  /** Magnitude do movimento (sempre positivo). */
+  quantity: number;
+  /** Saldo resultante após o movimento. */
+  balance: number;
+  reason: string | null;
+  createdAt: string;
+}
+
 /* ── Endpoints ─────────────────────────────────────────────────────────── */
 
 export const userApi = {
@@ -425,6 +517,37 @@ export const userApi = {
   addCashMovement: (type: 'sangria' | 'suprimento', amount: number, reason?: string) =>
     req<CashSession>('/cash/movements', { method: 'POST', body: JSON.stringify({ type, amount, reason }) }),
   listCashSessions: () => req<CashSession[]>('/cash/sessions'),
+
+  // Despesas
+  listExpenses: (month?: string) =>
+    req<Expense[]>(`/expenses${month ? `?month=${month}` : ''}`),
+  getExpenseSummary: (month: string) =>
+    req<ExpenseSummary>(`/expenses/summary?month=${month}`),
+  createExpense: (data: CreateExpenseDTO) =>
+    req<Expense>('/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  updateExpense: (id: string, data: Partial<CreateExpenseDTO>) =>
+    req<Expense>(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteExpense: (id: string) => req<void>(`/expenses/${id}`, { method: 'DELETE' }),
+
+  // Clientes
+  listClients: () => req<Client[]>('/clients'),
+  createClient: (data: CreateClientDTO) =>
+    req<Client>('/clients', { method: 'POST', body: JSON.stringify(data) }),
+  updateClient: (id: string, data: Partial<CreateClientDTO>) =>
+    req<Client>(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteClient: (id: string) => req<void>(`/clients/${id}`, { method: 'DELETE' }),
+
+  // Estoque
+  getStock: () => req<{ items: StockItem[]; movements: StockMovement[] }>('/stock'),
+  setStockQuantity: (ingredientId: string, quantity: number, minQuantity: number, unit: string) =>
+    req<StockItem>(`/stock/${ingredientId}`, { method: 'PUT', body: JSON.stringify({ quantity, minQuantity, unit }) }),
+  addStockEntry: (ingredientId: string, quantity: number, unit: string, reason?: string) =>
+    req<StockItem>(`/stock/${ingredientId}/entry`, { method: 'POST', body: JSON.stringify({ quantity, unit, reason }) }),
+  deductStock: (items: { ingredientId: string; quantity: number; reason?: string }[]) =>
+    req<{ lowStock: { ingredientId: string; balance: number; minQuantity: number }[] }>('/stock/deduct', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
 };
 
 export { ApiError };

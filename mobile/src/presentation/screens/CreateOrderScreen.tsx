@@ -24,7 +24,7 @@ import { Recipe } from '../../domain/entities/Recipe';
 import { Client } from '../../domain/entities/Client';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
 import { saleApi } from '../../data/api/saleApi';
-import { clientStorage } from '../../data/storage/clientStorage';
+import { clientApi } from '../../data/api/clientApi';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
@@ -127,7 +127,7 @@ export const CreateOrderScreen: React.FC = () => {
 
   useEffect(() => {
     rApi.getAll().then(setRecipes).catch(() => {});
-    clientStorage.getAll().then(setClients).catch(() => {});
+    clientApi.getAll().then(setClients).catch(() => {});
     if (orderId) {
       orderStorage.getById(orderId).then(order => {
         if (!order) return;

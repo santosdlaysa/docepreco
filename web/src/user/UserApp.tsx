@@ -10,6 +10,11 @@ import {
   CalendarRange,
   User,
   Store,
+  PieChart,
+  Receipt,
+  Boxes,
+  Users,
+  Lightbulb,
   LogOut,
   Menu,
   X,
@@ -32,18 +37,31 @@ import { SeasonsPage } from './pages/SeasonsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { StorePage } from './pages/StorePage';
+import { FinancePage } from './pages/FinancePage';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { StockPage } from './pages/StockPage';
+import { ClientsPage } from './pages/ClientsPage';
+import { SalesTipsPage } from './pages/SalesTipsPage';
 
-type Page = 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'cash' | 'seasons' | 'store' | 'profile';
+type Page =
+  | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'cash'
+  | 'seasons' | 'store' | 'profile' | 'finance' | 'expenses' | 'stock'
+  | 'clients' | 'tips';
 
 const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'cash', label: 'Caixa', icon: Wallet },
   { id: 'reports', label: 'Relatórios', icon: LayoutDashboard },
+  { id: 'finance', label: 'Financeiro', icon: PieChart },
+  { id: 'expenses', label: 'Despesas', icon: Receipt },
   { id: 'recipes', label: 'Receitas', icon: ChefHat },
   { id: 'ingredients', label: 'Ingredientes', icon: Package },
+  { id: 'stock', label: 'Estoque', icon: Boxes },
   { id: 'sales', label: 'Vendas', icon: ShoppingCart },
   { id: 'orders', label: 'Encomendas', icon: ClipboardList },
+  { id: 'clients', label: 'Clientes', icon: Users },
   { id: 'store', label: 'Loja', icon: Store },
   { id: 'seasons', label: 'Temporadas', icon: CalendarRange },
+  { id: 'tips', label: 'Dicas de vendas', icon: Lightbulb },
   { id: 'profile', label: 'Meu perfil', icon: User },
 ];
 
@@ -194,13 +212,18 @@ function Shell() {
         <div className="p-4 md:px-6 md:pb-6 md:pt-2">
           <PageTransition pageKey={page}>
             {page === 'reports' && <ReportsPage toast={toast} />}
+            {page === 'finance' && <FinancePage toast={toast} />}
+            {page === 'expenses' && <ExpensesPage toast={toast} />}
             {page === 'recipes' && <RecipesPage toast={toast} />}
             {page === 'ingredients' && <IngredientsPage toast={toast} />}
+            {page === 'stock' && <StockPage toast={toast} />}
             {page === 'sales' && <SalesPage toast={toast} />}
             {page === 'orders' && <OrdersPage toast={toast} />}
+            {page === 'clients' && <ClientsPage toast={toast} />}
             {page === 'store' && <StorePage toast={toast} />}
             {page === 'cash' && <CashPage toast={toast} />}
             {page === 'seasons' && <SeasonsPage toast={toast} />}
+            {page === 'tips' && <SalesTipsPage toast={toast} />}
             {page === 'profile' && <ProfilePage toast={toast} />}
           </PageTransition>
         </div>

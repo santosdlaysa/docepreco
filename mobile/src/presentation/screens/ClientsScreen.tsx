@@ -18,7 +18,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Client } from '../../domain/entities/Client';
-import { clientStorage } from '../../data/storage/clientStorage';
+import { clientApi } from '../../data/api/clientApi';
 import { Skeleton } from '../components/Skeleton';
 import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
@@ -87,7 +87,7 @@ export const ClientsScreen: React.FC = () => {
 
   const loadClients = async () => {
     try {
-      setClients(await clientStorage.getAll());
+      setClients(await clientApi.getAll());
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -115,7 +115,7 @@ export const ClientsScreen: React.FC = () => {
       {
         text: t('common.delete'),
         style: 'destructive',
-        onPress: async () => { await clientStorage.delete(client.id); loadClients(); },
+        onPress: async () => { await clientApi.delete(client.id); loadClients(); },
       },
     ]);
   };

@@ -423,6 +423,48 @@ CREATE TABLE IF NOT EXISTS referrals (
 
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals (referrer_id, status);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals (referred_id);
+
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(40),
+  email VARCHAR(255),
+  birthday VARCHAR(5),
+  address TEXT,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_user ON clients (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS stock_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  quantity DECIMAL(12,3) NOT NULL DEFAULT 0,
+  min_quantity DECIMAL(12,3) NOT NULL DEFAULT 0,
+  unit VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE (user_id, ingredient_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_items_user ON stock_items (user_id);
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  type VARCHAR(10) NOT NULL CHECK (type IN ('set', 'in', 'out')),
+  quantity DECIMAL(12,3) NOT NULL,
+  balance DECIMAL(12,3) NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_moves_user ON stock_movements (user_id, created_at DESC);
 `;
 
 async function addColumnIfMissing(

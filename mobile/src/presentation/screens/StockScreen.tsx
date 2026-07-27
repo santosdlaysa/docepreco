@@ -27,7 +27,7 @@ import { Ingredient } from '../../domain/entities/Ingredient';
 import {
   getStockState, getEntry, setQty, addEntry, getMovements, unitCost,
   StockState, StockMovement,
-} from '../../data/stock/stockStorage';
+} from '../../data/api/stockApi';
 import { parseLocaleNumber } from '../utils/number';
 import { formatUnitLabel } from '../utils/units';
 

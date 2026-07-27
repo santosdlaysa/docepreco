@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { clientStorage } from '../../data/storage/clientStorage';
+import { clientApi } from '../../data/api/clientApi';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 
@@ -60,7 +60,7 @@ export const CreateClientScreen: React.FC = () => {
 
   useEffect(() => {
     if (clientId) {
-      clientStorage.getById(clientId).then(client => {
+      clientApi.getById(clientId).then(client => {
         if (!client) return;
         setName(client.name);
         setPhone(client.phone || '');
@@ -106,10 +106,10 @@ export const CreateClientScreen: React.FC = () => {
         notes: notes.trim() || undefined,
       };
       if (isEditing) {
-        await clientStorage.update(clientId!, data);
+        await clientApi.update(clientId!, data);
         showToast(t('createClient.updated'), 'success');
       } else {
-        await clientStorage.create(data);
+        await clientApi.create(data);
         showToast(t('createClient.created'), 'success');
       }
       navigation.goBack();
