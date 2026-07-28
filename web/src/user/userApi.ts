@@ -60,6 +60,8 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export type PremiumPlatform = 'ios' | 'android' | 'manual';
 
+export type PlanTier = 'free' | 'premium' | 'master';
+
 export interface AuthUser {
   id: string;
   companyName: string;
@@ -67,10 +69,26 @@ export interface AuthUser {
   phone: string | null;
   instagramHandle: string | null;
   isPremium: boolean;
+  /** Backend antigo pode não enviar → use effectiveTier() para derivar de isPremium. */
+  planTier?: PlanTier;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   /** Null = usuário ainda não aceitou o termo LGPD. */
   lgpdAcceptedAt?: string | null;
+}
+
+/**
+ * Tier efetivo do usuário. Deriva de planTier (com fallback para isPremium em
+ * contas antigas) e rebaixa para 'free' quando a assinatura já expirou.
+ */
+export function effectiveTier(
+  user: Pick<AuthUser, 'planTier' | 'isPremium' | 'premiumUntil'> | null | undefined
+): PlanTier {
+  if (!user) return 'free';
+  const tier = user.planTier ?? (user.isPremium ? 'premium' : 'free');
+  if (tier === 'free') return 'free';
+  if (user.premiumUntil && new Date(user.premiumUntil).getTime() < Date.now()) return 'free';
+  return tier;
 }
 
 export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unit';
@@ -291,10 +309,13 @@ export interface PixPlanConfig {
 export interface PixConfig {
   monthly: PixPlanConfig;
   annual: PixPlanConfig;
+  masterMonthly?: PixPlanConfig;
+  masterAnnual?: PixPlanConfig;
 }
 export interface PlanConfigPublic {
   freeRecipeLimit?: number;
   premiumPrice?: number;
+  masterPrice?: number;
   pix?: PixConfig;
 }
 export interface PixRequestStatus {
@@ -302,9 +323,26 @@ export interface PixRequestStatus {
   status: 'pending' | 'approved' | 'rejected';
   plan_label?: string;
   amount_cents?: number;
+  plan_tier?: PlanTier;
   created_at: string;
   reviewed_at: string | null;
   alreadyExists?: boolean;
+}
+
+/** Preview do upgrade Premium→Master (paga só a diferença). */
+export interface UpgradePreview {
+  eligible: boolean;
+  diffCents?: number;
+  masterCents?: number;
+  premiumPaidCents?: number;
+  isAnnual?: boolean;
+  reason?: string;
+}
+export interface UpgradeRequest extends PixRequestStatus {
+  diff_cents?: number;
+  master_cents?: number;
+  mp_qr_code?: string;
+  mp_qr_code_base64?: string;
 }
 
 export interface StoreProduct {
@@ -454,6 +492,13 @@ export const userApi = {
       body: JSON.stringify({ companyName, email, password, phone, platform: 'web' }),
     }),
   me: () => req<AuthUser>('/auth/me'),
+  // SSO vindo do app mobile: troca um código de transferência de curta duração
+  // por uma sessão real (token + usuário).
+  webHandoffExchange: (code: string) =>
+    req<{ user: AuthUser; token: string }>('/auth/web-handoff/exchange', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
   forgotPassword: (email: string) =>
     req<unknown>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   changePassword: (currentPassword: string, newPassword: string) =>
@@ -467,9 +512,11 @@ export const userApi = {
 
   // Premium / PIX
   getPlanConfig: () => req<PlanConfigPublic>('/admin/settings/plans'),
-  createPixRequest: (planLabel: string, amountCents: number) =>
-    req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents }) }),
+  createPixRequest: (planLabel: string, amountCents: number, planTier: PlanTier = 'premium') =>
+    req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents, planTier }) }),
   getPixStatus: () => req<PixRequestStatus | null>('/pix/status'),
+  previewUpgrade: () => req<UpgradePreview>('/pix/upgrade/preview'),
+  upgradeToMaster: () => req<UpgradeRequest>('/pix/upgrade', { method: 'POST' }),
 
   // Loja online
   getMyStore: () => req<MyStore | null>('/store/my'),

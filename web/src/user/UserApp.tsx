@@ -25,9 +25,12 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Lock } from 'lucide-react';
 import { UserAuthProvider, useAuth } from './UserAuthContext';
 import { UserLoginPage } from './UserLoginPage';
-import { userApi } from './userApi';
+import { userApi, effectiveTier } from './userApi';
+import { PAGE_REQUIREMENT, tierSatisfies, TIER_META } from './plan';
+import { Paywall } from './pages/Paywall';
 import { LgpdModal } from './lgpd';
 import { slugify } from './format';
 import { useToast, ToastContainer, PageTransition } from '../components';
@@ -121,6 +124,8 @@ function Shell() {
     );
   }
 
+  const tier = effectiveTier(user);
+
   const navigate = (p: Page) => {
     setPage(p);
     setSidebarOpen(false);
@@ -144,6 +149,8 @@ function Shell() {
         {NAV.map(n => {
           const Icon = n.icon;
           const active = page === n.id;
+          const req = PAGE_REQUIREMENT[n.id];
+          const locked = req && !tierSatisfies(tier, req);
           return (
             <button
               key={n.id}
@@ -156,7 +163,15 @@ function Shell() {
             >
               {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary-500 rounded-r-full" />}
               <Icon size={16} className={active ? 'text-primary-500' : 'text-gray-400 dark:text-gray-500'} />
-              {n.label}
+              <span className="flex-1">{n.label}</span>
+              {locked && (
+                <span
+                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${TIER_META[req].bg}`}
+                  title={`Recurso ${TIER_META[req].label}`}
+                >
+                  <Lock size={10} className={TIER_META[req].color} />
+                </span>
+              )}
             </button>
           );
         })}
@@ -214,23 +229,34 @@ function Shell() {
           <ThemeToggle dark={dark} toggle={toggleDark} />
         </div>
 
-        <div className="p-4 md:px-6 md:pb-6 md:pt-2">
+        <div className="p-4 pb-24 md:px-6 md:pb-24 md:pt-2">
           <PageTransition pageKey={page}>
-            {page === 'reports' && <ReportsPage toast={toast} />}
-            {page === 'finance' && <FinancePage toast={toast} />}
-            {page === 'expenses' && <ExpensesPage toast={toast} />}
-            {page === 'recipes' && <RecipesPage toast={toast} />}
-            {page === 'ingredients' && <IngredientsPage toast={toast} />}
-            {page === 'stock' && <StockPage toast={toast} />}
-            {page === 'sales' && <SalesPage toast={toast} />}
-            {page === 'orders' && <OrdersPage toast={toast} />}
-            {page === 'production' && <ProductionPage toast={toast} />}
-            {page === 'clients' && <ClientsPage toast={toast} />}
-            {page === 'store' && <StorePage toast={toast} />}
-            {page === 'cash' && <CashPage toast={toast} />}
-            {page === 'seasons' && <SeasonsPage toast={toast} />}
-            {page === 'tips' && <SalesTipsPage toast={toast} />}
-            {page === 'profile' && <ProfilePage toast={toast} />}
+            {(() => {
+              const req = PAGE_REQUIREMENT[page];
+              if (req && !tierSatisfies(tier, req)) {
+                const nav = NAV.find(n => n.id === page);
+                return <Paywall required={req} featureLabel={nav?.label ?? ''} featureIcon={nav?.icon} toast={toast} />;
+              }
+              return (
+                <>
+                  {page === 'reports' && <ReportsPage toast={toast} />}
+                  {page === 'finance' && <FinancePage toast={toast} />}
+                  {page === 'expenses' && <ExpensesPage toast={toast} />}
+                  {page === 'recipes' && <RecipesPage toast={toast} />}
+                  {page === 'ingredients' && <IngredientsPage toast={toast} />}
+                  {page === 'stock' && <StockPage toast={toast} />}
+                  {page === 'sales' && <SalesPage toast={toast} />}
+                  {page === 'orders' && <OrdersPage toast={toast} />}
+                  {page === 'production' && <ProductionPage toast={toast} />}
+                  {page === 'clients' && <ClientsPage toast={toast} />}
+                  {page === 'store' && <StorePage toast={toast} />}
+                  {page === 'cash' && <CashPage toast={toast} />}
+                  {page === 'seasons' && <SeasonsPage toast={toast} />}
+                  {page === 'tips' && <SalesTipsPage toast={toast} />}
+                  {page === 'profile' && <ProfilePage toast={toast} />}
+                </>
+              );
+            })()}
           </PageTransition>
         </div>
       </main>
