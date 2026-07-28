@@ -143,7 +143,7 @@ export class AdminController {
     if (planTierFilter === 'free') conditions.push(`u.is_premium = FALSE`);
     else if (planTierFilter === 'premium') conditions.push(`(u.is_premium = TRUE AND u.plan_tier <> 'master')`);
     else if (planTierFilter === 'master') conditions.push(`(u.is_premium = TRUE AND u.plan_tier = 'master')`);
-    if (signupPlatform === 'ios' || signupPlatform === 'android') {
+    if (signupPlatform === 'ios' || signupPlatform === 'android' || signupPlatform === 'web') {
       conditions.push(`u.signup_platform = $${idx}`);
       params.push(signupPlatform);
       idx++;
@@ -340,10 +340,10 @@ export class AdminController {
 
   async setSignupPlatform(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { signupPlatform } = req.body as { signupPlatform?: 'ios' | 'android' | null };
+    const { signupPlatform } = req.body as { signupPlatform?: 'ios' | 'android' | 'web' | null };
 
-    if (signupPlatform !== 'ios' && signupPlatform !== 'android' && signupPlatform !== null) {
-      res.status(400).json({ error: 'signupPlatform deve ser ios, android ou null' });
+    if (signupPlatform !== 'ios' && signupPlatform !== 'android' && signupPlatform !== 'web' && signupPlatform !== null) {
+      res.status(400).json({ error: 'signupPlatform deve ser ios, android, web ou null' });
       return;
     }
 

@@ -46,7 +46,7 @@ function SignupPlatformBadge({ platform }: { platform: AdminUser['signupPlatform
   if (!platform) return <span className="text-xs text-gray-400">Não informado</span>;
   return (
     <span className="inline-flex text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-0.5 rounded-full">
-      {platform === 'ios' ? 'iOS' : 'Android'}
+      {platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : 'Web'}
     </span>
   );
 }
@@ -99,7 +99,7 @@ function UserModal({
   const [premiumHistory, setPremiumHistory] = useState<PremiumEvent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [togglingActive, setTogglingActive] = useState(false);
-  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | ''>('');
+  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | 'web' | ''>('');
   const [savingSignupPlatform, setSavingSignupPlatform] = useState(false);
   const [selectedTier, setSelectedTier] = useState<PaidTier>('premium');
 
@@ -342,12 +342,13 @@ function UserModal({
               <div className="flex items-center gap-2">
                 <select
                   value={signupPlatform}
-                  onChange={e => setSignupPlatform(e.target.value as 'ios' | 'android' | '')}
+                  onChange={e => setSignupPlatform(e.target.value as 'ios' | 'android' | 'web' | '')}
                   className="flex-1 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
                 >
                   <option value="">Não informado</option>
                   <option value="ios">iOS</option>
                   <option value="android">Android</option>
+                  <option value="web">Web</option>
                 </select>
                 <button
                   onClick={saveSignupPlatform}
@@ -813,7 +814,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [planTierFilter, setPlanTierFilter] = useState<'free' | 'premium' | 'master' | null>(null);
-  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | undefined>();
+  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | 'web' | undefined>();
   const [hasPhone, setHasPhone] = useState<boolean | null>(null);
   const [hasInstagram, setHasInstagram] = useState<boolean | null>(null);
   const [minRecipes, setMinRecipes] = useState<number | undefined>();
@@ -1007,12 +1008,13 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Dispositivo de cadastro</label>
             <select
               value={signupPlatform ?? ''}
-              onChange={e => { setSignupPlatform((e.target.value || undefined) as 'ios' | 'android' | undefined); setPage(1); }}
+              onChange={e => { setSignupPlatform((e.target.value || undefined) as 'ios' | 'android' | 'web' | undefined); setPage(1); }}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
               <option value="ios">iOS</option>
               <option value="android">Android</option>
+              <option value="web">Web</option>
             </select>
           </div>
           <div>

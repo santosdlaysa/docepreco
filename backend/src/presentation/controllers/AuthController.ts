@@ -39,8 +39,8 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Telefone é obrigatório' });
         return;
       }
-      if (platform && !['ios', 'android'].includes(platform)) {
-        res.status(400).json({ success: false, error: 'Plataforma inválida (ios ou android)' });
+      if (platform && !['ios', 'android', 'web'].includes(platform)) {
+        res.status(400).json({ success: false, error: 'Plataforma inválida (ios, android ou web)' });
         return;
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

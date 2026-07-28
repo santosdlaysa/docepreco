@@ -157,7 +157,7 @@ export interface AdminUser {
   planTier: 'free' | 'premium' | 'master';
   premiumUntil: string | null;
   premiumPlatform: string | null;
-  signupPlatform: 'ios' | 'android' | null;
+  signupPlatform: 'ios' | 'android' | 'web' | null;
   lastSeenAt: string | null;
   isActive: boolean;
   recipeCount: number;
@@ -413,7 +413,7 @@ export const api = {
   listUsers: (params: {
     search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;
     planTier?: 'free' | 'premium' | 'master';
-    signupPlatform?: 'ios' | 'android';
+    signupPlatform?: 'ios' | 'android' | 'web';
     hasPhone?: boolean | null; hasInstagram?: boolean | null;
     minRecipes?: number; minIngredients?: number; minSales?: number; minRevenue?: number;
     lastSeenDays?: number; createdDays?: number;
@@ -470,8 +470,8 @@ export const api = {
       body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null, planTier }),
     }),
 
-  setSignupPlatform: (id: string, signupPlatform: 'ios' | 'android' | null) =>
-    req<{ signupPlatform: 'ios' | 'android' | null }>(`/admin/users/${id}/signup-platform`, {
+  setSignupPlatform: (id: string, signupPlatform: 'ios' | 'android' | 'web' | null) =>
+    req<{ signupPlatform: 'ios' | 'android' | 'web' | null }>(`/admin/users/${id}/signup-platform`, {
       method: 'PATCH',
       body: JSON.stringify({ signupPlatform }),
     }),

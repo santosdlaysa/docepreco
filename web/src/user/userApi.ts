@@ -439,7 +439,7 @@ export const userApi = {
   register: (companyName: string, email: string, password: string, phone?: string) =>
     req<{ user: AuthUser; token: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ companyName, email, password, phone }),
+      body: JSON.stringify({ companyName, email, password, phone, platform: 'web' }),
     }),
   me: () => req<AuthUser>('/auth/me'),
   forgotPassword: (email: string) =>

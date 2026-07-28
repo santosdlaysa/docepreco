@@ -266,7 +266,7 @@ export class PostgresUserRepository {
       premiumPlatform: (row.premium_platform as PremiumPlatform | null) ?? null,
       isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
       trial_used_at: trialUsedAt ? trialUsedAt.toISOString() : null,
-      signupPlatform: (row.signup_platform as 'ios' | 'android' | null) ?? null,
+      signupPlatform: (row.signup_platform as 'ios' | 'android' | 'web' | null) ?? null,
       defaultHourlyRate: row.default_hourly_rate == null ? null : Number(row.default_hourly_rate),
       lgpdAcceptedAt: lgpdAcceptedAt ? lgpdAcceptedAt.toISOString() : null,
       lgpdVersion: (row.lgpd_version as string | null) ?? null,

@@ -21,7 +21,7 @@ export interface User {
   premiumPlatform: PremiumPlatform | null;
   isActive: boolean;
   trial_used_at?: string | null;
-  signupPlatform: 'ios' | 'android' | null;
+  signupPlatform: 'ios' | 'android' | 'web' | null;
   /** Custo por hora padrão de mão de obra (para pré-preencher receitas). */
   defaultHourlyRate: number | null;
   /** Data/hora em que o usuário aceitou o termo LGPD (null = ainda não aceitou). */
@@ -35,7 +35,7 @@ export interface RegisterDTO {
   email: string;
   password: string;
   phone?: string;
-  platform?: 'ios' | 'android';
+  platform?: 'ios' | 'android' | 'web';
 }
 
 export interface LoginDTO {

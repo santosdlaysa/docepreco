@@ -577,6 +577,10 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'referral_code', 'VARCHAR(8) UNIQUE');
     await addColumnIfMissing(client, 'users', 'trial_used_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'signup_platform', "VARCHAR(20) NULL CHECK (signup_platform IN ('ios', 'android'))");
+    // Amplia o CHECK de signup_platform para incluir 'web' (cadastro pela versão web).
+    // Idempotente: recria a constraint a cada boot com o conjunto de valores atual.
+    await client.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check`);
+    await client.query(`ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (signup_platform IN ('ios', 'android', 'web'))`);
     await addColumnIfMissing(client, 'users', 'default_hourly_rate', 'NUMERIC(10,2) NULL');
     await addColumnIfMissing(client, 'users', 'lgpd_accepted_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'lgpd_version', 'VARCHAR(10) NULL');

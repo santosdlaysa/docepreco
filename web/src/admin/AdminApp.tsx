@@ -437,7 +437,10 @@ export default function AdminApp() {
           <NotificationBell />
         </div>
 
-        <div className="p-4 md:px-6 md:pb-6 md:pt-2">
+        {/* pb-24 reserva espaço no rodapé para o botão flutuante de suporte
+            (fixed bottom-6, ~80px) não cobrir a base de tabelas com rolagem
+            horizontal quando a página está totalmente rolada. */}
+        <div className="p-4 pb-24 md:px-6 md:pb-24 md:pt-2">
           <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
             {page === 'subscriptions' && <SubscriptionsPage toast={toast} />}
