@@ -331,8 +331,20 @@ export interface MyStore {
   coverImageUrl: string | null;
   logoUrl?: string | null;
   address: string | null;
+  city?: string | null;
   updatedAt?: string;
   products: StoreProduct[];
+}
+
+export interface StoreSettingsDTO {
+  storeName?: string;
+  description?: string | null;
+  city?: string | null;
+  address?: string | null;
+  acceptsDelivery?: boolean;
+  acceptsPickup?: boolean;
+  minOrderValue?: number | null;
+  deliveryFee?: number | null;
 }
 
 /* ── Despesas ──────────────────────────────────────────────────────────── */
@@ -463,6 +475,8 @@ export const userApi = {
   getMyStore: () => req<MyStore | null>('/store/my'),
   updateMyStore: (data: Partial<Pick<MyStore, 'active' | 'acceptingOrders'>>) =>
     req<MyStore>('/store/my', { method: 'PATCH', body: JSON.stringify(data) }),
+  updateStoreSettings: (data: StoreSettingsDTO) =>
+    req<Omit<MyStore, 'products'>>('/store/settings', { method: 'PUT', body: JSON.stringify(data) }),
 
   // Receitas
   listRecipes: () => req<Recipe[]>('/recipes'),

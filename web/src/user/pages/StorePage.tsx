@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, Loader2, PackageOpen, Power, ShoppingBag, Store } from 'lucide-react';
-import { ToastFn, TableSkeleton } from '../../components';
+import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store } from 'lucide-react';
+import { ToastFn, TableSkeleton, ModalOverlay } from '../../components';
 import { formatBRL } from '../format';
-import { MyStore, userApi } from '../userApi';
-import { EmptyState, Header } from './IngredientsPage';
+import { MyStore, StoreSettingsDTO, userApi } from '../userApi';
+import { EmptyState, Header, FormField, FormActions, inputClass } from './IngredientsPage';
+import { parseLocaleNumber } from '../number';
 
 function StatusPill({ on, onText, offText }: { on: boolean; onText: string; offText: string }) {
   return (
@@ -72,6 +73,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
   const [store, setStore] = useState<MyStore | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState<'active' | 'acceptingOrders' | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -137,15 +139,25 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                   <StatusPill on={acceptingOrders} onText="Aberta para pedidos" offText="Fechada para pedidos" />
                 </div>
               </div>
-              <a
-                href={publicUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700"
-              >
-                <ExternalLink size={15} />
-                Ver loja
-              </a>
+              <div className="flex items-center gap-3 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowSettings(true)}
+                  className="inline-flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                >
+                  <Settings size={15} />
+                  Configurações
+                </button>
+                <a
+                  href={publicUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700"
+                >
+                  <ExternalLink size={15} />
+                  Ver loja
+                </a>
+              </div>
             </div>
           </div>
 
@@ -224,6 +236,140 @@ export function StorePage({ toast }: { toast: ToastFn }) {
           </div>
         </div>
       )}
+
+      {store && showSettings && (
+        <StoreSettingsForm
+          store={store}
+          onClose={() => setShowSettings(false)}
+          onSaved={() => { setShowSettings(false); load(); }}
+          toast={toast}
+        />
+      )}
     </div>
+  );
+}
+
+function StoreSettingsForm({
+  store,
+  onClose,
+  onSaved,
+  toast,
+}: {
+  store: MyStore;
+  onClose: () => void;
+  onSaved: () => void;
+  toast: ToastFn;
+}) {
+  const [storeName, setStoreName] = useState(store.storeName ?? '');
+  const [description, setDescription] = useState(store.description ?? '');
+  const [city, setCity] = useState(store.city ?? '');
+  const [address, setAddress] = useState(store.address ?? '');
+  const [acceptsDelivery, setAcceptsDelivery] = useState(store.acceptsDelivery);
+  const [acceptsPickup, setAcceptsPickup] = useState(store.acceptsPickup);
+  const [minOrderValue, setMinOrderValue] = useState(
+    store.minOrderValue != null ? String(store.minOrderValue).replace('.', ',') : ''
+  );
+  const [deliveryFee, setDeliveryFee] = useState(
+    store.deliveryFee != null ? String(store.deliveryFee).replace('.', ',') : ''
+  );
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!storeName.trim()) return toast.error('Informe o nome da loja.');
+    if (!acceptsDelivery && !acceptsPickup) {
+      return toast.error('Escolha ao menos uma forma de atendimento (entrega ou retirada).');
+    }
+    setSaving(true);
+    const data: StoreSettingsDTO = {
+      storeName: storeName.trim(),
+      description: description.trim() || null,
+      city: city.trim() || null,
+      address: address.trim() || null,
+      acceptsDelivery,
+      acceptsPickup,
+      minOrderValue: minOrderValue.trim() ? parseLocaleNumber(minOrderValue) : null,
+      deliveryFee: deliveryFee.trim() ? parseLocaleNumber(deliveryFee) : null,
+    };
+    try {
+      await userApi.updateStoreSettings(data);
+      toast.success('Configurações da loja salvas.');
+      onSaved();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Configurações da loja</h3>
+
+        <FormField label="Nome da loja">
+          <input value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="Doces da Maria" className={inputClass} autoFocus />
+        </FormField>
+
+        <FormField label="Descrição (opcional)">
+          <textarea
+            value={description}
+            onChange={e => setDescription(e.target.value)}
+            placeholder="Uma frase que apresenta sua loja aos clientes."
+            rows={2}
+            className={inputClass + ' resize-none'}
+          />
+        </FormField>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FormField label="Cidade">
+            <input value={city} onChange={e => setCity(e.target.value)} placeholder="Sua cidade" className={inputClass} />
+          </FormField>
+          <FormField label="Endereço (opcional)">
+            <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, nº, bairro" className={inputClass} />
+          </FormField>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Formas de atendimento</label>
+          <div className="flex flex-col gap-2">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={acceptsDelivery} onChange={e => setAcceptsDelivery(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
+              <span className="text-sm text-gray-700 dark:text-gray-200">Entrega (delivery)</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={acceptsPickup} onChange={e => setAcceptsPickup(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
+              <span className="text-sm text-gray-700 dark:text-gray-200">Retirada no local</span>
+            </label>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <FormField label="Pedido mínimo (R$)">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={minOrderValue}
+              onChange={e => setMinOrderValue(e.target.value)}
+              placeholder="Sem mínimo"
+              className={inputClass}
+            />
+          </FormField>
+          <FormField label="Taxa de entrega (R$)">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={deliveryFee}
+              onChange={e => setDeliveryFee(e.target.value)}
+              placeholder="0,00"
+              className={inputClass}
+              disabled={!acceptsDelivery}
+            />
+          </FormField>
+        </div>
+
+        <FormActions saving={saving} onClose={onClose} />
+      </form>
+    </ModalOverlay>
   );
 }
