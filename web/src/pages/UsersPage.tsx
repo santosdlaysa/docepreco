@@ -42,6 +42,19 @@ function PremiumBadge({ planTier, platform, isPremium = true }: { planTier: Admi
   );
 }
 
+// DDDs válidos do Brasil (para o filtro por código de área).
+const VALID_DDDS = [
+  '11', '12', '13', '14', '15', '16', '17', '18', '19',
+  '21', '22', '24', '27', '28',
+  '31', '32', '33', '34', '35', '37', '38',
+  '41', '42', '43', '44', '45', '46', '47', '48', '49',
+  '51', '53', '54', '55',
+  '61', '62', '63', '64', '65', '66', '67', '68', '69',
+  '71', '73', '74', '75', '77', '79',
+  '81', '82', '83', '84', '85', '86', '87', '88', '89',
+  '91', '92', '93', '94', '95', '96', '97', '98', '99',
+];
+
 function SignupPlatformBadge({ platform }: { platform: AdminUser['signupPlatform'] }) {
   if (!platform) return <span className="text-xs text-gray-400">Não informado</span>;
   return (
@@ -815,6 +828,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [search, setSearch] = useState('');
   const [planTierFilter, setPlanTierFilter] = useState<'free' | 'premium' | 'master' | null>(null);
   const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | 'web' | undefined>();
+  const [ddd, setDdd] = useState<string | undefined>();
   const [hasPhone, setHasPhone] = useState<boolean | null>(null);
   const [hasInstagram, setHasInstagram] = useState<boolean | null>(null);
   const [minRecipes, setMinRecipes] = useState<number | undefined>();
@@ -832,6 +846,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const activeFilterCount = [
     planTierFilter !== null,
     signupPlatform !== undefined,
+    ddd !== undefined,
     hasPhone !== null,
     hasInstagram !== null,
     minRecipes !== undefined,
@@ -845,6 +860,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const clearAllFilters = () => {
     setPlanTierFilter(null);
     setSignupPlatform(undefined);
+    setDdd(undefined);
     setHasPhone(null);
     setHasInstagram(null);
     setMinRecipes(undefined);
@@ -873,6 +889,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
         search, page, sortBy,
         planTier: planTierFilter ?? undefined,
         signupPlatform,
+        ddd,
         hasPhone: hasPhone ?? undefined,
         hasInstagram: hasInstagram ?? undefined,
         minRecipes, minIngredients, minSales, minRevenue,
@@ -885,7 +902,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [search, page, planTierFilter, signupPlatform, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
+  }, [search, page, planTierFilter, signupPlatform, ddd, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
 
   const updateUserInList = useCallback((updated: AdminUserDetail) => {
     setUsers(prev => prev.map(u => (u.id === updated.id ? {
@@ -1018,6 +1035,19 @@ export function UsersPage({ toast, onImpersonate }: Props) {
               <option value="ios">iOS</option>
               <option value="android">Android</option>
               <option value="web">Web</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">DDD</label>
+            <select
+              value={ddd ?? ''}
+              onChange={e => { setDdd(e.target.value || undefined); setPage(1); }}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              {VALID_DDDS.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
           </div>
           <div>

@@ -108,6 +108,7 @@ export class AdminController {
     const isPremiumFilter = req.query.isPremium;
     const planTierFilter = req.query.planTier as string | undefined;
     const signupPlatform = req.query.signupPlatform as string | undefined;
+    const ddd = req.query.ddd as string | undefined;
     const hasPhone = req.query.hasPhone as string | undefined;
     const hasInstagram = req.query.hasInstagram as string | undefined;
     const minRecipes = req.query.minRecipes ? parseInt(req.query.minRecipes as string) : undefined;
@@ -146,6 +147,18 @@ export class AdminController {
     if (signupPlatform === 'ios' || signupPlatform === 'android' || signupPlatform === 'web') {
       conditions.push(`u.signup_platform = $${idx}`);
       params.push(signupPlatform);
+      idx++;
+    }
+    if (ddd && /^\d{2}$/.test(ddd)) {
+      // Extrai o DDD do telefone (só dígitos), tolerando o prefixo 55 (país):
+      // números com 12+ dígitos começando em 55 → DDD nos 2 dígitos seguintes;
+      // caso contrário → os 2 primeiros dígitos.
+      const digits = `regexp_replace(u.phone, '[^0-9]', '', 'g')`;
+      conditions.push(
+        `u.phone IS NOT NULL AND (CASE WHEN length(${digits}) >= 12 AND left(${digits}, 2) = '55' ` +
+        `THEN substring(${digits} FROM 3 FOR 2) ELSE left(${digits}, 2) END) = $${idx}`
+      );
+      params.push(ddd);
       idx++;
     }
     if (hasPhone === 'true') conditions.push(`u.phone IS NOT NULL AND u.phone != ''`);

@@ -414,6 +414,7 @@ export const api = {
     search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;
     planTier?: 'free' | 'premium' | 'master';
     signupPlatform?: 'ios' | 'android' | 'web';
+    ddd?: string;
     hasPhone?: boolean | null; hasInstagram?: boolean | null;
     minRecipes?: number; minIngredients?: number; minSales?: number; minRevenue?: number;
     lastSeenDays?: number; createdDays?: number;
@@ -425,6 +426,7 @@ export const api = {
     if (params.planTier) q.set('planTier', params.planTier);
     if (params.sortBy) q.set('sortBy', params.sortBy);
     if (params.signupPlatform) q.set('signupPlatform', params.signupPlatform);
+    if (params.ddd) q.set('ddd', params.ddd);
     if (params.hasPhone != null) q.set('hasPhone', String(params.hasPhone));
     if (params.hasInstagram != null) q.set('hasInstagram', String(params.hasInstagram));
     if (params.minRecipes) q.set('minRecipes', String(params.minRecipes));
