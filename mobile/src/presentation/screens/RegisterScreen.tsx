@@ -19,6 +19,7 @@ import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
 import { CountryCodePicker } from '../components/CountryCodePicker';
+import { LgpdConsentModal } from '../components/LgpdConsentModal';
 
 interface Props {
   onRegister: () => void;
@@ -37,6 +38,8 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [acceptedLgpd, setAcceptedLgpd] = useState(false);
+  const [showLgpd, setShowLgpd] = useState(false);
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(60)).current;
@@ -69,12 +72,15 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
         }
       }
     }
-    if (phone.trim()) {
+    if (!phone.trim()) {
+      e.phone = 'Informe seu telefone com DDD.';
+    } else {
       const digits = phone.replace(/\D/g, '');
       if (digits.length < 8 || digits.length > 12) e.phone = t('register.phoneInvalid');
     }
     if (!password || password.length < 6) e.password = t('register.passwordMin');
     else if (password !== confirmPassword) e.confirmPassword = 'As senhas não coincidem';
+    if (!acceptedLgpd) e.lgpd = 'Você precisa aceitar a Política de Privacidade (LGPD).';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -190,6 +196,27 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               maxLength={8}
             />
 
+            {/* Aceite LGPD */}
+            <TouchableOpacity
+              style={styles.lgpdRow}
+              onPress={() => { setAcceptedLgpd(v => !v); if (errors.lgpd) setErrors(prev => ({ ...prev, lgpd: '' })); }}
+              activeOpacity={0.7}
+            >
+              <Ionicons
+                name={acceptedLgpd ? 'checkbox' : 'square-outline'}
+                size={22}
+                color={acceptedLgpd ? colors.primary : colors.textMuted}
+              />
+              <Text style={styles.lgpdText}>
+                Li e aceito a{' '}
+                <Text style={styles.lgpdLink} onPress={() => setShowLgpd(true)}>
+                  Política de Privacidade e o tratamento dos meus dados (LGPD)
+                </Text>
+                .
+              </Text>
+            </TouchableOpacity>
+            {errors.lgpd ? <Text style={styles.lgpdError}>{errors.lgpd}</Text> : null}
+
             <TouchableOpacity
               style={[styles.registerBtn, loading && { opacity: 0.6 }]}
               onPress={handleRegister}
@@ -209,6 +236,12 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <LgpdConsentModal
+        visible={showLgpd}
+        onClose={() => setShowLgpd(false)}
+        onAccept={() => { setAcceptedLgpd(true); setShowLgpd(false); setErrors(prev => ({ ...prev, lgpd: '' })); }}
+      />
     </View>
   );
 };
@@ -281,6 +314,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: { fontSize: 13, color: colors.error, flex: 1, fontWeight: '500' },
+
+  // Aceite LGPD
+  lgpdRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginTop: 8, marginBottom: 2 },
+  lgpdText: { flex: 1, fontSize: 12.5, color: colors.textSecondary, lineHeight: 18 },
+  lgpdLink: { color: colors.primary, fontWeight: '700' },
+  lgpdError: { fontSize: 12, color: colors.error, marginTop: 4 },
 
   // Register button
   registerBtn: {

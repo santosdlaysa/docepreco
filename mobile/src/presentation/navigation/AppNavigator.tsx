@@ -63,6 +63,7 @@ import { tokenStorage } from '../../data/storage/tokenStorage';
 import { companyLogoStorage } from '../../data/storage/companyLogoStorage';
 import { impersonationStorage } from '../../data/storage/impersonationStorage';
 import { authApi } from '../../data/api/authApi';
+import { LgpdConsentModal } from '../components/LgpdConsentModal';
 import { adminApi } from '../../data/api/adminApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -228,6 +229,8 @@ export function AppNavigator() {
   // sessionKey força a remontagem do NavigationContainer ao trocar de sessão.
   const [impersonatedCompany, setImpersonatedCompany] = useState<string | null>(null);
   const [sessionKey, setSessionKey] = useState(0);
+  // Aceite LGPD pendente (contas criadas antes do consentimento obrigatório).
+  const [needsLgpd, setNeedsLgpd] = useState(false);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
   const { reset: resetPremium, refresh: refreshPremium } = usePremium();
@@ -267,6 +270,32 @@ export function AppNavigator() {
       }
     })();
   }, []);
+
+  // Exige o aceite LGPD ao entrar no app se a conta ainda não consentiu.
+  useEffect(() => {
+    if (authState !== 'app' || demoMode) { setNeedsLgpd(false); return; }
+    let active = true;
+    (async () => {
+      // Não pede aceite durante impersonação (admin "vendo como" outro usuário).
+      if (await impersonationStorage.isActive()) return;
+      try {
+        const me = await authApi.me();
+        if (active) setNeedsLgpd(!me.lgpdAcceptedAt);
+      } catch {
+        // offline/erro: não bloqueia o uso do app
+      }
+    })();
+    return () => { active = false; };
+  }, [authState, demoMode]);
+
+  const handleAcceptLgpd = async () => {
+    try {
+      await authApi.acceptLgpd();
+      setNeedsLgpd(false);
+    } catch {
+      // mantém o modal aberto para nova tentativa
+    }
+  };
 
   // Carrega o nome da confeiteira do storage ao entrar no app (login/registro)
   useEffect(() => {
@@ -604,6 +633,7 @@ export function AppNavigator() {
           />
         </Stack.Navigator>
       </NavigationContainer>
+      <LgpdConsentModal visible={needsLgpd} required onClose={() => {}} onAccept={handleAcceptLgpd} />
       </View>
     </AuthContext.Provider>
   );

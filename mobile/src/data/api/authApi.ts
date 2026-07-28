@@ -16,6 +16,8 @@ export interface AuthUser {
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   trial_used_at: string | null;
+  /** Null = usuário ainda não aceitou o termo LGPD. */
+  lgpdAcceptedAt: string | null;
 }
 
 const normalizeUser = (raw: any): AuthUser => ({
@@ -30,6 +32,7 @@ const normalizeUser = (raw: any): AuthUser => ({
   premiumUntil: raw.premiumUntil ?? null,
   premiumPlatform: raw.premiumPlatform ?? null,
   trial_used_at: raw.trial_used_at ?? null,
+  lgpdAcceptedAt: raw.lgpdAcceptedAt ?? null,
 });
 
 export const authApi = {
@@ -77,6 +80,13 @@ export const authApi = {
   updateProfile: async (data: { instagramHandle?: string | null; phone?: string | null }): Promise<AuthUser> => {
     const response = await apiClient.patch('/auth/profile', data);
     const normalized = normalizeUser(response.data.data);
+    await tokenStorage.saveUser(normalized);
+    return normalized;
+  },
+
+  acceptLgpd: async (): Promise<AuthUser> => {
+    const response = await apiClient.post('/auth/accept-lgpd');
+    const normalized = normalizeUser(response.data.data.user);
     await tokenStorage.saveUser(normalized);
     return normalized;
   },

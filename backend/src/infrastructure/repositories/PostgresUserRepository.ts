@@ -1,5 +1,5 @@
 import { pool } from '../database/connection';
-import { User, RegisterDTO, PremiumPlatform, PlanTier } from '../../domain/entities/User';
+import { User, RegisterDTO, PremiumPlatform, PlanTier, LGPD_VERSION } from '../../domain/entities/User';
 import bcrypt from 'bcryptjs';
 
 // The `users.id` column is a UUID. RevenueCat webhooks may pass non-UUID
@@ -33,10 +33,23 @@ export class PostgresUserRepository {
   async create(data: RegisterDTO): Promise<User> {
     const passwordHash = await bcrypt.hash(data.password, 10);
     const phone = data.phone?.replace(/\D/g, '') || null;
+    // O cadastro exige aceite do termo LGPD (checkbox obrigatório), então já
+    // registramos o consentimento no ato da criação da conta.
     const result = await pool.query(
-      `INSERT INTO users (company_name, email, password_hash, phone, signup_platform) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [data.companyName, data.email.toLowerCase(), passwordHash, phone, data.platform || null]
+      `INSERT INTO users (company_name, email, password_hash, phone, signup_platform, lgpd_accepted_at, lgpd_version)
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6) RETURNING *`,
+      [data.companyName, data.email.toLowerCase(), passwordHash, phone, data.platform || null, LGPD_VERSION]
     );
+    return this.mapRow(result.rows[0]);
+  }
+
+  /** Registra o aceite do termo LGPD para um usuário existente. */
+  async acceptLgpd(userId: string, version: string): Promise<User | null> {
+    const result = await pool.query(
+      `UPDATE users SET lgpd_accepted_at = NOW(), lgpd_version = $2 WHERE id = $1 RETURNING *`,
+      [userId, version]
+    );
+    if (result.rows.length === 0) return null;
     return this.mapRow(result.rows[0]);
   }
 
@@ -238,6 +251,7 @@ export class PostgresUserRepository {
   private mapRow(row: Record<string, unknown>): User & { passwordHash: string } {
     const premiumUntil = row.premium_until as Date | null;
     const trialUsedAt = row.trial_used_at as Date | null;
+    const lgpdAcceptedAt = row.lgpd_accepted_at as Date | null;
     return {
       id: row.id as string,
       companyName: row.company_name as string,
@@ -254,6 +268,8 @@ export class PostgresUserRepository {
       trial_used_at: trialUsedAt ? trialUsedAt.toISOString() : null,
       signupPlatform: (row.signup_platform as 'ios' | 'android' | null) ?? null,
       defaultHourlyRate: row.default_hourly_rate == null ? null : Number(row.default_hourly_rate),
+      lgpdAcceptedAt: lgpdAcceptedAt ? lgpdAcceptedAt.toISOString() : null,
+      lgpdVersion: (row.lgpd_version as string | null) ?? null,
     };
   }
 }

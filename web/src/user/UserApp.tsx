@@ -27,6 +27,8 @@ import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserAuthProvider, useAuth } from './UserAuthContext';
 import { UserLoginPage } from './UserLoginPage';
+import { userApi } from './userApi';
+import { LgpdModal } from './lgpd';
 import { slugify } from './format';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import { RecipesPage } from './pages/RecipesPage';
@@ -45,10 +47,9 @@ import { StockPage } from './pages/StockPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { SalesTipsPage } from './pages/SalesTipsPage';
 
-type Page = 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production' | 'cash' | 'seasons' | 'store' | 'profile';
 type Page =
-  | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'cash'
-  | 'seasons' | 'store' | 'profile' | 'finance' | 'expenses' | 'stock'
+  | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production'
+  | 'cash' | 'seasons' | 'store' | 'profile' | 'finance' | 'expenses' | 'stock'
   | 'clients' | 'tips';
 
 const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
@@ -86,7 +87,7 @@ function useDarkMode() {
 }
 
 function Shell() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, setUser } = useAuth();
   const [page, setPage] = useState<Page>('reports');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toasts, toast, removeToast } = useToast();
@@ -235,6 +236,23 @@ function Shell() {
       </main>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Aceite LGPD obrigatório para contas criadas antes do consentimento. */}
+      {!user.lgpdAcceptedAt && (
+        <LgpdModal
+          required
+          onClose={() => {}}
+          onAccept={async () => {
+            try {
+              const { user: updated } = await userApi.acceptLgpd();
+              setUser(updated);
+              toast.success('Consentimento registrado. Obrigado!');
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

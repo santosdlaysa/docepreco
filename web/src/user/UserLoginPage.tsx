@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Cake, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from './UserAuthContext';
 import { userApi, ApiError } from './userApi';
+import { LgpdModal } from './lgpd';
 
 type Mode = 'login' | 'register' | 'forgot';
 
@@ -14,6 +15,8 @@ export function UserLoginPage() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptedLgpd, setAcceptedLgpd] = useState(false);
+  const [showLgpd, setShowLgpd] = useState(false);
 
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -33,7 +36,18 @@ export function UserLoginPage() {
           setLoading(false);
           return;
         }
-        await register(companyName.trim(), email.trim(), password, phone.trim() || undefined);
+        const phoneDigits = phone.replace(/\D/g, '');
+        if (phoneDigits.length < 10 || phoneDigits.length > 15) {
+          setError('Informe um telefone válido com DDD.');
+          setLoading(false);
+          return;
+        }
+        if (!acceptedLgpd) {
+          setError('Você precisa aceitar a Política de Privacidade (LGPD) para criar a conta.');
+          setLoading(false);
+          return;
+        }
+        await register(companyName.trim(), email.trim(), password, phone.trim());
       } else {
         await userApi.forgotPassword(email.trim());
         setInfo('Se o e-mail existir, enviamos instruções de recuperação.');
@@ -85,8 +99,9 @@ export function UserLoginPage() {
           </Field>
 
           {mode === 'register' && (
-            <Field label="Telefone (opcional)">
+            <Field label="Telefone">
               <input
+                type="tel"
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 placeholder="(00) 00000-0000"
@@ -117,13 +132,31 @@ export function UserLoginPage() {
             </Field>
           )}
 
+          {mode === 'register' && (
+            <label className="flex items-start gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={acceptedLgpd}
+                onChange={e => setAcceptedLgpd(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded accent-primary-500 shrink-0"
+              />
+              <span className="text-xs text-gray-600 dark:text-gray-300 leading-snug">
+                Li e aceito a{' '}
+                <button type="button" onClick={() => setShowLgpd(true)} className={linkClass}>
+                  Política de Privacidade e o tratamento dos meus dados (LGPD)
+                </button>
+                .
+              </span>
+            </label>
+          )}
+
           {error && <p className="text-sm text-red-600 animate-fade-in">{error}</p>}
           {info && <p className="text-sm text-green-600 animate-fade-in">{info}</p>}
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white font-semibold rounded-lg py-2.5 text-sm transition-all flex items-center justify-center gap-2"
+            disabled={loading || (mode === 'register' && !acceptedLgpd)}
+            className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-2.5 text-sm transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -165,6 +198,13 @@ export function UserLoginPage() {
           )}
         </div>
       </div>
+
+      {showLgpd && (
+        <LgpdModal
+          onClose={() => setShowLgpd(false)}
+          onAccept={() => { setAcceptedLgpd(true); setShowLgpd(false); }}
+        />
+      )}
     </div>
   );
 
@@ -172,6 +212,7 @@ export function UserLoginPage() {
     setMode(m);
     setError('');
     setInfo('');
+    setAcceptedLgpd(false);
   }
 }
 

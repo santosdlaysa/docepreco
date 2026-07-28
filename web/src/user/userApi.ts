@@ -69,6 +69,8 @@ export interface AuthUser {
   isPremium: boolean;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
+  /** Null = usuário ainda não aceitou o termo LGPD. */
+  lgpdAcceptedAt?: string | null;
 }
 
 export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unit';
@@ -449,6 +451,7 @@ export const userApi = {
     }),
   updateProfile: (data: { instagramHandle?: string | null; phone?: string | null }) =>
     req<AuthUser>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  acceptLgpd: () => req<{ user: AuthUser }>('/auth/accept-lgpd', { method: 'POST' }),
 
   // Premium / PIX
   getPlanConfig: () => req<PlanConfigPublic>('/admin/settings/plans'),

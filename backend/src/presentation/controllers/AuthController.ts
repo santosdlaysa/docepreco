@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../../domain/entities/User';
+import { User, LGPD_VERSION } from '../../domain/entities/User';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
 import { PostgresReferralRepository } from '../../infrastructure/repositories/PostgresReferralRepository';
@@ -33,6 +33,10 @@ export class AuthController {
       const { companyName, email, password, phone, referralCode, platform } = req.body;
       if (!companyName || !email || !password) {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
+        return;
+      }
+      if (phone === undefined || phone === null || String(phone).trim() === '') {
+        res.status(400).json({ success: false, error: 'Telefone é obrigatório' });
         return;
       }
       if (platform && !['ios', 'android'].includes(platform)) {
@@ -177,6 +181,23 @@ export class AuthController {
       await userRepo.updatePassword(result.userId, newPassword);
       await userRepo.markResetCodeUsed(result.userId, code);
       res.json({ success: true, message: 'Senha atualizada com sucesso' });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  /** Registra o aceite do termo LGPD do usuário logado (para contas já existentes). */
+  async acceptLgpd(req: Request & { userId?: string }, res: Response): Promise<void> {
+    try {
+      const user = await userRepo.acceptLgpd(req.userId!, LGPD_VERSION);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const { passwordHash, ...safeUser } = user as User & { passwordHash?: string };
+      void passwordHash;
+      res.json({ success: true, data: { user: safeUser } });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
