@@ -702,6 +702,58 @@ export const CreateRecipeScreen: React.FC = () => {
     }
   };
 
+  // Normaliza uma quantidade para a medida base (g/ml); un/incompatível → undefined.
+  const toBaseMeasure = (qty: number, unit: string): number | undefined => {
+    if (unit === 'g' || unit === 'ml') return qty;
+    if (unit === 'kg' || unit === 'l') return qty * 1000;
+    return undefined;
+  };
+
+  // Custo total, custo por unidade e base (g/ml) produzida de uma receita — mesma
+  // lógica do backend (recipeCalculator), sem resolver sub-receitas aninhadas.
+  const computeRecipeCostInfo = (recipe: Recipe): { totalCost: number; costPerUnit: number; baseQuantityProduced: number } => {
+    let ingredientsCost = 0;
+    let baseQuantityProduced = 0;
+    for (const ri of recipe.ingredients ?? []) {
+      const ing = availableIngredients.find(item => item.id === ri.ingredientId);
+      if (!ing) continue;
+      const eff = getEffectivePurchaseQuantity(ing);
+      if (eff <= 0) continue;
+      const qtyInIngredientUnit =
+        ri.unit === 'unit' && ing.purchaseUnitWeight
+          ? ri.quantityUsed * ing.purchaseUnitWeight
+          : convertToSameUnit(ri.quantityUsed, ri.unit, ing.unit);
+      ingredientsCost += (ing.purchasePrice / eff) * qtyInIngredientUnit;
+      baseQuantityProduced += toBaseMeasure(qtyInIngredientUnit, ing.unit) ?? 0;
+    }
+    const additionalTotal = (recipe.additionalCosts ?? []).reduce((sum, c) => sum + c.value, 0);
+    const totalCost = ingredientsCost + additionalTotal;
+    const yieldNum = recipe.yield || 1;
+    return { totalCost, costPerUnit: totalCost / yieldNum, baseQuantityProduced };
+  };
+
+  // Quanto (R$) de uma sub-receita entra na receita, conforme quantidade + unidade.
+  const integratedSubRecipeCost = (recipe: Recipe, quantity: number, unit: string): number => {
+    if (!quantity || quantity <= 0) return 0;
+    const info = computeRecipeCostInfo(recipe);
+    if (unit === 'un' || unit === 'unit') return info.costPerUnit * quantity;
+    const baseUsed = toBaseMeasure(quantity, unit);
+    if (baseUsed === undefined || info.baseQuantityProduced <= 0) return 0;
+    return (info.totalCost / info.baseQuantityProduced) * baseUsed;
+  };
+
+  // Custo (R$) que a sub-receita selecionada no modal vai integrar, ao vivo.
+  const subRecipeCostPreview = selectedSubRecipe
+    ? integratedSubRecipeCost(selectedSubRecipe, parseLocaleNumber(subRecipeQuantity), subRecipeUnit)
+    : 0;
+  // true quando é g/ml mas a sub-receita não tem rendimento mensurável em g/ml.
+  const subRecipeCostUncomputable =
+    !!selectedSubRecipe &&
+    parseLocaleNumber(subRecipeQuantity) > 0 &&
+    subRecipeUnit !== 'un' &&
+    subRecipeUnit !== 'unit' &&
+    subRecipeCostPreview === 0;
+
   // ─── Design tokens ───
   const pricingPreview = (() => {
     const yieldNum = Math.floor(parseLocaleNumber(yieldAmount));
@@ -723,8 +775,16 @@ export const CreateRecipeScreen: React.FC = () => {
       ingredientsCost += (ingredient.purchasePrice / effectivePurchaseQty) * qtyInPurchaseUnit;
     }
 
+    // Inclui o custo das sub-receitas já adicionadas (antes ficavam de fora do preview).
+    let subRecipesCost = 0;
+    for (const sub of subRecipes) {
+      const subRecipe = availableRecipes.find(r => r.id === sub.subRecipeId);
+      if (!subRecipe) continue;
+      subRecipesCost += integratedSubRecipeCost(subRecipe, sub.quantityUsed, sub.unit);
+    }
+
     const additionalCostTotal = getFinalCostsFromInputs().reduce((sum, cost) => sum + cost.value, 0);
-    const totalCost = ingredientsCost + additionalCostTotal;
+    const totalCost = ingredientsCost + additionalCostTotal + subRecipesCost;
     const costPerUnit = totalCost / yieldNum;
     const margin = parseLocaleNumber(profitMargin) || 0;
     const suggestedPrice = costPerUnit * (1 + margin / 100);
@@ -1377,6 +1437,32 @@ export const CreateRecipeScreen: React.FC = () => {
                   </TouchableOpacity>
                 ))}
               </View>
+
+              {/* Custo integrado ao vivo — evita o erro de adicionar a sub-receita "às cegas". */}
+              {parseLocaleNumber(subRecipeQuantity) > 0 && (
+                subRecipeCostUncomputable ? (
+                  <View style={{ backgroundColor: '#FCEFD9', borderRadius: 12, padding: 12, marginTop: 4 }}>
+                    <Text style={{ fontSize: 12.5, color: '#8A5A00', lineHeight: 18 }}>
+                      Para calcular por {subRecipeUnit}, a sub-receita precisa ter ingredientes em g/ml. Prefira a unidade “un” e informe quantas porções do rendimento ({selectedSubRecipe.yield} un) você usa.
+                    </Text>
+                  </View>
+                ) : subRecipeCostPreview > 0 ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: CREAM2, borderRadius: 12, padding: 14, marginTop: 4 }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 13.5, fontWeight: '600', color: INK2 }}>Custo integrado no preço</Text>
+                      {(subRecipeUnit === 'un' || subRecipeUnit === 'unit') && (
+                        <Text style={{ fontSize: 11.5, color: INK3, marginTop: 2 }}>
+                          {parseLocaleNumber(subRecipeQuantity) >= selectedSubRecipe.yield
+                            ? 'Você está usando a receita inteira (ou mais).'
+                            : `${((parseLocaleNumber(subRecipeQuantity) / selectedSubRecipe.yield) * 100).toFixed(0)}% do rendimento (${selectedSubRecipe.yield} un)`}
+                        </Text>
+                      )}
+                    </View>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: PINK }}>{formatCurrency(subRecipeCostPreview)}</Text>
+                  </View>
+                ) : null
+              )}
+
               <View style={styles.modalActions}>
                 <Button
                   title={t('common.back')}
