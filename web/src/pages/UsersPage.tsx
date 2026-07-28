@@ -1038,19 +1038,6 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">DDD</label>
-            <select
-              value={ddd ?? ''}
-              onChange={e => { setDdd(e.target.value || undefined); setPage(1); }}
-              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
-            >
-              <option value="">Todos</option>
-              {VALID_DDDS.map(d => (
-                <option key={d} value={d}>{d}</option>
-              ))}
-            </select>
-          </div>
-          <div>
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Telefone</label>
             <select
               value={hasPhone === null ? '' : String(hasPhone)}
@@ -1183,9 +1170,25 @@ export function UsersPage({ toast, onImpersonate }: Props) {
               </tr>
               {/* Linha de filtros por coluna (Dispositivo → Cadastro). Sincronizada com o painel "Filtros". */}
               <tr className="bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
-                <th colSpan={4} className="px-4 py-2 text-right align-middle">
+                <th colSpan={2} className="px-4 py-2 text-right align-middle">
                   <span className="text-[11px] font-normal text-gray-400 whitespace-nowrap">Filtrar colunas →</span>
                 </th>
+                {/* Telefone → DDD */}
+                <th className="px-4 py-2 align-middle">
+                  <select
+                    value={ddd ?? ''}
+                    onChange={e => { setDdd(e.target.value || undefined); setPage(1); }}
+                    className={filterCtl}
+                    aria-label="Filtrar por DDD"
+                  >
+                    <option value="">DDD</option>
+                    {VALID_DDDS.map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                </th>
+                {/* Instagram (sem filtro) */}
+                <th className="px-4 py-2" />
                 {/* Dispositivo */}
                 <th className="px-4 py-2 align-middle">
                   <select
