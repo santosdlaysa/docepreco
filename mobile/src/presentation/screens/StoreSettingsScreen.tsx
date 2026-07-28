@@ -19,7 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { StoreSettings, StoreBusinessHours } from '../../domain/entities/StoreProduct';
+import { StoreSettings, StoreBusinessHours, PixKeyType } from '../../domain/entities/StoreProduct';
 import { PaymentMethodType } from '../../domain/entities/Order';
 import { storeApi } from '../../data/api/storeApi';
 import { demoStoreApi } from '../../data/demo/demoApi';
@@ -58,6 +58,24 @@ const ALL_PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons
   { key: 'credit', icon: 'card-outline', label: 'Cartão de crédito', sub: 'Na maquininha' },
   { key: 'debit', icon: 'card-outline', label: 'Cartão de débito', sub: 'Na maquininha' },
 ];
+
+const PIX_KEY_TYPE_OPTIONS: { key: PixKeyType; label: string }[] = [
+  { key: 'random', label: 'Aleatória' },
+  { key: 'cpf', label: 'CPF' },
+  { key: 'cnpj', label: 'CNPJ' },
+  { key: 'email', label: 'E-mail' },
+  { key: 'phone', label: 'Celular' },
+];
+
+function pixKeyPlaceholder(type: PixKeyType): string {
+  switch (type) {
+    case 'cpf': return '000.000.000-00';
+    case 'cnpj': return '00.000.000/0000-00';
+    case 'email': return 'voce@email.com';
+    case 'phone': return '(00) 00000-0000';
+    default: return 'chave aleatória (UUID)';
+  }
+}
 
 const WEEKDAY_LABELS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
@@ -103,6 +121,9 @@ export const StoreSettingsScreen: React.FC = () => {
   const [deliveryFeeText, setDeliveryFeeText] = useState('');
   const [coverImageUrl, setCoverImageUrl] = useState('');
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodType[]>(['pix', 'cash', 'credit', 'debit']);
+  const [pixKeyType, setPixKeyType] = useState<PixKeyType>('random');
+  const [pixKey, setPixKey] = useState('');
+  const [pixReceiverName, setPixReceiverName] = useState('');
   const [useBusinessHours, setUseBusinessHours] = useState(false);
   const [businessHours, setBusinessHours] = useState<StoreBusinessHours[]>(defaultBusinessHours());
   const [loading, setLoading] = useState(true);
@@ -123,6 +144,9 @@ export const StoreSettingsScreen: React.FC = () => {
         setDeliveryFeeText(formatMoney(s.deliveryFee ?? 0));
         setCoverImageUrl(s.coverImageUrl ?? '');
         setPaymentMethods(s.paymentMethods?.length ? s.paymentMethods : ['pix', 'cash', 'credit', 'debit']);
+        setPixKeyType(s.pixKeyType ?? 'random');
+        setPixKey(s.pixKey ?? '');
+        setPixReceiverName(s.pixReceiverName ?? '');
         setUseBusinessHours(s.useBusinessHours ?? false);
         setBusinessHours(s.businessHours?.length === 7 ? s.businessHours : defaultBusinessHours());
       })
@@ -191,6 +215,9 @@ export const StoreSettingsScreen: React.FC = () => {
         deliveryFee: parseMoney(deliveryFeeText) || undefined,
         coverImageUrl: coverImageUrl || undefined,
         paymentMethods,
+        pixKey: pixKey.trim() || null,
+        pixKeyType: pixKey.trim() ? pixKeyType : null,
+        pixReceiverName: pixReceiverName.trim() || null,
         useBusinessHours,
         businessHours,
       });
@@ -402,6 +429,45 @@ export const StoreSettingsScreen: React.FC = () => {
             );
           })}
 
+          {/* ── Recebimento por PIX ── */}
+          <Text style={[st.label, { marginTop: 20 }]}>Recebimento por PIX</Text>
+          <Text style={st.pixHint}>
+            Cadastre sua chave PIX para o cliente pagar na hora do pedido. O dinheiro cai direto
+            na sua conta — você confere e marca o pedido como pago na tela de encomendas.
+          </Text>
+          <View style={st.categoryWrap}>
+            {PIX_KEY_TYPE_OPTIONS.map(opt => {
+              const on = pixKeyType === opt.key;
+              return (
+                <TouchableOpacity
+                  key={opt.key}
+                  style={[st.categoryChip, on && st.categoryChipOn]}
+                  onPress={() => setPixKeyType(opt.key)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[st.categoryChipText, on && st.categoryChipTextOn]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <TextInput
+            style={[st.input, { marginTop: 10 }]}
+            value={pixKey}
+            onChangeText={setPixKey}
+            placeholder={pixKeyPlaceholder(pixKeyType)}
+            placeholderTextColor={INK3}
+            autoCapitalize="none"
+            keyboardType={pixKeyType === 'email' ? 'email-address' : pixKeyType === 'random' ? 'default' : 'numbers-and-punctuation'}
+          />
+          <Text style={[st.label, { marginTop: 12 }]}>Nome do recebedor (opcional)</Text>
+          <TextInput
+            style={st.input}
+            value={pixReceiverName}
+            onChangeText={setPixReceiverName}
+            placeholder={storeName || 'Aparece no app do banco do cliente'}
+            placeholderTextColor={INK3}
+          />
+
           {/* ── Horário de funcionamento ── */}
           <TouchableOpacity style={[st.toggleRow, { marginTop: 20 }]} onPress={() => setUseBusinessHours(v => !v)} activeOpacity={0.7}>
             <View style={st.toggleLeft}>
@@ -537,6 +603,9 @@ const st = StyleSheet.create({
   input: {
     backgroundColor: '#fff', borderRadius: 14, padding: 14,
     fontSize: 15, color: INK, ...SHADOW,
+  },
+  pixHint: {
+    fontSize: 12, color: INK3, lineHeight: 17, marginTop: -4, marginBottom: 10,
   },
   priceInput: {
     backgroundColor: '#fff', borderRadius: 14, padding: 14,

@@ -35,6 +35,8 @@ export interface StoreBusinessHours {
   closeTime: string; // "HH:mm"
 }
 
+export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
+
 export interface StoreSettings {
   active: boolean;
   storeName: string;
@@ -49,6 +51,11 @@ export interface StoreSettings {
   /** Logo/foto de perfil da loja — aparece nas listas do marketplace. */
   logoUrl?: string;
   paymentMethods: PaymentMethodType[];
+  /** Chave PIX de recebimento da loja (normalizada). Vazia = sem PIX no checkout. */
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
+  /** Nome do recebedor exibido no PIX (padrão: nome da loja). */
+  pixReceiverName?: string | null;
   address?: string;
   city?: string;
   category?: string;

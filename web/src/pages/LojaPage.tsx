@@ -208,6 +208,8 @@ export function LojaPage() {
   const [error, setError] = useState<string | null>(null);
   const [orderId, setOrderId] = useState<string | null>(null);
   const [orderStatus, setOrderStatus] = useState<string>('pending');
+  const [pix, setPix] = useState<{ payload: string; qrBase64: string; amount: number; receiverName: string } | null>(null);
+  const [pixCopied, setPixCopied] = useState(false);
   const [savedOrders, setSavedOrders] = useState<SavedOrder[]>([]);
   const [historyStatuses, setHistoryStatuses] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -435,6 +437,8 @@ export function LojaPage() {
         const j = await r.json();
         if (j.success) {
           setOrderStatus(j.data.status);
+          // Backend devolve pix:null quando o pedido é pago/cancelado → some o card de pagamento.
+          setPix(j.data.pix ?? null);
           // Pedidos salvos antes do número existir ganham o número vindo da API
           if (j.data.orderNumber != null) {
             setSavedOrders(prev => {
@@ -560,6 +564,7 @@ export function LojaPage() {
       }
       setOrderId(json.data.orderId);
       setOrderStatus('pending');
+      setPix(json.data.pix ?? null);
       // Salvar cliente e pedido no localStorage
       try {
         localStorage.setItem(CUSTOMER_KEY(slug!), JSON.stringify({ name: form.clientName.trim(), phone: form.clientPhone.trim(), address: form.deliveryAddress.trim() }));
@@ -1442,6 +1447,41 @@ export function LojaPage() {
       </div>
 
       <div className="max-w-lg mx-auto px-4 -mt-4 pb-10 flex flex-col gap-4">
+
+        {/* Pagamento via Pix (loja com chave cadastrada e pedido ainda não pago) */}
+        {pix && !cancelledStatus && orderStatus !== 'delivered' && (
+          <div className="bg-white rounded-2xl shadow-sm p-5">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">Pague com Pix</p>
+              <span className="text-lg font-bold text-[#EA4B92]">{fmt(pix.amount)}</span>
+            </div>
+            <p className="text-xs text-gray-500 mb-4">
+              Escaneie o QR code ou copie o código no app do seu banco. Recebedor: <strong>{pix.receiverName}</strong>.
+            </p>
+            <div className="flex justify-center mb-4">
+              <img src={pix.qrBase64} alt="QR code Pix" className="w-52 h-52 rounded-xl border border-gray-100" />
+            </div>
+            <div className="rounded-xl bg-gray-50 border border-gray-100 p-3 mb-3">
+              <p className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider mb-1">Pix copia e cola</p>
+              <p className="text-[11px] text-gray-600 break-all leading-relaxed font-mono">{pix.payload}</p>
+            </div>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(pix.payload);
+                  setPixCopied(true);
+                  setTimeout(() => setPixCopied(false), 2500);
+                } catch {}
+              }}
+              className="w-full py-3 rounded-xl bg-[#EA4B92] text-white font-bold text-sm hover:bg-[#d43f82] transition-colors"
+            >
+              {pixCopied ? '✓ Código copiado!' : 'Copiar código Pix'}
+            </button>
+            <p className="text-[11px] text-gray-400 text-center mt-3">
+              Depois de pagar, a loja confirma o recebimento. Guarde o comprovante.
+            </p>
+          </div>
+        )}
 
         {/* Timeline vertical */}
         {!cancelledStatus && (
