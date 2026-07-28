@@ -13,12 +13,14 @@ import {
   RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
+import { authApi } from '../../data/api/authApi';
 import { statsApi, AppStats } from '../../data/api/statsApi';
 import { saleApi } from '../../data/api/saleApi';
 import { Sale } from '../../domain/entities/Sale';
@@ -86,7 +88,29 @@ export const HomeScreen: React.FC = () => {
   const [annualPriceLabel, setAnnualPriceLabel] = useState('R$ 120,00');
   const [showCityModal, setShowCityModal] = useState(false);
   const [showExpiringModal, setShowExpiringModal] = useState(false);
+  const [openingWeb, setOpeningWeb] = useState(false);
   const planBannerRef = useRef<ScrollView>(null);
+
+  // Abre a versão web (docepreco.site/app) já logada, reaproveitando o login do
+  // app: pede um código de transferência de curta duração ao backend e o passa
+  // na URL. Se algo falhar, abre a web mesmo assim (o usuário loga manualmente).
+  const WEB_APP_URL = 'https://docepreco.site/app';
+  const openWebVersion = async () => {
+    if (openingWeb) return;
+    setOpeningWeb(true);
+    try {
+      if (isDemoMode()) {
+        await WebBrowser.openBrowserAsync(WEB_APP_URL);
+        return;
+      }
+      const code = await authApi.getWebHandoffCode();
+      await WebBrowser.openBrowserAsync(`${WEB_APP_URL}?code=${encodeURIComponent(code)}`);
+    } catch {
+      await WebBrowser.openBrowserAsync(WEB_APP_URL);
+    } finally {
+      setOpeningWeb(false);
+    }
+  };
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const stApi = isDemoMode() ? demoStatsApi : statsApi;
@@ -592,6 +616,27 @@ export const HomeScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={PINK} />
           </TouchableOpacity>
         )}
+
+        {/* ═══════ VERSÃO WEB ═══════ */}
+        <TouchableOpacity
+          style={s.webBanner}
+          onPress={openWebVersion}
+          activeOpacity={0.85}
+          disabled={openingWeb}
+        >
+          <View style={s.webIcon}>
+            {openingWeb ? (
+              <ActivityIndicator size="small" color={colors.purple} />
+            ) : (
+              <Ionicons name="desktop-outline" size={20} color={colors.purple} />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.webTitle}>Ver versão web</Text>
+            <Text style={s.webSub}>Acesse o DocePreço no computador — já logado</Text>
+          </View>
+          <Ionicons name="open-outline" size={20} color={colors.purple} />
+        </TouchableOpacity>
 
         {/* ═══════ WEEKLY CHART ═══════ */}
         <View style={s.secHeader}>
@@ -1162,6 +1207,33 @@ const s = StyleSheet.create({
   },
   guideTitle: { fontSize: 15, fontWeight: '700', color: INK },
   guideSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+
+  /* ── Versão web ── */
+  webBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 18,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.purpleBg,
+    ...SHADOW,
+    shadowOpacity: 0.04,
+  },
+  webIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.purpleBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webTitle: { fontSize: 15, fontWeight: '700', color: INK },
+  webSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
 
   /* ── Trial banner ── */
   trialBanner: {

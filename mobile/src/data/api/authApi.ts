@@ -102,6 +102,15 @@ export const authApi = {
     await apiClient.post('/auth/suggestion', { message });
   },
 
+  /**
+   * SSO web: obtém um código de transferência de curta duração para abrir a
+   * versão web já logada (sem trafegar o token de sessão na URL).
+   */
+  getWebHandoffCode: async (): Promise<string> => {
+    const response = await apiClient.post('/auth/web-handoff');
+    return response.data.data.code;
+  },
+
   deleteAccount: async (): Promise<void> => {
     await apiClient.delete('/auth/account');
     await tokenStorage.clear();
