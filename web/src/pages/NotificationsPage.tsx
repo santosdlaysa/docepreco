@@ -121,7 +121,7 @@ export function NotificationsPage({ toast }: Props) {
                 <th className="px-3 py-3">Alvo</th>
                 <th className="px-3 py-3">Status</th>
                 <th className="px-3 py-3">Agendamento</th>
-                <th className="px-3 py-3">Enviados</th>
+                <th className="px-3 py-3">Destinatários</th>
                 <th className="px-3 py-3 text-right">Ações</th>
               </tr>
             </thead>

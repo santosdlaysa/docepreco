@@ -134,14 +134,17 @@ const NotificationBell: React.FC = () => {
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable style={bell.overlay} onPress={() => setOpen(false)}>
-          <Pressable style={bell.panel} onPress={() => {}}>
+          {/* View (em vez de Pressable) para capturar apenas o toque e não
+              bloquear o gesto de arrasto do ScrollView interno no Android.
+              onStartShouldSetResponder impede que tocar dentro feche o modal. */}
+          <View style={bell.panel} onStartShouldSetResponder={() => true}>
             <View style={bell.panelHeader}>
               <Text style={bell.panelTitle}>Notificações</Text>
               <TouchableOpacity onPress={() => setOpen(false)} hitSlop={8}>
                 <Ionicons name="close" size={20} color={colors.textMuted} />
               </TouchableOpacity>
             </View>
-            <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
+            <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled showsVerticalScrollIndicator>
               {logs.length === 0 ? (
                 <Text style={bell.empty}>Nenhuma notificação</Text>
               ) : (
@@ -164,7 +167,7 @@ const NotificationBell: React.FC = () => {
                 })
               )}
             </ScrollView>
-          </Pressable>
+          </View>
         </Pressable>
       </Modal>
     </>

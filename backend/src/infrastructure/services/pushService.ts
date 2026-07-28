@@ -4,14 +4,21 @@ import { PostgresPushTokenRepository } from '../repositories/PostgresPushTokenRe
 const expo = new Expo();
 const tokenRepo = new PostgresPushTokenRepository();
 
-export async function sendPushNotifications(
+export interface PushSendResult {
+  /** Nº de entregas aceitas pelo Expo (contagem por dispositivo/token). */
+  successCount: number;
+  /** Tokens que o Expo aceitou — permite mapear de volta para usuários. */
+  successfulTokens: string[];
+}
+
+export async function sendPushNotificationsDetailed(
   tokens: string[],
   title: string,
   body: string,
   data?: Record<string, unknown>
-): Promise<number> {
+): Promise<PushSendResult> {
   const validTokens = tokens.filter(t => Expo.isExpoPushToken(t));
-  if (validTokens.length === 0) return 0;
+  if (validTokens.length === 0) return { successCount: 0, successfulTokens: [] };
 
   const messages: ExpoPushMessage[] = validTokens.map(token => ({
     to: token,
@@ -23,20 +30,22 @@ export async function sendPushNotifications(
 
   const chunks = expo.chunkPushNotifications(messages);
   let successCount = 0;
+  const successfulTokens: string[] = [];
 
   for (const chunk of chunks) {
     try {
       const tickets: ExpoPushTicket[] = await expo.sendPushNotificationsAsync(chunk);
       for (let i = 0; i < tickets.length; i++) {
         const ticket = tickets[i];
+        const to = (chunk[i] as ExpoPushMessage).to as string;
         if (ticket.status === 'ok') {
           successCount++;
+          successfulTokens.push(to);
         } else if (
           ticket.status === 'error' &&
           ticket.details?.error === 'DeviceNotRegistered'
         ) {
-          const failedToken = (chunk[i] as ExpoPushMessage).to as string;
-          await tokenRepo.removeByToken(failedToken);
+          await tokenRepo.removeByToken(to);
         }
       }
     } catch (err) {
@@ -44,5 +53,15 @@ export async function sendPushNotifications(
     }
   }
 
+  return { successCount, successfulTokens };
+}
+
+export async function sendPushNotifications(
+  tokens: string[],
+  title: string,
+  body: string,
+  data?: Record<string, unknown>
+): Promise<number> {
+  const { successCount } = await sendPushNotificationsDetailed(tokens, title, body, data);
   return successCount;
 }
