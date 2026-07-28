@@ -1111,6 +1111,13 @@ export async function runMigrations() {
     // Toggle manual de pedidos: a loja continua publicada (active) e visível,
     // mas fechada para novos pedidos quando accepting_orders = FALSE.
     await addColumnIfMissing(client, 'store_settings', 'accepting_orders', 'BOOLEAN NOT NULL DEFAULT TRUE');
+
+    // PIX estático de recebimento da loja: chave do confeiteiro. O checkout gera
+    // o copia-e-cola/QR com o valor do pedido e o cliente paga direto na conta do
+    // dono (o DocePreço não intermedia o dinheiro). Confirmação manual pelo dono.
+    await addColumnIfMissing(client, 'store_settings', 'pix_key', 'TEXT NULL');
+    await addColumnIfMissing(client, 'store_settings', 'pix_key_type', 'VARCHAR(10) NULL');
+    await addColumnIfMissing(client, 'store_settings', 'pix_receiver_name', 'VARCHAR(120) NULL');
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_store_settings_marketplace
       ON store_settings (store_name)

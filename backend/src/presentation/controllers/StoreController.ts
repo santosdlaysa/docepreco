@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
 import { geocodeStoreLocation } from '../../infrastructure/services/geocodingService';
+import { normalizePixKey, PixKeyType, PIX_KEY_TYPES } from '../../domain/services/pixBrCode';
 
 const repo = new PostgresStoreRepository();
 
@@ -90,6 +91,34 @@ export class StoreController {
       if ('category' in b)                  patch.category        = b.category ?? null;
       if (b.useBusinessHours !== undefined) patch.useBusinessHours = b.useBusinessHours;
       if (Array.isArray(b.businessHours))   patch.businessHours   = b.businessHours;
+
+      // PIX de recebimento da loja: valida/normaliza a chave conforme o tipo.
+      // Chave vazia limpa o PIX (desativa o recebimento por PIX no checkout).
+      if ('pixKey' in b || 'pixKeyType' in b) {
+        const rawKey = b.pixKey == null ? '' : String(b.pixKey).trim();
+        if (!rawKey) {
+          patch.pixKey = null;
+          patch.pixKeyType = null;
+        } else {
+          const type = String(b.pixKeyType || '') as PixKeyType;
+          if (!PIX_KEY_TYPES.includes(type)) {
+            res.status(400).json({ success: false, message: 'Tipo de chave PIX inválido' });
+            return;
+          }
+          const norm = normalizePixKey(type, rawKey);
+          if (!norm.valid) {
+            res.status(400).json({ success: false, message: norm.error });
+            return;
+          }
+          patch.pixKey = norm.normalized;
+          patch.pixKeyType = type;
+        }
+      }
+      if ('pixReceiverName' in b) {
+        const name = b.pixReceiverName == null ? '' : String(b.pixReceiverName).trim().slice(0, 120);
+        patch.pixReceiverName = name || null;
+      }
+
       const settings = await repo.updateSettings(req.userId!, patch as any);
       if ('address' in b || 'city' in b) {
         refreshCoordinates(req.userId!, settings.address ?? null, settings.city ?? null);

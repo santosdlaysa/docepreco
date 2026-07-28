@@ -19,6 +19,11 @@ export interface StoreSettings {
   coverImageUrl?: string | null;
   logoUrl?: string | null;
   paymentMethods: string[];
+  /** Chave PIX de recebimento da loja (normalizada). Null = loja ainda não configurou. */
+  pixKey?: string | null;
+  pixKeyType?: string | null;
+  /** Nome que aparece como recebedor no PIX (padrão: nome da loja). */
+  pixReceiverName?: string | null;
   address?: string | null;
   city?: string | null;
   latitude?: number | null;
@@ -107,6 +112,9 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     coverImageUrl: (row.cover_image_url as string | null) ?? null,
     logoUrl: (row.logo_url as string | null) ?? null,
     paymentMethods: (row.payment_methods as string[] | null) ?? ['pix', 'cash', 'credit', 'debit'],
+    pixKey: (row.pix_key as string | null) ?? null,
+    pixKeyType: (row.pix_key_type as string | null) ?? null,
+    pixReceiverName: (row.pix_receiver_name as string | null) ?? null,
     address: (row.address as string | null) ?? null,
     city: (row.city as string | null) ?? null,
     latitude: row.latitude != null ? Number(row.latitude) : null,
@@ -215,6 +223,9 @@ export class PostgresStoreRepository {
     coverImageUrl: string | null;
     logoUrl: string | null;
     paymentMethods: string[];
+    pixKey: string | null;
+    pixKeyType: string | null;
+    pixReceiverName: string | null;
     address: string | null;
     city: string | null;
     category: string | null;
@@ -236,6 +247,9 @@ export class PostgresStoreRepository {
     if ('coverImageUrl' in data)           { fields.push(`cover_image_url = $${idx++}`); values.push(data.coverImageUrl ?? null); }
     if ('logoUrl' in data)                 { fields.push(`logo_url = $${idx++}`);        values.push(data.logoUrl ?? null); }
     if (data.paymentMethods !== undefined)  { fields.push(`payment_methods = $${idx++}`); values.push(JSON.stringify(data.paymentMethods)); }
+    if ('pixKey' in data)                  { fields.push(`pix_key = $${idx++}`);          values.push(data.pixKey ?? null); }
+    if ('pixKeyType' in data)              { fields.push(`pix_key_type = $${idx++}`);     values.push(data.pixKeyType ?? null); }
+    if ('pixReceiverName' in data)         { fields.push(`pix_receiver_name = $${idx++}`); values.push(data.pixReceiverName ?? null); }
     if ('address' in data)                 { fields.push(`address = $${idx++}`);          values.push(data.address ?? null); }
     if ('city' in data)                    { fields.push(`city = $${idx++}`);             values.push(data.city ?? null); }
     if ('category' in data)                { fields.push(`category = $${idx++}`);         values.push(data.category ?? null); }
