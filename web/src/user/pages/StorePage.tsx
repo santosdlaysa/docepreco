@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store } from 'lucide-react';
-import { ToastFn, TableSkeleton, ModalOverlay } from '../../components';
+import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store, Plus, Pencil, Trash2, ImagePlus, PlusCircle } from 'lucide-react';
+import { ToastFn, TableSkeleton, ModalOverlay, ConfirmModal } from '../../components';
 import { formatBRL } from '../format';
-import { MyStore, StoreSettingsDTO, StoreBusinessHours, userApi } from '../userApi';
-import { EmptyState, Header, FormField, FormActions, inputClass } from './IngredientsPage';
+import { MyStore, StoreSettingsDTO, StoreBusinessHours, StoreProduct, StoreAddon, CreateStoreProductDTO, DiscountType, Recipe, PixKeyType, userApi } from '../userApi';
+import { EmptyState, Header, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
 
 const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
@@ -82,14 +82,27 @@ function ToggleRow({
 
 export function StorePage({ toast }: { toast: ToastFn }) {
   const [store, setStore] = useState<MyStore | null>(null);
+  const [addons, setAddons] = useState<StoreAddon[]>([]);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingField, setSavingField] = useState<'active' | 'acceptingOrders' | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [productModal, setProductModal] = useState<StoreProduct | 'new' | null>(null);
+  const [confirmProductId, setConfirmProductId] = useState<string | null>(null);
+  const [addonModal, setAddonModal] = useState<StoreAddon | 'new' | null>(null);
+  const [confirmAddonId, setConfirmAddonId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setStore(await userApi.getMyStore());
+      const [s, a, r] = await Promise.all([
+        userApi.getMyStore(),
+        userApi.getStoreAddons().catch(() => [] as StoreAddon[]),
+        userApi.listRecipes().catch(() => [] as Recipe[]),
+      ]);
+      setStore(s);
+      setAddons(a);
+      setRecipes(r);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -100,6 +113,30 @@ export function StorePage({ toast }: { toast: ToastFn }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const deleteProduct = async () => {
+    if (!confirmProductId) return;
+    try {
+      await userApi.deleteStoreProduct(confirmProductId);
+      toast.success('Produto excluído.');
+      setConfirmProductId(null);
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
+  const deleteAddon = async () => {
+    if (!confirmAddonId) return;
+    try {
+      await userApi.deleteStoreAddon(confirmAddonId);
+      toast.success('Adicional excluído.');
+      setConfirmAddonId(null);
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
 
   const updateStatus = async (field: 'active' | 'acceptingOrders', value: boolean) => {
     if (!store) return;
@@ -211,35 +248,92 @@ export function StorePage({ toast }: { toast: ToastFn }) {
             </div>
           </div>
 
+          {/* Cardápio (produtos) */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center gap-2">
-              <ShoppingBag size={16} className="text-primary-500" />
-              <p className="font-semibold text-gray-900 dark:text-white">Itens da loja</p>
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <ShoppingBag size={16} className="text-primary-500" />
+                <p className="font-semibold text-gray-900 dark:text-white">Cardápio</p>
+              </div>
+              <button
+                onClick={() => setProductModal('new')}
+                className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <Plus size={15} /> Produto
+              </button>
             </div>
             {store.products.length === 0 ? (
               <div className="py-12 flex flex-col items-center text-center">
                 <PackageOpen size={32} className="text-gray-300 dark:text-gray-600 mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum produto no cardápio.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum produto no cardápio. Adicione o primeiro.</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {store.products.map(product => (
                   <div key={product.id} className="px-4 py-3 flex items-center gap-3">
-                    {product.photoUrl && (
+                    {product.photoUrl ? (
                       <img src={product.photoUrl} alt={product.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                        <ShoppingBag size={16} className="text-gray-400" />
+                      </div>
                     )}
-                    <div className="flex-1 min-w-0">
+                    <button onClick={() => setProductModal(product)} className="flex-1 min-w-0 text-left">
                       <p className="font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
-                      {product.description && (
-                        <p className="text-xs text-gray-400 truncate">{product.description}</p>
-                      )}
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-semibold text-gray-900 dark:text-white">{formatBRL(product.publicPrice)}</p>
-                      <p className={`text-[11px] font-medium ${product.available ? 'text-green-600' : 'text-gray-400'}`}>
-                        {product.available ? 'Disponível' : 'Indisponível'}
+                      <p className="text-xs text-gray-400 truncate">
+                        {formatBRL(product.publicPrice)}
+                        {product.stock != null ? ` · ${product.stock} em estoque` : ''}
+                        {!product.available ? ' · Indisponível' : ''}
                       </p>
-                    </div>
+                    </button>
+                    <button onClick={() => setProductModal(product)} className={iconBtn}>
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => setConfirmProductId(product.id)} className={iconBtnDanger}>
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Adicionais / complementos */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <PlusCircle size={16} className="text-primary-500" />
+                <p className="font-semibold text-gray-900 dark:text-white">Adicionais</p>
+              </div>
+              <button
+                onClick={() => setAddonModal('new')}
+                className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 transition-colors"
+              >
+                <Plus size={15} /> Adicional
+              </button>
+            </div>
+            {addons.length === 0 ? (
+              <div className="py-8 flex flex-col items-center text-center">
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
+                  Complementos que o cliente pode incluir no pedido (ex.: cobertura extra, embalagem para presente).
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100 dark:divide-gray-700">
+                {addons.map(addon => (
+                  <div key={addon.id} className="px-4 py-3 flex items-center gap-3">
+                    <button onClick={() => setAddonModal(addon)} className="flex-1 min-w-0 text-left">
+                      <p className="font-medium text-gray-900 dark:text-white truncate">{addon.name}</p>
+                      <p className="text-xs text-gray-400">
+                        {formatBRL(addon.price)}{!addon.available ? ' · Indisponível' : ''}
+                      </p>
+                    </button>
+                    <button onClick={() => setAddonModal(addon)} className={iconBtn}>
+                      <Pencil size={16} />
+                    </button>
+                    <button onClick={() => setConfirmAddonId(addon.id)} className={iconBtnDanger}>
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -256,8 +350,288 @@ export function StorePage({ toast }: { toast: ToastFn }) {
           toast={toast}
         />
       )}
+
+      {productModal && (
+        <StoreProductForm
+          initial={productModal === 'new' ? null : productModal}
+          recipes={recipes}
+          onClose={() => setProductModal(null)}
+          onSaved={() => { setProductModal(null); load(); }}
+          toast={toast}
+        />
+      )}
+
+      {addonModal && (
+        <StoreAddonForm
+          initial={addonModal === 'new' ? null : addonModal}
+          onClose={() => setAddonModal(null)}
+          onSaved={() => { setAddonModal(null); load(); }}
+          toast={toast}
+        />
+      )}
+
+      <ConfirmModal
+        open={!!confirmProductId}
+        title="Excluir produto"
+        message="Tem certeza? O produto sai do cardápio da loja."
+        onConfirm={deleteProduct}
+        onCancel={() => setConfirmProductId(null)}
+      />
+      <ConfirmModal
+        open={!!confirmAddonId}
+        title="Excluir adicional"
+        message="Tem certeza?"
+        onConfirm={deleteAddon}
+        onCancel={() => setConfirmAddonId(null)}
+      />
     </div>
   );
+}
+
+function StoreProductForm({
+  initial,
+  recipes,
+  onClose,
+  onSaved,
+  toast,
+}: {
+  initial: StoreProduct | null;
+  recipes: Recipe[];
+  onClose: () => void;
+  onSaved: () => void;
+  toast: ToastFn;
+}) {
+  const editingId = initial?.id ?? null;
+  const [name, setName] = useState(initial?.name ?? '');
+  const [description, setDescription] = useState(initial?.description ?? '');
+  const [price, setPrice] = useState(initial ? Number(initial.publicPrice).toFixed(2).replace('.', ',') : '');
+  const [available, setAvailable] = useState(initial?.available ?? true);
+  const [stock, setStock] = useState(initial?.stock != null ? String(initial.stock) : '');
+  const [photoUrl, setPhotoUrl] = useState(initial?.photoUrl ?? '');
+  const [recipeId, setRecipeId] = useState(initial?.recipeId ?? '');
+  const [discountType, setDiscountType] = useState<DiscountType>(initial?.discountType ?? 'fixed');
+  const [discountValue, setDiscountValue] = useState(
+    initial?.discountValue != null ? String(initial.discountValue).replace('.', ',') : ''
+  );
+  const [saving, setSaving] = useState(false);
+
+  const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 3 * 1024 * 1024) return toast.error('Imagem muito grande (máx. 3 MB).');
+    const reader = new FileReader();
+    reader.onload = () => setPhotoUrl(String(reader.result));
+    reader.readAsDataURL(file);
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error('Informe o nome do produto.');
+    const priceN = parseLocaleNumber(price);
+    if (priceN <= 0) return toast.error('Informe um preço válido.');
+
+    const discN = discountValue.trim() ? parseLocaleNumber(discountValue) : 0;
+    setSaving(true);
+    const data: CreateStoreProductDTO = {
+      name: name.trim(),
+      description: description.trim() || null,
+      publicPrice: priceN,
+      available,
+      photoUrl: photoUrl || null,
+      recipeId: recipeId || null,
+      stock: stock.trim() === '' ? null : Math.max(0, parseInt(stock, 10) || 0),
+      discountType: discN > 0 ? discountType : null,
+      discountValue: discN > 0 ? discN : null,
+    };
+    try {
+      if (editingId) {
+        await userApi.updateStoreProduct(editingId, data);
+        toast.success('Produto atualizado.');
+      } else {
+        await userApi.createStoreProduct(data);
+        toast.success('Produto adicionado.');
+      }
+      onSaved();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+          {editingId ? 'Editar produto' : 'Novo produto'}
+        </h3>
+
+        {/* Foto */}
+        <div className="flex items-center gap-3">
+          {photoUrl ? (
+            <img src={photoUrl} alt="" className="w-16 h-16 rounded-xl object-cover" />
+          ) : (
+            <div className="w-16 h-16 rounded-xl bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              <ImagePlus size={22} className="text-gray-400" />
+            </div>
+          )}
+          <div className="flex flex-col gap-1.5">
+            <label className="inline-flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
+              <ImagePlus size={15} /> {photoUrl ? 'Trocar foto' : 'Adicionar foto'}
+              <input type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
+            </label>
+            {photoUrl && (
+              <button type="button" onClick={() => setPhotoUrl('')} className="text-xs text-red-500 hover:underline text-left">
+                Remover foto
+              </button>
+            )}
+          </div>
+        </div>
+
+        {recipes.length > 0 && (
+          <FormField label="Vincular a uma receita (opcional)">
+            <select
+              value={recipeId}
+              onChange={e => {
+                const id = e.target.value;
+                setRecipeId(id);
+                const r = recipes.find(x => x.id === id);
+                if (r && !name.trim()) setName(r.name);
+              }}
+              className={inputClass}
+            >
+              <option value="">Sem vínculo</option>
+              {recipes.map(r => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </FormField>
+        )}
+
+        <FormField label="Nome">
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Brigadeiro gourmet" className={inputClass} autoFocus />
+        </FormField>
+
+        <FormField label="Descrição (opcional)">
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className={inputClass + ' resize-none'} />
+        </FormField>
+
+        <div className="grid grid-cols-2 gap-3">
+          <FormField label="Preço de venda (R$)">
+            <input type="text" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="0,00" className={inputClass} />
+          </FormField>
+          <FormField label="Estoque (opcional)">
+            <input type="text" inputMode="numeric" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ilimitado" className={inputClass} />
+          </FormField>
+        </div>
+
+        {/* Desconto */}
+        <FormField label="Desconto (opcional)">
+          <div className="flex gap-2">
+            <div className="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-0.5 shrink-0">
+              {([['fixed', 'R$'], ['percent', '%']] as [DiscountType, string][]).map(([val, lbl]) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setDiscountType(val)}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${discountType === val ? 'bg-white dark:bg-gray-800 text-primary-600 shadow-sm' : 'text-gray-500 dark:text-gray-400'}`}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={discountValue}
+              onChange={e => setDiscountValue(e.target.value)}
+              placeholder={discountType === 'percent' ? '10' : '0,00'}
+              className={inputClass}
+            />
+          </div>
+        </FormField>
+
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" checked={available} onChange={e => setAvailable(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
+          <span className="text-sm text-gray-700 dark:text-gray-200">Disponível para pedido</span>
+        </label>
+
+        <FormActions saving={saving} onClose={onClose} />
+      </form>
+    </ModalOverlay>
+  );
+}
+
+function StoreAddonForm({
+  initial,
+  onClose,
+  onSaved,
+  toast,
+}: {
+  initial: StoreAddon | null;
+  onClose: () => void;
+  onSaved: () => void;
+  toast: ToastFn;
+}) {
+  const editingId = initial?.id ?? null;
+  const [name, setName] = useState(initial?.name ?? '');
+  const [price, setPrice] = useState(initial ? Number(initial.price).toFixed(2).replace('.', ',') : '');
+  const [available, setAvailable] = useState(initial?.available ?? true);
+  const [saving, setSaving] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return toast.error('Informe o nome do adicional.');
+    const priceN = parseLocaleNumber(price);
+    if (priceN < 0) return toast.error('Informe um preço válido.');
+    setSaving(true);
+    const data = { name: name.trim(), price: priceN, available };
+    try {
+      if (editingId) {
+        await userApi.updateStoreAddon(editingId, data);
+        toast.success('Adicional atualizado.');
+      } else {
+        await userApi.createStoreAddon(data);
+        toast.success('Adicional criado.');
+      }
+      onSaved();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+          {editingId ? 'Editar adicional' : 'Novo adicional'}
+        </h3>
+        <FormField label="Nome">
+          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Cobertura extra" className={inputClass} autoFocus />
+        </FormField>
+        <FormField label="Preço (R$)">
+          <input type="text" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="0,00" className={inputClass} />
+        </FormField>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input type="checkbox" checked={available} onChange={e => setAvailable(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
+          <span className="text-sm text-gray-700 dark:text-gray-200">Disponível</span>
+        </label>
+        <FormActions saving={saving} onClose={onClose} />
+      </form>
+    </ModalOverlay>
+  );
+}
+
+function pixKeyPlaceholder(type: PixKeyType): string {
+  switch (type) {
+    case 'cpf': return '000.000.000-00';
+    case 'cnpj': return '00.000.000/0000-00';
+    case 'email': return 'voce@email.com';
+    case 'phone': return '(00) 00000-0000';
+    default: return 'chave aleatória (UUID)';
+  }
 }
 
 function StoreSettingsForm({
@@ -287,6 +661,9 @@ function StoreSettingsForm({
   const [businessHours, setBusinessHours] = useState<StoreBusinessHours[]>(
     store.businessHours?.length === 7 ? store.businessHours : defaultBusinessHours()
   );
+  const [pixKeyType, setPixKeyType] = useState<PixKeyType>(store.pixKeyType ?? 'random');
+  const [pixKey, setPixKey] = useState(store.pixKey ?? '');
+  const [pixReceiverName, setPixReceiverName] = useState(store.pixReceiverName ?? '');
   const [saving, setSaving] = useState(false);
 
   const updateDay = (dayOfWeek: number, patch: Partial<StoreBusinessHours>) =>
@@ -308,6 +685,9 @@ function StoreSettingsForm({
       acceptsPickup,
       minOrderValue: minOrderValue.trim() ? parseLocaleNumber(minOrderValue) : null,
       deliveryFee: deliveryFee.trim() ? parseLocaleNumber(deliveryFee) : null,
+      pixKey: pixKey.trim() || null,
+      pixKeyType: pixKey.trim() ? pixKeyType : null,
+      pixReceiverName: pixReceiverName.trim() || null,
       useBusinessHours,
       businessHours,
     };
@@ -384,6 +764,39 @@ function StoreSettingsForm({
               placeholder="0,00"
               className={inputClass}
               disabled={!acceptsDelivery}
+            />
+          </FormField>
+        </div>
+
+        {/* Recebimento por PIX */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Recebimento por PIX</label>
+            <p className="text-xs text-gray-400 mt-0.5">
+              Cadastre sua chave PIX para o cliente pagar na hora do pedido. O dinheiro cai
+              direto na sua conta — você confere e marca o pedido como pago na tela de encomendas.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] gap-3">
+            <FormField label="Tipo de chave">
+              <select value={pixKeyType} onChange={e => setPixKeyType(e.target.value as PixKeyType)} className={inputClass}>
+                <option value="random">Aleatória</option>
+                <option value="cpf">CPF</option>
+                <option value="cnpj">CNPJ</option>
+                <option value="email">E-mail</option>
+                <option value="phone">Celular</option>
+              </select>
+            </FormField>
+            <FormField label="Chave PIX">
+              <input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder={pixKeyPlaceholder(pixKeyType)} className={inputClass} />
+            </FormField>
+          </div>
+          <FormField label="Nome do recebedor (opcional)">
+            <input
+              value={pixReceiverName}
+              onChange={e => setPixReceiverName(e.target.value)}
+              placeholder={storeName || 'Aparece no app do banco do cliente'}
+              className={inputClass}
             />
           </FormField>
         </div>

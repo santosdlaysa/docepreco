@@ -345,6 +345,8 @@ export interface UpgradeRequest extends PixRequestStatus {
   mp_qr_code_base64?: string;
 }
 
+export type DiscountType = 'percent' | 'fixed';
+
 export interface StoreProduct {
   id: string;
   name: string;
@@ -352,8 +354,54 @@ export interface StoreProduct {
   photoUrl: string | null;
   publicPrice: number;
   available: boolean;
+  recipeId?: string | null;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
+  /** null = estoque ilimitado. */
+  stock?: number | null;
   createdAt?: string;
   updatedAt?: string;
+}
+export interface CreateStoreProductDTO {
+  name: string;
+  description?: string | null;
+  publicPrice: number;
+  available?: boolean;
+  recipeId?: string | null;
+  photoUrl?: string | null;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
+  stock?: number | null;
+}
+
+export interface StoreAddon {
+  id: string;
+  name: string;
+  price: number;
+  available: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Histórico de preço de um ingrediente (uma entrada por compra registrada). */
+export interface PriceEntry {
+  id: string;
+  ingredientId: string;
+  price: number;
+  purchaseQuantity: number;
+  unit: string;
+  purchaseUnitWeight?: number | null;
+  recordedAt: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  userId: string;
+  senderType: 'user' | 'admin';
+  message: string;
+  imageUrl: string | null;
+  readAt: string | null;
+  createdAt: string;
 }
 
 export interface StoreBusinessHours {
@@ -380,11 +428,16 @@ export interface MyStore {
   logoUrl?: string | null;
   address: string | null;
   city?: string | null;
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
+  pixReceiverName?: string | null;
   useBusinessHours?: boolean;
   businessHours?: StoreBusinessHours[];
   updatedAt?: string;
   products: StoreProduct[];
 }
+
+export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
 
 export interface StoreSettingsDTO {
   storeName?: string;
@@ -395,6 +448,9 @@ export interface StoreSettingsDTO {
   acceptsPickup?: boolean;
   minOrderValue?: number | null;
   deliveryFee?: number | null;
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
+  pixReceiverName?: string | null;
   useBusinessHours?: boolean;
   businessHours?: StoreBusinessHours[];
 }
@@ -538,6 +594,20 @@ export const userApi = {
     req<MyStore>('/store/my', { method: 'PATCH', body: JSON.stringify(data) }),
   updateStoreSettings: (data: StoreSettingsDTO) =>
     req<Omit<MyStore, 'products'>>('/store/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  // Produtos da loja
+  getStoreProducts: () => req<StoreProduct[]>('/store/products'),
+  createStoreProduct: (data: CreateStoreProductDTO) =>
+    req<StoreProduct>('/store/products', { method: 'POST', body: JSON.stringify(data) }),
+  updateStoreProduct: (id: string, data: Partial<CreateStoreProductDTO>) =>
+    req<StoreProduct>(`/store/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteStoreProduct: (id: string) => req<void>(`/store/products/${id}`, { method: 'DELETE' }),
+  // Adicionais da loja
+  getStoreAddons: () => req<StoreAddon[]>('/store/addons'),
+  createStoreAddon: (data: { name: string; price: number; available?: boolean }) =>
+    req<StoreAddon>('/store/addons', { method: 'POST', body: JSON.stringify(data) }),
+  updateStoreAddon: (id: string, data: Partial<{ name: string; price: number; available: boolean }>) =>
+    req<StoreAddon>(`/store/addons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteStoreAddon: (id: string) => req<void>(`/store/addons/${id}`, { method: 'DELETE' }),
 
   // Receitas
   listRecipes: () => req<Recipe[]>('/recipes'),
@@ -559,6 +629,14 @@ export const userApi = {
   deleteIngredient: (id: string) => req<void>(`/ingredients/${id}`, { method: 'DELETE' }),
   addPriceHistory: (id: string, entry: { price: number; purchaseQuantity: number; unit: string }) =>
     req<unknown>(`/ingredients/${id}/price-history`, { method: 'POST', body: JSON.stringify(entry) }),
+  getPriceHistory: (id: string) => req<PriceEntry[]>(`/ingredients/${id}/price-history`),
+
+  // Suporte (chat com a equipe)
+  getSupportMessages: () => req<SupportMessage[]>('/support/messages'),
+  sendSupportMessage: (message: string, imageUrl?: string | null) =>
+    req<SupportMessage>('/support/messages', { method: 'POST', body: JSON.stringify({ message, imageUrl }) }),
+  getSupportUnread: () => req<{ unreadCount: number }>('/support/unread'),
+  getSupportTyping: () => req<{ typing: boolean }>('/support/typing'),
 
   // Vendas
   listSales: (period?: 'week' | 'month') =>

@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Package, Info, Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Info, Search, ChevronLeft, ChevronRight, History, TrendingUp, TrendingDown, Loader2 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { userApi, Ingredient, CreateIngredientDTO, Unit } from '../userApi';
+import { userApi, Ingredient, CreateIngredientDTO, Unit, PriceEntry } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
-import { formatBRL, formatBRLUnit } from '../format';
+import { formatBRL, formatBRLUnit, formatDate } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
 
@@ -24,6 +24,7 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
   const [editing, setEditing] = useState<Ingredient | null>(null);
   const [creating, setCreating] = useState(false);
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [historyItem, setHistoryItem] = useState<Ingredient | null>(null);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
@@ -113,6 +114,9 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
                     {unitPrice > 0 ? ` · ${formatBRLUnit(unitPrice)}/${i.unit}` : ''}
                   </p>
                 </div>
+                <button onClick={() => setHistoryItem(i)} className={iconBtn} title="Histórico de preços">
+                  <History size={16} />
+                </button>
                 <button onClick={() => setEditing(i)} className={iconBtn}>
                   <Pencil size={16} />
                 </button>
@@ -171,7 +175,96 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
+
+      {historyItem && (
+        <PriceHistoryModal ingredient={historyItem} onClose={() => setHistoryItem(null)} toast={toast} />
+      )}
     </div>
+  );
+}
+
+/** Preço por unidade base de uma entrada do histórico. */
+function entryUnitPrice(e: PriceEntry): number {
+  const effectiveQty = e.purchaseUnitWeight ? e.purchaseQuantity * e.purchaseUnitWeight : e.purchaseQuantity;
+  return effectiveQty > 0 ? e.price / effectiveQty : 0;
+}
+
+function PriceHistoryModal({ ingredient, onClose, toast }: { ingredient: Ingredient; onClose: () => void; toast: ToastFn }) {
+  const [entries, setEntries] = useState<PriceEntry[] | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    userApi
+      .getPriceHistory(ingredient.id)
+      .then(list => { if (active) setEntries(list); })
+      .catch(e => { if (active) { toast.error((e as Error).message); setEntries([]); } });
+    return () => { active = false; };
+  }, [ingredient.id, toast]);
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+        <div>
+          <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+            <History size={18} className="text-primary-500" /> Histórico de preços
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{ingredient.name}</p>
+        </div>
+
+        {entries === null ? (
+          <div className="py-10 flex justify-center">
+            <Loader2 size={24} className="animate-spin-slow text-primary-500" />
+          </div>
+        ) : entries.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
+            Ainda não há histórico. Cada vez que você atualizar o preço de compra deste ingrediente, registramos aqui a evolução do custo.
+          </p>
+        ) : (
+          <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[60vh] overflow-y-auto">
+            {entries.map((e, i) => {
+              const unitPrice = entryUnitPrice(e);
+              const prev = entries[i + 1];
+              const prevUnit = prev ? entryUnitPrice(prev) : null;
+              const diffPct = prevUnit && prevUnit > 0 ? ((unitPrice - prevUnit) / prevUnit) * 100 : null;
+              const up = diffPct != null && diffPct > 0.5;
+              const down = diffPct != null && diffPct < -0.5;
+              return (
+                <div key={e.id} className="flex items-center gap-3 py-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                      {formatDate(e.recordedAt)}
+                      {i === 0 && (
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">atual</span>
+                      )}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatBRL(e.price)} · {e.purchaseQuantity} {e.unit}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {formatBRLUnit(unitPrice)}<span className="text-xs font-normal text-gray-400">/{e.unit}</span>
+                    </p>
+                    {diffPct != null && (up || down) && (
+                      <span className={`inline-flex items-center gap-0.5 text-[11px] font-bold ${up ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}`}>
+                        {up ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                        {Math.abs(diffPct).toFixed(0)}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="flex justify-end">
+          <button onClick={onClose} className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
   );
 }
 

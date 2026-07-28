@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Pencil, Trash2, ChefHat, X, Plus, Info, Layers, ChevronDown, Calculator } from 'lucide-react';
+import { Pencil, Trash2, ChefHat, X, Plus, Info, Layers, ChevronDown, Calculator, Copy, FileText } from 'lucide-react';
 import {
   userApi,
   Recipe,
@@ -14,6 +14,8 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatBRLUnit } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
+import { useAuth } from '../UserAuthContext';
+import { printRecipeQuote } from '../quotePdf';
 import {
   Header,
   EmptyState,
@@ -33,6 +35,8 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [calcs, setCalcs] = useState<Record<string, CalculationResult>>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [scaleRecipe, setScaleRecipe] = useState<Recipe | null>(null);
+  const { user } = useAuth();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -78,6 +82,32 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
     }
   };
 
+  const handleDuplicate = async (r: Recipe) => {
+    try {
+      await userApi.createRecipe({
+        name: `${r.name} (cópia)`,
+        yield: r.yield,
+        profitMargin: r.profitMargin,
+        ingredients: r.ingredients.map(i => ({
+          ingredientId: i.ingredientId,
+          ingredientName: i.ingredientName,
+          quantityUsed: i.quantityUsed,
+          unit: i.unit,
+        })),
+        additionalCosts: r.additionalCosts.map(c => ({ name: c.name, value: c.value })),
+        subRecipes: (r.subRecipes ?? []).map(s => ({
+          subRecipeId: s.subRecipeId,
+          quantityUsed: s.quantityUsed,
+          unit: s.unit || 'un',
+        })),
+      });
+      toast.success('Receita duplicada.');
+      load();
+    } catch (e) {
+      toast.error((e as Error).message);
+    }
+  };
+
   return (
     <div>
       <Header
@@ -113,10 +143,16 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                         {r.ingredients.length !== 1 ? 's' : ''}
                       </p>
                     </button>
-                    <button onClick={() => setEditing(r)} className={iconBtn}>
+                    <button onClick={() => setScaleRecipe(r)} className={iconBtn} title="Escala e orçamento" disabled={!c}>
+                      <Calculator size={16} />
+                    </button>
+                    <button onClick={() => handleDuplicate(r)} className={iconBtn} title="Duplicar">
+                      <Copy size={16} />
+                    </button>
+                    <button onClick={() => setEditing(r)} className={iconBtn} title="Editar">
                       <Pencil size={16} />
                     </button>
-                    <button onClick={() => setConfirmId(r.id)} className={iconBtnDanger}>
+                    <button onClick={() => setConfirmId(r.id)} className={iconBtnDanger} title="Excluir">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -196,6 +232,127 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
+
+      {scaleRecipe && calcs[scaleRecipe.id] && (
+        <ScaleQuoteModal
+          recipe={scaleRecipe}
+          calc={calcs[scaleRecipe.id]}
+          companyName={user?.companyName}
+          onClose={() => setScaleRecipe(null)}
+          toast={toast}
+        />
+      )}
+    </div>
+  );
+}
+
+function fmtQty(v: number): string {
+  const r = Math.abs(v);
+  const digits = r >= 1000 ? 0 : r >= 100 ? 1 : r >= 1 ? 2 : 3;
+  return v.toFixed(digits).replace(/\.?0+$/, '').replace('.', ',');
+}
+
+function ScaleQuoteModal({
+  recipe,
+  calc,
+  companyName,
+  onClose,
+  toast,
+}: {
+  recipe: Recipe;
+  calc: CalculationResult;
+  companyName?: string;
+  onClose: () => void;
+  toast: ToastFn;
+}) {
+  const [qtyInput, setQtyInput] = useState(String(recipe.yield));
+  const qty = parseLocaleNumber(qtyInput);
+  const valid = qty > 0;
+  const factor = valid ? qty / recipe.yield : 0;
+
+  const totalCost = calc.totalCost * factor;
+  const totalRevenue = calc.suggestedPrice * qty;
+  const totalProfit = totalRevenue - totalCost;
+
+  const generatePdf = () => {
+    const ok = printRecipeQuote(recipe, calc, companyName);
+    if (!ok) toast.error('Permita pop-ups para gerar o orçamento em PDF.');
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
+        <div>
+          <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
+            <Calculator size={18} className="text-primary-500" /> Escala e orçamento
+          </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{recipe.name}</p>
+        </div>
+
+        <FormField label={`Quantas unidades quer produzir? (rende ${recipe.yield})`}>
+          <input
+            type="text"
+            inputMode="decimal"
+            value={qtyInput}
+            onChange={e => setQtyInput(e.target.value)}
+            className={inputClass}
+            autoFocus
+          />
+        </FormField>
+
+        {valid && (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <Metric label="Multiplicador" value={`${factor.toFixed(2)}x`} />
+              <Metric label="Custo total" value={formatBRL(totalCost)} />
+              <Metric label="Venda total" value={formatBRL(totalRevenue)} highlight />
+            </div>
+            <div className="bg-green-50 dark:bg-green-900/30 rounded-lg px-4 py-3 flex items-center justify-between">
+              <span className="text-sm font-medium text-green-700 dark:text-green-300">Lucro estimado</span>
+              <span className="text-lg font-bold text-green-700 dark:text-green-300">{formatBRL(totalProfit)}</span>
+            </div>
+
+            {recipe.ingredients.length > 0 && (
+              <div className="border border-gray-100 dark:border-gray-700 rounded-lg overflow-hidden">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 px-3 py-2 bg-gray-50 dark:bg-gray-900/40">
+                  Ingredientes para {fmtQty(qty)} un
+                </p>
+                <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-52 overflow-y-auto">
+                  {recipe.ingredients.map((ri, i) => (
+                    <div key={i} className="flex justify-between px-3 py-2 text-sm">
+                      <span className="text-gray-700 dark:text-gray-200">{ri.ingredientName || 'Ingrediente'}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">
+                        {fmtQty(ri.quantityUsed * factor)} {ri.unit}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          <button
+            onClick={generatePdf}
+            className="flex-1 flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg py-2.5 transition-colors"
+          >
+            <FileText size={16} /> Gerar orçamento (PDF)
+          </button>
+          <button onClick={onClose} className="text-sm px-4 py-2.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </ModalOverlay>
+  );
+}
+
+function Metric({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+  return (
+    <div className={`rounded-lg p-2.5 text-center ${highlight ? 'bg-primary-50 dark:bg-primary-900/30' : 'bg-gray-50 dark:bg-gray-900/40'}`}>
+      <p className={`text-sm font-bold tracking-tight ${highlight ? 'text-primary-600 dark:text-primary-300' : 'text-gray-900 dark:text-white'}`}>{value}</p>
+      <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{label}</p>
     </div>
   );
 }

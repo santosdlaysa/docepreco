@@ -25,7 +25,7 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { Lock } from 'lucide-react';
+import { Lock, Headset } from 'lucide-react';
 import { UserAuthProvider, useAuth } from './UserAuthContext';
 import { UserLoginPage } from './UserLoginPage';
 import { userApi, effectiveTier } from './userApi';
@@ -49,11 +49,12 @@ import { ExpensesPage } from './pages/ExpensesPage';
 import { StockPage } from './pages/StockPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { SalesTipsPage } from './pages/SalesTipsPage';
+import { SupportPage } from './pages/SupportPage';
 
 type Page =
   | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production'
   | 'cash' | 'seasons' | 'store' | 'profile' | 'finance' | 'expenses' | 'stock'
-  | 'clients' | 'tips';
+  | 'clients' | 'tips' | 'support';
 
 const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'cash', label: 'Caixa', icon: Wallet },
@@ -70,6 +71,7 @@ const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'store', label: 'Loja', icon: Store },
   { id: 'seasons', label: 'Temporadas', icon: CalendarRange },
   { id: 'tips', label: 'Dicas de vendas', icon: Lightbulb },
+  { id: 'support', label: 'Suporte', icon: Headset },
   { id: 'profile', label: 'Meu perfil', icon: User },
 ];
 
@@ -253,6 +255,7 @@ function Shell() {
                   {page === 'cash' && <CashPage toast={toast} />}
                   {page === 'seasons' && <SeasonsPage toast={toast} />}
                   {page === 'tips' && <SalesTipsPage toast={toast} />}
+                  {page === 'support' && <SupportPage toast={toast} />}
                   {page === 'profile' && <ProfilePage toast={toast} />}
                 </>
               );
