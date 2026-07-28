@@ -2,9 +2,20 @@ import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store } from 'lucide-react';
 import { ToastFn, TableSkeleton, ModalOverlay } from '../../components';
 import { formatBRL } from '../format';
-import { MyStore, StoreSettingsDTO, userApi } from '../userApi';
+import { MyStore, StoreSettingsDTO, StoreBusinessHours, userApi } from '../userApi';
 import { EmptyState, Header, FormField, FormActions, inputClass } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
+
+const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+
+function defaultBusinessHours(): StoreBusinessHours[] {
+  return Array.from({ length: 7 }, (_, dayOfWeek) => ({
+    dayOfWeek,
+    closed: dayOfWeek === 0,
+    openTime: '08:00',
+    closeTime: '18:00',
+  }));
+}
 
 function StatusPill({ on, onText, offText }: { on: boolean; onText: string; offText: string }) {
   return (
@@ -272,7 +283,14 @@ function StoreSettingsForm({
   const [deliveryFee, setDeliveryFee] = useState(
     store.deliveryFee != null ? String(store.deliveryFee).replace('.', ',') : ''
   );
+  const [useBusinessHours, setUseBusinessHours] = useState(store.useBusinessHours ?? false);
+  const [businessHours, setBusinessHours] = useState<StoreBusinessHours[]>(
+    store.businessHours?.length === 7 ? store.businessHours : defaultBusinessHours()
+  );
   const [saving, setSaving] = useState(false);
+
+  const updateDay = (dayOfWeek: number, patch: Partial<StoreBusinessHours>) =>
+    setBusinessHours(prev => prev.map(d => (d.dayOfWeek === dayOfWeek ? { ...d, ...patch } : d)));
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -290,6 +308,8 @@ function StoreSettingsForm({
       acceptsPickup,
       minOrderValue: minOrderValue.trim() ? parseLocaleNumber(minOrderValue) : null,
       deliveryFee: deliveryFee.trim() ? parseLocaleNumber(deliveryFee) : null,
+      useBusinessHours,
+      businessHours,
     };
     try {
       await userApi.updateStoreSettings(data);
@@ -366,6 +386,64 @@ function StoreSettingsForm({
               disabled={!acceptsDelivery}
             />
           </FormField>
+        </div>
+
+        {/* Horários de funcionamento */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
+            <span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-white">Horários de funcionamento</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Mostra aos clientes os dias e horários em que a loja atende.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={useBusinessHours}
+              onChange={e => setUseBusinessHours(e.target.checked)}
+              className="w-4 h-4 rounded accent-primary-500 shrink-0"
+            />
+          </label>
+
+          {useBusinessHours && (
+            <div className="mt-3 space-y-2">
+              {businessHours.map(day => (
+                <div key={day.dayOfWeek} className="flex items-center gap-2">
+                  <span className="w-20 text-sm text-gray-700 dark:text-gray-200 shrink-0">{WEEKDAYS[day.dayOfWeek]}</span>
+                  {day.closed ? (
+                    <span className="flex-1 text-sm text-gray-400">Fechado</span>
+                  ) : (
+                    <div className="flex-1 flex items-center gap-1.5">
+                      <input
+                        type="time"
+                        value={day.openTime}
+                        onChange={e => updateDay(day.dayOfWeek, { openTime: e.target.value })}
+                        className={inputClass + ' py-1.5'}
+                      />
+                      <span className="text-gray-400 text-sm">às</span>
+                      <input
+                        type="time"
+                        value={day.closeTime}
+                        onChange={e => updateDay(day.dayOfWeek, { closeTime: e.target.value })}
+                        className={inputClass + ' py-1.5'}
+                      />
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => updateDay(day.dayOfWeek, { closed: !day.closed })}
+                    className={`shrink-0 text-xs font-semibold rounded-lg px-2.5 py-1.5 transition-colors ${
+                      day.closed
+                        ? 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300'
+                        : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                    }`}
+                  >
+                    {day.closed ? 'Fechado' : 'Aberto'}
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <FormActions saving={saving} onClose={onClose} />

@@ -356,6 +356,16 @@ export interface StoreProduct {
   updatedAt?: string;
 }
 
+export interface StoreBusinessHours {
+  /** 0 = domingo ... 6 = sábado */
+  dayOfWeek: number;
+  closed: boolean;
+  /** "HH:mm" */
+  openTime: string;
+  /** "HH:mm" */
+  closeTime: string;
+}
+
 export interface MyStore {
   storeName: string;
   slug: string;
@@ -370,6 +380,8 @@ export interface MyStore {
   logoUrl?: string | null;
   address: string | null;
   city?: string | null;
+  useBusinessHours?: boolean;
+  businessHours?: StoreBusinessHours[];
   updatedAt?: string;
   products: StoreProduct[];
 }
@@ -383,6 +395,8 @@ export interface StoreSettingsDTO {
   acceptsPickup?: boolean;
   minOrderValue?: number | null;
   deliveryFee?: number | null;
+  useBusinessHours?: boolean;
+  businessHours?: StoreBusinessHours[];
 }
 
 /* ── Despesas ──────────────────────────────────────────────────────────── */
