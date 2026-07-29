@@ -4,6 +4,10 @@
 
 const BASE = import.meta.env.VITE_API_URL ?? 'https://docepreco.onrender.com/api';
 
+// Timeout das requisições — evita a tela girar pra sempre quando o servidor
+// está lento/pendurado (ex.: cold start do Render). 45s cobre um cold start.
+const REQUEST_TIMEOUT_MS = 45000;
+
 const TOKEN_KEY = 'user_token';
 
 export function loadToken(): string {
@@ -33,14 +37,27 @@ export function setOnUnauthorized(fn: () => void) {
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = loadToken();
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
+      },
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError('Tempo de resposta esgotado. O servidor pode estar iniciando — tente de novo em alguns segundos.', 0);
+    }
+    throw new ApiError('Sem conexão com o servidor. Verifique sua internet e tente novamente.', 0);
+  } finally {
+    clearTimeout(timer);
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Token inválido/expirado em rota autenticada → força logout.

@@ -195,6 +195,69 @@ export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}
   sendTelegramMessage(text);
 }
 
+/**
+ * Health check periódico enviado ao Telegram. Verifica banco (SELECT 1) e a
+ * camada HTTP (self-ping em /api/health) e reporta uptime/memória.
+ *
+ * @param opts.alertOnly quando true, só envia mensagem se algo estiver com
+ *   problema (modo silencioso — não manda o "tudo ok" a cada intervalo).
+ */
+export async function sendHealthReport(opts: { alertOnly?: boolean } = {}): Promise<void> {
+  if (!await isAlertEnabled('health_check')) return;
+
+  // 1) Banco: ping + latência
+  let dbOk = false;
+  let dbLatency = 0;
+  try {
+    const t = Date.now();
+    await pool.query('SELECT 1');
+    dbLatency = Date.now() - t;
+    dbOk = true;
+  } catch {
+    dbOk = false;
+  }
+
+  // 2) HTTP: self-ping para confirmar que o Express está respondendo
+  let httpOk = false;
+  let httpStatus = 0;
+  let httpLatency = 0;
+  const port = process.env.PORT || 3000;
+  try {
+    const t = Date.now();
+    const r = await fetch(`http://127.0.0.1:${port}/api/health`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    httpLatency = Date.now() - t;
+    httpStatus = r.status;
+    httpOk = r.ok;
+  } catch {
+    httpOk = false;
+  }
+
+  const healthy = dbOk && httpOk;
+  if (opts.alertOnly && healthy) return;
+
+  const uptime = process.uptime();
+  const uptimeStr = uptime >= 3600
+    ? `${Math.floor(uptime / 3600)}h${Math.floor((uptime % 3600) / 60)}m`
+    : `${Math.floor(uptime / 60)}m`;
+  const mem = Math.round(process.memoryUsage().rss / 1024 / 1024);
+
+  const icon = healthy ? '✅' : '🚨';
+  const title = healthy ? 'API operando normalmente' : 'API COM PROBLEMAS!';
+  const dbLine = dbOk ? `🟢 Banco: OK (${dbLatency}ms)` : '🔴 Banco: FORA';
+  const httpLine = httpOk
+    ? `🟢 HTTP: OK (${httpStatus}, ${httpLatency}ms)`
+    : `🔴 HTTP: FORA (${httpStatus || 'sem resposta'})`;
+
+  const tpl = await getTemplate('health_check');
+  const fallback = `${icon} ${title}\n\n${dbLine}\n${httpLine}\n⏱️ Uptime: ${uptimeStr}\n💾 Memória: ${mem} MB\n🕐 ${brNow()}`;
+  const text = tpl
+    ? applyTemplate(tpl, { icon, title, db: dbLine, http: httpLine, uptime: uptimeStr, mem, time: brNow() })
+    : fallback;
+  sendTelegramMessage(text);
+}
+
 export async function sendWeeklyReport(): Promise<void> {
   if (!await isAlertEnabled('weekly_report')) return;
   const { rows } = await pool.query(`

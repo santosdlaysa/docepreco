@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendDailyGoalProgress } from './infrastructure/services/telegramService';
+import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendDailyGoalProgress, sendHealthReport } from './infrastructure/services/telegramService';
 import { connectDatabase } from './infrastructure/database/connection';
 import recipeRoutes from './presentation/routes/recipeRoutes';
 import ingredientRoutes from './presentation/routes/ingredientRoutes';
@@ -123,6 +123,24 @@ function safeStringifyRedacted(body: unknown): string | null {
     return null;
   }
 }
+
+// Health check público (sem auth e sem logging) — para monitores externos
+// (ex.: UptimeRobot) e para o self-ping do cron de diagnóstico. Fica ANTES do
+// middleware de log para não gravar um request_log a cada ping.
+app.get('/api/health', async (_req, res) => {
+  const start = Date.now();
+  try {
+    await pool.query('SELECT 1');
+    res.json({
+      ok: true,
+      db: 'up',
+      dbLatencyMs: Date.now() - start,
+      uptimeSec: Math.floor(process.uptime()),
+    });
+  } catch (err) {
+    res.status(503).json({ ok: false, db: 'down', error: (err as Error).message });
+  }
+});
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -264,6 +282,13 @@ async function bootstrap() {
       cron.schedule('0 9 * * 1', () => sendWeeklyReport(), { timezone: 'America/Sao_Paulo' });
       cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
     }
+
+    // Diagnóstico da API a cada 30 min → Telegram (banco + HTTP + uptime).
+    // Primeiro disparo ~15s após o boot (confirma que subiu ok e que o Telegram
+    // está funcionando). Para virar modo silencioso (só avisa em falha), troque
+    // por sendHealthReport({ alertOnly: true }).
+    setTimeout(() => { void sendHealthReport(); }, 15000);
+    cron.schedule('*/30 * * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
 
     // Cron: envia notificações agendadas a cada minuto
     const notifRepo = new PostgresNotificationRepository();

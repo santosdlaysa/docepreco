@@ -1,5 +1,10 @@
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
+// Timeout das requisições. Sem isso, um servidor lento/pendurado (ex.: cold
+// start do Render) deixa a tela girando pra sempre. 45s cobre um cold start
+// mas ainda limita a espera.
+const REQUEST_TIMEOUT_MS = 45000;
+
 let secret = localStorage.getItem('admin_secret') ?? '';
 
 export function saveSecret(s: string) {
@@ -17,14 +22,27 @@ export function clearSecret() {
 }
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-secret': secret,
-      ...init.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-secret': secret,
+        ...init.headers,
+      },
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Tempo de resposta esgotado. O servidor pode estar iniciando — tente de novo em alguns segundos.');
+    }
+    throw new Error('Sem conexão com o servidor. Verifique sua internet e tente novamente.');
+  } finally {
+    clearTimeout(timer);
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
   return json.data ?? json;
@@ -393,10 +411,14 @@ export interface WinbackCampaignResult {
 // ── Endpoints ─────────────────────────────────────────────────────────────
 
 export const api = {
-  verify: (s: string) =>
-    fetch(`${BASE}/admin/stats`, {
+  verify: (s: string) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    return fetch(`${BASE}/admin/stats`, {
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': s },
-    }).then(r => r.ok).catch(() => false),
+      signal: controller.signal,
+    }).then(r => r.ok).catch(() => false).finally(() => clearTimeout(timer));
+  },
 
   getStats: () => req<Stats>('/admin/stats'),
 
