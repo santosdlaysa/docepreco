@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -934,9 +934,6 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     </th>
   );
 
-  // Estilo compartilhado dos controles de filtro por coluna (linha do cabeçalho).
-  const filterCtl = 'w-full text-xs font-normal border border-gray-300 dark:border-gray-600 rounded-md px-1.5 py-1 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-1 focus:ring-primary-300';
-
   // Generate page numbers
   const getPageNumbers = () => {
     const pages: (number | '...')[] = [];
@@ -1047,6 +1044,19 @@ export function UsersPage({ toast, onImpersonate }: Props) {
               <option value="">Todos</option>
               <option value="true">Com telefone</option>
               <option value="false">Sem telefone</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">DDD</label>
+            <select
+              value={ddd ?? ''}
+              onChange={e => { setDdd(e.target.value || undefined); setPage(1); }}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              {VALID_DDDS.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -1166,128 +1176,6 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                   onClick={() => handleSort('createdAt')}
                 >
                   Cadastro<SortIcon active={sortBy === 'createdAt'} />
-                </th>
-              </tr>
-              {/* Linha de filtros por coluna (Dispositivo → Cadastro). Sincronizada com o painel "Filtros". */}
-              <tr className="bg-gray-50/70 dark:bg-gray-900/40 border-b border-gray-200 dark:border-gray-700">
-                <th colSpan={2} className="px-4 py-2 text-right align-middle">
-                  <span className="text-[11px] font-normal text-gray-400 whitespace-nowrap">Filtrar colunas →</span>
-                </th>
-                {/* Telefone → DDD */}
-                <th className="px-4 py-2 align-middle">
-                  <select
-                    value={ddd ?? ''}
-                    onChange={e => { setDdd(e.target.value || undefined); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por DDD"
-                  >
-                    <option value="">DDD</option>
-                    {VALID_DDDS.map(d => (
-                      <option key={d} value={d}>{d}</option>
-                    ))}
-                  </select>
-                </th>
-                {/* Instagram (sem filtro) */}
-                <th className="px-4 py-2" />
-                {/* Dispositivo */}
-                <th className="px-4 py-2 align-middle">
-                  <select
-                    value={signupPlatform ?? ''}
-                    onChange={e => { setSignupPlatform((e.target.value || undefined) as 'ios' | 'android' | 'web' | undefined); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por dispositivo"
-                  >
-                    <option value="">Todos</option>
-                    <option value="ios">iOS</option>
-                    <option value="android">Android</option>
-                    <option value="web">Web</option>
-                  </select>
-                </th>
-                {/* Plano */}
-                <th className="px-4 py-2 align-middle">
-                  <select
-                    value={planTierFilter ?? ''}
-                    onChange={e => { setPlanTierFilter((e.target.value || null) as 'free' | 'premium' | 'master' | null); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por plano"
-                  >
-                    <option value="">Todos</option>
-                    <option value="free">Gratuito</option>
-                    <option value="premium">Premium</option>
-                    <option value="master">Master</option>
-                  </select>
-                </th>
-                {/* Receitas (min) */}
-                <th className="px-4 py-2 align-middle">
-                  <input
-                    type="number" min={0} placeholder="mín"
-                    value={minRecipes ?? ''}
-                    onChange={e => { setMinRecipes(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por mínimo de receitas"
-                  />
-                </th>
-                {/* Ingredientes (min) */}
-                <th className="px-4 py-2 align-middle">
-                  <input
-                    type="number" min={0} placeholder="mín"
-                    value={minIngredients ?? ''}
-                    onChange={e => { setMinIngredients(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por mínimo de ingredientes"
-                  />
-                </th>
-                {/* Vendas (min) */}
-                <th className="px-4 py-2 align-middle">
-                  <input
-                    type="number" min={0} placeholder="mín"
-                    value={minSales ?? ''}
-                    onChange={e => { setMinSales(e.target.value ? parseInt(e.target.value) : undefined); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por mínimo de vendas"
-                  />
-                </th>
-                {/* Faturamento (min R$) */}
-                <th className="px-4 py-2 align-middle">
-                  <input
-                    type="number" min={0} step={10} placeholder="R$ mín"
-                    value={minRevenue ?? ''}
-                    onChange={e => { setMinRevenue(e.target.value ? parseFloat(e.target.value) : undefined); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por faturamento mínimo"
-                  />
-                </th>
-                {/* Último acesso */}
-                <th className="px-4 py-2 align-middle">
-                  <select
-                    value={lastSeenDays === undefined ? '' : String(lastSeenDays)}
-                    onChange={e => { setLastSeenDays(e.target.value === '' ? undefined : parseInt(e.target.value)); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por último acesso"
-                  >
-                    <option value="">Todos</option>
-                    <option value="1">Hoje</option>
-                    <option value="7">7 dias</option>
-                    <option value="30">30 dias</option>
-                    <option value="90">90 dias</option>
-                    <option value="0">Nunca</option>
-                  </select>
-                </th>
-                {/* Cadastro */}
-                <th className="px-4 py-2 align-middle">
-                  <select
-                    value={createdDays === undefined ? '' : String(createdDays)}
-                    onChange={e => { setCreatedDays(e.target.value === '' ? undefined : parseInt(e.target.value)); setPage(1); }}
-                    className={filterCtl}
-                    aria-label="Filtrar por data de cadastro"
-                  >
-                    <option value="">Todos</option>
-                    <option value="1">Hoje</option>
-                    <option value="7">7 dias</option>
-                    <option value="30">30 dias</option>
-                    <option value="90">90 dias</option>
-                    <option value="365">1 ano</option>
-                  </select>
                 </th>
               </tr>
             </thead>
