@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PostgresOrderRepository, Order } from '../../infrastructure/repositories/PostgresOrderRepository';
 import { registerSalesForDeliveredOrder, removeSalesForOrder } from '../../application/services/OrderSaleAutomation';
+import { normalizeDateToISO } from '../../domain/utils/date';
 
 const repo = new PostgresOrderRepository();
 const ORDER_STATUSES = new Set(['pending', 'in_progress', 'done', 'delivered', 'cancelled']);
@@ -70,7 +71,15 @@ export class OrderController {
         res.status(400).json({ success: false, message: 'Status inválido' });
         return;
       }
-      const order = await repo.create(userId, b);
+      // Normaliza a data de entrega (aceita dd/mm/aaaa além de ISO) e rejeita
+      // datas inexistentes como 31/06 — o insert cru quebrava com
+      // "date/time field value out of range".
+      const deliveryDate = normalizeDateToISO(b.deliveryDate);
+      if (!deliveryDate) {
+        res.status(400).json({ success: false, message: 'Data de entrega inválida. Use o formato dd/mm/aaaa.' });
+        return;
+      }
+      const order = await repo.create(userId, { ...b, deliveryDate });
       const saleRegistered = await syncSaleForStatusChange(order, b.status);
       res.status(201).json({ success: true, data: { ...order, saleRegistered } });
     } catch (error) {
@@ -86,6 +95,16 @@ export class OrderController {
       if (hasInvalidStatus(b)) {
         res.status(400).json({ success: false, message: 'Status inválido' });
         return;
+      }
+      // Se a data de entrega vier na atualização, normaliza e valida antes do
+      // update (mesmo motivo do create: datas inexistentes quebravam o insert).
+      if (b.deliveryDate !== undefined) {
+        const deliveryDate = normalizeDateToISO(b.deliveryDate);
+        if (!deliveryDate) {
+          res.status(400).json({ success: false, message: 'Data de entrega inválida. Use o formato dd/mm/aaaa.' });
+          return;
+        }
+        b.deliveryDate = deliveryDate;
       }
       const order = await repo.update(req.params.id, userId, b);
       if (!order) {
