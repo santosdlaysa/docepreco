@@ -525,11 +525,13 @@ export const api = {
 
   getLogs: (limit = 50) => req<LogEntry[]>(`/admin/logs?limit=${limit}`),
 
-  getRequestLogs: (params: { limit?: number; method?: string; search?: string } = {}) => {
+  getRequestLogs: (params: { limit?: number; method?: string; search?: string; ip?: string; onlyErrors?: boolean } = {}) => {
     const q = new URLSearchParams();
     if (params.limit) q.set('limit', String(params.limit));
     if (params.method) q.set('method', params.method);
     if (params.search) q.set('search', params.search);
+    if (params.ip) q.set('ip', params.ip);
+    if (params.onlyErrors) q.set('onlyErrors', 'true');
     return req<RequestLog[]>(`/admin/request-logs?${q}`);
   },
 

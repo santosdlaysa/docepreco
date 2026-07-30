@@ -1,10 +1,53 @@
-import { useEffect, useState, useRef } from 'react';
-import { api, SecurityOverview } from '../lib/api';
+import { Fragment, useEffect, useState, useRef } from 'react';
+import { api, SecurityOverview, RequestLog } from '../lib/api';
 import { Skeleton } from '../components';
 import {
   RefreshCw, ShieldCheck, ShieldAlert, Ban, KeyRound, Globe,
-  ScanSearch, Fingerprint, AlertOctagon,
+  ScanSearch, Fingerprint, AlertOctagon, ChevronDown,
 } from 'lucide-react';
+
+function statusColor(code: number) {
+  if (code < 300) return 'text-green-600';
+  if (code < 400) return 'text-blue-600';
+  if (code < 500) return 'text-yellow-600';
+  return 'text-red-600';
+}
+
+const METHOD_COLOR: Record<string, string> = {
+  GET: 'bg-blue-100 text-blue-700', POST: 'bg-green-100 text-green-700',
+  PUT: 'bg-yellow-100 text-yellow-700', PATCH: 'bg-orange-100 text-orange-700',
+  DELETE: 'bg-red-100 text-red-700',
+};
+
+/** Lista de requisições reais de um IP, exibida ao expandir a linha. */
+function IpRequestList({ logs, loading }: { logs: RequestLog[] | undefined; loading: boolean }) {
+  if (loading) {
+    return <div className="px-5 py-3 space-y-2">{Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-4 w-full" />)}</div>;
+  }
+  if (!logs || logs.length === 0) {
+    return <p className="text-center text-gray-400 text-sm py-6">Nenhuma requisição com erro registrada para este IP na janela.</p>;
+  }
+  return (
+    <div className="max-h-80 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700">
+      {logs.map(l => (
+        <div key={l.id} className="px-5 py-2 text-sm">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className={`shrink-0 text-[11px] font-bold px-1.5 py-0.5 rounded ${METHOD_COLOR[l.method] ?? 'bg-gray-100 text-gray-600'}`}>{l.method}</span>
+            <span className="font-mono text-gray-700 dark:text-gray-200 truncate flex-1 min-w-0" title={l.path}>{l.path}</span>
+            <span className={`shrink-0 font-bold ${statusColor(l.statusCode)}`}>{l.statusCode}</span>
+            <span className="shrink-0 text-gray-400 text-xs" title={fmtTs(l.ts)}>{timeAgo(l.ts)}</span>
+          </div>
+          {(l.errorMessage || l.bodyEmail) && (
+            <div className="mt-1 flex flex-wrap gap-x-4 gap-y-0.5 text-xs pl-1">
+              {l.bodyEmail && <span className="text-purple-600">e-mail: {l.bodyEmail}</span>}
+              {l.errorMessage && <span className="text-red-600 font-mono">{l.errorMessage}</span>}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const WINDOWS: { label: string; hours: number }[] = [
   { label: '1h', hours: 1 },
@@ -102,6 +145,9 @@ export function SecurityPage() {
   const [hours, setHours] = useState(24);
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [expandedIp, setExpandedIp] = useState<string | null>(null);
+  const [ipLogs, setIpLogs] = useState<Record<string, RequestLog[]>>({});
+  const [ipLoading, setIpLoading] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
@@ -116,7 +162,23 @@ export function SecurityPage() {
     }
   };
 
-  useEffect(() => { setLoading(true); load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [hours]);
+  const toggleIp = async (ip: string) => {
+    if (expandedIp === ip) { setExpandedIp(null); return; }
+    setExpandedIp(ip);
+    if (!ipLogs[ip]) {
+      setIpLoading(ip);
+      try {
+        const logs = await api.getRequestLogs({ ip, onlyErrors: true, limit: 100 });
+        setIpLogs(prev => ({ ...prev, [ip]: logs }));
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setIpLoading(null);
+      }
+    }
+  };
+
+  useEffect(() => { setLoading(true); setExpandedIp(null); setIpLogs({}); load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [hours]);
 
   useEffect(() => {
     if (autoRefresh) intervalRef.current = setInterval(load, 30000);
@@ -212,6 +274,7 @@ export function SecurityPage() {
         <table className="w-full min-w-[560px]">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
+              <th className={`${th} w-6`}></th>
               <th className={th}>IP</th>
               <th className={th}>Total erros</th>
               <th className={th}>401/403</th>
@@ -221,16 +284,32 @@ export function SecurityPage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-            {data.suspiciousIps.map(r => (
-              <tr key={r.ip} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td className={`${td} font-mono`}>{r.ip}</td>
-                <td className={`${td} font-bold`}>{r.total}</td>
-                <td className={td}>{r.unauthorized > 0 ? <span className="text-red-600 font-semibold">{r.unauthorized}</span> : '—'}</td>
-                <td className={td}>{r.rateLimited > 0 ? <span className="text-yellow-600 font-semibold">{r.rateLimited}</span> : '—'}</td>
-                <td className={td}>{r.notFound || '—'}</td>
-                <td className={`${td} text-gray-400 text-xs`} title={fmtTs(r.lastSeen)}>{timeAgo(r.lastSeen)}</td>
-              </tr>
-            ))}
+            {data.suspiciousIps.map(r => {
+              const open = expandedIp === r.ip;
+              return (
+                <Fragment key={r.ip}>
+                  <tr onClick={() => toggleIp(r.ip)}
+                    className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${open ? 'bg-gray-50 dark:bg-gray-700/50' : ''}`}>
+                    <td className={`${td} pr-0`}>
+                      <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+                    </td>
+                    <td className={`${td} font-mono`}>{r.ip}</td>
+                    <td className={`${td} font-bold`}>{r.total}</td>
+                    <td className={td}>{r.unauthorized > 0 ? <span className="text-red-600 font-semibold">{r.unauthorized}</span> : '—'}</td>
+                    <td className={td}>{r.rateLimited > 0 ? <span className="text-yellow-600 font-semibold">{r.rateLimited}</span> : '—'}</td>
+                    <td className={td}>{r.notFound || '—'}</td>
+                    <td className={`${td} text-gray-400 text-xs`} title={fmtTs(r.lastSeen)}>{timeAgo(r.lastSeen)}</td>
+                  </tr>
+                  {open && (
+                    <tr>
+                      <td colSpan={7} className="bg-gray-50/60 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 p-0">
+                        <IpRequestList logs={ipLogs[r.ip]} loading={ipLoading === r.ip} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </SectionCard>
@@ -266,19 +345,36 @@ export function SecurityPage() {
         <table className="w-full min-w-[400px]">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
+              <th className={`${th} w-6`}></th>
               <th className={th}>IP</th>
               <th className={th}>Tentativas</th>
               <th className={th}>Último</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
-            {data.adminProbes.map(r => (
-              <tr key={r.ip} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td className={`${td} font-mono`}>{r.ip}</td>
-                <td className={`${td} font-bold text-red-600`}>{r.attempts}</td>
-                <td className={`${td} text-gray-400 text-xs`} title={fmtTs(r.lastSeen)}>{timeAgo(r.lastSeen)}</td>
-              </tr>
-            ))}
+            {data.adminProbes.map(r => {
+              const open = expandedIp === r.ip;
+              return (
+                <Fragment key={r.ip}>
+                  <tr onClick={() => toggleIp(r.ip)}
+                    className={`cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 ${open ? 'bg-gray-50 dark:bg-gray-700/50' : ''}`}>
+                    <td className={`${td} pr-0`}>
+                      <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? '' : '-rotate-90'}`} />
+                    </td>
+                    <td className={`${td} font-mono`}>{r.ip}</td>
+                    <td className={`${td} font-bold text-red-600`}>{r.attempts}</td>
+                    <td className={`${td} text-gray-400 text-xs`} title={fmtTs(r.lastSeen)}>{timeAgo(r.lastSeen)}</td>
+                  </tr>
+                  {open && (
+                    <tr>
+                      <td colSpan={4} className="bg-gray-50/60 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 p-0">
+                        <IpRequestList logs={ipLogs[r.ip]} loading={ipLoading === r.ip} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })}
           </tbody>
         </table>
       </SectionCard>

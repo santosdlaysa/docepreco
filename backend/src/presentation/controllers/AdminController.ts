@@ -573,6 +573,8 @@ export class AdminController {
     const limit = Math.min(500, parseInt((req.query.limit as string) || '200'));
     const method = req.query.method as string | undefined;
     const search = req.query.search as string | undefined;
+    const ip = req.query.ip as string | undefined;
+    const onlyErrors = req.query.onlyErrors === 'true';
 
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -580,6 +582,8 @@ export class AdminController {
 
     if (method) { conditions.push(`method = $${idx++}`); params.push(method); }
     if (search) { conditions.push(`path ILIKE $${idx++}`); params.push(`%${search}%`); }
+    if (ip) { conditions.push(`ip = $${idx++}`); params.push(ip); }
+    if (onlyErrors) { conditions.push(`status_code >= 400`); }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 

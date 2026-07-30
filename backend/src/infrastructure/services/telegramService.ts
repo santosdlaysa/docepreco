@@ -331,12 +331,39 @@ export async function sendSecurityAlert(): Promise<void> {
 
   if (ips.length === 0 && logins.length === 0 && adminProbes.length === 0) return;
 
+  // Rotas mais tentadas por IP suspeito, para dar contexto no alerta (não só
+  // números). Uma query só para todos os IPs sinalizados.
+  const flaggedIps = [...new Set([...ips.map(r => r.ip), ...adminProbes.map(r => r.ip)])];
+  const pathsByIp = new Map<string, string[]>();
+  if (flaggedIps.length) {
+    const { rows: paths } = await pool.query(
+      `SELECT ip, path, status_code AS status, COUNT(*)::int AS hits
+       FROM request_logs
+       WHERE ts >= NOW() - INTERVAL '${win}'
+         AND status_code >= 400
+         AND ip = ANY($1)
+       GROUP BY ip, path, status_code
+       ORDER BY ip, hits DESC`,
+      [flaggedIps]
+    );
+    for (const p of paths) {
+      const list = pathsByIp.get(p.ip) ?? [];
+      if (list.length < 3) list.push(`${p.status} ${p.path} (${p.hits}x)`);
+      pathsByIp.set(p.ip, list);
+    }
+  }
+
+  const fmtPaths = (ip: string): string => {
+    const list = pathsByIp.get(ip);
+    return list && list.length ? list.map(l => `\n    ↳ ${l}`).join('') : '';
+  };
+
   let text = `🛡️ Alerta de segurança\n\nPadrões suspeitos nos últimos ${SECURITY_WINDOW_MIN} min:`;
 
   if (ips.length) {
     text += `\n\n🚧 IPs com acesso negado/bloqueado:`;
     for (const r of ips) {
-      text += `\n• ${r.ip} — ${r.total}x (401/403: ${r.unauthorized}, 429: ${r.rate_limited})`;
+      text += `\n• ${r.ip} — ${r.total}x (401/403: ${r.unauthorized}, 429: ${r.rate_limited})${fmtPaths(r.ip)}`;
     }
   }
   if (logins.length) {
@@ -348,10 +375,10 @@ export async function sendSecurityAlert(): Promise<void> {
   if (adminProbes.length) {
     text += `\n\n⛔ Tentativas em rotas admin:`;
     for (const r of adminProbes) {
-      text += `\n• ${r.ip} — ${r.attempts}x`;
+      text += `\n• ${r.ip} — ${r.attempts}x${fmtPaths(r.ip)}`;
     }
   }
-  text += `\n\n🕐 ${brNow()}\n🔎 Detalhes no painel → Segurança`;
+  text += `\n\n🕐 ${brNow()}\n🔎 Detalhes completos no painel → Segurança`;
 
   sendTelegramMessage(text);
 }
