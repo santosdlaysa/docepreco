@@ -122,10 +122,10 @@ CREATE TABLE IF NOT EXISTS orders (
   quantity DECIMAL(10,3) NOT NULL DEFAULT 1,
   unit_price DECIMAL(10,2) NOT NULL DEFAULT 0,
   total_price DECIMAL(10,2) NOT NULL DEFAULT 0,
-  delivery_date DATE NOT NULL,
+  delivery_date DATE,
   delivery_time VARCHAR(5),
   status VARCHAR(20) NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'in_progress', 'done', 'delivered', 'cancelled')),
+    CHECK (status IN ('draft', 'pending', 'in_progress', 'done', 'delivered', 'cancelled')),
   paid BOOLEAN NOT NULL DEFAULT false,
   paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   payments JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -671,13 +671,18 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_settings', 'payment_methods', `JSONB NOT NULL DEFAULT '["pix","cash","credit","debit"]'::jsonb`);
     await addColumnIfMissing(client, 'store_settings', 'address', 'TEXT');
     // Versões antigas usavam "ready"; o app atual usa "done".
+    // 'draft' (rascunho) foi adicionado depois — encomendas incompletas que o
+    // confeiteiro salva para terminar mais tarde, inclusive sem data de entrega.
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check`);
     await client.query(`UPDATE orders SET status = 'done' WHERE status = 'ready'`);
     await client.query(`
       ALTER TABLE orders
       ADD CONSTRAINT orders_status_check
-      CHECK (status IN ('pending', 'in_progress', 'done', 'delivered', 'cancelled'))
+      CHECK (status IN ('draft', 'pending', 'in_progress', 'done', 'delivered', 'cancelled'))
     `);
+    // Rascunhos podem não ter data de entrega ainda — remove o NOT NULL herdado
+    // de versões anteriores (idempotente; ignora se a coluna já for nullable).
+    await client.query(`ALTER TABLE orders ALTER COLUMN delivery_date DROP NOT NULL`);
 
     // Seed schedule config for existing templates (only if schedule_hour is null)
     await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 48 WHERE slug = 'inactivity_2d' AND schedule_hour IS NULL`);

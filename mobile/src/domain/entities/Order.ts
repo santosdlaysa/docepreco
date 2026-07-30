@@ -1,4 +1,4 @@
-export type OrderStatus = 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
+export type OrderStatus = 'draft' | 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
 
 export type PaymentMethodType = 'pix' | 'cash' | 'credit' | 'debit';
 
@@ -30,7 +30,7 @@ export interface Order {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  deliveryDate: string; // YYYY-MM-DD
+  deliveryDate: string | null; // YYYY-MM-DD — nulo em rascunhos sem data
   deliveryTime?: string; // HH:mm
   status: OrderStatus;
   paid?: boolean;

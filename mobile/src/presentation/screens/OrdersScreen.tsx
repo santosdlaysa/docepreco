@@ -23,7 +23,6 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { Order, OrderStatus, OrderPayment, PaymentMethodType } from '../../domain/entities/Order';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
-import { saleApi } from '../../data/api/saleApi';
 import { recipeApi } from '../../data/api/recipeApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { applySaleDeduction } from '../../data/api/stockApi';
@@ -80,6 +79,7 @@ type FilterKey = OrderStatus | 'all' | 'online';
 const FILTER_ALL: { key: FilterKey; label: string }[] = [
   { key: 'all', label: 'Todos' },
   { key: 'online', label: '🔗 Online' },
+  { key: 'draft', label: '📝 Rascunhos' },
   { key: 'pending', label: 'Pendente' },
   { key: 'in_progress', label: 'Produção' },
   { key: 'done', label: 'Saiu p/ entrega' },
@@ -101,7 +101,6 @@ export const OrdersScreen: React.FC = () => {
   const [paymentModalOrder, setPaymentModalOrder] = useState<Order | null>(null);
   const [newPaymentAmount, setNewPaymentAmount] = useState('');
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
-  const [saleConfirmOrder, setSaleConfirmOrder] = useState<Order | null>(null);
 
   const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
     { key: 'pix', icon: 'qr-code-outline', label: 'Pix' },
@@ -110,7 +109,8 @@ export const OrdersScreen: React.FC = () => {
     { key: 'debit', icon: 'card-outline', label: 'Débito' },
   ];
 
-  const formatDate = (dateStr: string) => {
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return 'Sem data';
     const [y, m, d] = dateStr.split('-').map(Number);
     const date = new Date(y, m - 1, d);
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -137,16 +137,22 @@ export const OrdersScreen: React.FC = () => {
       : orders.filter(o => o.status === (filter as OrderStatus));
 
   const sections: Section[] = (() => {
+    // Rascunhos ficam numa seção própria no topo — podem não ter data ainda.
+    const drafts = filtered.filter(o => o.status === 'draft');
+    const scheduled = filtered.filter(o => o.status !== 'draft');
     const map = new Map<string, Order[]>();
-    const sorted = [...filtered].sort((a, b) => a.deliveryDate.localeCompare(b.deliveryDate));
-    for (const o of sorted) { if (!map.has(o.deliveryDate)) map.set(o.deliveryDate, []); map.get(o.deliveryDate)!.push(o); }
+    const sorted = [...scheduled].sort((a, b) => (a.deliveryDate ?? '').localeCompare(b.deliveryDate ?? ''));
+    for (const o of sorted) { const key = o.deliveryDate ?? ''; if (!map.has(key)) map.set(key, []); map.get(key)!.push(o); }
     // Hoje e entregas futuras primeiro (ordem de urgência); datas passadas por último, da mais recente para a mais antiga
     const now = new Date();
     const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
     const entries = Array.from(map.entries());
-    const upcoming = entries.filter(([d]) => d >= todayStr);
-    const past = entries.filter(([d]) => d < todayStr).reverse();
-    return [...upcoming, ...past].map(([date, data]) => ({ title: formatDate(date), data }));
+    const upcoming = entries.filter(([d]) => d && d >= todayStr);
+    const past = entries.filter(([d]) => d && d < todayStr).reverse();
+    const noDate = entries.filter(([d]) => !d);
+    const dateSections = [...upcoming, ...past, ...noDate].map(([date, data]) => ({ title: date ? formatDate(date) : 'Sem data', data }));
+    const draftSection: Section[] = drafts.length > 0 ? [{ title: '📝 Rascunhos', data: drafts }] : [];
+    return [...draftSection, ...dateSections];
   })();
 
   const handleCancel = (order: Order) => {
@@ -194,20 +200,6 @@ export const OrdersScreen: React.FC = () => {
     loadOrders();
   };
 
-  const registerSale = async (order: Order) => {
-    try {
-      const items = order.items && order.items.length > 0 ? order.items : [{ recipeId: order.recipeId, recipeName: order.recipeName, quantity: order.quantity, unitPrice: order.unitPrice }];
-      const today = new Date().toISOString().split('T')[0];
-      for (const item of items) {
-        if (!item.recipeId) continue;
-        await saleApi.create({ recipeId: item.recipeId, quantitySold: item.quantity, salePrice: item.unitPrice, saleDate: today });
-      }
-      showToast('Venda registrada!', 'success');
-    } catch {
-      showToast('Erro ao registrar venda', 'error');
-    }
-  };
-
   const handleAddPayment = async () => {
     if (!paymentModalOrder) return;
     const amount = parseMoney(newPaymentAmount);
@@ -225,8 +217,9 @@ export const OrdersScreen: React.FC = () => {
       const updatedPayments = [...basePayments, payment];
       const newPaidAmount = updatedPayments.reduce((sum, p) => sum + p.amount, 0);
       const nowFullyPaid = toCents(newPaidAmount) >= toCents(paymentModalOrder.totalPrice);
-      const wasDelivered = paymentModalOrder.status === 'delivered';
-      const orderSnapshot = paymentModalOrder;
+      // A venda da encomenda é registrada automaticamente pelo backend quando ela
+      // é marcada como entregue (vinculada ao orderId, idempotente). NÃO registrar
+      // venda aqui — fazia surgir um lançamento paralelo sem orderId e duplicava.
       await orderStorage.update(paymentModalOrder.id, {
         payments: updatedPayments,
         paidAmount: newPaidAmount,
@@ -234,9 +227,6 @@ export const OrdersScreen: React.FC = () => {
       });
       setPaymentModalOrder(null); setNewPaymentAmount(''); setNewPaymentMethod('pix');
       loadOrders(); showToast('Pagamento adicionado', 'success');
-      if (nowFullyPaid && wasDelivered) {
-        setSaleConfirmOrder(orderSnapshot);
-      }
     } catch {
       showToast('Erro ao adicionar pagamento', 'error');
     }
@@ -245,6 +235,7 @@ export const OrdersScreen: React.FC = () => {
   const renderOrder = ({ item }: { item: Order }) => {
     const isDelivered = item.status === 'delivered';
     const isCancelled = item.status === 'cancelled';
+    const isDraft = item.status === 'draft';
     const isLocked = isDelivered || isCancelled;
     const remaining = item.totalPrice - (item.paidAmount || 0);
     const stageIdx = STATUS_STAGES.findIndex(s => s.key === item.status);
@@ -264,6 +255,11 @@ export const OrdersScreen: React.FC = () => {
                 {item.source === 'online' && (
                   <View style={st.onlineBadge}>
                     <Text style={st.onlineBadgeText}>Online</Text>
+                  </View>
+                )}
+                {isDraft && (
+                  <View style={st.draftBadge}>
+                    <Text style={st.draftBadgeText}>Rascunho</Text>
                   </View>
                 )}
               </View>
@@ -296,6 +292,11 @@ export const OrdersScreen: React.FC = () => {
             <View style={st.cancelledRow}>
               <Ionicons name="close-circle" size={16} color={colors.redDark} />
               <Text style={st.cancelledText}>Cancelado</Text>
+            </View>
+          ) : isDraft ? (
+            <View style={st.draftRow}>
+              <Ionicons name="create-outline" size={15} color={INK2} />
+              <Text style={st.draftRowText}>Rascunho — toque para completar</Text>
             </View>
           ) : (
             <View style={st.stagesRow}>
@@ -413,49 +414,6 @@ export const OrdersScreen: React.FC = () => {
         }
       />
 
-      {/* ── Sale confirmation modal ── */}
-      <Modal visible={!!saleConfirmOrder} animationType="fade" transparent statusBarTranslucent>
-        <View style={st.saleOverlay}>
-          <View style={st.saleCard}>
-            <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleIconGrad}>
-              <Ionicons name="storefront-outline" size={32} color="#fff" />
-            </LinearGradient>
-            <Text style={st.saleTitle}>Lançar nas vendas do dia?</Text>
-            <Text style={st.saleDesc}>O pagamento foi concluído. Deseja registrar esta encomenda como uma venda do dia também?</Text>
-            {saleConfirmOrder && (
-              <View style={st.saleInfoRow}>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={st.saleInfoName} numberOfLines={1}>
-                    {saleConfirmOrder.items && saleConfirmOrder.items.length > 1
-                      ? `${saleConfirmOrder.items[0].recipeName} +${saleConfirmOrder.items.length - 1}`
-                      : saleConfirmOrder.recipeName}
-                  </Text>
-                  <Text style={st.saleInfoClient}>{saleConfirmOrder.clientName}</Text>
-                </View>
-                <Text style={st.saleInfoValue}>{fmtCurrency(saleConfirmOrder.totalPrice)}</Text>
-              </View>
-            )}
-            <View style={st.saleBtns}>
-              <TouchableOpacity style={st.saleBtnNo} onPress={() => setSaleConfirmOrder(null)} activeOpacity={0.7}>
-                <Text style={st.saleBtnNoText}>Agora não</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={{ flex: 1 }}
-                activeOpacity={0.85}
-                onPress={async () => {
-                  if (saleConfirmOrder) await registerSale(saleConfirmOrder);
-                  setSaleConfirmOrder(null);
-                }}>
-                <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.saleBtnYes}>
-                  <Ionicons name="checkmark-circle-outline" size={18} color="#fff" />
-                  <Text style={st.saleBtnYesText}>Sim, registrar</Text>
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
       {/* ── Payment modal ── */}
       <Modal visible={!!paymentModalOrder} animationType="slide" transparent>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={st.modalOverlay}>
@@ -544,6 +502,8 @@ const st = StyleSheet.create({
   badgeText: { fontSize: 11, fontWeight: '700' },
   onlineBadge: { backgroundColor: colors.purpleBg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
   onlineBadgeText: { fontSize: 10, fontWeight: '700', color: colors.purple },
+  draftBadge: { backgroundColor: colors.grayBg, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+  draftBadgeText: { fontSize: 10, fontWeight: '700', color: INK2 },
 
   /* partial payments */
   partialRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 8, flexWrap: 'wrap' },
@@ -561,6 +521,8 @@ const st = StyleSheet.create({
   /* cancelled */
   cancelledRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 11, paddingTop: 10, borderTopWidth: 1, borderTopColor: LINE },
   cancelledText: { fontSize: 13, fontWeight: '700', color: colors.redDark },
+  draftRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 11, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 10, backgroundColor: colors.grayBg },
+  draftRowText: { fontSize: 12, fontWeight: '700', color: INK2 },
 
   /* delivery */
   deliveryRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, },

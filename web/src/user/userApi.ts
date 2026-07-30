@@ -270,7 +270,7 @@ export interface AppStats {
   }[];
 }
 
-export type OrderStatus = 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
+export type OrderStatus = 'draft' | 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
 export type OrderPaymentMethod = 'pix' | 'cash' | 'credit' | 'debit';
 export interface OrderPayment {
   id: string;
@@ -287,7 +287,7 @@ export interface Order {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  deliveryDate: string;
+  deliveryDate: string | null;
   deliveryTime?: string | null;
   status: OrderStatus;
   paid: boolean;
@@ -308,7 +308,7 @@ export interface CreateOrderDTO {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  deliveryDate: string;
+  deliveryDate?: string | null;
   deliveryTime?: string;
   status: OrderStatus;
   paid?: boolean;

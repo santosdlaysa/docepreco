@@ -1,6 +1,6 @@
 import { pool } from '../database/connection';
 
-export type OrderStatus = 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
+export type OrderStatus = 'draft' | 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
 export type PaymentMethodType = 'pix' | 'cash' | 'credit' | 'debit';
 
 export interface OrderPayment {
@@ -29,7 +29,8 @@ export interface Order {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  deliveryDate: string;
+  /** Nulo em rascunhos ainda sem data de entrega definida. */
+  deliveryDate: string | null;
   deliveryTime?: string | null;
   status: OrderStatus;
   paid: boolean;
@@ -84,7 +85,7 @@ export class PostgresOrderRepository {
         d.quantity ?? 1,
         d.unitPrice ?? 0,
         d.totalPrice ?? 0,
-        d.deliveryDate,
+        d.deliveryDate ?? null,
         d.deliveryTime ?? null,
         d.status ?? 'pending',
         d.paid ?? false,
@@ -153,7 +154,7 @@ export class PostgresOrderRepository {
   }
 
   private mapRow(row: Record<string, unknown>): Order {
-    const dd = row.delivery_date as Date | string;
+    const dd = row.delivery_date as Date | string | null;
     return {
       id: row.id as string,
       userId: row.user_id as string,
@@ -164,7 +165,7 @@ export class PostgresOrderRepository {
       quantity: parseFloat(row.quantity as string),
       unitPrice: parseFloat(row.unit_price as string),
       totalPrice: parseFloat(row.total_price as string),
-      deliveryDate: dd instanceof Date ? dd.toISOString().split('T')[0] : String(dd).split('T')[0],
+      deliveryDate: dd == null ? null : dd instanceof Date ? dd.toISOString().split('T')[0] : String(dd).split('T')[0],
       deliveryTime: (row.delivery_time as string) ?? null,
       status: row.status as OrderStatus,
       paid: row.paid as boolean,

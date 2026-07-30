@@ -23,11 +23,10 @@ import { OrderStatus, OrderPayment, OrderItem, PaymentMethodType } from '../../d
 import { Recipe } from '../../domain/entities/Recipe';
 import { Client } from '../../domain/entities/Client';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
-import { saleApi } from '../../data/api/saleApi';
 import { clientApi } from '../../data/api/clientApi';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
-import { demoRecipeApi, demoSaleApi } from '../../data/demo/demoApi';
+import { demoRecipeApi } from '../../data/demo/demoApi';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { computeDiscountAmount, DiscountType } from '../utils/discount';
@@ -66,6 +65,7 @@ const num = (s: string) => {
 const toCents = (value: number) => Math.round(value * 100);
 
 const STATUS_OPTIONS: { key: OrderStatus; label: string; bg: string; color: string }[] = [
+  { key: 'draft', label: 'Rascunho', bg: colors.grayBg, color: INK2 },
   { key: 'pending', label: 'Pendente', bg: colors.amberBg, color: '#8A5A00' },
   { key: 'in_progress', label: 'Produção', bg: colors.blueBgSoft, color: colors.blueDark },
   { key: 'done', label: 'Saiu para entrega', bg: colors.pinkBg, color: '#BC2A6C' },
@@ -90,7 +90,6 @@ export const CreateOrderScreen: React.FC = () => {
   const isEditing = !!orderId;
   const { showToast } = useToast();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
-  const sApi = isDemoMode() ? demoSaleApi : saleApi;
 
   interface ItemDraft { id: string; recipeId?: string; recipeName: string; quantity: string; unitPrice: string; discountType: DiscountType; discountValue: string; }
   const newItemDraft = (): ItemDraft => ({ id: Math.random().toString(36).slice(2), recipeId: undefined, recipeName: '', quantity: '', unitPrice: '', discountType: 'fixed', discountValue: '' });
@@ -137,7 +136,7 @@ export const CreateOrderScreen: React.FC = () => {
           ? order.items.map(i => ({ id: Math.random().toString(36).slice(2), recipeId: i.recipeId, recipeName: i.recipeName, quantity: String(i.quantity), unitPrice: String(i.unitPrice).replace('.', ','), discountType: 'fixed' as DiscountType, discountValue: i.discount ? String(i.discount).replace('.', ',') : '' }))
           : [{ id: Math.random().toString(36).slice(2), recipeId: order.recipeId, recipeName: order.recipeName, quantity: String(order.quantity), unitPrice: String(order.unitPrice).replace('.', ','), discountType: 'fixed' as DiscountType, discountValue: '' }];
         setItems(loadedItems);
-        setDeliveryDate(fromIso(order.deliveryDate));
+        setDeliveryDate(order.deliveryDate ? fromIso(order.deliveryDate) : '');
         setDeliveryTime(order.deliveryTime || '');
         setStatus(order.status);
         if (order.status === 'delivered' || order.status === 'cancelled') setIsLocked(true);
@@ -197,17 +196,56 @@ export const CreateOrderScreen: React.FC = () => {
         payments,
         notes: notes.trim() || undefined,
       };
-      if (isEditing) { await orderStorage.update(orderId!, data); showToast('Encomenda atualizada!', 'success'); }
-      else { await orderStorage.create({ ...data, source: 'manual' as const }); showToast('Encomenda criada!', 'success'); }
-      const isFullyPaid = totalPrice > 0 && toCents(totalPaid) >= toCents(totalPrice);
-      if (isFullyPaid && status === 'delivered') {
-        try {
-          await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, discount: orderItems[0]?.discount ?? 0, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
-          showToast('Encomenda entregue e venda registrada!', 'success');
-        } catch { showToast('Encomenda salva, mas erro ao registrar venda', 'warning'); }
-      }
+      // A venda é registrada automaticamente pelo backend quando o status é
+      // 'delivered' (vinculada ao orderId, idempotente). Não registramos venda
+      // aqui — fazíamos surgir um lançamento paralelo sem orderId e duplicava.
+      let saleRegistered = false;
+      if (isEditing) { const r = await orderStorage.update(orderId!, data); saleRegistered = !!r?.saleRegistered; }
+      else { const r = await orderStorage.create({ ...data, source: 'manual' as const }); saleRegistered = !!(r as { saleRegistered?: boolean })?.saleRegistered; }
+      showToast(saleRegistered ? 'Encomenda salva · venda registrada!' : isEditing ? 'Encomenda atualizada!' : 'Encomenda criada!', 'success');
       navigation.goBack();
     } catch { showToast('Erro ao salvar', 'error'); }
+    finally { setLoading(false); }
+  };
+
+  // Rascunho: salva uma encomenda incompleta para terminar depois. Exige apenas
+  // o nome do cliente; data de entrega e produtos ficam opcionais. Data inválida
+  // ou em branco é salva sem data (não bloqueia).
+  const handleSaveDraft = async () => {
+    if (!clientName.trim()) { setErrors({ client: 'Informe ao menos o nome do cliente' }); return; }
+    setLoading(true);
+    try {
+      const orderItems: OrderItem[] = items
+        .filter(i => i.recipeName.trim())
+        .map(i => ({
+          recipeId: i.recipeId,
+          recipeName: i.recipeName.trim(),
+          quantity: num(i.quantity),
+          unitPrice: num(i.unitPrice),
+          discount: itemDiscount(i),
+        }));
+      const dateValid = /^\d{2}-\d{2}-\d{4}$/.test(deliveryDate.trim());
+      const data = {
+        clientName: clientName.trim(), clientPhone: clientPhone.trim() || undefined,
+        recipeId: orderItems[0]?.recipeId,
+        recipeName: orderItems[0]?.recipeName || '',
+        quantity: orderItems[0]?.quantity || 1,
+        unitPrice: orderItems[0]?.unitPrice || 0,
+        totalPrice,
+        items: orderItems,
+        deliveryDate: dateValid ? toIso(deliveryDate.trim()) : null,
+        deliveryTime: deliveryTime.trim() || undefined,
+        status: 'draft' as OrderStatus,
+        paid: false,
+        paidAmount: totalPaid,
+        payments,
+        notes: notes.trim() || undefined,
+      };
+      if (isEditing) await orderStorage.update(orderId!, data);
+      else await orderStorage.create({ ...data, source: 'manual' as const });
+      showToast('Rascunho salvo!', 'success');
+      navigation.goBack();
+    } catch { showToast('Erro ao salvar rascunho', 'error'); }
     finally { setLoading(false); }
   };
 
@@ -251,12 +289,12 @@ export const CreateOrderScreen: React.FC = () => {
         payments: finalPayments,
         notes: notes.trim() || undefined,
       };
-      if (isEditing) await orderStorage.update(orderId!, data);
-      else await orderStorage.create({ ...data, source: 'manual' as const });
-      try {
-        await sApi.create({ recipeId: data.recipeId || '', quantitySold: data.quantity, salePrice: data.unitPrice, discount: orderItems[0]?.discount ?? 0, saleDate: new Date().toISOString().split('T')[0], notes: `Encomenda de ${data.clientName}` });
-        showToast('Entregue e venda registrada!', 'success');
-      } catch { showToast('Entregue, mas erro ao registrar venda', 'warning'); }
+      // Venda registrada automaticamente pelo backend ao marcar como entregue
+      // (vinculada ao orderId, idempotente) — não registramos manualmente aqui.
+      let saleRegistered = false;
+      if (isEditing) { const r = await orderStorage.update(orderId!, data); saleRegistered = !!r?.saleRegistered; }
+      else { const r = await orderStorage.create({ ...data, source: 'manual' as const }); saleRegistered = !!(r as { saleRegistered?: boolean })?.saleRegistered; }
+      showToast(saleRegistered ? 'Entregue · venda registrada!' : 'Encomenda entregue!', 'success');
       setShowDeliveryModal(false);
       navigation.goBack();
     } catch { showToast('Erro ao finalizar entrega', 'error'); }
@@ -562,11 +600,17 @@ export const CreateOrderScreen: React.FC = () => {
 
           {/* ── Save button ── */}
           {!isLocked && (
-            <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
-              <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.btn}>
-                {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>{isEditing ? 'Atualizar encomenda' : 'Salvar encomenda'}</Text>}
-              </LinearGradient>
-            </TouchableOpacity>
+            <>
+              <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
+                <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.btn}>
+                  {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>{isEditing ? 'Atualizar encomenda' : 'Salvar encomenda'}</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={handleSaveDraft} disabled={loading} activeOpacity={0.8} style={st.draftBtn}>
+                <Ionicons name="document-outline" size={16} color={INK2} />
+                <Text style={st.draftBtnText}>Salvar como rascunho</Text>
+              </TouchableOpacity>
+            </>
           )}
 
         </ScrollView>
@@ -751,6 +795,8 @@ const st = StyleSheet.create({
 
   btn: { height: 54, borderRadius: 16, alignItems: 'center', justifyContent: 'center', ...SHADOW, shadowColor: PINK, shadowOpacity: 0.35 },
   btnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  draftBtn: { height: 48, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, backgroundColor: '#fff', borderWidth: 1.5, borderColor: LINE, marginTop: 10 },
+  draftBtnText: { fontSize: 14.5, fontWeight: '700', color: INK2 },
 
   sugBox: { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: PINK, marginTop: -4, overflow: 'hidden', ...SHADOW, shadowOpacity: 0.12 },
   sugItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: LINE },

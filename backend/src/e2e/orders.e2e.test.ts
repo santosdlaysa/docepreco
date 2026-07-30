@@ -242,6 +242,62 @@ describe('Rotas de pedidos', () => {
       expect(res.status).toBe(500);
     });
 
+    it('cria rascunho sem data de entrega e sem produto (delivery_date = null)', async () => {
+      const draftRow = { ...orderRow, status: 'draft', recipe_name: '', delivery_date: null };
+      mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+        if (sql.includes('INSERT INTO orders')) {
+          expect(params?.[8]).toBeNull(); // delivery_date
+          expect(params?.[10]).toBe('draft'); // status
+          return Promise.resolve({ rows: [draftRow], rowCount: 1 });
+        }
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      });
+
+      const res = await authorized('post', '/orders').send({
+        clientName: 'Maria',
+        status: 'draft',
+      });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data).toMatchObject({ status: 'draft', deliveryDate: null });
+    });
+
+    it('salva rascunho ignorando data de entrega inválida (não quebra o insert)', async () => {
+      const draftRow = { ...orderRow, status: 'draft', delivery_date: null };
+      mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
+        if (sql.includes('INSERT INTO orders')) {
+          expect(params?.[8]).toBeNull(); // 31/06 não existe → salvo sem data
+          return Promise.resolve({ rows: [draftRow], rowCount: 1 });
+        }
+        return Promise.resolve({ rows: [], rowCount: 0 });
+      });
+
+      const res = await authorized('post', '/orders').send({
+        clientName: 'Maria',
+        deliveryDate: '2026-06-31',
+        status: 'draft',
+      });
+
+      expect(res.status).toBe(201);
+    });
+
+    it('rejeita rascunho sem nome do cliente', async () => {
+      const res = await authorized('post', '/orders').send({ status: 'draft' });
+      expect(res.status).toBe(400);
+      expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders'))).toBe(false);
+    });
+
+    it('rejeita encomenda normal com data inexistente (31/06)', async () => {
+      const res = await authorized('post', '/orders').send({
+        clientName: 'Maria',
+        recipeName: 'Bolo',
+        deliveryDate: '2026-06-31',
+      });
+      expect(res.status).toBe(400);
+      expect(res.body.message).toContain('Data de entrega inválida');
+      expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('INSERT INTO orders'))).toBe(false);
+    });
+
     it('retorna 400 para status inválido sem consultar a tabela de pedidos', async () => {
       const res = await authorized('post', '/orders').send({
         clientName: 'Maria',

@@ -51,6 +51,9 @@ export async function registerSalesForDeliveredOrder(order: Order): Promise<bool
     : [{ recipeId: order.recipeId ?? undefined, recipeName: order.recipeName, quantity: order.quantity, unitPrice: order.unitPrice }];
 
   const paymentMethod = salePaymentMethod(order);
+  // Encomenda entregue sempre tem data; o fallback cobre só o caso degenerado
+  // de um rascunho sem data que tenha sido marcado como entregue.
+  const saleDate = order.deliveryDate ?? new Date().toISOString().split('T')[0];
   let created = false;
   for (const item of items) {
     const recipeId = await resolveRecipeId(order.userId, item.recipeId, item.recipeName);
@@ -63,7 +66,7 @@ export async function registerSalesForDeliveredOrder(order: Order): Promise<bool
       quantitySold: Math.max(1, Math.round(item.quantity)),
       salePrice: item.unitPrice,
       discount: item.discount ?? 0,
-      saleDate: order.deliveryDate,
+      saleDate,
       clientName: order.clientName,
       notes: `Encomenda de ${order.clientName}`,
       paymentMethod,
@@ -83,7 +86,7 @@ export async function registerSalesForDeliveredOrder(order: Order): Promise<bool
       productName: 'Taxa de entrega',
       quantitySold: 1,
       salePrice: fee,
-      saleDate: order.deliveryDate,
+      saleDate,
       clientName: order.clientName,
       notes: `Encomenda de ${order.clientName}`,
       paymentMethod,
