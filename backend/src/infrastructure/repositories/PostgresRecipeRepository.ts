@@ -220,6 +220,21 @@ export class PostgresRecipeRepository implements IRecipeRepository {
   }
 
   async delete(id: string, userId: string): Promise<boolean> {
+    // Bloqueia com mensagem amigável quando a receita é usada como sub-receita
+    // em outra — senão o Postgres devolve o erro cru de foreign key (RESTRICT)
+    // e o usuário via um 400 técnico incompreensível.
+    const usedIn = await pool.query(
+      `SELECT r.name
+       FROM recipe_sub_recipes rsr
+       JOIN recipes r ON r.id = rsr.recipe_id
+       WHERE rsr.sub_recipe_id = $1
+       LIMIT 5`,
+      [id]
+    );
+    if (usedIn.rows.length > 0) {
+      const names = usedIn.rows.map((row: { name: string }) => `"${row.name}"`).join(', ');
+      throw new Error(`Esta receita é usada como sub-receita em: ${names}. Remova-a dessas receitas antes de excluir.`);
+    }
     const result = await pool.query(
       'DELETE FROM recipes WHERE id = $1 AND user_id = $2',
       [id, userId]
