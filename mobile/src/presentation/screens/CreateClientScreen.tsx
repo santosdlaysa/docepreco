@@ -18,6 +18,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { clientApi } from '../../data/api/clientApi';
+import { maskPhone, isValidPhone } from '../utils/phone';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 
@@ -63,7 +64,7 @@ export const CreateClientScreen: React.FC = () => {
       clientApi.getById(clientId).then(client => {
         if (!client) return;
         setName(client.name);
-        setPhone(client.phone || '');
+        setPhone(maskPhone(client.phone || ''));
         setEmail(client.email || '');
         if (client.birthday) {
           const [mm, dd] = client.birthday.split('-');
@@ -79,6 +80,7 @@ export const CreateClientScreen: React.FC = () => {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!name.trim()) e.name = 'Obrigatório';
+    if (phone.trim() && !isValidPhone(phone)) e.phone = 'Telefone incompleto';
     if (birthdayDay || birthdayMonth) {
       const d = parseInt(birthdayDay);
       const m = parseInt(birthdayMonth);
@@ -155,11 +157,12 @@ export const CreateClientScreen: React.FC = () => {
 
           <View style={s.field}>
             <Text style={s.label}>Telefone</Text>
-            <View style={s.input}>
+            <View style={[s.input, errors.phone && s.inputErr]}>
               <Ionicons name="call-outline" size={18} color={INK3} />
-              <TextInput style={s.inputText} value={phone} onChangeText={setPhone}
+              <TextInput style={s.inputText} value={phone} onChangeText={(t) => setPhone(maskPhone(t))}
                 placeholder="(11) 98888-7777" placeholderTextColor={INK3} keyboardType="phone-pad" maxLength={15} />
             </View>
+            {errors.phone && <Text style={s.err}>{errors.phone}</Text>}
           </View>
 
           <View style={s.field}>

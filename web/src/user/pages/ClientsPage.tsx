@@ -3,6 +3,7 @@ import { Trash2, Pencil, Users, Search, Gift, MessageCircle } from 'lucide-react
 import { userApi, Client, CreateClientDTO } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
+import { maskPhone, isValidPhone } from '../phone';
 
 const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
 const AVATAR_GRADIENTS = [
@@ -182,7 +183,7 @@ function ClientForm({
 }) {
   const editingId = initial?.id ?? null;
   const [name, setName] = useState(initial?.name ?? '');
-  const [phone, setPhone] = useState(initial?.phone ?? '');
+  const [phone, setPhone] = useState(maskPhone(initial?.phone ?? ''));
   const [email, setEmail] = useState(initial?.email ?? '');
   const [bDay, setBDay] = useState(initial?.birthday ? initial.birthday.split('-')[1] : '');
   const [bMonth, setBMonth] = useState(initial?.birthday ? initial.birthday.split('-')[0] : '');
@@ -193,6 +194,7 @@ function ClientForm({
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error('Informe o nome.');
+    if (phone.trim() && !isValidPhone(phone)) return toast.error('Telefone incompleto. Use DDD + número.');
 
     let birthday: string | null = null;
     if (bDay && bMonth) {
@@ -240,7 +242,7 @@ function ClientForm({
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Telefone / WhatsApp">
-            <input value={phone} onChange={e => setPhone(e.target.value)} placeholder="(00) 00000-0000" className={inputClass} />
+            <input value={phone} onChange={e => setPhone(maskPhone(e.target.value))} placeholder="(00) 00000-0000" className={inputClass} />
           </FormField>
           <FormField label="E-mail (opcional)">
             <input value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />

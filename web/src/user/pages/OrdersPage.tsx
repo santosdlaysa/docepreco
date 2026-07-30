@@ -5,6 +5,7 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
+import { maskPhone, isValidPhone } from '../phone';
 
 const STATUS: { value: OrderStatus; label: string; cls: string }[] = [
   { value: 'draft', label: 'Rascunho', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' },
@@ -208,7 +209,7 @@ function OrderForm({
   toast: ToastFn;
 }) {
   const [clientName, setClientName] = useState(initial?.clientName ?? '');
-  const [clientPhone, setClientPhone] = useState(initial?.clientPhone ?? '');
+  const [clientPhone, setClientPhone] = useState(maskPhone(initial?.clientPhone ?? ''));
   const [recipeId, setRecipeId] = useState(initial?.recipeId ?? '');
   const [recipeName, setRecipeName] = useState(initial?.recipeName ?? '');
   const [quantity, setQuantity] = useState(String(initial?.quantity ?? '1'));
@@ -227,6 +228,7 @@ function OrderForm({
   // Exige só o cliente; produto e data de entrega ficam opcionais.
   const save = async (asDraft: boolean) => {
     if (!clientName.trim()) return toast.error('Informe o nome do cliente.');
+    if (clientPhone.trim() && !isValidPhone(clientPhone)) return toast.error('Telefone incompleto. Use DDD + número.');
     if (!asDraft) {
       if (!recipeName.trim()) return toast.error('Informe o produto / receita.');
       if (!deliveryDate) return toast.error('Informe a data de entrega.');
@@ -279,7 +281,7 @@ function OrderForm({
             <input value={clientName} onChange={e => setClientName(e.target.value)} className={inputClass} autoFocus />
           </FormField>
           <FormField label="Telefone (opcional)">
-            <input value={clientPhone ?? ''} onChange={e => setClientPhone(e.target.value)} className={inputClass} />
+            <input value={clientPhone ?? ''} onChange={e => setClientPhone(maskPhone(e.target.value))} className={inputClass} />
           </FormField>
         </div>
 

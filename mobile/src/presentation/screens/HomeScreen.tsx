@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Linking,
   RefreshControl,
+  Platform,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
@@ -48,6 +50,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PLAN_BANNER_WIDTH = SCREEN_WIDTH - 36;
+
+const APP_INSTAGRAM = 'doceprecoapp';
 
 // ── Design tokens (from reference) ──
 const INK = colors.text;
@@ -109,6 +113,18 @@ export const HomeScreen: React.FC = () => {
       await WebBrowser.openBrowserAsync(WEB_APP_URL);
     } finally {
       setOpeningWeb(false);
+    }
+  };
+
+  const handleFollowInstagram = async () => {
+    const appUrl = `instagram://user?username=${APP_INSTAGRAM}`;
+    const webUrl = `https://instagram.com/${APP_INSTAGRAM}`;
+    try {
+      const canOpenApp = Platform.OS !== 'web' && (await Linking.canOpenURL(appUrl));
+      await Linking.openURL(canOpenApp ? appUrl : webUrl);
+    } catch {
+      try { await Linking.openURL(webUrl); }
+      catch { Alert.alert('Erro', 'Não foi possível abrir o Instagram.'); }
     }
   };
 
@@ -636,6 +652,27 @@ export const HomeScreen: React.FC = () => {
             <Text style={s.webSub}>Acesse o DocePreço no computador — já logado</Text>
           </View>
           <Ionicons name="open-outline" size={20} color={colors.purple} />
+        </TouchableOpacity>
+
+        {/* ═══════ SIGA A GENTE (Instagram) ═══════ */}
+        <TouchableOpacity
+          style={s.igWrap}
+          onPress={handleFollowInstagram}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#FEDA75', '#D62976', '#4F5BD5']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.igCta}
+          >
+            <View style={s.igIco}><Ionicons name="logo-instagram" size={24} color="#fff" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.igTitle}>Siga a gente no Instagram</Text>
+              <Text style={s.igSub}>@{APP_INSTAGRAM} · dicas, novidades e promoções</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#fff" />
+          </LinearGradient>
         </TouchableOpacity>
 
         {/* ═══════ WEEKLY CHART ═══════ */}
@@ -1234,6 +1271,31 @@ const s = StyleSheet.create({
   },
   webTitle: { fontSize: 15, fontWeight: '700', color: INK },
   webSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+
+  /* ── Siga a gente (Instagram) ── */
+  igWrap: { marginHorizontal: 18, marginBottom: 16, borderRadius: 20, overflow: 'hidden' },
+  igCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 15,
+    paddingHorizontal: 16,
+    shadowColor: '#D62976',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  igIco: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  igTitle: { fontSize: 15.5, fontWeight: '700', color: '#fff' },
+  igSub: { fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: '500', marginTop: 2 },
 
   /* ── Trial banner ── */
   trialBanner: {

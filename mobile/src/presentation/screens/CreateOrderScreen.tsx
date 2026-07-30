@@ -30,6 +30,7 @@ import { demoRecipeApi } from '../../data/demo/demoApi';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { computeDiscountAmount, DiscountType } from '../utils/discount';
+import { maskPhone, isValidPhone } from '../utils/phone';
 import { DiscountInput } from '../components/DiscountInput';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -131,7 +132,7 @@ export const CreateOrderScreen: React.FC = () => {
       orderStorage.getById(orderId).then(order => {
         if (!order) return;
         setClientName(order.clientName);
-        setClientPhone(order.clientPhone || '');
+        setClientPhone(maskPhone(order.clientPhone || ''));
         const loadedItems = order.items && order.items.length > 0
           ? order.items.map(i => ({ id: Math.random().toString(36).slice(2), recipeId: i.recipeId, recipeName: i.recipeName, quantity: String(i.quantity), unitPrice: String(i.unitPrice).replace('.', ','), discountType: 'fixed' as DiscountType, discountValue: i.discount ? String(i.discount).replace('.', ',') : '' }))
           : [{ id: Math.random().toString(36).slice(2), recipeId: order.recipeId, recipeName: order.recipeName, quantity: String(order.quantity), unitPrice: String(order.unitPrice).replace('.', ','), discountType: 'fixed' as DiscountType, discountValue: '' }];
@@ -161,6 +162,7 @@ export const CreateOrderScreen: React.FC = () => {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!clientName.trim()) e.client = 'Obrigatório';
+    if (clientPhone.trim() && !isValidPhone(clientPhone)) e.phone = 'Telefone incompleto';
     if (items.some(i => !i.recipeName.trim())) e.recipe = 'Selecione todos os produtos';
     if (items.some(i => !i.quantity || num(i.quantity) <= 0)) e.qty = 'Preencha as quantidades';
     if (items.some(i => !i.unitPrice || num(i.unitPrice) <= 0)) e.price = 'Preencha os preços';
@@ -213,6 +215,7 @@ export const CreateOrderScreen: React.FC = () => {
   // ou em branco é salva sem data (não bloqueia).
   const handleSaveDraft = async () => {
     if (!clientName.trim()) { setErrors({ client: 'Informe ao menos o nome do cliente' }); return; }
+    if (clientPhone.trim() && !isValidPhone(clientPhone)) { setErrors({ phone: 'Telefone incompleto' }); return; }
     setLoading(true);
     try {
       const orderItems: OrderItem[] = items
@@ -346,7 +349,7 @@ export const CreateOrderScreen: React.FC = () => {
             {!isLocked && showClientSuggestions && filteredClients.length > 0 && (
               <View style={st.sugBox}>
                 {filteredClients.slice(0, 5).map(c => (
-                  <TouchableOpacity key={c.id} style={st.sugItem} onPress={() => { setClientName(c.name); if (c.phone) setClientPhone(c.phone); setShowClientSuggestions(false); }}>
+                  <TouchableOpacity key={c.id} style={st.sugItem} onPress={() => { setClientName(c.name); if (c.phone) setClientPhone(maskPhone(c.phone)); setShowClientSuggestions(false); }}>
                     <Ionicons name="person-outline" size={14} color={INK2} />
                     <Text style={st.sugText}>{c.name}</Text>
                   </TouchableOpacity>
@@ -354,10 +357,13 @@ export const CreateOrderScreen: React.FC = () => {
               </View>
             )}
           </View>
-          <View style={st.input}>
-            <Ionicons name="call-outline" size={18} color={INK3} />
-            <TextInput style={st.inputText} value={clientPhone} placeholder="(11) 98888-7777" placeholderTextColor={INK3}
-              keyboardType="phone-pad" maxLength={15} editable={!isLocked} onChangeText={setClientPhone} />
+          <View style={st.field}>
+            <View style={[st.input, errors.phone ? st.inputErr : null]}>
+              <Ionicons name="call-outline" size={18} color={INK3} />
+              <TextInput style={st.inputText} value={clientPhone} placeholder="(11) 98888-7777" placeholderTextColor={INK3}
+                keyboardType="phone-pad" maxLength={15} editable={!isLocked} onChangeText={(t) => setClientPhone(maskPhone(t))} />
+            </View>
+            {errors.phone && <Text style={st.err}>{errors.phone}</Text>}
           </View>
 
           {/* ── Produtos ── */}
