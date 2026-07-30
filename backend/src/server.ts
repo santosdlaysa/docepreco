@@ -283,12 +283,12 @@ async function bootstrap() {
       cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
     }
 
-    // Diagnóstico da API a cada 30 min → Telegram (banco + HTTP + uptime).
+    // Diagnóstico da API a cada 1h → Telegram (banco + HTTP + uptime).
     // Primeiro disparo ~15s após o boot (confirma que subiu ok e que o Telegram
     // está funcionando). Para virar modo silencioso (só avisa em falha), troque
     // por sendHealthReport({ alertOnly: true }).
     setTimeout(() => { void sendHealthReport(); }, 15000);
-    cron.schedule('*/30 * * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
+    cron.schedule('0 * * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
 
     // Cron: envia notificações agendadas a cada minuto
     const notifRepo = new PostgresNotificationRepository();
