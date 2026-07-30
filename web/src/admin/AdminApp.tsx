@@ -7,6 +7,7 @@ import { UsersPage } from '../pages/UsersPage';
 import { StoresPage } from '../pages/StoresPage';
 import { LogsPage } from '../pages/LogsPage';
 import { RequestLogsPage } from '../pages/RequestLogsPage';
+import { SecurityPage } from '../pages/SecurityPage';
 import { BannersPage } from '../pages/BannersPage';
 import { AdsPage } from '../pages/AdsPage';
 import { NotificationsPage } from '../pages/NotificationsPage';
@@ -69,11 +70,12 @@ import {
   Gift,
   Database,
   Store,
+  ShieldAlert,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'subscriptions' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads' | 'security';
 
 interface NavItem {
   id: Page;
@@ -112,7 +114,8 @@ const NAV: NavItem[] = [
   { id: 'telegram', label: 'Telegram', icon: Bot },
   { id: 'settings', label: 'Configurações', icon: Settings },
 
-  { id: 'logs', label: 'Logs do sistema', icon: ScrollText, section: 'Sistema' },
+  { id: 'security', label: 'Segurança', icon: ShieldAlert, section: 'Sistema' },
+  { id: 'logs', label: 'Logs do sistema', icon: ScrollText },
   { id: 'requests', label: 'Rotas HTTP', icon: Globe },
   { id: 'database', label: 'Console SQL', icon: Database },
 ];
@@ -453,6 +456,7 @@ export default function AdminApp() {
             {page === 'tips' && <TipsPage toast={toast} />}
             {page === 'logs' && <LogsPage />}
             {page === 'requests' && <RequestLogsPage />}
+            {page === 'security' && <SecurityPage />}
             {page === 'settings' && <SettingsPage toast={toast} />}
             {page === 'ingredients' && <GlobalIngredientsPage toast={toast} />}
             {page === 'recipes' && <FeaturedRecipesPage toast={toast} />}

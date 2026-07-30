@@ -714,6 +714,20 @@ export async function runMigrations() {
       );
     }
 
+    // Add security_alert for existing DBs
+    const secAlertExists = await client.query(`SELECT 1 FROM telegram_alerts WHERE key = 'security_alert'`);
+    if (secAlertExists.rows.length === 0) {
+      await client.query(
+        `INSERT INTO telegram_alerts (key, label, description, is_enabled, category, message_template) VALUES ($1, $2, $3, TRUE, $4, NULL)`,
+        ['security_alert', 'Alerta de segurança', 'Acesso suspeito: brute force, fuçada em rotas admin, rate limit estourado', 'alerts']
+      );
+    }
+
+    // Índice para acelerar as varreduras de segurança e o feed de request_logs
+    // (filtram sempre por ts recente e frequentemente por status_code).
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_request_logs_ts ON request_logs (ts DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_request_logs_status_ts ON request_logs (status_code, ts DESC)`);
+
     // Alerta de rota lenta foi removido do sistema
     await client.query(`DELETE FROM telegram_alerts WHERE key = 'slow_api'`);
 
@@ -819,6 +833,7 @@ export async function runMigrations() {
         { key: 'premium_event', label: 'Evento premium', description: 'Assinatura, renovação, cancelamento, expiração', category: 'alerts' },
         { key: 'user_milestone', label: 'Marco de usuários', description: 'Quando atinge 50, 100, 200, 500, 1000, 2000, 5000, 10000', category: 'alerts' },
         { key: 'error_alert', label: 'Erro no servidor', description: 'Quando uma rota retorna status 500+', category: 'alerts' },
+        { key: 'security_alert', label: 'Alerta de segurança', description: 'Acesso suspeito: brute force, fuçada em rotas admin, rate limit estourado', category: 'alerts' },
         { key: 'pix_request', label: 'Solicitação PIX', description: 'Notifica quando um usuário solicita pagamento via PIX', category: 'alerts' },
         { key: 'support_message', label: 'Mensagem no suporte', description: 'Notifica quando um usuário envia mensagem no chat de suporte', category: 'alerts' },
         { key: 'daily_report', label: 'Relatório diário', description: 'Enviado todo dia às 8h com total de usuários', category: 'reports' },

@@ -598,6 +598,94 @@ export class AdminController {
     }
   }
 
+  async getSecurityOverview(req: Request, res: Response): Promise<void> {
+    const hours = Math.min(168, Math.max(1, parseInt((req.query.hours as string) || '24')));
+    // Constante derivada de inteiro validado (1..168) — sem risco de injeção.
+    const win = `${hours} hours`;
+    try {
+      const [totals, ips, logins, adminProbes, notFound] = await Promise.all([
+        pool.query(
+          `SELECT
+             COUNT(*)::int AS total,
+             COUNT(*) FILTER (WHERE status_code BETWEEN 400 AND 499)::int AS "err4xx",
+             COUNT(*) FILTER (WHERE status_code >= 500)::int AS "err5xx",
+             COUNT(*) FILTER (WHERE status_code IN (401, 403))::int AS unauthorized,
+             COUNT(*) FILTER (WHERE status_code = 429)::int AS "rateLimited",
+             COUNT(DISTINCT ip)::int AS "distinctIps"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'`
+        ),
+        pool.query(
+          `SELECT ip,
+                  COUNT(*)::int AS total,
+                  COUNT(*) FILTER (WHERE status_code IN (401, 403))::int AS unauthorized,
+                  COUNT(*) FILTER (WHERE status_code = 429)::int AS "rateLimited",
+                  COUNT(*) FILTER (WHERE status_code = 404)::int AS "notFound",
+                  MAX(ts) AS "lastSeen"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND status_code >= 400
+             AND ip IS NOT NULL
+           GROUP BY ip
+           HAVING COUNT(*) >= 5
+           ORDER BY total DESC
+           LIMIT 30`
+        ),
+        pool.query(
+          `SELECT body_email AS email,
+                  COUNT(*)::int AS attempts,
+                  COUNT(DISTINCT ip)::int AS ips,
+                  MAX(ts) AS "lastAttempt"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND path = '/api/auth/login'
+             AND status_code >= 400
+             AND body_email IS NOT NULL
+           GROUP BY body_email
+           HAVING COUNT(*) >= 3
+           ORDER BY attempts DESC
+           LIMIT 30`
+        ),
+        pool.query(
+          `SELECT ip, COUNT(*)::int AS attempts, MAX(ts) AS "lastSeen"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND path LIKE '/api/admin%'
+             AND status_code IN (401, 403)
+             AND ip IS NOT NULL
+           GROUP BY ip
+           ORDER BY attempts DESC
+           LIMIT 30`
+        ),
+        pool.query(
+          `SELECT path, COUNT(*)::int AS hits, COUNT(DISTINCT ip)::int AS ips, MAX(ts) AS "lastSeen"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND status_code = 404
+           GROUP BY path
+           HAVING COUNT(*) >= 5
+           ORDER BY hits DESC
+           LIMIT 15`
+        ),
+      ]);
+      res.json({
+        success: true,
+        data: {
+          hours,
+          totals: totals.rows[0],
+          suspiciousIps: ips.rows,
+          failedLogins: logins.rows,
+          adminProbes: adminProbes.rows,
+          notFoundPaths: notFound.rows,
+        },
+      });
+    } catch (error) {
+      console.error('[Admin] getSecurityOverview error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async getLogs(req: Request, res: Response): Promise<void> {
     const limit = Math.min(100, parseInt((req.query.limit as string) || '50'));
     try {

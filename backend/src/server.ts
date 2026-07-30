@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendDailyGoalProgress, sendHealthReport } from './infrastructure/services/telegramService';
+import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendDailyGoalProgress, sendHealthReport, sendSecurityAlert, SECURITY_WINDOW_MIN } from './infrastructure/services/telegramService';
 import { connectDatabase } from './infrastructure/database/connection';
 import recipeRoutes from './presentation/routes/recipeRoutes';
 import ingredientRoutes from './presentation/routes/ingredientRoutes';
@@ -289,6 +289,11 @@ async function bootstrap() {
     // por sendHealthReport({ alertOnly: true }).
     setTimeout(() => { void sendHealthReport(); }, 15000);
     cron.schedule('0 * * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
+
+    // Varredura de segurança: analisa o request_logs em busca de acesso suspeito
+    // (brute force, fuçada em rotas admin, rate limit estourado) e avisa no
+    // Telegram só quando cruza os limiares. Janela = intervalo do cron.
+    cron.schedule(`*/${SECURITY_WINDOW_MIN} * * * *`, () => { void sendSecurityAlert(); }, { timezone: 'America/Sao_Paulo' });
 
     // Cron: envia notificações agendadas a cada minuto
     const notifRepo = new PostgresNotificationRepository();

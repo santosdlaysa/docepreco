@@ -258,6 +258,104 @@ export async function sendHealthReport(opts: { alertOnly?: boolean } = {}): Prom
   sendTelegramMessage(text);
 }
 
+// ── Segurança ───────────────────────────────────────────────────────
+
+/** Janela (min) analisada a cada execução. Casada com o cron em server.ts. */
+export const SECURITY_WINDOW_MIN = 10;
+/** Respostas 401/403/429 do mesmo IP na janela para virar suspeito. */
+const IP_ABUSE_THRESHOLD = 15;
+/** Falhas de login no mesmo e-mail na janela (possível brute force). */
+const LOGIN_FAIL_THRESHOLD = 5;
+
+/**
+ * Varredura periódica do request_logs em busca de padrões de acesso suspeito:
+ * brute force de senha, fuçada em rotas admin e rate limit estourado. Só manda
+ * mensagem ao Telegram se algo cruzar os limiares — silencioso por natureza.
+ *
+ * Roda num cron interno a cada SECURITY_WINDOW_MIN minutos (ver server.ts): a
+ * janela analisada = intervalo entre execuções, evitando realertar o mesmo
+ * ataque em excesso. Detalhes completos ficam no painel → Segurança.
+ */
+export async function sendSecurityAlert(): Promise<void> {
+  if (!await isAlertEnabled('security_alert')) return;
+
+  // Constante derivada de número fixo — sem risco de injeção.
+  const win = `${SECURITY_WINDOW_MIN} minutes`;
+
+  // 1) IPs com muitas respostas de acesso negado / rate limit
+  const { rows: ips } = await pool.query(
+    `SELECT ip,
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status_code IN (401, 403))::int AS unauthorized,
+            COUNT(*) FILTER (WHERE status_code = 429)::int AS rate_limited
+     FROM request_logs
+     WHERE ts >= NOW() - INTERVAL '${win}'
+       AND status_code IN (401, 403, 429)
+       AND ip IS NOT NULL
+     GROUP BY ip
+     HAVING COUNT(*) >= $1
+     ORDER BY total DESC
+     LIMIT 10`,
+    [IP_ABUSE_THRESHOLD]
+  );
+
+  // 2) Falhas repetidas de login no mesmo e-mail (brute force de conta)
+  const { rows: logins } = await pool.query(
+    `SELECT body_email AS email,
+            COUNT(*)::int AS attempts,
+            COUNT(DISTINCT ip)::int AS ips
+     FROM request_logs
+     WHERE ts >= NOW() - INTERVAL '${win}'
+       AND path = '/api/auth/login'
+       AND status_code >= 400
+       AND body_email IS NOT NULL
+     GROUP BY body_email
+     HAVING COUNT(*) >= $1
+     ORDER BY attempts DESC
+     LIMIT 10`,
+    [LOGIN_FAIL_THRESHOLD]
+  );
+
+  // 3) Tentativas de acessar rotas admin sem autorização
+  const { rows: adminProbes } = await pool.query(
+    `SELECT ip, COUNT(*)::int AS attempts
+     FROM request_logs
+     WHERE ts >= NOW() - INTERVAL '${win}'
+       AND path LIKE '/api/admin%'
+       AND status_code IN (401, 403)
+       AND ip IS NOT NULL
+     GROUP BY ip
+     ORDER BY attempts DESC
+     LIMIT 10`
+  );
+
+  if (ips.length === 0 && logins.length === 0 && adminProbes.length === 0) return;
+
+  let text = `🛡️ Alerta de segurança\n\nPadrões suspeitos nos últimos ${SECURITY_WINDOW_MIN} min:`;
+
+  if (ips.length) {
+    text += `\n\n🚧 IPs com acesso negado/bloqueado:`;
+    for (const r of ips) {
+      text += `\n• ${r.ip} — ${r.total}x (401/403: ${r.unauthorized}, 429: ${r.rate_limited})`;
+    }
+  }
+  if (logins.length) {
+    text += `\n\n🔑 Falhas de login (possível brute force):`;
+    for (const r of logins) {
+      text += `\n• ${r.email} — ${r.attempts} tentativas de ${r.ips} IP(s)`;
+    }
+  }
+  if (adminProbes.length) {
+    text += `\n\n⛔ Tentativas em rotas admin:`;
+    for (const r of adminProbes) {
+      text += `\n• ${r.ip} — ${r.attempts}x`;
+    }
+  }
+  text += `\n\n🕐 ${brNow()}\n🔎 Detalhes no painel → Segurança`;
+
+  sendTelegramMessage(text);
+}
+
 export async function sendWeeklyReport(): Promise<void> {
   if (!await isAlertEnabled('weekly_report')) return;
   const { rows } = await pool.query(`

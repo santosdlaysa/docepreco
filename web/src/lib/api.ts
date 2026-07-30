@@ -533,6 +533,8 @@ export const api = {
     return req<RequestLog[]>(`/admin/request-logs?${q}`);
   },
 
+  getSecurityOverview: (hours = 24) => req<SecurityOverview>(`/admin/security?hours=${hours}`),
+
   // ── Banners ──
   listBanners: () => req<Banner[]>('/banners'),
   createBanner: (data: Omit<Banner, 'id' | 'createdAt' | 'updatedAt'>) =>
@@ -764,6 +766,43 @@ export interface RequestLog {
   requestBody: string | null;
   responseBody: string | null;
   ts: string;
+}
+
+export interface SecurityOverview {
+  hours: number;
+  totals: {
+    total: number;
+    err4xx: number;
+    err5xx: number;
+    unauthorized: number;
+    rateLimited: number;
+    distinctIps: number;
+  };
+  suspiciousIps: {
+    ip: string;
+    total: number;
+    unauthorized: number;
+    rateLimited: number;
+    notFound: number;
+    lastSeen: string;
+  }[];
+  failedLogins: {
+    email: string;
+    attempts: number;
+    ips: number;
+    lastAttempt: string;
+  }[];
+  adminProbes: {
+    ip: string;
+    attempts: number;
+    lastSeen: string;
+  }[];
+  notFoundPaths: {
+    path: string;
+    hits: number;
+    ips: number;
+    lastSeen: string;
+  }[];
 }
 
 export interface Banner {
