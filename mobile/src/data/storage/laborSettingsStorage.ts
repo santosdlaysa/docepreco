@@ -5,10 +5,19 @@ const STORAGE_KEY = '@docepreco_labor_settings';
 export interface LaborSettings {
   /** Custo por hora padrão do usuário (string no formato do input, ex.: "25,00"). */
   hourlyRate: string;
+  /** Assistente: quanto o usuário quer receber por mês (ex.: "2.000,00"). */
+  monthlyIncome?: string;
+  /** Assistente: horas trabalhadas por dia (ex.: "6"). */
+  hoursPerDay?: string;
+  /** Assistente: dias trabalhados por semana (ex.: "5"). */
+  daysPerWeek?: string;
 }
 
 const DEFAULT_SETTINGS: LaborSettings = {
   hourlyRate: '',
+  monthlyIncome: '',
+  hoursPerDay: '',
+  daysPerWeek: '',
 };
 
 export const laborSettingsStorage = {

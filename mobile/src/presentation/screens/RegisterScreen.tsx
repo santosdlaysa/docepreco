@@ -17,7 +17,7 @@ import { authApi } from '../../data/api/authApi';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
-import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
+import { getEmailTypoSuggestion, isValidEmail } from '../utils/emailTypoCheck';
 import { CountryCodePicker } from '../components/CountryCodePicker';
 import { LgpdConsentModal } from '../components/LgpdConsentModal';
 
@@ -58,7 +58,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     if (!companyName.trim()) e.companyName = t('register.companyRequired');
     if (!email.trim()) {
       e.email = t('register.emailRequired');
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+    } else if (!isValidEmail(email.trim())) {
       e.email = t('register.emailInvalid');
     } else {
       const typoSuggestion = getEmailTypoSuggestion(email.trim());

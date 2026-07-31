@@ -8,6 +8,7 @@ import { notifyPremiumEvent } from '../../infrastructure/services/telegramServic
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { pool } from '../../infrastructure/database/connection';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { isValidEmail, INVALID_ACCOUNT_EMAIL_ERROR } from '../../domain/services/email';
 
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -72,6 +73,14 @@ export class StripeController {
       return;
     }
 
+    // Sem isso o Stripe devolve "Invalid email address: ..." como erro 500 genérico
+    // e o usuário fica sem entender por que o checkout nunca abre.
+    if (!isValidEmail(user.email)) {
+      console.error(`[Stripe] Checkout bloqueado: e-mail inválido na conta ${userId} — ${user.email}`);
+      res.status(400).json({ success: false, error: INVALID_ACCOUNT_EMAIL_ERROR, code: 'INVALID_ACCOUNT_EMAIL' });
+      return;
+    }
+
     try {
       const stripe = getStripe();
       const baseUrl = process.env.APP_BASE_URL ?? 'https://docepreco.onrender.com';
@@ -121,7 +130,8 @@ export class StripeController {
       res.json({ success: true, data: { url: session.url } });
     } catch (error: any) {
       console.error('[Stripe] createCheckout error:', error?.message ?? error);
-      res.status(500).json({ success: false, error: error?.message ?? 'Failed to create checkout session' });
+      // A mensagem crua do Stripe vem em inglês e vaza detalhe interno — o log acima já a guarda.
+      res.status(500).json({ success: false, error: 'Não foi possível abrir o pagamento. Tente novamente.' });
     }
   }
 

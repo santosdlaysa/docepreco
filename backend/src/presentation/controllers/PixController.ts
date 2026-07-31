@@ -17,6 +17,7 @@ import { PostgresBannerRepository } from '../../infrastructure/repositories/Post
 import { getActiveOffer, applyDiscount, attachPixRequest, redeemByPixRequest } from '../../infrastructure/services/winbackService';
 import { getActiveTier } from '../../domain/services/premium';
 import { getPixAmountCents } from './PlanConfigController';
+import { isValidEmail, INVALID_ACCOUNT_EMAIL_ERROR } from '../../domain/services/email';
 
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -452,6 +453,14 @@ export class PixController {
       const user = await userRepo.findById(userId);
       if (!user) {
         res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      // O MP recusa o preapproval com payer_email inválido — sem esta checagem o
+      // usuário só vê "Não foi possível criar a assinatura", sem a causa real.
+      if (!isValidEmail(user.email)) {
+        console.error(`[PIX] Assinatura bloqueada: e-mail inválido na conta ${userId} — ${user.email}`);
+        res.status(400).json({ success: false, error: INVALID_ACCOUNT_EMAIL_ERROR, code: 'INVALID_ACCOUNT_EMAIL' });
         return;
       }
 
