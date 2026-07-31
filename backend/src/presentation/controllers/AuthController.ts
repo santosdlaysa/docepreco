@@ -7,6 +7,7 @@ import { PostgresReferralRepository } from '../../infrastructure/repositories/Po
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
 import { normalizeReferralCode } from '../../domain/services/referral';
+import { isValidEmail } from '../../domain/services/email';
 import { getJwtSecret } from '../../config/secrets';
 
 const userRepo = new PostgresUserRepository();
@@ -39,7 +40,7 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Plataforma inválida (ios ou android)' });
         return;
       }
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      if (!isValidEmail(email)) {
         res.status(400).json({ success: false, error: 'Email inválido' });
         return;
       }
@@ -100,6 +101,9 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Email e senha são obrigatórios' });
         return;
       }
+      // Checagem propositalmente permissiva (não usa isValidEmail): contas antigas
+      // foram criadas com domínios inválidos como `fulano@.gmail.com` e precisam
+      // continuar entrando para conseguir suporte.
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         console.log(`[Auth] Login failed: invalid email format — ${email}`);
         res.status(400).json({ success: false, error: 'Email inválido' });

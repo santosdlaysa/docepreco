@@ -272,6 +272,10 @@ function RecipeForm({
   const [customCosts, setCustomCosts] = useState<AdditionalCostForm[]>(customInit);
   const [hourlyRate, setHourlyRate] = useState('');
   const [prepTime, setPrepTime] = useState('');
+  const [rateHelperOpen, setRateHelperOpen] = useState(false);
+  const [monthlyIncome, setMonthlyIncome] = useState('');
+  const [hoursPerDay, setHoursPerDay] = useState('');
+  const [daysPerWeek, setDaysPerWeek] = useState('');
   const [saving, setSaving] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
 
@@ -313,6 +317,15 @@ function RecipeForm({
     const rate = parseLocaleNumber(hourlyRate);
     const mins = parseLocaleNumber(prepTime);
     if (rate > 0 && mins > 0) return Math.round((rate / 60) * mins * 100) / 100;
+    return 0;
+  })();
+
+  // Assistente: converte "quanto quero ganhar por mês" em custo por hora.
+  // horas no mês = horas/dia × dias/semana × semanas/mês (média de 4,33).
+  const computedHourlyRate = (() => {
+    const income = parseLocaleNumber(monthlyIncome);
+    const hoursPerMonth = parseLocaleNumber(hoursPerDay) * parseLocaleNumber(daysPerWeek) * 4.33;
+    if (income > 0 && hoursPerMonth > 0) return Math.round((income / hoursPerMonth) * 100) / 100;
     return 0;
   })();
 
@@ -839,6 +852,81 @@ function RecipeForm({
         <div className="bg-gray-50 dark:bg-gray-700/40 rounded-lg p-3">
           <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1">Mão de obra (calculadora)</p>
           <p className="text-[11px] text-gray-400 mb-2">Quanto você quer ganhar por hora × tempo de preparo.</p>
+
+          {/* Assistente: calcula o R$/h a partir do salário desejado */}
+          <div className="bg-white dark:bg-gray-800/60 rounded-lg p-2.5 mb-2 border border-gray-100 dark:border-gray-700">
+            <button
+              type="button"
+              onClick={() => setRateHelperOpen(v => !v)}
+              className="w-full flex items-center gap-2 text-left"
+            >
+              <Calculator size={14} className="text-primary-500 shrink-0" />
+              <span className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                Não sabe seu valor por hora? Calcule aqui
+              </span>
+              <ChevronDown size={15} className={`text-gray-400 transition-transform ${rateHelperOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {rateHelperOpen && (
+              <div className="mt-2.5 space-y-2">
+                <p className="text-[11px] text-gray-400">
+                  Informe quanto quer receber por mês e a sua jornada. A gente calcula quanto vale a sua hora.
+                </p>
+                <div className="relative">
+                  <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$/mês</span>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={monthlyIncome}
+                    onChange={e => setMonthlyIncome(e.target.value)}
+                    placeholder="Quero receber por mês"
+                    className={inputClass + ' pl-14'}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={hoursPerDay}
+                      onChange={e => setHoursPerDay(e.target.value)}
+                      placeholder="Horas/dia"
+                      className={inputClass + ' pr-12'}
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">h/dia</span>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      value={daysPerWeek}
+                      onChange={e => setDaysPerWeek(e.target.value)}
+                      placeholder="Dias/semana"
+                      className={inputClass + ' pr-12'}
+                    />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">dias</span>
+                  </div>
+                </div>
+                {computedHourlyRate > 0 && (
+                  <div className="flex items-center gap-2">
+                    <span className="flex-1 text-xs font-semibold text-gray-700 dark:text-gray-200">
+                      Sua hora vale ~{formatBRL(computedHourlyRate)}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHourlyRate(computedHourlyRate.toFixed(2).replace('.', ','));
+                        setRateHelperOpen(false);
+                      }}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-primary-500 text-white"
+                    >
+                      Usar
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-2">
             <div className="relative">
               <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$/h</span>

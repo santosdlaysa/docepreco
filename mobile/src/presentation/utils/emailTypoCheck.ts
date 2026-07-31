@@ -65,6 +65,21 @@ const DOMAIN_CORRECTIONS: Record<string, string> = {
   'iclould.com': 'icloud.com',
 };
 
+const LOCAL_PART = "[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[a-zA-Z0-9!#$%&'*+/=?^_`{|}~-]+)*";
+const DOMAIN_LABEL = '[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?';
+const EMAIL_REGEX = new RegExp(`^${LOCAL_PART}@(?:${DOMAIN_LABEL}\\.)+[a-zA-Z]{2,}$`);
+
+/**
+ * Validates an email address. Stricter than the usual `[^\s@]+@[^\s@]+\.[^\s@]+`,
+ * which accepted broken domains like `fulano@.gmail.com` — those only got rejected
+ * later by Stripe/Mercado Pago, leaving the account unable to subscribe.
+ * Keep in sync with backend/src/domain/services/email.ts.
+ */
+export function isValidEmail(email: string): boolean {
+  const trimmed = email.trim();
+  return trimmed.length > 0 && trimmed.length <= 254 && EMAIL_REGEX.test(trimmed);
+}
+
 /**
  * Checks if an email domain has a common typo and returns the suggested correction.
  * Returns the full corrected email or null if no typo detected.
