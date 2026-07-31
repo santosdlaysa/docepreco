@@ -1,5 +1,10 @@
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
+// Timeout das requisições. Sem isso, um servidor lento/pendurado (ex.: cold
+// start do Render) deixa a tela girando pra sempre. 45s cobre um cold start
+// mas ainda limita a espera.
+const REQUEST_TIMEOUT_MS = 45000;
+
 let secret = localStorage.getItem('admin_secret') ?? '';
 
 export function saveSecret(s: string) {
@@ -17,14 +22,27 @@ export function clearSecret() {
 }
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-secret': secret,
-      ...init.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-admin-secret': secret,
+        ...init.headers,
+      },
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('Tempo de resposta esgotado. O servidor pode estar iniciando — tente de novo em alguns segundos.');
+    }
+    throw new Error('Sem conexão com o servidor. Verifique sua internet e tente novamente.');
+  } finally {
+    clearTimeout(timer);
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
   return json.data ?? json;
@@ -157,7 +175,7 @@ export interface AdminUser {
   planTier: 'free' | 'premium' | 'master';
   premiumUntil: string | null;
   premiumPlatform: string | null;
-  signupPlatform: 'ios' | 'android' | null;
+  signupPlatform: 'ios' | 'android' | 'web' | null;
   lastSeenAt: string | null;
   isActive: boolean;
   recipeCount: number;
@@ -393,10 +411,14 @@ export interface WinbackCampaignResult {
 // ── Endpoints ─────────────────────────────────────────────────────────────
 
 export const api = {
-  verify: (s: string) =>
-    fetch(`${BASE}/admin/stats`, {
+  verify: (s: string) => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    return fetch(`${BASE}/admin/stats`, {
       headers: { 'Content-Type': 'application/json', 'x-admin-secret': s },
-    }).then(r => r.ok).catch(() => false),
+      signal: controller.signal,
+    }).then(r => r.ok).catch(() => false).finally(() => clearTimeout(timer));
+  },
 
   getStats: () => req<Stats>('/admin/stats'),
 
@@ -413,7 +435,8 @@ export const api = {
   listUsers: (params: {
     search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;
     planTier?: 'free' | 'premium' | 'master';
-    signupPlatform?: 'ios' | 'android';
+    signupPlatform?: 'ios' | 'android' | 'web';
+    ddd?: string;
     hasPhone?: boolean | null; hasInstagram?: boolean | null;
     minRecipes?: number; minIngredients?: number; minSales?: number; minRevenue?: number;
     lastSeenDays?: number; createdDays?: number;
@@ -425,6 +448,7 @@ export const api = {
     if (params.planTier) q.set('planTier', params.planTier);
     if (params.sortBy) q.set('sortBy', params.sortBy);
     if (params.signupPlatform) q.set('signupPlatform', params.signupPlatform);
+    if (params.ddd) q.set('ddd', params.ddd);
     if (params.hasPhone != null) q.set('hasPhone', String(params.hasPhone));
     if (params.hasInstagram != null) q.set('hasInstagram', String(params.hasInstagram));
     if (params.minRecipes) q.set('minRecipes', String(params.minRecipes));
@@ -470,8 +494,8 @@ export const api = {
       body: JSON.stringify({ isPremium, premiumUntil: premiumUntil ?? null, planTier }),
     }),
 
-  setSignupPlatform: (id: string, signupPlatform: 'ios' | 'android' | null) =>
-    req<{ signupPlatform: 'ios' | 'android' | null }>(`/admin/users/${id}/signup-platform`, {
+  setSignupPlatform: (id: string, signupPlatform: 'ios' | 'android' | 'web' | null) =>
+    req<{ signupPlatform: 'ios' | 'android' | 'web' | null }>(`/admin/users/${id}/signup-platform`, {
       method: 'PATCH',
       body: JSON.stringify({ signupPlatform }),
     }),
@@ -501,13 +525,17 @@ export const api = {
 
   getLogs: (limit = 50) => req<LogEntry[]>(`/admin/logs?limit=${limit}`),
 
-  getRequestLogs: (params: { limit?: number; method?: string; search?: string } = {}) => {
+  getRequestLogs: (params: { limit?: number; method?: string; search?: string; ip?: string; onlyErrors?: boolean } = {}) => {
     const q = new URLSearchParams();
     if (params.limit) q.set('limit', String(params.limit));
     if (params.method) q.set('method', params.method);
     if (params.search) q.set('search', params.search);
+    if (params.ip) q.set('ip', params.ip);
+    if (params.onlyErrors) q.set('onlyErrors', 'true');
     return req<RequestLog[]>(`/admin/request-logs?${q}`);
   },
+
+  getSecurityOverview: (hours = 24) => req<SecurityOverview>(`/admin/security?hours=${hours}`),
 
   // ── Banners ──
   listBanners: () => req<Banner[]>('/banners'),
@@ -740,6 +768,43 @@ export interface RequestLog {
   requestBody: string | null;
   responseBody: string | null;
   ts: string;
+}
+
+export interface SecurityOverview {
+  hours: number;
+  totals: {
+    total: number;
+    err4xx: number;
+    err5xx: number;
+    unauthorized: number;
+    rateLimited: number;
+    distinctIps: number;
+  };
+  suspiciousIps: {
+    ip: string;
+    total: number;
+    unauthorized: number;
+    rateLimited: number;
+    notFound: number;
+    lastSeen: string;
+  }[];
+  failedLogins: {
+    email: string;
+    attempts: number;
+    ips: number;
+    lastAttempt: string;
+  }[];
+  adminProbes: {
+    ip: string;
+    attempts: number;
+    lastSeen: string;
+  }[];
+  notFoundPaths: {
+    path: string;
+    hits: number;
+    ips: number;
+    lastSeen: string;
+  }[];
 }
 
 export interface Banner {

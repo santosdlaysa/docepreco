@@ -195,6 +195,194 @@ export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}
   sendTelegramMessage(text);
 }
 
+/**
+ * Health check periódico enviado ao Telegram. Verifica banco (SELECT 1) e a
+ * camada HTTP (self-ping em /api/health) e reporta uptime/memória.
+ *
+ * @param opts.alertOnly quando true, só envia mensagem se algo estiver com
+ *   problema (modo silencioso — não manda o "tudo ok" a cada intervalo).
+ */
+export async function sendHealthReport(opts: { alertOnly?: boolean } = {}): Promise<void> {
+  if (!await isAlertEnabled('health_check')) return;
+
+  // 1) Banco: ping + latência
+  let dbOk = false;
+  let dbLatency = 0;
+  try {
+    const t = Date.now();
+    await pool.query('SELECT 1');
+    dbLatency = Date.now() - t;
+    dbOk = true;
+  } catch {
+    dbOk = false;
+  }
+
+  // 2) HTTP: self-ping para confirmar que o Express está respondendo
+  let httpOk = false;
+  let httpStatus = 0;
+  let httpLatency = 0;
+  const port = process.env.PORT || 3000;
+  try {
+    const t = Date.now();
+    const r = await fetch(`http://127.0.0.1:${port}/api/health`, {
+      signal: AbortSignal.timeout(10000),
+    });
+    httpLatency = Date.now() - t;
+    httpStatus = r.status;
+    httpOk = r.ok;
+  } catch {
+    httpOk = false;
+  }
+
+  const healthy = dbOk && httpOk;
+  if (opts.alertOnly && healthy) return;
+
+  const uptime = process.uptime();
+  const uptimeStr = uptime >= 3600
+    ? `${Math.floor(uptime / 3600)}h${Math.floor((uptime % 3600) / 60)}m`
+    : `${Math.floor(uptime / 60)}m`;
+  const mem = Math.round(process.memoryUsage().rss / 1024 / 1024);
+
+  const icon = healthy ? '✅' : '🚨';
+  const title = healthy ? 'API operando normalmente' : 'API COM PROBLEMAS!';
+  const dbLine = dbOk ? `🟢 Banco: OK (${dbLatency}ms)` : '🔴 Banco: FORA';
+  const httpLine = httpOk
+    ? `🟢 HTTP: OK (${httpStatus}, ${httpLatency}ms)`
+    : `🔴 HTTP: FORA (${httpStatus || 'sem resposta'})`;
+
+  const tpl = await getTemplate('health_check');
+  const fallback = `${icon} ${title}\n\n${dbLine}\n${httpLine}\n⏱️ Uptime: ${uptimeStr}\n💾 Memória: ${mem} MB\n🕐 ${brNow()}`;
+  const text = tpl
+    ? applyTemplate(tpl, { icon, title, db: dbLine, http: httpLine, uptime: uptimeStr, mem, time: brNow() })
+    : fallback;
+  sendTelegramMessage(text);
+}
+
+// ── Segurança ───────────────────────────────────────────────────────
+
+/** Janela (min) analisada a cada execução. Casada com o cron em server.ts. */
+export const SECURITY_WINDOW_MIN = 10;
+/** Respostas 401/403/429 do mesmo IP na janela para virar suspeito. */
+const IP_ABUSE_THRESHOLD = 15;
+/** Falhas de login no mesmo e-mail na janela (possível brute force). */
+const LOGIN_FAIL_THRESHOLD = 5;
+
+/**
+ * Varredura periódica do request_logs em busca de padrões de acesso suspeito:
+ * brute force de senha, fuçada em rotas admin e rate limit estourado. Só manda
+ * mensagem ao Telegram se algo cruzar os limiares — silencioso por natureza.
+ *
+ * Roda num cron interno a cada SECURITY_WINDOW_MIN minutos (ver server.ts): a
+ * janela analisada = intervalo entre execuções, evitando realertar o mesmo
+ * ataque em excesso. Detalhes completos ficam no painel → Segurança.
+ */
+export async function sendSecurityAlert(): Promise<void> {
+  if (!await isAlertEnabled('security_alert')) return;
+
+  // Constante derivada de número fixo — sem risco de injeção.
+  const win = `${SECURITY_WINDOW_MIN} minutes`;
+
+  // 1) IPs com muitas respostas de acesso negado / rate limit
+  const { rows: ips } = await pool.query(
+    `SELECT ip,
+            COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE status_code IN (401, 403))::int AS unauthorized,
+            COUNT(*) FILTER (WHERE status_code = 429)::int AS rate_limited
+     FROM request_logs
+     WHERE ts >= NOW() - INTERVAL '${win}'
+       AND status_code IN (401, 403, 429)
+       AND ip IS NOT NULL
+     GROUP BY ip
+     HAVING COUNT(*) >= $1
+     ORDER BY total DESC
+     LIMIT 10`,
+    [IP_ABUSE_THRESHOLD]
+  );
+
+  // 2) Falhas repetidas de login no mesmo e-mail (brute force de conta)
+  const { rows: logins } = await pool.query(
+    `SELECT body_email AS email,
+            COUNT(*)::int AS attempts,
+            COUNT(DISTINCT ip)::int AS ips
+     FROM request_logs
+     WHERE ts >= NOW() - INTERVAL '${win}'
+       AND path = '/api/auth/login'
+       AND status_code >= 400
+       AND body_email IS NOT NULL
+     GROUP BY body_email
+     HAVING COUNT(*) >= $1
+     ORDER BY attempts DESC
+     LIMIT 10`,
+    [LOGIN_FAIL_THRESHOLD]
+  );
+
+  // 3) Tentativas de acessar rotas admin sem autorização
+  const { rows: adminProbes } = await pool.query(
+    `SELECT ip, COUNT(*)::int AS attempts
+     FROM request_logs
+     WHERE ts >= NOW() - INTERVAL '${win}'
+       AND path LIKE '/api/admin%'
+       AND status_code IN (401, 403)
+       AND ip IS NOT NULL
+     GROUP BY ip
+     ORDER BY attempts DESC
+     LIMIT 10`
+  );
+
+  if (ips.length === 0 && logins.length === 0 && adminProbes.length === 0) return;
+
+  // Rotas mais tentadas por IP suspeito, para dar contexto no alerta (não só
+  // números). Uma query só para todos os IPs sinalizados.
+  const flaggedIps = [...new Set([...ips.map(r => r.ip), ...adminProbes.map(r => r.ip)])];
+  const pathsByIp = new Map<string, string[]>();
+  if (flaggedIps.length) {
+    const { rows: paths } = await pool.query(
+      `SELECT ip, path, status_code AS status, COUNT(*)::int AS hits
+       FROM request_logs
+       WHERE ts >= NOW() - INTERVAL '${win}'
+         AND status_code >= 400
+         AND ip = ANY($1)
+       GROUP BY ip, path, status_code
+       ORDER BY ip, hits DESC`,
+      [flaggedIps]
+    );
+    for (const p of paths) {
+      const list = pathsByIp.get(p.ip) ?? [];
+      if (list.length < 3) list.push(`${p.status} ${p.path} (${p.hits}x)`);
+      pathsByIp.set(p.ip, list);
+    }
+  }
+
+  const fmtPaths = (ip: string): string => {
+    const list = pathsByIp.get(ip);
+    return list && list.length ? list.map(l => `\n    ↳ ${l}`).join('') : '';
+  };
+
+  let text = `🛡️ Alerta de segurança\n\nPadrões suspeitos nos últimos ${SECURITY_WINDOW_MIN} min:`;
+
+  if (ips.length) {
+    text += `\n\n🚧 IPs com acesso negado/bloqueado:`;
+    for (const r of ips) {
+      text += `\n• ${r.ip} — ${r.total}x (401/403: ${r.unauthorized}, 429: ${r.rate_limited})${fmtPaths(r.ip)}`;
+    }
+  }
+  if (logins.length) {
+    text += `\n\n🔑 Falhas de login (possível brute force):`;
+    for (const r of logins) {
+      text += `\n• ${r.email} — ${r.attempts} tentativas de ${r.ips} IP(s)`;
+    }
+  }
+  if (adminProbes.length) {
+    text += `\n\n⛔ Tentativas em rotas admin:`;
+    for (const r of adminProbes) {
+      text += `\n• ${r.ip} — ${r.attempts}x${fmtPaths(r.ip)}`;
+    }
+  }
+  text += `\n\n🕐 ${brNow()}\n🔎 Detalhes completos no painel → Segurança`;
+
+  sendTelegramMessage(text);
+}
+
 export async function sendWeeklyReport(): Promise<void> {
   if (!await isAlertEnabled('weekly_report')) return;
   const { rows } = await pool.query(`

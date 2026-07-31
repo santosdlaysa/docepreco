@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Phone, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -42,11 +42,24 @@ function PremiumBadge({ planTier, platform, isPremium = true }: { planTier: Admi
   );
 }
 
+// DDDs válidos do Brasil (para o filtro por código de área).
+const VALID_DDDS = [
+  '11', '12', '13', '14', '15', '16', '17', '18', '19',
+  '21', '22', '24', '27', '28',
+  '31', '32', '33', '34', '35', '37', '38',
+  '41', '42', '43', '44', '45', '46', '47', '48', '49',
+  '51', '53', '54', '55',
+  '61', '62', '63', '64', '65', '66', '67', '68', '69',
+  '71', '73', '74', '75', '77', '79',
+  '81', '82', '83', '84', '85', '86', '87', '88', '89',
+  '91', '92', '93', '94', '95', '96', '97', '98', '99',
+];
+
 function SignupPlatformBadge({ platform }: { platform: AdminUser['signupPlatform'] }) {
   if (!platform) return <span className="text-xs text-gray-400">Não informado</span>;
   return (
     <span className="inline-flex text-xs font-semibold bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 px-2 py-0.5 rounded-full">
-      {platform === 'ios' ? 'iOS' : 'Android'}
+      {platform === 'ios' ? 'iOS' : platform === 'android' ? 'Android' : 'Web'}
     </span>
   );
 }
@@ -99,7 +112,7 @@ function UserModal({
   const [premiumHistory, setPremiumHistory] = useState<PremiumEvent[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [togglingActive, setTogglingActive] = useState(false);
-  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | ''>('');
+  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | 'web' | ''>('');
   const [savingSignupPlatform, setSavingSignupPlatform] = useState(false);
   const [selectedTier, setSelectedTier] = useState<PaidTier>('premium');
 
@@ -342,12 +355,13 @@ function UserModal({
               <div className="flex items-center gap-2">
                 <select
                   value={signupPlatform}
-                  onChange={e => setSignupPlatform(e.target.value as 'ios' | 'android' | '')}
+                  onChange={e => setSignupPlatform(e.target.value as 'ios' | 'android' | 'web' | '')}
                   className="flex-1 text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
                 >
                   <option value="">Não informado</option>
                   <option value="ios">iOS</option>
                   <option value="android">Android</option>
+                  <option value="web">Web</option>
                 </select>
                 <button
                   onClick={saveSignupPlatform}
@@ -813,7 +827,8 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [planTierFilter, setPlanTierFilter] = useState<'free' | 'premium' | 'master' | null>(null);
-  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | undefined>();
+  const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | 'web' | undefined>();
+  const [ddd, setDdd] = useState<string | undefined>();
   const [hasPhone, setHasPhone] = useState<boolean | null>(null);
   const [hasInstagram, setHasInstagram] = useState<boolean | null>(null);
   const [minRecipes, setMinRecipes] = useState<number | undefined>();
@@ -831,6 +846,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const activeFilterCount = [
     planTierFilter !== null,
     signupPlatform !== undefined,
+    ddd !== undefined,
     hasPhone !== null,
     hasInstagram !== null,
     minRecipes !== undefined,
@@ -844,6 +860,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const clearAllFilters = () => {
     setPlanTierFilter(null);
     setSignupPlatform(undefined);
+    setDdd(undefined);
     setHasPhone(null);
     setHasInstagram(null);
     setMinRecipes(undefined);
@@ -872,6 +889,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
         search, page, sortBy,
         planTier: planTierFilter ?? undefined,
         signupPlatform,
+        ddd,
         hasPhone: hasPhone ?? undefined,
         hasInstagram: hasInstagram ?? undefined,
         minRecipes, minIngredients, minSales, minRevenue,
@@ -884,7 +902,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [search, page, planTierFilter, signupPlatform, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
+  }, [search, page, planTierFilter, signupPlatform, ddd, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
 
   const updateUserInList = useCallback((updated: AdminUserDetail) => {
     setUsers(prev => prev.map(u => (u.id === updated.id ? {
@@ -1007,12 +1025,13 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Dispositivo de cadastro</label>
             <select
               value={signupPlatform ?? ''}
-              onChange={e => { setSignupPlatform((e.target.value || undefined) as 'ios' | 'android' | undefined); setPage(1); }}
+              onChange={e => { setSignupPlatform((e.target.value || undefined) as 'ios' | 'android' | 'web' | undefined); setPage(1); }}
               className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
             >
               <option value="">Todos</option>
               <option value="ios">iOS</option>
               <option value="android">Android</option>
+              <option value="web">Web</option>
             </select>
           </div>
           <div>
@@ -1025,6 +1044,19 @@ export function UsersPage({ toast, onImpersonate }: Props) {
               <option value="">Todos</option>
               <option value="true">Com telefone</option>
               <option value="false">Sem telefone</option>
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">DDD</label>
+            <select
+              value={ddd ?? ''}
+              onChange={e => { setDdd(e.target.value || undefined); setPage(1); }}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 text-sm bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value="">Todos</option>
+              {VALID_DDDS.map(d => (
+                <option key={d} value={d}>{d}</option>
+              ))}
             </select>
           </div>
           <div>

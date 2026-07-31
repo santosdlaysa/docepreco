@@ -214,6 +214,7 @@ async function buildPricingTips(
 
   const agg: Record<string, { name: string; units: number; revenue: number }> = {};
   for (const s of sales) {
+    if (!s.recipeId) continue; // vendas de produto (sem receita) não têm cálculo de custo
     const a = agg[s.recipeId] ?? { name: s.recipeName, units: 0, revenue: 0 };
     a.units += s.quantitySold;
     a.revenue += s.totalRevenue;

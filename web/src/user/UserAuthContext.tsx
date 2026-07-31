@@ -27,10 +27,31 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
     setOnUnauthorized(() => setUser(null));
   }, []);
 
-  // Restaura sessão no carregamento (valida o token via /auth/me)
+  // Restaura sessão no carregamento (valida o token via /auth/me).
+  // Antes disso, trata o SSO vindo do app mobile: um `?code=...` na URL é trocado
+  // por uma sessão real e removido da URL (não deixa o código exposto no histórico).
   useEffect(() => {
     let active = true;
     (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      if (code) {
+        params.delete('code');
+        const qs = params.toString();
+        window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
+        try {
+          const { user, token } = await userApi.webHandoffExchange(code);
+          saveToken(token);
+          if (active) {
+            setUser(user);
+            setLoading(false);
+          }
+          return;
+        } catch {
+          // Código inválido/expirado → segue para o fluxo normal (sessão salva ou login).
+        }
+      }
+
       if (!loadToken()) {
         setLoading(false);
         return;

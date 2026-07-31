@@ -108,6 +108,7 @@ export class AdminController {
     const isPremiumFilter = req.query.isPremium;
     const planTierFilter = req.query.planTier as string | undefined;
     const signupPlatform = req.query.signupPlatform as string | undefined;
+    const ddd = req.query.ddd as string | undefined;
     const hasPhone = req.query.hasPhone as string | undefined;
     const hasInstagram = req.query.hasInstagram as string | undefined;
     const minRecipes = req.query.minRecipes ? parseInt(req.query.minRecipes as string) : undefined;
@@ -143,9 +144,21 @@ export class AdminController {
     if (planTierFilter === 'free') conditions.push(`u.is_premium = FALSE`);
     else if (planTierFilter === 'premium') conditions.push(`(u.is_premium = TRUE AND u.plan_tier <> 'master')`);
     else if (planTierFilter === 'master') conditions.push(`(u.is_premium = TRUE AND u.plan_tier = 'master')`);
-    if (signupPlatform === 'ios' || signupPlatform === 'android') {
+    if (signupPlatform === 'ios' || signupPlatform === 'android' || signupPlatform === 'web') {
       conditions.push(`u.signup_platform = $${idx}`);
       params.push(signupPlatform);
+      idx++;
+    }
+    if (ddd && /^\d{2}$/.test(ddd)) {
+      // Extrai o DDD do telefone (só dígitos), tolerando o prefixo 55 (país):
+      // números com 12+ dígitos começando em 55 → DDD nos 2 dígitos seguintes;
+      // caso contrário → os 2 primeiros dígitos.
+      const digits = `regexp_replace(u.phone, '[^0-9]', '', 'g')`;
+      conditions.push(
+        `u.phone IS NOT NULL AND (CASE WHEN length(${digits}) >= 12 AND left(${digits}, 2) = '55' ` +
+        `THEN substring(${digits} FROM 3 FOR 2) ELSE left(${digits}, 2) END) = $${idx}`
+      );
+      params.push(ddd);
       idx++;
     }
     if (hasPhone === 'true') conditions.push(`u.phone IS NOT NULL AND u.phone != ''`);
@@ -340,10 +353,10 @@ export class AdminController {
 
   async setSignupPlatform(req: Request, res: Response): Promise<void> {
     const { id } = req.params;
-    const { signupPlatform } = req.body as { signupPlatform?: 'ios' | 'android' | null };
+    const { signupPlatform } = req.body as { signupPlatform?: 'ios' | 'android' | 'web' | null };
 
-    if (signupPlatform !== 'ios' && signupPlatform !== 'android' && signupPlatform !== null) {
-      res.status(400).json({ error: 'signupPlatform deve ser ios, android ou null' });
+    if (signupPlatform !== 'ios' && signupPlatform !== 'android' && signupPlatform !== 'web' && signupPlatform !== null) {
+      res.status(400).json({ error: 'signupPlatform deve ser ios, android, web ou null' });
       return;
     }
 
@@ -560,6 +573,8 @@ export class AdminController {
     const limit = Math.min(500, parseInt((req.query.limit as string) || '200'));
     const method = req.query.method as string | undefined;
     const search = req.query.search as string | undefined;
+    const ip = req.query.ip as string | undefined;
+    const onlyErrors = req.query.onlyErrors === 'true';
 
     const conditions: string[] = [];
     const params: unknown[] = [];
@@ -567,6 +582,8 @@ export class AdminController {
 
     if (method) { conditions.push(`method = $${idx++}`); params.push(method); }
     if (search) { conditions.push(`path ILIKE $${idx++}`); params.push(`%${search}%`); }
+    if (ip) { conditions.push(`ip = $${idx++}`); params.push(ip); }
+    if (onlyErrors) { conditions.push(`status_code >= 400`); }
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
@@ -580,6 +597,94 @@ export class AdminController {
       res.json({ success: true, data: result.rows });
     } catch (error) {
       console.error('[Admin] getRequestLogs error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
+  async getSecurityOverview(req: Request, res: Response): Promise<void> {
+    const hours = Math.min(168, Math.max(1, parseInt((req.query.hours as string) || '24')));
+    // Constante derivada de inteiro validado (1..168) — sem risco de injeção.
+    const win = `${hours} hours`;
+    try {
+      const [totals, ips, logins, adminProbes, notFound] = await Promise.all([
+        pool.query(
+          `SELECT
+             COUNT(*)::int AS total,
+             COUNT(*) FILTER (WHERE status_code BETWEEN 400 AND 499)::int AS "err4xx",
+             COUNT(*) FILTER (WHERE status_code >= 500)::int AS "err5xx",
+             COUNT(*) FILTER (WHERE status_code IN (401, 403))::int AS unauthorized,
+             COUNT(*) FILTER (WHERE status_code = 429)::int AS "rateLimited",
+             COUNT(DISTINCT ip)::int AS "distinctIps"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'`
+        ),
+        pool.query(
+          `SELECT ip,
+                  COUNT(*)::int AS total,
+                  COUNT(*) FILTER (WHERE status_code IN (401, 403))::int AS unauthorized,
+                  COUNT(*) FILTER (WHERE status_code = 429)::int AS "rateLimited",
+                  COUNT(*) FILTER (WHERE status_code = 404)::int AS "notFound",
+                  MAX(ts) AS "lastSeen"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND status_code >= 400
+             AND ip IS NOT NULL
+           GROUP BY ip
+           HAVING COUNT(*) >= 5
+           ORDER BY total DESC
+           LIMIT 30`
+        ),
+        pool.query(
+          `SELECT body_email AS email,
+                  COUNT(*)::int AS attempts,
+                  COUNT(DISTINCT ip)::int AS ips,
+                  MAX(ts) AS "lastAttempt"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND path = '/api/auth/login'
+             AND status_code >= 400
+             AND body_email IS NOT NULL
+           GROUP BY body_email
+           HAVING COUNT(*) >= 3
+           ORDER BY attempts DESC
+           LIMIT 30`
+        ),
+        pool.query(
+          `SELECT ip, COUNT(*)::int AS attempts, MAX(ts) AS "lastSeen"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND path LIKE '/api/admin%'
+             AND status_code IN (401, 403)
+             AND ip IS NOT NULL
+           GROUP BY ip
+           ORDER BY attempts DESC
+           LIMIT 30`
+        ),
+        pool.query(
+          `SELECT path, COUNT(*)::int AS hits, COUNT(DISTINCT ip)::int AS ips, MAX(ts) AS "lastSeen"
+           FROM request_logs
+           WHERE ts >= NOW() - INTERVAL '${win}'
+             AND status_code = 404
+           GROUP BY path
+           HAVING COUNT(*) >= 5
+           ORDER BY hits DESC
+           LIMIT 15`
+        ),
+      ]);
+      res.json({
+        success: true,
+        data: {
+          hours,
+          totals: totals.rows[0],
+          suspiciousIps: ips.rows,
+          failedLogins: logins.rows,
+          adminProbes: adminProbes.rows,
+          notFoundPaths: notFound.rows,
+        },
+      });
+    } catch (error) {
+      console.error('[Admin] getSecurityOverview error:', error);
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ error: 'Internal error' });
     }

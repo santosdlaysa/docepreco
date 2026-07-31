@@ -14,7 +14,7 @@ export function formatBRLUnit(value: number): string {
   }).format(numericValue);
 }
 
-export function formatDate(iso: string): string {
+export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '-';

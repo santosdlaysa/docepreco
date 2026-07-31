@@ -42,6 +42,7 @@ type RouteProps = RouteProp<RootStackParamList, 'Store'>;
 type StoreTab = 'catalog' | 'orders' | 'settings';
 
 const ORDER_STATUS_META: Record<OrderStatus, { label: string; color: string; bg: string }> = {
+  draft:       { label: 'Rascunho',    color: colors.textSecondary, bg: colors.grayBg },
   pending:     { label: 'Pendente',    color: colors.amberDark, bg: colors.amberBg },
   in_progress: { label: 'Em preparo',  color: colors.purple, bg: colors.purpleBg },
   done:        { label: 'Saiu para entrega', color: '#BC2A6C', bg: colors.pinkBg },

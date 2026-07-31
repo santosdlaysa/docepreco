@@ -122,10 +122,10 @@ CREATE TABLE IF NOT EXISTS orders (
   quantity DECIMAL(10,3) NOT NULL DEFAULT 1,
   unit_price DECIMAL(10,2) NOT NULL DEFAULT 0,
   total_price DECIMAL(10,2) NOT NULL DEFAULT 0,
-  delivery_date DATE NOT NULL,
+  delivery_date DATE,
   delivery_time VARCHAR(5),
   status VARCHAR(20) NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'in_progress', 'done', 'delivered', 'cancelled')),
+    CHECK (status IN ('draft', 'pending', 'in_progress', 'done', 'delivered', 'cancelled')),
   paid BOOLEAN NOT NULL DEFAULT false,
   paid_amount DECIMAL(10,2) NOT NULL DEFAULT 0,
   payments JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -423,6 +423,48 @@ CREATE TABLE IF NOT EXISTS referrals (
 
 CREATE INDEX IF NOT EXISTS idx_referrals_referrer ON referrals (referrer_id, status);
 CREATE INDEX IF NOT EXISTS idx_referrals_referred ON referrals (referred_id);
+
+CREATE TABLE IF NOT EXISTS clients (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  phone VARCHAR(40),
+  email VARCHAR(255),
+  birthday VARCHAR(5),
+  address TEXT,
+  notes TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_clients_user ON clients (user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS stock_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  quantity DECIMAL(12,3) NOT NULL DEFAULT 0,
+  min_quantity DECIMAL(12,3) NOT NULL DEFAULT 0,
+  unit VARCHAR(10) NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE (user_id, ingredient_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_items_user ON stock_items (user_id);
+
+CREATE TABLE IF NOT EXISTS stock_movements (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  type VARCHAR(10) NOT NULL CHECK (type IN ('set', 'in', 'out')),
+  quantity DECIMAL(12,3) NOT NULL,
+  balance DECIMAL(12,3) NOT NULL,
+  reason TEXT,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_stock_moves_user ON stock_movements (user_id, created_at DESC);
 `;
 
 async function addColumnIfMissing(
@@ -535,7 +577,13 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'users', 'referral_code', 'VARCHAR(8) UNIQUE');
     await addColumnIfMissing(client, 'users', 'trial_used_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'signup_platform', "VARCHAR(20) NULL CHECK (signup_platform IN ('ios', 'android'))");
+    // Amplia o CHECK de signup_platform para incluir 'web' (cadastro pela versão web).
+    // Idempotente: recria a constraint a cada boot com o conjunto de valores atual.
+    await client.query(`ALTER TABLE users DROP CONSTRAINT IF EXISTS users_signup_platform_check`);
+    await client.query(`ALTER TABLE users ADD CONSTRAINT users_signup_platform_check CHECK (signup_platform IN ('ios', 'android', 'web'))`);
     await addColumnIfMissing(client, 'users', 'default_hourly_rate', 'NUMERIC(10,2) NULL');
+    await addColumnIfMissing(client, 'users', 'lgpd_accepted_at', 'TIMESTAMP NULL');
+    await addColumnIfMissing(client, 'users', 'lgpd_version', 'VARCHAR(10) NULL');
     await addColumnIfMissing(client, 'request_logs', 'error_message', 'TEXT');
     await addColumnIfMissing(client, 'request_logs', 'body_email', 'VARCHAR(255)');
     await addColumnIfMissing(client, 'request_logs', 'request_body', 'TEXT');
@@ -623,13 +671,18 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'store_settings', 'payment_methods', `JSONB NOT NULL DEFAULT '["pix","cash","credit","debit"]'::jsonb`);
     await addColumnIfMissing(client, 'store_settings', 'address', 'TEXT');
     // Versões antigas usavam "ready"; o app atual usa "done".
+    // 'draft' (rascunho) foi adicionado depois — encomendas incompletas que o
+    // confeiteiro salva para terminar mais tarde, inclusive sem data de entrega.
     await client.query(`ALTER TABLE orders DROP CONSTRAINT IF EXISTS orders_status_check`);
     await client.query(`UPDATE orders SET status = 'done' WHERE status = 'ready'`);
     await client.query(`
       ALTER TABLE orders
       ADD CONSTRAINT orders_status_check
-      CHECK (status IN ('pending', 'in_progress', 'done', 'delivered', 'cancelled'))
+      CHECK (status IN ('draft', 'pending', 'in_progress', 'done', 'delivered', 'cancelled'))
     `);
+    // Rascunhos podem não ter data de entrega ainda — remove o NOT NULL herdado
+    // de versões anteriores (idempotente; ignora se a coluna já for nullable).
+    await client.query(`ALTER TABLE orders ALTER COLUMN delivery_date DROP NOT NULL`);
 
     // Seed schedule config for existing templates (only if schedule_hour is null)
     await client.query(`UPDATE notification_templates SET schedule_type = 'interval', schedule_interval_hours = 48 WHERE slug = 'inactivity_2d' AND schedule_hour IS NULL`);
@@ -665,6 +718,20 @@ export async function runMigrations() {
          '🟡 Nova solicitação PIX!\n\n🏪 {{companyName}}\n📧 {{email}}\n📋 Plano: {{planLabel}}\n💰 Valor: {{value}}\n🕐 {{time}}\n\n⚠️ Verifique e aprove no painel admin.']
       );
     }
+
+    // Add security_alert for existing DBs
+    const secAlertExists = await client.query(`SELECT 1 FROM telegram_alerts WHERE key = 'security_alert'`);
+    if (secAlertExists.rows.length === 0) {
+      await client.query(
+        `INSERT INTO telegram_alerts (key, label, description, is_enabled, category, message_template) VALUES ($1, $2, $3, TRUE, $4, NULL)`,
+        ['security_alert', 'Alerta de segurança', 'Acesso suspeito: brute force, fuçada em rotas admin, rate limit estourado', 'alerts']
+      );
+    }
+
+    // Índice para acelerar as varreduras de segurança e o feed de request_logs
+    // (filtram sempre por ts recente e frequentemente por status_code).
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_request_logs_ts ON request_logs (ts DESC)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_request_logs_status_ts ON request_logs (status_code, ts DESC)`);
 
     // Alerta de rota lenta foi removido do sistema
     await client.query(`DELETE FROM telegram_alerts WHERE key = 'slow_api'`);
@@ -771,6 +838,7 @@ export async function runMigrations() {
         { key: 'premium_event', label: 'Evento premium', description: 'Assinatura, renovação, cancelamento, expiração', category: 'alerts' },
         { key: 'user_milestone', label: 'Marco de usuários', description: 'Quando atinge 50, 100, 200, 500, 1000, 2000, 5000, 10000', category: 'alerts' },
         { key: 'error_alert', label: 'Erro no servidor', description: 'Quando uma rota retorna status 500+', category: 'alerts' },
+        { key: 'security_alert', label: 'Alerta de segurança', description: 'Acesso suspeito: brute force, fuçada em rotas admin, rate limit estourado', category: 'alerts' },
         { key: 'pix_request', label: 'Solicitação PIX', description: 'Notifica quando um usuário solicita pagamento via PIX', category: 'alerts' },
         { key: 'support_message', label: 'Mensagem no suporte', description: 'Notifica quando um usuário envia mensagem no chat de suporte', category: 'alerts' },
         { key: 'daily_report', label: 'Relatório diário', description: 'Enviado todo dia às 8h com total de usuários', category: 'reports' },
@@ -1063,6 +1131,13 @@ export async function runMigrations() {
     // Toggle manual de pedidos: a loja continua publicada (active) e visível,
     // mas fechada para novos pedidos quando accepting_orders = FALSE.
     await addColumnIfMissing(client, 'store_settings', 'accepting_orders', 'BOOLEAN NOT NULL DEFAULT TRUE');
+
+    // PIX estático de recebimento da loja: chave do confeiteiro. O checkout gera
+    // o copia-e-cola/QR com o valor do pedido e o cliente paga direto na conta do
+    // dono (o DocePreço não intermedia o dinheiro). Confirmação manual pelo dono.
+    await addColumnIfMissing(client, 'store_settings', 'pix_key', 'TEXT NULL');
+    await addColumnIfMissing(client, 'store_settings', 'pix_key_type', 'VARCHAR(10) NULL');
+    await addColumnIfMissing(client, 'store_settings', 'pix_receiver_name', 'VARCHAR(120) NULL');
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_store_settings_marketplace
       ON store_settings (store_name)

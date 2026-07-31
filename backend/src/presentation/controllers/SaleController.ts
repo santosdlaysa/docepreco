@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { PostgresSaleRepository } from '../../infrastructure/repositories/PostgresSaleRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
+import { normalizeDateToISO } from '../../domain/utils/date';
 
 const saleRepo = new PostgresSaleRepository();
 
@@ -34,6 +35,14 @@ export class SaleController {
         res.status(400).json({ success: false, error: 'recipeId ou productName, quantitySold, salePrice e saleDate são obrigatórios' });
         return;
       }
+      // Aceita data no formato brasileiro (dd/mm/aaaa) além do ISO — usuários
+      // digitam a data à mão e o insert cru quebrava com "date/time field value
+      // out of range".
+      const normalizedDate = normalizeDateToISO(saleDate);
+      if (!normalizedDate) {
+        res.status(400).json({ success: false, error: 'Data da venda inválida. Use o formato dd/mm/aaaa.' });
+        return;
+      }
       // Versões antigas do app enviavam a venda da encomenda manualmente após
       // marcá-la como entregue; o backend agora já registra essa venda sozinho.
       if (recipeId && typeof notes === 'string' && notes.startsWith('Encomenda de ')) {
@@ -44,7 +53,7 @@ export class SaleController {
         }
       }
       const sale = await saleRepo.create(
-        { recipeId: recipeId || null, productName: productName?.trim() || null, quantitySold: Number(quantitySold), salePrice: Number(salePrice), discount: discount != null ? Number(discount) : undefined, saleDate, clientName: typeof clientName === 'string' ? clientName.trim() || null : null, notes, paymentMethod },
+        { recipeId: recipeId || null, productName: productName?.trim() || null, quantitySold: Number(quantitySold), salePrice: Number(salePrice), discount: discount != null ? Number(discount) : undefined, saleDate: normalizedDate, clientName: typeof clientName === 'string' ? clientName.trim() || null : null, notes, paymentMethod },
         req.userId!
       );
 

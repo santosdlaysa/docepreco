@@ -16,6 +16,8 @@ export interface AuthUser {
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
   trial_used_at: string | null;
+  /** Null = usuário ainda não aceitou o termo LGPD. */
+  lgpdAcceptedAt: string | null;
 }
 
 const normalizeUser = (raw: any): AuthUser => ({
@@ -30,6 +32,7 @@ const normalizeUser = (raw: any): AuthUser => ({
   premiumUntil: raw.premiumUntil ?? null,
   premiumPlatform: raw.premiumPlatform ?? null,
   trial_used_at: raw.trial_used_at ?? null,
+  lgpdAcceptedAt: raw.lgpdAcceptedAt ?? null,
 });
 
 export const authApi = {
@@ -81,6 +84,13 @@ export const authApi = {
     return normalized;
   },
 
+  acceptLgpd: async (): Promise<AuthUser> => {
+    const response = await apiClient.post('/auth/accept-lgpd');
+    const normalized = normalizeUser(response.data.data.user);
+    await tokenStorage.saveUser(normalized);
+    return normalized;
+  },
+
   syncPremium: async (active: boolean, expiresAt: string | null, platform: 'ios' | 'android'): Promise<AuthUser> => {
     const response = await apiClient.post('/premium/sync', { active, expiresAt, platform });
     const normalized = normalizeUser(response.data.data);
@@ -90,6 +100,15 @@ export const authApi = {
 
   sendSuggestion: async (message: string): Promise<void> => {
     await apiClient.post('/auth/suggestion', { message });
+  },
+
+  /**
+   * SSO web: obtém um código de transferência de curta duração para abrir a
+   * versão web já logada (sem trafegar o token de sessão na URL).
+   */
+  getWebHandoffCode: async (): Promise<string> => {
+    const response = await apiClient.post('/auth/web-handoff');
+    return response.data.data.code;
   },
 
   deleteAccount: async (): Promise<void> => {

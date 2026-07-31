@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { PostgresOrderRepository, Order } from '../../infrastructure/repositories/PostgresOrderRepository';
 import { registerSalesForDeliveredOrder, removeSalesForOrder } from '../../application/services/OrderSaleAutomation';
+import { normalizeDateToISO } from '../../domain/utils/date';
 
 const repo = new PostgresOrderRepository();
-const ORDER_STATUSES = new Set(['pending', 'in_progress', 'done', 'delivered', 'cancelled']);
+const ORDER_STATUSES = new Set(['draft', 'pending', 'in_progress', 'done', 'delivered', 'cancelled']);
 
 function hasInvalidStatus(body: Record<string, unknown>): boolean {
   return body.status !== undefined &&
@@ -62,15 +63,34 @@ export class OrderController {
     try {
       const userId = (req as any).userId as string;
       const b = req.body ?? {};
-      if (!b.clientName || !b.recipeName || !b.deliveryDate) {
-        res.status(400).json({ success: false, message: 'Dados inválidos' });
-        return;
-      }
       if (hasInvalidStatus(b)) {
         res.status(400).json({ success: false, message: 'Status inválido' });
         return;
       }
-      const order = await repo.create(userId, b);
+      // Rascunho: encomenda incompleta que o confeiteiro salva para terminar
+      // depois. Exige apenas o nome do cliente e aceita ficar sem data de entrega.
+      const isDraft = b.status === 'draft';
+      if (!isDraft && (!b.clientName || !b.recipeName || !b.deliveryDate)) {
+        res.status(400).json({ success: false, message: 'Dados inválidos' });
+        return;
+      }
+      if (isDraft && !b.clientName) {
+        res.status(400).json({ success: false, message: 'Informe ao menos o nome do cliente para salvar o rascunho.' });
+        return;
+      }
+      // Normaliza a data de entrega (aceita dd/mm/aaaa além de ISO) e rejeita
+      // datas inexistentes como 31/06 — o insert cru quebrava com
+      // "date/time field value out of range". No rascunho a data é opcional:
+      // se vier vazia ou inválida, salva sem data em vez de barrar.
+      let deliveryDate: string | null = null;
+      if (b.deliveryDate) {
+        deliveryDate = normalizeDateToISO(b.deliveryDate);
+        if (!deliveryDate && !isDraft) {
+          res.status(400).json({ success: false, message: 'Data de entrega inválida. Use o formato dd/mm/aaaa.' });
+          return;
+        }
+      }
+      const order = await repo.create(userId, { ...b, deliveryDate });
       const saleRegistered = await syncSaleForStatusChange(order, b.status);
       res.status(201).json({ success: true, data: { ...order, saleRegistered } });
     } catch (error) {
@@ -86,6 +106,22 @@ export class OrderController {
       if (hasInvalidStatus(b)) {
         res.status(400).json({ success: false, message: 'Status inválido' });
         return;
+      }
+      // Se a data de entrega vier na atualização, normaliza e valida antes do
+      // update (mesmo motivo do create: datas inexistentes quebravam o insert).
+      // Em rascunho a data continua opcional: se vier inválida, ignora em vez
+      // de barrar a atualização.
+      if (b.deliveryDate) {
+        const deliveryDate = normalizeDateToISO(b.deliveryDate);
+        if (!deliveryDate) {
+          if (b.status !== 'draft') {
+            res.status(400).json({ success: false, message: 'Data de entrega inválida. Use o formato dd/mm/aaaa.' });
+            return;
+          }
+          delete b.deliveryDate;
+        } else {
+          b.deliveryDate = deliveryDate;
+        }
       }
       const order = await repo.update(req.params.id, userId, b);
       if (!order) {

@@ -48,10 +48,13 @@ export class PostgresPushTokenRepository {
       return result.rows.map(this.mapRow);
     }
     if (target === 'premium') {
+      // Apenas assinantes do tier premium vigente. Usa plan_tier (não a flag
+      // legada is_premium, que também é TRUE para master e cortesias) para não
+      // misturar master/vitalícios na audiência "premium".
       const result = await pool.query(
         `SELECT pt.* FROM push_tokens pt
          JOIN users u ON u.id = pt.user_id
-         WHERE u.is_premium = TRUE
+         WHERE u.plan_tier = 'premium'
            AND (u.premium_until IS NULL OR u.premium_until > NOW())`
       );
       return result.rows.map(this.mapRow);

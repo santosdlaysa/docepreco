@@ -5,8 +5,10 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
+import { maskPhone, isValidPhone } from '../phone';
 
 const STATUS: { value: OrderStatus; label: string; cls: string }[] = [
+  { value: 'draft', label: 'Rascunho', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' },
   { value: 'pending', label: 'Pendente', cls: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
   { value: 'in_progress', label: 'Em produção', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
   { value: 'done', label: 'Pronto', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' },
@@ -74,7 +76,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
     }
   };
 
-  const pending = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled').length;
+  const pending = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled' && o.status !== 'draft').length;
 
   return (
     <div>
@@ -207,12 +209,12 @@ function OrderForm({
   toast: ToastFn;
 }) {
   const [clientName, setClientName] = useState(initial?.clientName ?? '');
-  const [clientPhone, setClientPhone] = useState(initial?.clientPhone ?? '');
+  const [clientPhone, setClientPhone] = useState(maskPhone(initial?.clientPhone ?? ''));
   const [recipeId, setRecipeId] = useState(initial?.recipeId ?? '');
   const [recipeName, setRecipeName] = useState(initial?.recipeName ?? '');
   const [quantity, setQuantity] = useState(String(initial?.quantity ?? '1'));
   const [unitPrice, setUnitPrice] = useState(String(initial?.unitPrice ?? ''));
-  const [deliveryDate, setDeliveryDate] = useState(initial?.deliveryDate?.slice(0, 10) ?? todayISO());
+  const [deliveryDate, setDeliveryDate] = useState(initial ? (initial.deliveryDate?.slice(0, 10) ?? '') : todayISO());
   const [deliveryTime, setDeliveryTime] = useState(initial?.deliveryTime ?? '');
   const [status, setStatus] = useState<OrderStatus>(initial?.status ?? 'pending');
   const [notes, setNotes] = useState(initial?.notes ?? '');
@@ -222,10 +224,15 @@ function OrderForm({
   const priceN = parseLocaleNumber(unitPrice);
   const totalPrice = qtyN * priceN;
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  // asDraft: salva como rascunho — encomenda incompleta para terminar depois.
+  // Exige só o cliente; produto e data de entrega ficam opcionais.
+  const save = async (asDraft: boolean) => {
     if (!clientName.trim()) return toast.error('Informe o nome do cliente.');
-    if (!recipeName.trim()) return toast.error('Informe o produto / receita.');
+    if (clientPhone.trim() && !isValidPhone(clientPhone)) return toast.error('Telefone incompleto. Use DDD + número.');
+    if (!asDraft) {
+      if (!recipeName.trim()) return toast.error('Informe o produto / receita.');
+      if (!deliveryDate) return toast.error('Informe a data de entrega.');
+    }
 
     setSaving(true);
     const data: CreateOrderDTO = {
@@ -236,18 +243,18 @@ function OrderForm({
       quantity: qtyN || 1,
       unitPrice: priceN,
       totalPrice,
-      deliveryDate,
+      deliveryDate: deliveryDate || null,
       deliveryTime: deliveryTime || undefined,
-      status,
+      status: asDraft ? 'draft' : status,
       notes: notes.trim() || undefined,
     };
     try {
       if (initial) {
         await userApi.updateOrder(initial.id, data);
-        toast.success('Encomenda atualizada.');
+        toast.success(asDraft ? 'Rascunho salvo.' : 'Encomenda atualizada.');
       } else {
         await userApi.createOrder(data);
-        toast.success('Encomenda criada.');
+        toast.success(asDraft ? 'Rascunho salvo.' : 'Encomenda criada.');
       }
       onSaved();
     } catch (err) {
@@ -255,6 +262,11 @@ function OrderForm({
     } finally {
       setSaving(false);
     }
+  };
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void save(false);
   };
 
   return (
@@ -269,7 +281,7 @@ function OrderForm({
             <input value={clientName} onChange={e => setClientName(e.target.value)} className={inputClass} autoFocus />
           </FormField>
           <FormField label="Telefone (opcional)">
-            <input value={clientPhone ?? ''} onChange={e => setClientPhone(e.target.value)} className={inputClass} />
+            <input value={clientPhone ?? ''} onChange={e => setClientPhone(maskPhone(e.target.value))} className={inputClass} />
           </FormField>
         </div>
 
@@ -343,7 +355,17 @@ function OrderForm({
           <input value={notes ?? ''} onChange={e => setNotes(e.target.value)} className={inputClass} />
         </FormField>
 
-        <FormActions saving={saving} onClose={onClose} />
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => void save(true)}
+            disabled={saving}
+            className="text-sm px-4 py-2 rounded-lg font-medium border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+          >
+            Salvar como rascunho
+          </button>
+          <FormActions saving={saving} onClose={onClose} />
+        </div>
       </form>
     </ModalOverlay>
   );

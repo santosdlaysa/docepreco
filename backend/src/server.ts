@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import cron from 'node-cron';
-import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendDailyGoalProgress } from './infrastructure/services/telegramService';
+import { sendDailyUserReport, sendWeeklyReport, sendErrorAlert, sendDailyGoalProgress, sendHealthReport, sendSecurityAlert, SECURITY_WINDOW_MIN } from './infrastructure/services/telegramService';
 import { connectDatabase } from './infrastructure/database/connection';
 import recipeRoutes from './presentation/routes/recipeRoutes';
 import ingredientRoutes from './presentation/routes/ingredientRoutes';
@@ -44,6 +44,8 @@ import cashRoutes from './presentation/routes/cashRoutes';
 import referralRoutes from './presentation/routes/referralRoutes';
 import stripeRoutes from './presentation/routes/stripeRoutes';
 import expenseRoutes from './presentation/routes/expenseRoutes';
+import clientRoutes from './presentation/routes/clientRoutes';
+import stockRoutes from './presentation/routes/stockRoutes';
 import storeRoutes from './presentation/routes/storeRoutes';
 import { warmUpEvolutionApi } from './infrastructure/services/whatsappService';
 import { backfillStoreCoordinates } from './infrastructure/services/geocodeBackfill';
@@ -122,6 +124,24 @@ function safeStringifyRedacted(body: unknown): string | null {
   }
 }
 
+// Health check público (sem auth e sem logging) — para monitores externos
+// (ex.: UptimeRobot) e para o self-ping do cron de diagnóstico. Fica ANTES do
+// middleware de log para não gravar um request_log a cada ping.
+app.get('/api/health', async (_req, res) => {
+  const start = Date.now();
+  try {
+    await pool.query('SELECT 1');
+    res.json({
+      ok: true,
+      db: 'up',
+      dbLatencyMs: Date.now() - start,
+      uptimeSec: Math.floor(process.uptime()),
+    });
+  } catch (err) {
+    res.status(503).json({ ok: false, db: 'down', error: (err as Error).message });
+  }
+});
+
 app.use((req, res, next) => {
   const start = Date.now();
   const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] ?? req.socket.remoteAddress ?? null;
@@ -182,6 +202,8 @@ app.use('/api', pixRoutes);
 app.use('/api', referralRoutes);
 app.use('/api', stripeRoutes);
 app.use('/api', expenseRoutes);
+app.use('/api', clientRoutes);
+app.use('/api', stockRoutes);
 // Montado ANTES de adminRoutes: GET /api/admin/settings/plans é público (lido pelo app
 // mobile sem secret de admin). Se ficasse depois, o adminMiddleware de adminRoutes
 // interceptaria a rota e devolveria 401, fazendo o app cair nos valores embutidos.
@@ -260,6 +282,18 @@ async function bootstrap() {
       cron.schedule('0 9 * * 1', () => sendWeeklyReport(), { timezone: 'America/Sao_Paulo' });
       cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
     }
+
+    // Diagnóstico da API a cada 1h → Telegram (banco + HTTP + uptime).
+    // Primeiro disparo ~15s após o boot (confirma que subiu ok e que o Telegram
+    // está funcionando). Para virar modo silencioso (só avisa em falha), troque
+    // por sendHealthReport({ alertOnly: true }).
+    setTimeout(() => { void sendHealthReport(); }, 15000);
+    cron.schedule('0 * * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
+
+    // Varredura de segurança: analisa o request_logs em busca de acesso suspeito
+    // (brute force, fuçada em rotas admin, rate limit estourado) e avisa no
+    // Telegram só quando cruza os limiares. Janela = intervalo do cron.
+    cron.schedule(`*/${SECURITY_WINDOW_MIN} * * * *`, () => { void sendSecurityAlert(); }, { timezone: 'America/Sao_Paulo' });
 
     // Cron: envia notificações agendadas a cada minuto
     const notifRepo = new PostgresNotificationRepository();

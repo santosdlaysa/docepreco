@@ -22,7 +22,7 @@ import { saleApi } from '../../data/api/saleApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi, demoIngredientApi } from '../../data/demo/demoApi';
-import { applySaleDeduction } from '../../data/stock/stockStorage';
+import { applySaleDeduction } from '../../data/api/stockApi';
 import { customProductStorage } from '../../data/storage/customProductStorage';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Ingredient } from '../../domain/entities/Ingredient';

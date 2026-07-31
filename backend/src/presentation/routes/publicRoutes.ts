@@ -8,9 +8,42 @@ import { isStoreOpenNow } from '../../domain/utils/businessHours';
 import { hasTier, PAID_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
 import { PlanTier } from '../../domain/entities/User';
 import { publicListLimiter, publicOrderLimiter } from '../middleware/rateLimiter';
+import { buildStaticPixPayload } from '../../domain/services/pixBrCode';
+import { generatePixQrBase64 } from '../../infrastructure/services/qrCodeService';
 
 const router = Router();
 const storeRepo = new PostgresStoreRepository();
+
+/**
+ * Gera o PIX copia-e-cola + QR de um pedido, quando a loja tem chave cadastrada.
+ * Retorna null se a loja não configurou PIX (o checkout segue sem cobrança).
+ */
+async function buildOrderPix(opts: {
+  pixKey: string | null;
+  pixReceiverName: string | null;
+  storeName: string;
+  city: string | null;
+  amount: number;
+  orderNumber: number | null;
+  orderId: string;
+}): Promise<{ payload: string; qrBase64: string; amount: number; receiverName: string } | null> {
+  if (!opts.pixKey) return null;
+  const receiverName = opts.pixReceiverName || opts.storeName;
+  try {
+    const payload = buildStaticPixPayload({
+      key: opts.pixKey,
+      merchantName: receiverName,
+      merchantCity: opts.city || 'BRASIL',
+      amount: opts.amount,
+      txid: opts.orderNumber ? `DP${opts.orderNumber}` : opts.orderId.replace(/-/g, '').slice(0, 20),
+    });
+    const qrBase64 = await generatePixQrBase64(payload);
+    return { payload, qrBase64, amount: opts.amount, receiverName };
+  } catch (e) {
+    console.error('[Public Store] pix gen error:', e);
+    return null;
+  }
+}
 
 /** Dono da loja com plano pago vigente — loja de assinante expirado sai do ar. */
 function ownerHasPaidPlan(row: { owner_plan_tier?: string | null; owner_premium_until?: Date | string | null }): boolean {
@@ -290,6 +323,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
     const settingsResult = await pool.query(
       `SELECT st.user_id, st.store_name, st.min_order_value, st.delivery_fee, st.payment_methods,
               st.active, st.accepting_orders, st.use_business_hours, st.business_hours,
+              st.pix_key, st.pix_receiver_name, st.city,
               u.plan_tier AS owner_plan_tier, u.premium_until AS owner_premium_until
        FROM store_settings st
        JOIN users u ON u.id = st.user_id
@@ -468,7 +502,22 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
       console.error('[Public Store] push error:', pushErr);
     }
 
-    res.status(201).json({ success: true, data: { orderId, orderNumber } });
+    // PIX estático: se o cliente escolheu PIX e a loja tem chave, gera o
+    // copia-e-cola + QR com o valor do pedido para pagamento imediato.
+    // A confirmação é manual (o dono marca o pedido como pago depois).
+    const pix = paymentMethod === 'pix'
+      ? await buildOrderPix({
+          pixKey: settingsResult.rows[0].pix_key ?? null,
+          pixReceiverName: settingsResult.rows[0].pix_receiver_name ?? null,
+          storeName,
+          city: settingsResult.rows[0].city ?? null,
+          amount: totalWithFee,
+          orderNumber,
+          orderId,
+        })
+      : null;
+
+    res.status(201).json({ success: true, data: { orderId, orderNumber, pix } });
   } catch (error) {
     console.error('[Public Store] order error:', error);
     res.status(500).json({ success: false, error: 'Erro ao criar pedido' });
@@ -479,16 +528,17 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
   try {
     const { slug, orderId } = req.params;
     const storeResult = await pool.query(
-      'SELECT user_id FROM store_settings WHERE slug = $1 AND active = TRUE',
+      'SELECT user_id, store_name, pix_key, pix_receiver_name, city FROM store_settings WHERE slug = $1 AND active = TRUE',
       [slug]
     );
     if (storeResult.rows.length === 0) {
       res.status(404).json({ success: false, error: 'Loja não encontrada' });
       return;
     }
-    const userId = storeResult.rows[0].user_id;
+    const store = storeResult.rows[0];
+    const userId = store.user_id;
     const orderResult = await pool.query(
-      `SELECT id, client_name, status, total_price, items, delivery_address, source, payment_method, change_for, order_number, created_at
+      `SELECT id, client_name, status, total_price, items, delivery_address, source, payment_method, change_for, order_number, paid, created_at
        FROM orders WHERE id = $1 AND user_id = $2`,
       [orderId, userId]
     );
@@ -497,12 +547,26 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
       return;
     }
     const o = orderResult.rows[0];
+    // Reexibe o PIX para o cliente enquanto o pedido não estiver pago nem cancelado.
+    const pix = o.payment_method === 'pix' && !o.paid && o.status !== 'cancelled'
+      ? await buildOrderPix({
+          pixKey: store.pix_key ?? null,
+          pixReceiverName: store.pix_receiver_name ?? null,
+          storeName: store.store_name,
+          city: store.city ?? null,
+          amount: Number(o.total_price),
+          orderNumber: o.order_number != null ? Number(o.order_number) : null,
+          orderId: o.id,
+        })
+      : null;
     res.json({
       success: true,
       data: {
         id: o.id,
         clientName: o.client_name,
         status: o.status,
+        paid: o.paid ?? false,
+        pix,
         totalPrice: Number(o.total_price),
         items: o.items ?? [],
         deliveryAddress: o.delivery_address ?? null,

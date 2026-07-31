@@ -11,6 +11,11 @@ import {
   CalendarRange,
   User,
   Store,
+  PieChart,
+  Receipt,
+  Boxes,
+  Users,
+  Lightbulb,
   LogOut,
   Menu,
   X,
@@ -20,8 +25,13 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Lock, Headset } from 'lucide-react';
 import { UserAuthProvider, useAuth } from './UserAuthContext';
 import { UserLoginPage } from './UserLoginPage';
+import { userApi, effectiveTier } from './userApi';
+import { PAGE_REQUIREMENT, tierSatisfies, TIER_META } from './plan';
+import { Paywall } from './pages/Paywall';
+import { LgpdModal } from './lgpd';
 import { slugify } from './format';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import { RecipesPage } from './pages/RecipesPage';
@@ -34,19 +44,34 @@ import { SeasonsPage } from './pages/SeasonsPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { StorePage } from './pages/StorePage';
+import { FinancePage } from './pages/FinancePage';
+import { ExpensesPage } from './pages/ExpensesPage';
+import { StockPage } from './pages/StockPage';
+import { ClientsPage } from './pages/ClientsPage';
+import { SalesTipsPage } from './pages/SalesTipsPage';
+import { SupportPage } from './pages/SupportPage';
 
-type Page = 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production' | 'cash' | 'seasons' | 'store' | 'profile';
+type Page =
+  | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production'
+  | 'cash' | 'seasons' | 'store' | 'profile' | 'finance' | 'expenses' | 'stock'
+  | 'clients' | 'tips' | 'support';
 
 const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'cash', label: 'Caixa', icon: Wallet },
   { id: 'reports', label: 'Relatórios', icon: LayoutDashboard },
+  { id: 'finance', label: 'Financeiro', icon: PieChart },
+  { id: 'expenses', label: 'Despesas', icon: Receipt },
   { id: 'recipes', label: 'Receitas', icon: ChefHat },
   { id: 'ingredients', label: 'Ingredientes', icon: Package },
+  { id: 'stock', label: 'Estoque', icon: Boxes },
   { id: 'sales', label: 'Vendas', icon: ShoppingCart },
   { id: 'orders', label: 'Encomendas', icon: ClipboardList },
   { id: 'production', label: 'Produção', icon: CookingPot },
+  { id: 'clients', label: 'Clientes', icon: Users },
   { id: 'store', label: 'Loja', icon: Store },
   { id: 'seasons', label: 'Temporadas', icon: CalendarRange },
+  { id: 'tips', label: 'Dicas de vendas', icon: Lightbulb },
+  { id: 'support', label: 'Suporte', icon: Headset },
   { id: 'profile', label: 'Meu perfil', icon: User },
 ];
 
@@ -67,7 +92,7 @@ function useDarkMode() {
 }
 
 function Shell() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, setUser } = useAuth();
   const [page, setPage] = useState<Page>('reports');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { toasts, toast, removeToast } = useToast();
@@ -101,6 +126,8 @@ function Shell() {
     );
   }
 
+  const tier = effectiveTier(user);
+
   const navigate = (p: Page) => {
     setPage(p);
     setSidebarOpen(false);
@@ -124,6 +151,8 @@ function Shell() {
         {NAV.map(n => {
           const Icon = n.icon;
           const active = page === n.id;
+          const req = PAGE_REQUIREMENT[n.id];
+          const locked = req && !tierSatisfies(tier, req);
           return (
             <button
               key={n.id}
@@ -136,7 +165,15 @@ function Shell() {
             >
               {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary-500 rounded-r-full" />}
               <Icon size={16} className={active ? 'text-primary-500' : 'text-gray-400 dark:text-gray-500'} />
-              {n.label}
+              <span className="flex-1">{n.label}</span>
+              {locked && (
+                <span
+                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${TIER_META[req].bg}`}
+                  title={`Recurso ${TIER_META[req].label}`}
+                >
+                  <Lock size={10} className={TIER_META[req].color} />
+                </span>
+              )}
             </button>
           );
         })}
@@ -194,23 +231,57 @@ function Shell() {
           <ThemeToggle dark={dark} toggle={toggleDark} />
         </div>
 
-        <div className="p-4 md:px-6 md:pb-6 md:pt-2">
+        <div className="p-4 pb-24 md:px-6 md:pb-24 md:pt-2">
           <PageTransition pageKey={page}>
-            {page === 'reports' && <ReportsPage toast={toast} />}
-            {page === 'recipes' && <RecipesPage toast={toast} />}
-            {page === 'ingredients' && <IngredientsPage toast={toast} />}
-            {page === 'sales' && <SalesPage toast={toast} />}
-            {page === 'orders' && <OrdersPage toast={toast} />}
-            {page === 'production' && <ProductionPage toast={toast} />}
-            {page === 'store' && <StorePage toast={toast} />}
-            {page === 'cash' && <CashPage toast={toast} />}
-            {page === 'seasons' && <SeasonsPage toast={toast} />}
-            {page === 'profile' && <ProfilePage toast={toast} />}
+            {(() => {
+              const req = PAGE_REQUIREMENT[page];
+              if (req && !tierSatisfies(tier, req)) {
+                const nav = NAV.find(n => n.id === page);
+                return <Paywall required={req} featureLabel={nav?.label ?? ''} featureIcon={nav?.icon} toast={toast} />;
+              }
+              return (
+                <>
+                  {page === 'reports' && <ReportsPage toast={toast} />}
+                  {page === 'finance' && <FinancePage toast={toast} />}
+                  {page === 'expenses' && <ExpensesPage toast={toast} />}
+                  {page === 'recipes' && <RecipesPage toast={toast} />}
+                  {page === 'ingredients' && <IngredientsPage toast={toast} />}
+                  {page === 'stock' && <StockPage toast={toast} />}
+                  {page === 'sales' && <SalesPage toast={toast} />}
+                  {page === 'orders' && <OrdersPage toast={toast} />}
+                  {page === 'production' && <ProductionPage toast={toast} />}
+                  {page === 'clients' && <ClientsPage toast={toast} />}
+                  {page === 'store' && <StorePage toast={toast} />}
+                  {page === 'cash' && <CashPage toast={toast} />}
+                  {page === 'seasons' && <SeasonsPage toast={toast} />}
+                  {page === 'tips' && <SalesTipsPage toast={toast} />}
+                  {page === 'support' && <SupportPage toast={toast} />}
+                  {page === 'profile' && <ProfilePage toast={toast} />}
+                </>
+              );
+            })()}
           </PageTransition>
         </div>
       </main>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Aceite LGPD obrigatório para contas criadas antes do consentimento. */}
+      {!user.lgpdAcceptedAt && (
+        <LgpdModal
+          required
+          onClose={() => {}}
+          onAccept={async () => {
+            try {
+              const { user: updated } = await userApi.acceptLgpd();
+              setUser(updated);
+              toast.success('Consentimento registrado. Obrigado!');
+            } catch (e) {
+              toast.error((e as Error).message);
+            }
+          }}
+        />
+      )}
     </div>
   );
 }

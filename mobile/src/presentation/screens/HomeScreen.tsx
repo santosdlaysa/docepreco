@@ -11,14 +11,18 @@ import {
   ActivityIndicator,
   Linking,
   RefreshControl,
+  Platform,
+  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
+import { authApi } from '../../data/api/authApi';
 import { statsApi, AppStats } from '../../data/api/statsApi';
 import { saleApi } from '../../data/api/saleApi';
 import { Sale } from '../../domain/entities/Sale';
@@ -46,6 +50,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const PLAN_BANNER_WIDTH = SCREEN_WIDTH - 36;
+
+const APP_INSTAGRAM = 'doceprecoapp';
 
 // ── Design tokens (from reference) ──
 const INK = colors.text;
@@ -86,7 +92,41 @@ export const HomeScreen: React.FC = () => {
   const [annualPriceLabel, setAnnualPriceLabel] = useState('R$ 120,00');
   const [showCityModal, setShowCityModal] = useState(false);
   const [showExpiringModal, setShowExpiringModal] = useState(false);
+  const [openingWeb, setOpeningWeb] = useState(false);
   const planBannerRef = useRef<ScrollView>(null);
+
+  // Abre a versão web (docepreco.site/app) já logada, reaproveitando o login do
+  // app: pede um código de transferência de curta duração ao backend e o passa
+  // na URL. Se algo falhar, abre a web mesmo assim (o usuário loga manualmente).
+  const WEB_APP_URL = 'https://docepreco.site/app';
+  const openWebVersion = async () => {
+    if (openingWeb) return;
+    setOpeningWeb(true);
+    try {
+      if (isDemoMode()) {
+        await WebBrowser.openBrowserAsync(WEB_APP_URL);
+        return;
+      }
+      const code = await authApi.getWebHandoffCode();
+      await WebBrowser.openBrowserAsync(`${WEB_APP_URL}?code=${encodeURIComponent(code)}`);
+    } catch {
+      await WebBrowser.openBrowserAsync(WEB_APP_URL);
+    } finally {
+      setOpeningWeb(false);
+    }
+  };
+
+  const handleFollowInstagram = async () => {
+    const appUrl = `instagram://user?username=${APP_INSTAGRAM}`;
+    const webUrl = `https://instagram.com/${APP_INSTAGRAM}`;
+    try {
+      const canOpenApp = Platform.OS !== 'web' && (await Linking.canOpenURL(appUrl));
+      await Linking.openURL(canOpenApp ? appUrl : webUrl);
+    } catch {
+      try { await Linking.openURL(webUrl); }
+      catch { Alert.alert('Erro', 'Não foi possível abrir o Instagram.'); }
+    }
+  };
 
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const stApi = isDemoMode() ? demoStatsApi : statsApi;
@@ -592,6 +632,48 @@ export const HomeScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={PINK} />
           </TouchableOpacity>
         )}
+
+        {/* ═══════ VERSÃO WEB ═══════ */}
+        <TouchableOpacity
+          style={s.webBanner}
+          onPress={openWebVersion}
+          activeOpacity={0.85}
+          disabled={openingWeb}
+        >
+          <View style={s.webIcon}>
+            {openingWeb ? (
+              <ActivityIndicator size="small" color={colors.purple} />
+            ) : (
+              <Ionicons name="desktop-outline" size={20} color={colors.purple} />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.webTitle}>Ver versão web</Text>
+            <Text style={s.webSub}>Acesse o DocePreço no computador — já logado</Text>
+          </View>
+          <Ionicons name="open-outline" size={20} color={colors.purple} />
+        </TouchableOpacity>
+
+        {/* ═══════ SIGA A GENTE (Instagram) ═══════ */}
+        <TouchableOpacity
+          style={s.igWrap}
+          onPress={handleFollowInstagram}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#FEDA75', '#D62976', '#4F5BD5']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={s.igCta}
+          >
+            <View style={s.igIco}><Ionicons name="logo-instagram" size={24} color="#fff" /></View>
+            <View style={{ flex: 1 }}>
+              <Text style={s.igTitle}>Siga a gente no Instagram</Text>
+              <Text style={s.igSub}>@{APP_INSTAGRAM} · dicas, novidades e promoções</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
 
         {/* ═══════ WEEKLY CHART ═══════ */}
         <View style={s.secHeader}>
@@ -1162,6 +1244,58 @@ const s = StyleSheet.create({
   },
   guideTitle: { fontSize: 15, fontWeight: '700', color: INK },
   guideSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+
+  /* ── Versão web ── */
+  webBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginHorizontal: 18,
+    marginBottom: 16,
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    padding: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: colors.purpleBg,
+    ...SHADOW,
+    shadowOpacity: 0.04,
+  },
+  webIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: colors.purpleBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  webTitle: { fontSize: 15, fontWeight: '700', color: INK },
+  webSub: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 },
+
+  /* ── Siga a gente (Instagram) ── */
+  igWrap: { marginHorizontal: 18, marginBottom: 16, borderRadius: 20, overflow: 'hidden' },
+  igCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    padding: 15,
+    paddingHorizontal: 16,
+    shadowColor: '#D62976',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 4,
+  },
+  igIco: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  igTitle: { fontSize: 15.5, fontWeight: '700', color: '#fff' },
+  igSub: { fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: '500', marginTop: 2 },
 
   /* ── Trial banner ── */
   trialBanner: {

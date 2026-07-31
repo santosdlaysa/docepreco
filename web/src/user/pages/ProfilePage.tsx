@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Crown, Mail, AtSign, Phone, Building2, Sparkles, Copy, Check, Clock, Loader2 } from 'lucide-react';
-import { userApi, PixConfig, PixRequestStatus } from '../userApi';
+import { useState } from 'react';
+import { Crown, Mail, AtSign, Phone, Building2, Sparkles, Clock, ArrowUpCircle } from 'lucide-react';
+import { userApi, effectiveTier, PlanTier } from '../userApi';
 import { useAuth } from '../UserAuthContext';
-import { ToastFn, ModalOverlay } from '../../components';
+import { ToastFn } from '../../components';
 import { formatDate } from '../format';
 import { Header, FormField, inputClass } from './IngredientsPage';
+import { SubscribeModal } from '../SubscribeModal';
+import { TIER_META } from '../plan';
 
 function remaining(iso: string): { big: string; bigUnit: string; expired: boolean } {
   const ms = new Date(iso).getTime() - Date.now();
@@ -26,9 +28,11 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
   const [newPassword, setNewPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
 
-  const [renewOpen, setRenewOpen] = useState(false);
+  // Tier no qual abrir o modal de assinatura (null = fechado).
+  const [subscribeTier, setSubscribeTier] = useState<PlanTier | null>(null);
 
   if (!user) return null;
+  const tier = effectiveTier(user);
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,50 +84,68 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
             </p>
           </div>
         </div>
+
         <div className="mt-4">
-          {user.isPremium ? (
-            <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3">
-              <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
+          {tier === 'free' ? (
+            <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg px-4 py-3 text-white">
+              <div className="flex items-center gap-2">
                 <Crown size={16} />
-                <span className="font-semibold">Premium ativo</span>
+                <span className="font-semibold">Plano gratuito</span>
+              </div>
+              <p className="text-sm text-white/80 mt-1">Assine para liberar todos os recursos da sua confeitaria.</p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button
+                  onClick={() => setSubscribeTier('premium')}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold bg-white text-primary-600 rounded-lg px-3 py-2 hover:bg-primary-50 transition-colors"
+                >
+                  <Sparkles size={14} /> Assinar Premium
+                </button>
+                <button
+                  onClick={() => setSubscribeTier('master')}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold bg-purple-700/90 text-white rounded-lg px-3 py-2 hover:bg-purple-800 transition-colors"
+                >
+                  <Crown size={14} /> Assinar Master
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className={`rounded-lg px-4 py-3 ${tier === 'master' ? 'bg-purple-50 dark:bg-purple-900/30' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
+              <div className={`flex items-center gap-2 ${TIER_META[tier].color}`}>
+                <Crown size={16} />
+                <span className="font-semibold">{TIER_META[tier].label} ativo</span>
               </div>
               {user.premiumUntil && (() => {
                 const rem = remaining(user.premiumUntil);
+                const accent = tier === 'master' ? 'text-purple-600 dark:text-purple-300' : 'text-amber-600 dark:text-amber-300';
                 return (
                   <div className="mt-2">
                     <div className="flex items-baseline gap-1.5">
-                      <span className={`text-3xl font-extrabold leading-none ${rem.expired ? 'text-red-500' : 'text-amber-600 dark:text-amber-300'}`}>
-                        {rem.big}
-                      </span>
-                      <span className="text-sm font-medium text-amber-700/80 dark:text-amber-300/80">{rem.bigUnit}</span>
+                      <span className={`text-3xl font-extrabold leading-none ${rem.expired ? 'text-red-500' : accent}`}>{rem.big}</span>
+                      <span className={`text-sm font-medium ${accent}/80`}>{rem.bigUnit}</span>
                     </div>
-                    <p className="text-xs text-amber-700/70 dark:text-amber-300/70 mt-1 flex items-center gap-1.5">
+                    <p className={`text-xs ${accent}/70 mt-1 flex items-center gap-1.5`}>
                       <Clock size={12} />
                       {rem.expired ? `Expirou em ${formatDate(user.premiumUntil)}` : `Expira em ${formatDate(user.premiumUntil)}`}
                     </p>
                   </div>
                 );
               })()}
-              <button
-                onClick={() => setRenewOpen(true)}
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold bg-amber-500 hover:bg-amber-600 text-white rounded-lg px-3 py-2 transition-colors"
-              >
-                <Sparkles size={14} /> Renovar premium
-              </button>
-            </div>
-          ) : (
-            <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg px-4 py-3 text-white">
-              <div className="flex items-center gap-2">
-                <Crown size={16} />
-                <span className="font-semibold">Plano gratuito</span>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <button
+                  onClick={() => setSubscribeTier(tier)}
+                  className={`inline-flex items-center gap-1.5 text-sm font-semibold rounded-lg px-3 py-2 text-white transition-colors ${tier === 'master' ? 'bg-purple-600 hover:bg-purple-700' : 'bg-amber-500 hover:bg-amber-600'}`}
+                >
+                  <Sparkles size={14} /> Renovar {TIER_META[tier].label}
+                </button>
+                {tier === 'premium' && (
+                  <button
+                    onClick={() => setSubscribeTier('master')}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-lg px-3 py-2 transition-colors"
+                  >
+                    <ArrowUpCircle size={14} /> Fazer upgrade para Master
+                  </button>
+                )}
               </div>
-              <p className="text-sm text-white/80 mt-1">Assine o premium para liberar todos os recursos.</p>
-              <button
-                onClick={() => setRenewOpen(true)}
-                className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold bg-white text-primary-600 rounded-lg px-3 py-2 hover:bg-primary-50 transition-colors"
-              >
-                <Sparkles size={14} /> Assinar premium
-              </button>
             </div>
           )}
         </div>
@@ -170,20 +192,10 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
       >
         <p className="font-semibold text-gray-900 dark:text-white">Alterar senha</p>
         <FormField label="Senha atual">
-          <input
-            type="password"
-            value={currentPassword}
-            onChange={e => setCurrentPassword(e.target.value)}
-            className={inputClass}
-          />
+          <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className={inputClass} />
         </FormField>
         <FormField label="Nova senha">
-          <input
-            type="password"
-            value={newPassword}
-            onChange={e => setNewPassword(e.target.value)}
-            className={inputClass}
-          />
+          <input type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} className={inputClass} />
         </FormField>
         <div className="flex justify-end">
           <button
@@ -196,200 +208,9 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
         </div>
       </form>
 
-      {renewOpen && <RenewModal onClose={() => setRenewOpen(false)} toast={toast} />}
+      {subscribeTier && (
+        <SubscribeModal initialTier={subscribeTier} onClose={() => setSubscribeTier(null)} toast={toast} />
+      )}
     </div>
-  );
-}
-
-// Valor (centavos) do mensal legado de R$ 10,00. Quem já pagou esse valor mantém
-// o preço antigo na renovação (mesma regra do app mobile).
-const LEGACY_MONTHLY_CENTS = 1000;
-const LEGACY_MONTHLY: PixConfig['monthly'] = {
-  amountCents: 1000,
-  priceLabel: 'R$ 10,00',
-  copyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540510.005802BR5901N6001C62100506mensal63041609',
-  qrImage: '/qrcode-pix-monthly-legacy.png',
-};
-
-// Dados de PIX embutidos (fallback) — iguais aos do app mobile, usados quando
-// o painel web ainda não tem uma config própria de PIX.
-const DEFAULT_PIX: PixConfig = {
-  monthly: {
-    amountCents: 1490,
-    priceLabel: 'R$ 14,90',
-    copyPaste: '00020126330014BR.GOV.BCB.PIX011103381053280520400005303986540514.905802BR5901N6001C62150511mensalidade630450C7',
-    qrImage: '/qrcode-pix-monthly.png',
-  },
-  annual: {
-    amountCents: 12000,
-    priceLabel: 'R$ 120,00',
-    copyPaste: '00020126330014BR.GOV.BCB.PIX0111033810532805204000053039865406120.005802BR5901N6001C62090505ANUAL6304F5D2',
-    qrImage: '/qrcode-pix-annual.png',
-  },
-};
-
-/** Usa os valores do servidor quando existem; senão, o embutido. */
-function mergePlan(server: PixConfig['monthly'] | undefined, fallback: PixConfig['monthly']) {
-  if (!server || !server.copyPaste) return fallback;
-  return {
-    amountCents: server.amountCents || fallback.amountCents,
-    priceLabel: server.priceLabel || fallback.priceLabel,
-    copyPaste: server.copyPaste,
-    qrImage: server.qrImage || fallback.qrImage,
-  };
-}
-
-function RenewModal({ onClose, toast }: { onClose: () => void; toast: ToastFn }) {
-  const [config, setConfig] = useState<PixConfig | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [plan, setPlan] = useState<'monthly' | 'annual'>('monthly');
-  const [status, setStatus] = useState<PixRequestStatus | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  // Assinante legado (já pagou o mensal de R$ 10,00) → mantém esse preço
-  const [legacyMonthly, setLegacyMonthly] = useState(false);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const [cfg, st] = await Promise.all([
-          userApi.getPlanConfig().catch(() => null),
-          userApi.getPixStatus().catch(() => null),
-        ]);
-        if (!active) return;
-        setConfig(cfg?.pix ?? null);
-        if (st?.amount_cents === LEGACY_MONTHLY_CENTS) setLegacyMonthly(true);
-        if (st && st.status === 'pending') setStatus(st);
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  // Sempre há dados: servidor (se houver) ou o embutido.
-  // Mensal legado (R$ 10,00) tem prioridade para quem já pagava esse valor.
-  const effective: PixConfig = {
-    monthly: legacyMonthly ? LEGACY_MONTHLY : mergePlan(config?.monthly, DEFAULT_PIX.monthly),
-    annual: mergePlan(config?.annual, DEFAULT_PIX.annual),
-  };
-  const selected = effective[plan];
-
-  const copyCode = async () => {
-    if (!selected?.copyPaste) return;
-    try {
-      await navigator.clipboard.writeText(selected.copyPaste);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error('Não foi possível copiar.');
-    }
-  };
-
-  const confirmPaid = async () => {
-    if (!selected) return;
-    setSubmitting(true);
-    try {
-      const label = plan === 'monthly' ? 'Plano mensal' : 'Plano anual';
-      const res = await userApi.createPixRequest(label, selected.amountCents);
-      setStatus(res);
-      toast.success('Solicitação enviada! Aguarde a confirmação do pagamento.');
-    } catch (err) {
-      toast.error((err as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <ModalOverlay onClose={onClose}>
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4 w-full sm:max-w-md mx-auto">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-          <Sparkles size={18} className="text-primary-500" /> Renovar premium via PIX
-        </h3>
-
-        {loading ? (
-          <div className="py-10 flex justify-center">
-            <Loader2 size={24} className="animate-spin-slow text-primary-500" />
-          </div>
-        ) : status && status.status === 'pending' ? (
-          <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl p-4 text-center">
-            <Clock size={28} className="mx-auto text-amber-500 mb-2" />
-            <p className="font-semibold text-amber-700 dark:text-amber-300">Pagamento em análise</p>
-            <p className="text-sm text-amber-700/80 dark:text-amber-300/80 mt-1">
-              Recebemos sua solicitação. Assim que o PIX for confirmado, seu premium é liberado.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* Seleção de plano */}
-            <div className="grid grid-cols-2 gap-2">
-              {(['monthly', 'annual'] as const).map(p => {
-                const cfg = effective[p];
-                const on = plan === p;
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    onClick={() => setPlan(p)}
-                    className={`rounded-xl border-2 p-3 text-center transition-colors ${
-                      on ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'
-                    }`}
-                  >
-                    <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      {p === 'monthly' ? 'Mensal' : 'Anual'}
-                    </span>
-                    <span className="block text-base font-bold text-gray-900 dark:text-white">{cfg.priceLabel}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* QR */}
-            {selected.qrImage ? (
-              <img src={selected.qrImage} alt="QR Code PIX" className="w-44 h-44 mx-auto rounded-lg border border-gray-200 dark:border-gray-700" />
-            ) : null}
-
-            {/* Copia e cola */}
-            <div>
-              <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">PIX copia e cola</p>
-              <div className="flex items-center gap-2">
-                <input readOnly value={selected.copyPaste} className={inputClass + ' text-xs'} />
-                <button
-                  type="button"
-                  onClick={copyCode}
-                  className="shrink-0 flex items-center gap-1 text-sm font-medium bg-primary-500 hover:bg-primary-600 text-white rounded-lg px-3 py-2"
-                >
-                  {copied ? <Check size={15} /> : <Copy size={15} />}
-                  {copied ? 'Copiado' : 'Copiar'}
-                </button>
-              </div>
-            </div>
-
-            <ol className="text-xs text-gray-500 dark:text-gray-400 list-decimal list-inside space-y-0.5">
-              <li>Abra o app do seu banco e pague o PIX ({selected.priceLabel}).</li>
-              <li>Depois toque em "Já fiz o pagamento".</li>
-              <li>Seu premium é liberado após a confirmação.</li>
-            </ol>
-
-            <button
-              onClick={confirmPaid}
-              disabled={submitting}
-              className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
-            >
-              {submitting ? <Loader2 size={16} className="animate-spin-slow" /> : <Check size={16} />}
-              Já fiz o pagamento
-            </button>
-          </>
-        )}
-
-        <button onClick={onClose} className="w-full text-sm text-gray-500 dark:text-gray-400 hover:underline">
-          Fechar
-        </button>
-      </div>
-    </ModalOverlay>
   );
 }

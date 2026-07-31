@@ -1,10 +1,24 @@
 import { Request, Response } from 'express';
 import { PostgresNotificationRepository } from '../../infrastructure/repositories/PostgresNotificationRepository';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
-import { sendPushNotifications } from '../../infrastructure/services/pushService';
+import { sendPushNotificationsDetailed } from '../../infrastructure/services/pushService';
+import type { PushToken } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 
 const notifRepo = new PostgresNotificationRepository();
 const tokenRepo = new PostgresPushTokenRepository();
+
+// "Enviados" = nº de assinantes (usuários distintos) que receberam, não de
+// dispositivos. Um usuário tem vários tokens (celular + reinstalações), então
+// contar tokens inflava o número. Mapeia os tokens aceitos pelo Expo de volta
+// para seus donos e conta usuários únicos.
+function countReachedUsers(tokens: PushToken[], successfulTokens: string[]): number {
+  const delivered = new Set(successfulTokens);
+  const users = new Set<string>();
+  for (const t of tokens) {
+    if (delivered.has(t.token)) users.add(t.userId);
+  }
+  return users.size;
+}
 
 export class NotificationController {
   async getAll(_req: Request, res: Response): Promise<void> {
@@ -38,7 +52,8 @@ export class NotificationController {
           const tokens = await tokenRepo.findByTarget(notification.target);
           const tokenStrings = tokens.map(t => t.token);
           const data = dataJson ? JSON.parse(dataJson) : undefined;
-          const count = await sendPushNotifications(tokenStrings, title, body, data);
+          const { successfulTokens } = await sendPushNotificationsDetailed(tokenStrings, title, body, data);
+          const count = countReachedUsers(tokens, successfulTokens);
           await notifRepo.markSent(notification.id, count);
           const updated = await notifRepo.findById(notification.id);
           res.status(201).json({ success: true, data: updated });
@@ -73,7 +88,8 @@ export class NotificationController {
       const tokens = await tokenRepo.findByTarget(notification.target);
       const tokenStrings = tokens.map(t => t.token);
       const data = notification.dataJson ? JSON.parse(notification.dataJson) : undefined;
-      const count = await sendPushNotifications(tokenStrings, notification.title, notification.body, data);
+      const { successfulTokens } = await sendPushNotificationsDetailed(tokenStrings, notification.title, notification.body, data);
+      const count = countReachedUsers(tokens, successfulTokens);
       await notifRepo.markSent(id, count);
 
       const updated = await notifRepo.findById(id);

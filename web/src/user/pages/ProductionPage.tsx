@@ -33,11 +33,12 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
   useEffect(() => { load(); }, [load]);
 
   const productionOrders = useMemo(() => orders
-    .filter(order => !['delivered', 'cancelled'].includes(order.status))
-    .sort((a, b) => `${a.deliveryDate}${a.deliveryTime ?? ''}`.localeCompare(`${b.deliveryDate}${b.deliveryTime ?? ''}`)), [orders]);
+    // Rascunhos são encomendas incompletas — não entram na fila de produção.
+    .filter(order => !['draft', 'delivered', 'cancelled'].includes(order.status))
+    .sort((a, b) => `${a.deliveryDate ?? ''}${a.deliveryTime ?? ''}`.localeCompare(`${b.deliveryDate ?? ''}${b.deliveryTime ?? ''}`)), [orders]);
 
   const byDate = useMemo(() => productionOrders.reduce<Record<string, Order[]>>((groups, order) => {
-    (groups[order.deliveryDate] ??= []).push(order);
+    (groups[order.deliveryDate ?? ''] ??= []).push(order);
     return groups;
   }, {}), [productionOrders]);
 

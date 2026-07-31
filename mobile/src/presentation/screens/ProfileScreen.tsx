@@ -19,6 +19,7 @@ import { CURRENCY_INFO } from '../utils/currency';
 import { UNIT_SYSTEM_INFO, useUnitSystem } from '../../context/UnitSystemContext';
 
 const SUPPORT_WHATSAPP = '5595981273912';
+const APP_INSTAGRAM = 'doceprecoapp';
 
 /* ─── Design tokens ─── */
 const INK = colors.text;
@@ -150,6 +151,18 @@ export const ProfileScreen: React.FC = () => {
     const who = user?.companyName ? ` da ${user.companyName}` : '';
     try { await Linking.openURL(`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(`Olá! Sou${who} e preciso de ajuda com o app DocePreço.`)}`); }
     catch { Alert.alert('Erro', 'Não foi possível abrir o WhatsApp.'); }
+  };
+
+  const handleFollowInstagram = async () => {
+    const appUrl = `instagram://user?username=${APP_INSTAGRAM}`;
+    const webUrl = `https://instagram.com/${APP_INSTAGRAM}`;
+    try {
+      const canOpenApp = Platform.OS !== 'web' && (await Linking.canOpenURL(appUrl));
+      await Linking.openURL(canOpenApp ? appUrl : webUrl);
+    } catch {
+      try { await Linking.openURL(webUrl); }
+      catch { Alert.alert('Erro', 'Não foi possível abrir o Instagram.'); }
+    }
   };
 
   const instagramChanged = (instagramInput.replace(/^@/, '').trim()) !== (user?.instagramHandle || '');
@@ -361,6 +374,19 @@ export const ProfileScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
 
+          {/* ── Redes sociais ── */}
+          <Text style={st.secLabel}>Redes sociais</Text>
+          <TouchableOpacity onPress={handleFollowInstagram} activeOpacity={0.85}>
+            <LinearGradient colors={['#FEDA75', '#D62976', '#4F5BD5']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.igCta}>
+              <View style={st.igIco}><Ionicons name="logo-instagram" size={24} color="#fff" /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.igTitle}>Siga o Doce Preço</Text>
+                <Text style={st.igSub}>@{APP_INSTAGRAM} · dicas, novidades e promoções</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#fff" />
+            </LinearGradient>
+          </TouchableOpacity>
+
           {/* ── Admin (só visível para o dono) ── */}
           {user?.email === 'santosdlaysa@gmail.com' && (
             <TouchableOpacity
@@ -418,6 +444,12 @@ const st = StyleSheet.create({
 
   /* section label */
   secLabel: { fontSize: 13, fontWeight: '700', color: INK2, marginTop: 2, marginLeft: 4 },
+
+  /* instagram cta */
+  igCta: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 20, padding: 15, paddingHorizontal: 16, ...SHADOW, shadowColor: '#D62976', shadowOpacity: 0.3, shadowRadius: 12 },
+  igIco: { width: 44, height: 44, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.22)', alignItems: 'center', justifyContent: 'center' },
+  igTitle: { fontSize: 15.5, fontWeight: '700', color: '#fff' },
+  igSub: { fontSize: 12, color: 'rgba(255,255,255,0.9)', fontWeight: '500', marginTop: 2 },
 
   /* grouped card (.gcard + .grow) */
   gcard: { backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SHADOW },

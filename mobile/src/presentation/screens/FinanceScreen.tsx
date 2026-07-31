@@ -97,7 +97,7 @@ export const FinanceScreen: React.FC = () => {
       setRecipeName(names);
 
       // Calcula o custo unitário só das receitas que tiveram venda.
-      const soldIds = Array.from(new Set(allSales.map(s => s.recipeId)));
+      const soldIds = Array.from(new Set(allSales.map(s => s.recipeId).filter((id): id is string => !!id)));
       const costs: Record<string, number> = {};
       await Promise.all(
         soldIds.map(async id => {

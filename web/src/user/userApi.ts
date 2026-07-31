@@ -4,6 +4,10 @@
 
 const BASE = import.meta.env.VITE_API_URL ?? 'https://docepreco.onrender.com/api';
 
+// Timeout das requisições — evita a tela girar pra sempre quando o servidor
+// está lento/pendurado (ex.: cold start do Render). 45s cobre um cold start.
+const REQUEST_TIMEOUT_MS = 45000;
+
 const TOKEN_KEY = 'user_token';
 
 export function loadToken(): string {
@@ -33,14 +37,27 @@ export function setOnUnauthorized(fn: () => void) {
 
 async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = loadToken();
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...init.headers,
+      },
+    });
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new ApiError('Tempo de resposta esgotado. O servidor pode estar iniciando — tente de novo em alguns segundos.', 0);
+    }
+    throw new ApiError('Sem conexão com o servidor. Verifique sua internet e tente novamente.', 0);
+  } finally {
+    clearTimeout(timer);
+  }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
     // Token inválido/expirado em rota autenticada → força logout.
@@ -60,6 +77,8 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export type PremiumPlatform = 'ios' | 'android' | 'manual';
 
+export type PlanTier = 'free' | 'premium' | 'master';
+
 export interface AuthUser {
   id: string;
   companyName: string;
@@ -67,8 +86,26 @@ export interface AuthUser {
   phone: string | null;
   instagramHandle: string | null;
   isPremium: boolean;
+  /** Backend antigo pode não enviar → use effectiveTier() para derivar de isPremium. */
+  planTier?: PlanTier;
   premiumUntil: string | null;
   premiumPlatform: PremiumPlatform | null;
+  /** Null = usuário ainda não aceitou o termo LGPD. */
+  lgpdAcceptedAt?: string | null;
+}
+
+/**
+ * Tier efetivo do usuário. Deriva de planTier (com fallback para isPremium em
+ * contas antigas) e rebaixa para 'free' quando a assinatura já expirou.
+ */
+export function effectiveTier(
+  user: Pick<AuthUser, 'planTier' | 'isPremium' | 'premiumUntil'> | null | undefined
+): PlanTier {
+  if (!user) return 'free';
+  const tier = user.planTier ?? (user.isPremium ? 'premium' : 'free');
+  if (tier === 'free') return 'free';
+  if (user.premiumUntil && new Date(user.premiumUntil).getTime() < Date.now()) return 'free';
+  return tier;
 }
 
 export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unit';
@@ -233,7 +270,7 @@ export interface AppStats {
   }[];
 }
 
-export type OrderStatus = 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
+export type OrderStatus = 'draft' | 'pending' | 'in_progress' | 'done' | 'delivered' | 'cancelled';
 export type OrderPaymentMethod = 'pix' | 'cash' | 'credit' | 'debit';
 export interface OrderPayment {
   id: string;
@@ -250,7 +287,7 @@ export interface Order {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  deliveryDate: string;
+  deliveryDate: string | null;
   deliveryTime?: string | null;
   status: OrderStatus;
   paid: boolean;
@@ -271,7 +308,7 @@ export interface CreateOrderDTO {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
-  deliveryDate: string;
+  deliveryDate?: string | null;
   deliveryTime?: string;
   status: OrderStatus;
   paid?: boolean;
@@ -289,10 +326,13 @@ export interface PixPlanConfig {
 export interface PixConfig {
   monthly: PixPlanConfig;
   annual: PixPlanConfig;
+  masterMonthly?: PixPlanConfig;
+  masterAnnual?: PixPlanConfig;
 }
 export interface PlanConfigPublic {
   freeRecipeLimit?: number;
   premiumPrice?: number;
+  masterPrice?: number;
   pix?: PixConfig;
 }
 export interface PixRequestStatus {
@@ -300,10 +340,29 @@ export interface PixRequestStatus {
   status: 'pending' | 'approved' | 'rejected';
   plan_label?: string;
   amount_cents?: number;
+  plan_tier?: PlanTier;
   created_at: string;
   reviewed_at: string | null;
   alreadyExists?: boolean;
 }
+
+/** Preview do upgrade Premium→Master (paga só a diferença). */
+export interface UpgradePreview {
+  eligible: boolean;
+  diffCents?: number;
+  masterCents?: number;
+  premiumPaidCents?: number;
+  isAnnual?: boolean;
+  reason?: string;
+}
+export interface UpgradeRequest extends PixRequestStatus {
+  diff_cents?: number;
+  master_cents?: number;
+  mp_qr_code?: string;
+  mp_qr_code_base64?: string;
+}
+
+export type DiscountType = 'percent' | 'fixed';
 
 export interface StoreProduct {
   id: string;
@@ -312,8 +371,64 @@ export interface StoreProduct {
   photoUrl: string | null;
   publicPrice: number;
   available: boolean;
+  recipeId?: string | null;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
+  /** null = estoque ilimitado. */
+  stock?: number | null;
   createdAt?: string;
   updatedAt?: string;
+}
+export interface CreateStoreProductDTO {
+  name: string;
+  description?: string | null;
+  publicPrice: number;
+  available?: boolean;
+  recipeId?: string | null;
+  photoUrl?: string | null;
+  discountType?: DiscountType | null;
+  discountValue?: number | null;
+  stock?: number | null;
+}
+
+export interface StoreAddon {
+  id: string;
+  name: string;
+  price: number;
+  available: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Histórico de preço de um ingrediente (uma entrada por compra registrada). */
+export interface PriceEntry {
+  id: string;
+  ingredientId: string;
+  price: number;
+  purchaseQuantity: number;
+  unit: string;
+  purchaseUnitWeight?: number | null;
+  recordedAt: string;
+}
+
+export interface SupportMessage {
+  id: string;
+  userId: string;
+  senderType: 'user' | 'admin';
+  message: string;
+  imageUrl: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface StoreBusinessHours {
+  /** 0 = domingo ... 6 = sábado */
+  dayOfWeek: number;
+  closed: boolean;
+  /** "HH:mm" */
+  openTime: string;
+  /** "HH:mm" */
+  closeTime: string;
 }
 
 export interface MyStore {
@@ -329,8 +444,124 @@ export interface MyStore {
   coverImageUrl: string | null;
   logoUrl?: string | null;
   address: string | null;
+  city?: string | null;
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
+  pixReceiverName?: string | null;
+  useBusinessHours?: boolean;
+  businessHours?: StoreBusinessHours[];
   updatedAt?: string;
   products: StoreProduct[];
+}
+
+export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
+
+export interface StoreSettingsDTO {
+  storeName?: string;
+  description?: string | null;
+  city?: string | null;
+  address?: string | null;
+  acceptsDelivery?: boolean;
+  acceptsPickup?: boolean;
+  minOrderValue?: number | null;
+  deliveryFee?: number | null;
+  pixKey?: string | null;
+  pixKeyType?: PixKeyType | null;
+  pixReceiverName?: string | null;
+  useBusinessHours?: boolean;
+  businessHours?: StoreBusinessHours[];
+}
+
+/* ── Despesas ──────────────────────────────────────────────────────────── */
+
+export type ExpenseCostType = 'fixed' | 'variable';
+
+export interface Expense {
+  id: string;
+  description: string;
+  amount: number;
+  category: string;
+  costType: ExpenseCostType;
+  isRecurring: boolean;
+  recurrenceDay: number | null;
+  expenseDate: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+export interface CreateExpenseDTO {
+  description: string;
+  amount: number;
+  category: string;
+  costType: ExpenseCostType;
+  isRecurring: boolean;
+  recurrenceDay?: number | null;
+  expenseDate: string;
+  notes?: string | null;
+}
+export interface ExpenseSummary {
+  totalExpenses: number;
+  byCategory: { category: string; total: number }[];
+}
+
+export const EXPENSE_CATEGORIES: { key: string; label: string }[] = [
+  { key: 'aluguel', label: 'Aluguel' },
+  { key: 'energia', label: 'Energia' },
+  { key: 'agua', label: 'Água' },
+  { key: 'internet', label: 'Internet' },
+  { key: 'embalagem', label: 'Embalagem' },
+  { key: 'marketing', label: 'Marketing' },
+  { key: 'transporte', label: 'Transporte' },
+  { key: 'equipamento', label: 'Equipamento' },
+  { key: 'funcionario', label: 'Funcionário' },
+  { key: 'outros', label: 'Outros' },
+];
+
+/* ── Clientes ──────────────────────────────────────────────────────────── */
+
+export interface Client {
+  id: string;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  /** Aniversário no formato "MM-DD" (sem ano). */
+  birthday: string | null;
+  address: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+export interface CreateClientDTO {
+  name: string;
+  phone?: string | null;
+  email?: string | null;
+  birthday?: string | null;
+  address?: string | null;
+  notes?: string | null;
+}
+
+/* ── Estoque ───────────────────────────────────────────────────────────── */
+
+export interface StockItem {
+  ingredientId: string;
+  /** Saldo atual na unidade base do ingrediente. */
+  quantity: number;
+  /** Estoque mínimo para alerta de reposição. */
+  minQuantity: number;
+  unit: string;
+  updatedAt: string;
+}
+export interface StockMovement {
+  id: string;
+  ingredientId: string;
+  /** 'in' reposição/entrada, 'out' baixa/venda, 'set' ajuste de inventário. */
+  type: 'in' | 'out' | 'set';
+  /** Magnitude do movimento (sempre positivo). */
+  quantity: number;
+  /** Saldo resultante após o movimento. */
+  balance: number;
+  reason: string | null;
+  createdAt: string;
 }
 
 /* ── Endpoints ─────────────────────────────────────────────────────────── */
@@ -345,9 +576,16 @@ export const userApi = {
   register: (companyName: string, email: string, password: string, phone?: string) =>
     req<{ user: AuthUser; token: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ companyName, email, password, phone }),
+      body: JSON.stringify({ companyName, email, password, phone, platform: 'web' }),
     }),
   me: () => req<AuthUser>('/auth/me'),
+  // SSO vindo do app mobile: troca um código de transferência de curta duração
+  // por uma sessão real (token + usuário).
+  webHandoffExchange: (code: string) =>
+    req<{ user: AuthUser; token: string }>('/auth/web-handoff/exchange', {
+      method: 'POST',
+      body: JSON.stringify({ code }),
+    }),
   forgotPassword: (email: string) =>
     req<unknown>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
   changePassword: (currentPassword: string, newPassword: string) =>
@@ -357,17 +595,36 @@ export const userApi = {
     }),
   updateProfile: (data: { instagramHandle?: string | null; phone?: string | null }) =>
     req<AuthUser>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
+  acceptLgpd: () => req<{ user: AuthUser }>('/auth/accept-lgpd', { method: 'POST' }),
 
   // Premium / PIX
   getPlanConfig: () => req<PlanConfigPublic>('/admin/settings/plans'),
-  createPixRequest: (planLabel: string, amountCents: number) =>
-    req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents }) }),
+  createPixRequest: (planLabel: string, amountCents: number, planTier: PlanTier = 'premium') =>
+    req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents, planTier }) }),
   getPixStatus: () => req<PixRequestStatus | null>('/pix/status'),
+  previewUpgrade: () => req<UpgradePreview>('/pix/upgrade/preview'),
+  upgradeToMaster: () => req<UpgradeRequest>('/pix/upgrade', { method: 'POST' }),
 
   // Loja online
   getMyStore: () => req<MyStore | null>('/store/my'),
   updateMyStore: (data: Partial<Pick<MyStore, 'active' | 'acceptingOrders'>>) =>
     req<MyStore>('/store/my', { method: 'PATCH', body: JSON.stringify(data) }),
+  updateStoreSettings: (data: StoreSettingsDTO) =>
+    req<Omit<MyStore, 'products'>>('/store/settings', { method: 'PUT', body: JSON.stringify(data) }),
+  // Produtos da loja
+  getStoreProducts: () => req<StoreProduct[]>('/store/products'),
+  createStoreProduct: (data: CreateStoreProductDTO) =>
+    req<StoreProduct>('/store/products', { method: 'POST', body: JSON.stringify(data) }),
+  updateStoreProduct: (id: string, data: Partial<CreateStoreProductDTO>) =>
+    req<StoreProduct>(`/store/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteStoreProduct: (id: string) => req<void>(`/store/products/${id}`, { method: 'DELETE' }),
+  // Adicionais da loja
+  getStoreAddons: () => req<StoreAddon[]>('/store/addons'),
+  createStoreAddon: (data: { name: string; price: number; available?: boolean }) =>
+    req<StoreAddon>('/store/addons', { method: 'POST', body: JSON.stringify(data) }),
+  updateStoreAddon: (id: string, data: Partial<{ name: string; price: number; available: boolean }>) =>
+    req<StoreAddon>(`/store/addons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteStoreAddon: (id: string) => req<void>(`/store/addons/${id}`, { method: 'DELETE' }),
 
   // Receitas
   listRecipes: () => req<Recipe[]>('/recipes'),
@@ -389,6 +646,14 @@ export const userApi = {
   deleteIngredient: (id: string) => req<void>(`/ingredients/${id}`, { method: 'DELETE' }),
   addPriceHistory: (id: string, entry: { price: number; purchaseQuantity: number; unit: string }) =>
     req<unknown>(`/ingredients/${id}/price-history`, { method: 'POST', body: JSON.stringify(entry) }),
+  getPriceHistory: (id: string) => req<PriceEntry[]>(`/ingredients/${id}/price-history`),
+
+  // Suporte (chat com a equipe)
+  getSupportMessages: () => req<SupportMessage[]>('/support/messages'),
+  sendSupportMessage: (message: string, imageUrl?: string | null) =>
+    req<SupportMessage>('/support/messages', { method: 'POST', body: JSON.stringify({ message, imageUrl }) }),
+  getSupportUnread: () => req<{ unreadCount: number }>('/support/unread'),
+  getSupportTyping: () => req<{ typing: boolean }>('/support/typing'),
 
   // Vendas
   listSales: (period?: 'week' | 'month') =>
@@ -425,6 +690,37 @@ export const userApi = {
   addCashMovement: (type: 'sangria' | 'suprimento', amount: number, reason?: string) =>
     req<CashSession>('/cash/movements', { method: 'POST', body: JSON.stringify({ type, amount, reason }) }),
   listCashSessions: () => req<CashSession[]>('/cash/sessions'),
+
+  // Despesas
+  listExpenses: (month?: string) =>
+    req<Expense[]>(`/expenses${month ? `?month=${month}` : ''}`),
+  getExpenseSummary: (month: string) =>
+    req<ExpenseSummary>(`/expenses/summary?month=${month}`),
+  createExpense: (data: CreateExpenseDTO) =>
+    req<Expense>('/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  updateExpense: (id: string, data: Partial<CreateExpenseDTO>) =>
+    req<Expense>(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteExpense: (id: string) => req<void>(`/expenses/${id}`, { method: 'DELETE' }),
+
+  // Clientes
+  listClients: () => req<Client[]>('/clients'),
+  createClient: (data: CreateClientDTO) =>
+    req<Client>('/clients', { method: 'POST', body: JSON.stringify(data) }),
+  updateClient: (id: string, data: Partial<CreateClientDTO>) =>
+    req<Client>(`/clients/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  deleteClient: (id: string) => req<void>(`/clients/${id}`, { method: 'DELETE' }),
+
+  // Estoque
+  getStock: () => req<{ items: StockItem[]; movements: StockMovement[] }>('/stock'),
+  setStockQuantity: (ingredientId: string, quantity: number, minQuantity: number, unit: string) =>
+    req<StockItem>(`/stock/${ingredientId}`, { method: 'PUT', body: JSON.stringify({ quantity, minQuantity, unit }) }),
+  addStockEntry: (ingredientId: string, quantity: number, unit: string, reason?: string) =>
+    req<StockItem>(`/stock/${ingredientId}/entry`, { method: 'POST', body: JSON.stringify({ quantity, unit, reason }) }),
+  deductStock: (items: { ingredientId: string; quantity: number; reason?: string }[]) =>
+    req<{ lowStock: { ingredientId: string; balance: number; minQuantity: number }[] }>('/stock/deduct', {
+      method: 'POST',
+      body: JSON.stringify({ items }),
+    }),
 };
 
 export { ApiError };

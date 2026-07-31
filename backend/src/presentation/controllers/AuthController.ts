@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { User } from '../../domain/entities/User';
+import { User, LGPD_VERSION } from '../../domain/entities/User';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
 import { PostgresReferralRepository } from '../../infrastructure/repositories/PostgresReferralRepository';
@@ -36,8 +36,12 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
         return;
       }
-      if (platform && !['ios', 'android'].includes(platform)) {
-        res.status(400).json({ success: false, error: 'Plataforma inválida (ios ou android)' });
+      if (phone === undefined || phone === null || String(phone).trim() === '') {
+        res.status(400).json({ success: false, error: 'Telefone é obrigatório' });
+        return;
+      }
+      if (platform && !['ios', 'android', 'web'].includes(platform)) {
+        res.status(400).json({ success: false, error: 'Plataforma inválida (ios, android ou web)' });
         return;
       }
       if (!isValidEmail(email)) {
@@ -136,6 +140,63 @@ export class AuthController {
     }
   }
 
+  /**
+   * SSO "Ver versão web" — passo 1. O app mobile (autenticado) pede um código
+   * de transferência de curta duração. Esse código NÃO é o token de sessão:
+   * serve apenas para o hand-off pela URL e expira em 2 min, minimizando a
+   * exposição do login ao trafegar pela query string.
+   */
+  async webHandoff(req: Request & { userId?: string }, res: Response): Promise<void> {
+    try {
+      const code = jwt.sign(
+        { userId: req.userId, purpose: 'web-handoff' },
+        getJwtSecret(),
+        { algorithm: 'HS256', expiresIn: '120s' }
+      );
+      res.json({ success: true, data: { code } });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  /**
+   * SSO "Ver versão web" — passo 2. A web troca o código de transferência por
+   * uma sessão real (token de 30d + usuário). Rejeita qualquer JWT que não seja
+   * um código de hand-off (`purpose !== 'web-handoff'`), para não aceitar aqui
+   * um token de sessão comum.
+   */
+  async webHandoffExchange(req: Request, res: Response): Promise<void> {
+    try {
+      const { code } = req.body;
+      if (!code) {
+        res.status(400).json({ success: false, error: 'Código não fornecido' });
+        return;
+      }
+      let payload: { userId?: string; purpose?: string };
+      try {
+        payload = jwt.verify(code, getJwtSecret(), { algorithms: ['HS256'] }) as { userId?: string; purpose?: string };
+      } catch {
+        res.status(401).json({ success: false, error: 'Código inválido ou expirado' });
+        return;
+      }
+      if (payload.purpose !== 'web-handoff' || !payload.userId) {
+        res.status(401).json({ success: false, error: 'Código inválido' });
+        return;
+      }
+      const user = await userRepo.findById(payload.userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
+      res.json({ success: true, data: { user, token } });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
   async forgotPassword(req: Request, res: Response): Promise<void> {
     try {
       const { email } = req.body;
@@ -181,6 +242,23 @@ export class AuthController {
       await userRepo.updatePassword(result.userId, newPassword);
       await userRepo.markResetCodeUsed(result.userId, code);
       res.json({ success: true, message: 'Senha atualizada com sucesso' });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  /** Registra o aceite do termo LGPD do usuário logado (para contas já existentes). */
+  async acceptLgpd(req: Request & { userId?: string }, res: Response): Promise<void> {
+    try {
+      const user = await userRepo.acceptLgpd(req.userId!, LGPD_VERSION);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const { passwordHash, ...safeUser } = user as User & { passwordHash?: string };
+      void passwordHash;
+      res.json({ success: true, data: { user: safeUser } });
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
