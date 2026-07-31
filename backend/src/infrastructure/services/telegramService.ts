@@ -383,6 +383,23 @@ export async function sendSecurityAlert(): Promise<void> {
   sendTelegramMessage(text);
 }
 
+/**
+ * Alerta imediato (não espera o cron de 10 min) quando uma conta é bloqueada
+ * pelo lockout por tentativas — ver middleware/loginLockout.ts. Respeita o
+ * mesmo toggle 'security_alert' do painel.
+ */
+export async function notifyAccountLockout(email: string, fails: number, lockMinutes: number): Promise<void> {
+  if (!await isAlertEnabled('security_alert')) return;
+  const text =
+    `🔒 Conta bloqueada por tentativas\n\n` +
+    `📧 ${email}\n` +
+    `❌ ${fails} senhas erradas seguidas\n` +
+    `⏳ Bloqueada por ${lockMinutes} min\n` +
+    `🕐 ${brNow()}\n\n` +
+    `⚠️ Possível brute force. Se não foi você, troque a senha dessa conta.`;
+  sendTelegramMessage(text);
+}
+
 export async function sendWeeklyReport(): Promise<void> {
   if (!await isAlertEnabled('weekly_report')) return;
   const { rows } = await pool.query(`
