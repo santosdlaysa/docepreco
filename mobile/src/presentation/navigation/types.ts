@@ -1,4 +1,5 @@
 import { PremiumFeature, LimitedFeature } from '../premium/limits';
+import { Sale } from '../../domain/entities/Sale';
 
 export type PaywallTrigger =
   | { kind: 'limit'; feature: LimitedFeature; current: number }
@@ -16,7 +17,8 @@ export type RootStackParamList = {
   CreateIngredient: undefined;
   EditIngredient: { ingredientId: string };
   Sales: undefined;
-  CreateSale: undefined;
+  /** Sem parâmetro cria uma venda; com `sale` edita a venda existente. */
+  CreateSale: { sale?: Sale } | undefined;
   Profile: undefined;
   Referral: undefined;
   PrivacyPolicy: undefined;

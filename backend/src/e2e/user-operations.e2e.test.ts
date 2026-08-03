@@ -11,7 +11,7 @@ const ingredientRepo = {
   update: jest.fn(),
   delete: jest.fn(),
 };
-const saleRepo = { findAll: jest.fn(), create: jest.fn(), delete: jest.fn() };
+const saleRepo = { findAll: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
 const seasonRepo = { findAll: jest.fn(), findActive: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() };
 const goalRepo = { findByMonthYear: jest.fn(), upsert: jest.fn() };
 const priceRepo = { findByIngredient: jest.fn(), add: jest.fn() };
@@ -161,6 +161,25 @@ describe('Vendas', () => {
       recipeId: 'r1', quantitySold: 1, salePrice: 20, saleDate: '2026-06-15',
     });
     expect(res.status).toBe(400);
+  });
+
+  it('edita venda existente e trata inexistente/inválida', async () => {
+    saleRepo.update.mockResolvedValueOnce({ id: 's1', quantitySold: 3 });
+    const ok = await api('put', '/sales/s1').send({
+      recipeId: 'r1', quantitySold: 3, salePrice: 30, saleDate: '2026-06-15',
+    });
+    expect(ok.status).toBe(200);
+    expect(saleRepo.update).toHaveBeenCalledWith('s1', expect.objectContaining({ quantitySold: 3 }), USER_ID);
+
+    // venda inexistente → 404
+    saleRepo.update.mockResolvedValueOnce(null);
+    const missing = await api('put', '/sales/missing').send({
+      recipeId: 'r1', quantitySold: 3, salePrice: 30, saleDate: '2026-06-15',
+    });
+    expect(missing.status).toBe(404);
+
+    // payload incompleto → 400 (sem tocar no repositório)
+    expect((await api('put', '/sales/s1').send({ recipeId: 'r1' })).status).toBe(400);
   });
 });
 

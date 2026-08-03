@@ -13,6 +13,11 @@ export const saleApi = {
     return response.data.data;
   },
 
+  update: async (id: string, data: CreateSaleDTO): Promise<Sale> => {
+    const response = await apiClient.put(`/sales/${id}`, data);
+    return response.data.data;
+  },
+
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/sales/${id}`);
   },

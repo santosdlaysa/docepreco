@@ -258,6 +258,29 @@ export const demoSaleApi = {
     return { ...sale };
   },
 
+  update: async (id: string, data: CreateSaleDTO): Promise<Sale> => {
+    await delay();
+    const idx = sales.findIndex(s => s.id === id);
+    if (idx === -1) throw new Error('Venda não encontrada');
+    const recipe = data.recipeId ? recipes.find(r => r.id === data.recipeId) : null;
+    const discount = data.discount ?? 0;
+    const updated: Sale = {
+      ...sales[idx],
+      recipeId: data.recipeId,
+      recipeName: recipe?.name || data.productName || sales[idx].recipeName,
+      quantitySold: data.quantitySold,
+      salePrice: data.salePrice,
+      totalRevenue: data.quantitySold * data.salePrice - discount,
+      discount,
+      saleDate: data.saleDate,
+      clientName: data.clientName ?? null,
+      notes: data.notes,
+      paymentMethod: data.paymentMethod,
+    };
+    sales[idx] = updated;
+    return { ...updated };
+  },
+
   delete: async (id: string): Promise<void> => {
     await delay();
     sales = sales.filter(s => s.id !== id);

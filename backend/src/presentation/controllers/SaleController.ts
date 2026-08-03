@@ -68,6 +68,38 @@ export class SaleController {
     }
   }
 
+  async update(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const { recipeId, productName, quantitySold, salePrice, discount, saleDate, clientName, notes, paymentMethod } = req.body;
+      if ((!recipeId && !productName?.trim()) || !quantitySold || !salePrice || !saleDate) {
+        res.status(400).json({ success: false, error: 'recipeId ou productName, quantitySold, salePrice e saleDate são obrigatórios' });
+        return;
+      }
+      const normalizedDate = normalizeDateToISO(saleDate);
+      if (!normalizedDate) {
+        res.status(400).json({ success: false, error: 'Data da venda inválida. Use o formato dd/mm/aaaa.' });
+        return;
+      }
+      const sale = await saleRepo.update(
+        req.params.id,
+        { recipeId: recipeId || null, productName: productName?.trim() || null, quantitySold: Number(quantitySold), salePrice: Number(salePrice), discount: discount != null ? Number(discount) : undefined, saleDate: normalizedDate, clientName: typeof clientName === 'string' ? clientName.trim() || null : null, notes, paymentMethod },
+        req.userId!
+      );
+      if (!sale) {
+        res.status(404).json({ success: false, error: 'Sale not found' });
+        return;
+      }
+      res.json({ success: true, data: sale });
+    } catch (error) {
+      if (error instanceof Error) {
+        res.status(400).json({ success: false, error: error.message });
+      } else {
+        res.locals.errorMessage = String(error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+      }
+    }
+  }
+
   async delete(req: AuthRequest, res: Response): Promise<void> {
     try {
       const deleted = await saleRepo.delete(req.params.id, req.userId!);

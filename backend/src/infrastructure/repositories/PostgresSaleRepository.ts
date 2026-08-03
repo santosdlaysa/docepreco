@@ -62,6 +62,37 @@ export class PostgresSaleRepository implements ISaleRepository {
     return this.findById(result.rows[0].id, userId) as Promise<Sale>;
   }
 
+  /**
+   * Edição de uma venda existente. Recalcula o faturamento a partir de
+   * quantidade × preço − desconto e valida a receita (quando informada), igual
+   * ao create. Preserva session_id e order_id (não são editáveis pela tela).
+   * Retorna null se a venda não existir ou não pertencer ao usuário.
+   */
+  async update(id: string, data: CreateSaleDTO, userId: string): Promise<Sale | null> {
+    if (data.recipeId) {
+      const recipe = await pool.query(
+        'SELECT 1 FROM recipes WHERE id = $1 AND user_id = $2',
+        [data.recipeId, userId]
+      );
+      if (recipe.rows.length === 0) {
+        throw new Error('Receita não encontrada.');
+      }
+    } else if (!data.productName?.trim()) {
+      throw new Error('Informe a receita ou o nome do produto da venda.');
+    }
+    const discount = Math.max(0, Math.min(data.discount || 0, data.quantitySold * data.salePrice));
+    const totalRevenue = data.quantitySold * data.salePrice - discount;
+    const result = await pool.query(`
+      UPDATE sales SET
+        recipe_id = $1, product_name = $2, quantity_sold = $3, sale_price = $4,
+        total_revenue = $5, discount = $6, sale_date = $7, client_name = $8,
+        notes = $9, payment_method = $10
+      WHERE id = $11 AND user_id = $12
+    `, [data.recipeId || null, data.productName?.trim() || null, data.quantitySold, data.salePrice, totalRevenue, discount, data.saleDate, data.clientName?.trim() || null, data.notes || null, data.paymentMethod || null, id, userId]);
+    if ((result.rowCount ?? 0) === 0) return null;
+    return this.findById(id, userId);
+  }
+
   async existsForOrder(orderId: string, userId: string): Promise<boolean> {
     const result = await pool.query(
       'SELECT 1 FROM sales WHERE order_id = $1 AND user_id = $2 LIMIT 1',
