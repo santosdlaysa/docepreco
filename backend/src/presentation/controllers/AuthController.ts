@@ -114,17 +114,20 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Email inválido' });
         return;
       }
+      // IP real do cliente (Render está atrás de proxy — mesma extração do log
+      // de requisições em server.ts), usado no alerta de bloqueio de conta.
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket.remoteAddress ?? null;
       const user = await userRepo.findByEmail(email);
       if (!user) {
         console.log(`[Auth] Login failed: email not found — ${email}`);
-        this.onLoginFailure(email);
+        this.onLoginFailure(email, ip);
         res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
         return;
       }
       const valid = await userRepo.verifyPassword(password, user.passwordHash);
       if (!valid) {
         console.log(`[Auth] Login failed: wrong password — ${email}`);
-        this.onLoginFailure(email);
+        this.onLoginFailure(email, ip);
         res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
         return;
       }
@@ -149,12 +152,12 @@ export class AuthController {
    * o limiar e é bloqueada agora, dispara o alerta de segurança no Telegram
    * (best-effort, nunca quebra o fluxo de login).
    */
-  private onLoginFailure(email: string): void {
+  private onLoginFailure(email: string, ip?: string | null): void {
     try {
       const { justLocked, fails } = recordLoginFailure(email);
       if (justLocked) {
         console.warn(`[Auth] Account locked (brute force): ${email} — ${fails} tentativas`);
-        notifyAccountLockout(email, fails, LOCK_MINUTES).catch(() => {});
+        notifyAccountLockout(email, fails, LOCK_MINUTES, ip).catch(() => {});
       }
     } catch (e) {
       console.error('[Auth] Falha ao registrar tentativa de login:', e);

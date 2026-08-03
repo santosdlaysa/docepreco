@@ -12,6 +12,7 @@ import { UpdateRecipeUseCase } from '../../application/use-cases/recipe/UpdateRe
 import { PostgresRecipeRepository } from '../../infrastructure/repositories/PostgresRecipeRepository';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
+import { geoLookupMany } from '../../infrastructure/services/geoService';
 
 const userRepo = new PostgresUserRepository();
 const storeRepo = new PostgresStoreRepository();
@@ -672,14 +673,24 @@ export class AdminController {
            LIMIT 15`
         ),
       ]);
+
+      // Enriquece os IPs sinalizados com geolocalização (país/cidade/provedor).
+      // Uma única resolução em lote cobre as duas tabelas; cacheado em memória +
+      // banco, então não pesa nas próximas aberturas do painel.
+      const geo = await geoLookupMany([
+        ...ips.rows.map((r: { ip: string }) => r.ip),
+        ...adminProbes.rows.map((r: { ip: string }) => r.ip),
+      ]);
+      const withGeo = <T extends { ip: string }>(row: T) => ({ ...row, geo: geo.get(row.ip) ?? null });
+
       res.json({
         success: true,
         data: {
           hours,
           totals: totals.rows[0],
-          suspiciousIps: ips.rows,
+          suspiciousIps: ips.rows.map(withGeo),
           failedLogins: logins.rows,
-          adminProbes: adminProbes.rows,
+          adminProbes: adminProbes.rows.map(withGeo),
           notFoundPaths: notFound.rows,
         },
       });

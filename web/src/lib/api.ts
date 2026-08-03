@@ -770,6 +770,15 @@ export interface RequestLog {
   ts: string;
 }
 
+export interface IpGeo {
+  countryCode: string | null;
+  country: string | null;
+  region: string | null;
+  city: string | null;
+  isp: string | null;
+  org: string | null;
+}
+
 export interface SecurityOverview {
   hours: number;
   totals: {
@@ -787,6 +796,7 @@ export interface SecurityOverview {
     rateLimited: number;
     notFound: number;
     lastSeen: string;
+    geo: IpGeo | null;
   }[];
   failedLogins: {
     email: string;
@@ -798,6 +808,7 @@ export interface SecurityOverview {
     ip: string;
     attempts: number;
     lastSeen: string;
+    geo: IpGeo | null;
   }[];
   notFoundPaths: {
     path: string;

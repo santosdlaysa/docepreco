@@ -159,6 +159,19 @@ CREATE TABLE IF NOT EXISTS request_logs (
   ts TIMESTAMP NOT NULL DEFAULT NOW()
 );
 
+-- Cache de geolocalização de IP (área de Segurança). Preenchido sob demanda via
+-- ip-api.com; ver infrastructure/services/geoService.ts. fetched_at controla o TTL.
+CREATE TABLE IF NOT EXISTS ip_geo (
+  ip VARCHAR(45) PRIMARY KEY,
+  country_code VARCHAR(2),
+  country VARCHAR(80),
+  region VARCHAR(120),
+  city VARCHAR(120),
+  isp VARCHAR(160),
+  org VARCHAR(160),
+  fetched_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS banners (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   title VARCHAR(255) NOT NULL,

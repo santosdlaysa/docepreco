@@ -1,5 +1,6 @@
 import { pool } from '../database/connection';
 import { PostgresTelegramAlertRepository } from '../repositories/PostgresTelegramAlertRepository';
+import { geoLookup, geoLookupMany, formatGeoLine } from './geoService';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
@@ -358,12 +359,19 @@ export async function sendSecurityAlert(): Promise<void> {
     return list && list.length ? list.map(l => `\n    ↳ ${l}`).join('') : '';
   };
 
+  // Geolocalização dos IPs sinalizados (país/cidade/provedor) — cacheada.
+  const geo = await geoLookupMany(flaggedIps);
+  const fmtGeo = (ip: string): string => {
+    const line = formatGeoLine(geo.get(ip));
+    return line ? `\n    📍 ${line}` : '';
+  };
+
   let text = `🛡️ Alerta de segurança\n\nPadrões suspeitos nos últimos ${SECURITY_WINDOW_MIN} min:`;
 
   if (ips.length) {
     text += `\n\n🚧 IPs com acesso negado/bloqueado:`;
     for (const r of ips) {
-      text += `\n• ${r.ip} — ${r.total}x (401/403: ${r.unauthorized}, 429: ${r.rate_limited})${fmtPaths(r.ip)}`;
+      text += `\n• ${r.ip} — ${r.total}x (401/403: ${r.unauthorized}, 429: ${r.rate_limited})${fmtGeo(r.ip)}${fmtPaths(r.ip)}`;
     }
   }
   if (logins.length) {
@@ -375,7 +383,7 @@ export async function sendSecurityAlert(): Promise<void> {
   if (adminProbes.length) {
     text += `\n\n⛔ Tentativas em rotas admin:`;
     for (const r of adminProbes) {
-      text += `\n• ${r.ip} — ${r.attempts}x${fmtPaths(r.ip)}`;
+      text += `\n• ${r.ip} — ${r.attempts}x${fmtGeo(r.ip)}${fmtPaths(r.ip)}`;
     }
   }
   text += `\n\n🕐 ${brNow()}\n🔎 Detalhes completos no painel → Segurança`;
@@ -388,13 +396,16 @@ export async function sendSecurityAlert(): Promise<void> {
  * pelo lockout por tentativas — ver middleware/loginLockout.ts. Respeita o
  * mesmo toggle 'security_alert' do painel.
  */
-export async function notifyAccountLockout(email: string, fails: number, lockMinutes: number): Promise<void> {
+export async function notifyAccountLockout(email: string, fails: number, lockMinutes: number, ip?: string | null): Promise<void> {
   if (!await isAlertEnabled('security_alert')) return;
+  const geoLine = ip ? formatGeoLine(await geoLookup(ip)) : '';
+  const originLine = ip ? `🌐 Origem: ${ip}${geoLine ? ` (${geoLine})` : ''}\n` : '';
   const text =
     `🔒 Conta bloqueada por tentativas\n\n` +
     `📧 ${email}\n` +
     `❌ ${fails} senhas erradas seguidas\n` +
     `⏳ Bloqueada por ${lockMinutes} min\n` +
+    originLine +
     `🕐 ${brNow()}\n\n` +
     `⚠️ Possível brute force. Se não foi você, troque a senha dessa conta.`;
   sendTelegramMessage(text);
