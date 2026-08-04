@@ -1,9 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Trash2, ShoppingCart } from 'lucide-react';
-import { userApi, Sale, Recipe, CreateSaleDTO } from '../userApi';
+import { Trash2, ShoppingCart, Pencil } from 'lucide-react';
+import { userApi, Sale, Recipe, CreateSaleDTO, UpdateSaleDTO } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL, formatDate, todayISO } from '../format';
-import { Header, EmptyState, FormField, FormActions, inputClass, iconBtnDanger } from './IngredientsPage';
+import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
 
 const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
@@ -13,6 +13,7 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Sale | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -82,6 +83,9 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
                 </p>
               </div>
               <span className="font-semibold text-green-600 dark:text-green-400">{formatBRL(s.totalRevenue)}</span>
+              <button onClick={() => setEditing(s)} className={iconBtn} title="Editar venda">
+                <Pencil size={16} />
+              </button>
               <button onClick={() => setConfirmId(s.id)} className={iconBtnDanger}>
                 <Trash2 size={16} />
               </button>
@@ -102,6 +106,19 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
         />
       )}
 
+      {editing && (
+        <SaleForm
+          recipes={recipes}
+          sale={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => {
+            setEditing(null);
+            load();
+          }}
+          toast={toast}
+        />
+      )}
+
       <ConfirmModal
         open={!!confirmId}
         title="Excluir venda"
@@ -115,40 +132,65 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
 
 export function SaleForm({
   recipes,
+  sale,
   onClose,
   onSaved,
   toast,
 }: {
   recipes: Recipe[];
+  /** Quando presente, o formulário edita esta venda em vez de criar uma nova. */
+  sale?: Sale;
   onClose: () => void;
   onSaved: () => void;
   toast: ToastFn;
 }) {
-  const [recipeId, setRecipeId] = useState(recipes[0]?.id ?? '');
-  const [quantity, setQuantity] = useState('1');
-  const [price, setPrice] = useState('');
-  const [date, setDate] = useState(todayISO());
-  const [clientName, setClientName] = useState('');
-  const [notes, setNotes] = useState('');
-  const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'credito' | 'debito' | 'pix'>('dinheiro');
+  const editing = !!sale;
+  // Venda sem receita vinculada (produto avulso ou encomenda): a identidade não
+  // é editável aqui, mostramos o nome e preservamos productName no envio.
+  const isCustom = editing && !sale!.recipeId;
+  const [recipeId, setRecipeId] = useState(sale?.recipeId || recipes[0]?.id || '');
+  const [quantity, setQuantity] = useState(sale ? String(sale.quantitySold) : '1');
+  const [price, setPrice] = useState(sale ? String(sale.salePrice) : '');
+  const [date, setDate] = useState(sale?.saleDate ?? todayISO());
+  const [clientName, setClientName] = useState(sale?.clientName ?? '');
+  const [notes, setNotes] = useState(sale?.notes ?? '');
+  const initialPayment = sale?.paymentMethod && sale.paymentMethod !== 'cartao' ? sale.paymentMethod : 'dinheiro';
+  const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'credito' | 'debito' | 'pix'>(initialPayment);
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!recipeId) return toast.error('Selecione uma receita.');
+    if (!isCustom && !recipeId) return toast.error('Selecione uma receita.');
     setSaving(true);
-    const data: CreateSaleDTO = {
-      recipeId,
-      quantitySold: parseLocaleNumber(quantity) || 1,
-      salePrice: parseLocaleNumber(price),
-      saleDate: date,
-      clientName: clientName.trim() || undefined,
-      notes: notes.trim() || undefined,
-      paymentMethod,
-    };
     try {
-      await userApi.createSale(data);
-      toast.success('Venda registrada.');
+      if (editing) {
+        const data: UpdateSaleDTO = {
+          recipeId: isCustom ? null : recipeId,
+          productName: isCustom ? sale!.recipeName : undefined,
+          quantitySold: parseLocaleNumber(quantity) || 1,
+          salePrice: parseLocaleNumber(price),
+          // Preserva o desconto existente (o formulário web não edita desconto).
+          discount: sale!.discount,
+          saleDate: date,
+          clientName: clientName.trim() || undefined,
+          notes: notes.trim() || undefined,
+          paymentMethod,
+        };
+        await userApi.updateSale(sale!.id, data);
+        toast.success('Venda atualizada.');
+      } else {
+        const data: CreateSaleDTO = {
+          recipeId,
+          quantitySold: parseLocaleNumber(quantity) || 1,
+          salePrice: parseLocaleNumber(price),
+          saleDate: date,
+          clientName: clientName.trim() || undefined,
+          notes: notes.trim() || undefined,
+          paymentMethod,
+        };
+        await userApi.createSale(data);
+        toast.success('Venda registrada.');
+      }
       onSaved();
     } catch (err) {
       toast.error((err as Error).message);
@@ -160,9 +202,13 @@ export function SaleForm({
   return (
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Registrar venda</h3>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{editing ? 'Editar venda' : 'Registrar venda'}</h3>
 
-        {recipes.length === 0 ? (
+        {isCustom ? (
+          <FormField label="Produto">
+            <input value={sale!.recipeName} disabled className={`${inputClass} opacity-70`} />
+          </FormField>
+        ) : recipes.length === 0 ? (
           <p className="text-sm text-gray-500">Cadastre uma receita antes de registrar vendas.</p>
         ) : (
           <FormField label="Receita">

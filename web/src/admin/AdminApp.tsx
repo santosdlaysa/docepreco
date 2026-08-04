@@ -3,6 +3,7 @@ import { loadSecret, clearSecret, api, LogEntry } from '../lib/api';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SubscriptionsPage } from '../pages/SubscriptionsPage';
+import { BusinessMetricsPage } from '../pages/BusinessMetricsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { StoresPage } from '../pages/StoresPage';
 import { LogsPage } from '../pages/LogsPage';
@@ -71,10 +72,11 @@ import {
   Database,
   Store,
   ShieldAlert,
+  Activity,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
-type Page = 'dashboard' | 'subscriptions' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
+type Page = 'dashboard' | 'subscriptions' | 'metrics' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
   | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads' | 'security';
 
 interface NavItem {
@@ -87,6 +89,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'subscriptions', label: 'Assinaturas', icon: TrendingUp },
+  { id: 'metrics', label: 'Métricas de Negócio', icon: Activity },
   { id: 'users', label: 'Usuários', icon: Users },
   { id: 'stores', label: 'Lojas', icon: Store },
 
@@ -447,6 +450,7 @@ export default function AdminApp() {
           <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
             {page === 'subscriptions' && <SubscriptionsPage toast={toast} />}
+            {page === 'metrics' && <BusinessMetricsPage toast={toast} />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
             {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} toast={toast} />}
             {page === 'stores' && <StoresPage toast={toast} />}

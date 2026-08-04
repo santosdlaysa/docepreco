@@ -15,6 +15,20 @@ export const authLimiter = rateLimit({
   message: { success: false, error: 'Muitas tentativas. Tente novamente em alguns minutos.' },
 });
 
+/**
+ * Limite por IP específico do login — mais apertado que o authLimiter geral,
+ * já que o /login é o alvo natural de brute force. Trabalha em conjunto com o
+ * lockout por conta (middleware/loginLockout.ts), que cobre o caso de IP
+ * rotativo/compartilhado.
+ */
+export const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutos
+  max: 10, // 10 tentativas por IP por janela
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, error: 'Muitas tentativas. Tente novamente em alguns minutos.' },
+});
+
 /** Limite mais apertado para validação do código de reset (espaço de 1 milhão). */
 export const resetLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

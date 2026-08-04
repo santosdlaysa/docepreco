@@ -197,6 +197,8 @@ export interface Sale {
   quantitySold: number;
   salePrice: number;
   totalRevenue: number;
+  /** Desconto já em R$. Vendas criadas no app podem ter desconto; preservado na edição web. */
+  discount?: number;
   saleDate: string;
   clientName?: string | null;
   notes?: string;
@@ -208,6 +210,20 @@ export interface CreateSaleDTO {
   recipeId: string;
   quantitySold: number;
   salePrice: number;
+  saleDate: string;
+  clientName?: string | null;
+  notes?: string;
+  paymentMethod?: PaymentMethod | null;
+}
+export interface UpdateSaleDTO {
+  /** null quando é produto avulso (venda sem receita vinculada). */
+  recipeId: string | null;
+  /** Preserva o nome do produto avulso ao editar uma venda sem receita. */
+  productName?: string | null;
+  quantitySold: number;
+  salePrice: number;
+  /** Desconto em R$; enviado para preservar o valor já existente na venda. */
+  discount?: number;
   saleDate: string;
   clientName?: string | null;
   notes?: string;
@@ -660,6 +676,8 @@ export const userApi = {
     req<Sale[]>(`/sales${period ? `?period=${period}` : ''}`),
   createSale: (data: CreateSaleDTO) =>
     req<Sale>('/sales', { method: 'POST', body: JSON.stringify(data) }),
+  updateSale: (id: string, data: UpdateSaleDTO) =>
+    req<Sale>(`/sales/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteSale: (id: string) => req<void>(`/sales/${id}`, { method: 'DELETE' }),
 
   // Temporadas

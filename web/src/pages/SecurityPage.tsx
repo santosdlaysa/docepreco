@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useState, useRef } from 'react';
-import { api, SecurityOverview, RequestLog } from '../lib/api';
+import { api, SecurityOverview, RequestLog, IpGeo } from '../lib/api';
 import { Skeleton } from '../components';
 import {
   RefreshCw, ShieldCheck, ShieldAlert, Ban, KeyRound, Globe,
@@ -18,6 +18,34 @@ const METHOD_COLOR: Record<string, string> = {
   PUT: 'bg-yellow-100 text-yellow-700', PATCH: 'bg-orange-100 text-orange-700',
   DELETE: 'bg-red-100 text-red-700',
 };
+
+/** Bandeira emoji a partir do código de país ISO-2 (ex.: 'BR' → 🇧🇷). */
+function flagEmoji(cc: string | null | undefined): string {
+  if (!cc || cc.length !== 2) return '🌐';
+  const base = 0x1f1e6;
+  const up = cc.toUpperCase();
+  return String.fromCodePoint(base + up.charCodeAt(0) - 65, base + up.charCodeAt(1) - 65);
+}
+
+/** Origem geográfica do IP: bandeira + cidade/estado + provedor. */
+function GeoBadge({ geo }: { geo: IpGeo | null }) {
+  if (!geo) return <span className="text-gray-400 text-xs">—</span>;
+  if (geo.org === 'Rede privada' && !geo.country) {
+    return <span className="text-gray-500 dark:text-gray-400 text-xs">🏠 Rede privada</span>;
+  }
+  const place = [geo.city, geo.region].filter(Boolean).join('/') || geo.country || 'Desconhecida';
+  const prov = geo.isp || geo.org;
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 text-xs max-w-[240px]"
+      title={[geo.country, prov].filter(Boolean).join(' · ')}
+    >
+      <span className="text-sm leading-none shrink-0">{flagEmoji(geo.countryCode)}</span>
+      <span className="text-gray-700 dark:text-gray-200 shrink-0">{place}</span>
+      {prov && <span className="text-gray-400 truncate">· {prov}</span>}
+    </span>
+  );
+}
 
 /** Lista de requisições reais de um IP, exibida ao expandir a linha. */
 function IpRequestList({ logs, loading }: { logs: RequestLog[] | undefined; loading: boolean }) {
@@ -271,11 +299,12 @@ export function SecurityPage() {
       {/* IPs suspeitos */}
       <SectionCard icon={ShieldAlert} title="IPs com mais erros" count={data.suspiciousIps.length}
         empty="Nenhum IP acumulando erros.">
-        <table className="w-full min-w-[560px]">
+        <table className="w-full min-w-[720px]">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
               <th className={`${th} w-6`}></th>
               <th className={th}>IP</th>
+              <th className={th}>Origem</th>
               <th className={th}>Total erros</th>
               <th className={th}>401/403</th>
               <th className={th}>429</th>
@@ -294,6 +323,7 @@ export function SecurityPage() {
                       <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? '' : '-rotate-90'}`} />
                     </td>
                     <td className={`${td} font-mono`}>{r.ip}</td>
+                    <td className={td}><GeoBadge geo={r.geo} /></td>
                     <td className={`${td} font-bold`}>{r.total}</td>
                     <td className={td}>{r.unauthorized > 0 ? <span className="text-red-600 font-semibold">{r.unauthorized}</span> : '—'}</td>
                     <td className={td}>{r.rateLimited > 0 ? <span className="text-yellow-600 font-semibold">{r.rateLimited}</span> : '—'}</td>
@@ -302,7 +332,7 @@ export function SecurityPage() {
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan={7} className="bg-gray-50/60 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 p-0">
+                      <td colSpan={8} className="bg-gray-50/60 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 p-0">
                         <IpRequestList logs={ipLogs[r.ip]} loading={ipLoading === r.ip} />
                       </td>
                     </tr>
@@ -342,11 +372,12 @@ export function SecurityPage() {
       {/* Tentativas em rotas admin */}
       <SectionCard icon={Ban} title="Tentativas em rotas admin (bloqueadas)" count={data.adminProbes.length}
         empty="Nenhuma tentativa não autorizada no painel.">
-        <table className="w-full min-w-[400px]">
+        <table className="w-full min-w-[560px]">
           <thead className="bg-gray-50 dark:bg-gray-900/50">
             <tr>
               <th className={`${th} w-6`}></th>
               <th className={th}>IP</th>
+              <th className={th}>Origem</th>
               <th className={th}>Tentativas</th>
               <th className={th}>Último</th>
             </tr>
@@ -362,12 +393,13 @@ export function SecurityPage() {
                       <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? '' : '-rotate-90'}`} />
                     </td>
                     <td className={`${td} font-mono`}>{r.ip}</td>
+                    <td className={td}><GeoBadge geo={r.geo} /></td>
                     <td className={`${td} font-bold text-red-600`}>{r.attempts}</td>
                     <td className={`${td} text-gray-400 text-xs`} title={fmtTs(r.lastSeen)}>{timeAgo(r.lastSeen)}</td>
                   </tr>
                   {open && (
                     <tr>
-                      <td colSpan={4} className="bg-gray-50/60 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 p-0">
+                      <td colSpan={5} className="bg-gray-50/60 dark:bg-gray-900/40 border-t border-gray-100 dark:border-gray-700 p-0">
                         <IpRequestList logs={ipLogs[r.ip]} loading={ipLoading === r.ip} />
                       </td>
                     </tr>

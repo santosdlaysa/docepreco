@@ -9,6 +9,7 @@ router.use(adminMiddleware);
 
 router.get('/stats', (req, res) => controller.getStats(req, res));
 router.get('/subscriptions', (req, res) => controller.getSubscriptionDashboard(req, res));
+router.get('/business-metrics', (req, res) => controller.getBusinessMetrics(req, res));
 router.get('/users', (req, res) => controller.listUsers(req, res));
 router.get('/stores', (req, res) => controller.listStores(req, res));
 router.get('/users/:id', (req, res) => controller.getUser(req, res));

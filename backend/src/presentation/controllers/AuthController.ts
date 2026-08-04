@@ -5,7 +5,8 @@ import { PostgresUserRepository } from '../../infrastructure/repositories/Postgr
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
 import { PostgresReferralRepository } from '../../infrastructure/repositories/PostgresReferralRepository';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
-import { notifyNewUser, notifyUserMilestone } from '../../infrastructure/services/telegramService';
+import { notifyNewUser, notifyUserMilestone, notifyAccountLockout } from '../../infrastructure/services/telegramService';
+import { recordLoginFailure, resetLoginFailures, LOCK_MINUTES } from '../middleware/loginLockout';
 import { normalizeReferralCode } from '../../domain/services/referral';
 import { isValidEmail } from '../../domain/services/email';
 import { getJwtSecret } from '../../config/secrets';
@@ -113,15 +114,20 @@ export class AuthController {
         res.status(400).json({ success: false, error: 'Email inválido' });
         return;
       }
+      // IP real do cliente (Render está atrás de proxy — mesma extração do log
+      // de requisições em server.ts), usado no alerta de bloqueio de conta.
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket.remoteAddress ?? null;
       const user = await userRepo.findByEmail(email);
       if (!user) {
         console.log(`[Auth] Login failed: email not found — ${email}`);
+        this.onLoginFailure(email, ip);
         res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
         return;
       }
       const valid = await userRepo.verifyPassword(password, user.passwordHash);
       if (!valid) {
         console.log(`[Auth] Login failed: wrong password — ${email}`);
+        this.onLoginFailure(email, ip);
         res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
         return;
       }
@@ -130,6 +136,7 @@ export class AuthController {
         res.status(403).json({ success: false, error: 'Sua conta foi desativada. Entre em contato com o suporte.' });
         return;
       }
+      resetLoginFailures(email);
       console.log(`[Auth] Login success: ${email} (${user.companyName})`);
       const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
       const { passwordHash, ...safeUser } = user;
@@ -137,6 +144,23 @@ export class AuthController {
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  /**
+   * Contabiliza uma falha de login no lockout por conta e, quando a conta cruza
+   * o limiar e é bloqueada agora, dispara o alerta de segurança no Telegram
+   * (best-effort, nunca quebra o fluxo de login).
+   */
+  private onLoginFailure(email: string, ip?: string | null): void {
+    try {
+      const { justLocked, fails } = recordLoginFailure(email);
+      if (justLocked) {
+        console.warn(`[Auth] Account locked (brute force): ${email} — ${fails} tentativas`);
+        notifyAccountLockout(email, fails, LOCK_MINUTES, ip).catch(() => {});
+      }
+    } catch (e) {
+      console.error('[Auth] Falha ao registrar tentativa de login:', e);
     }
   }
 

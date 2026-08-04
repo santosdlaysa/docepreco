@@ -1,13 +1,14 @@
 import { Router } from 'express';
 import { AuthController } from '../controllers/AuthController';
 import { authMiddleware } from '../middleware/authMiddleware';
-import { authLimiter, resetLimiter } from '../middleware/rateLimiter';
+import { authLimiter, loginLimiter, resetLimiter } from '../middleware/rateLimiter';
+import { loginLockout } from '../middleware/loginLockout';
 
 const router = Router();
 const controller = new AuthController();
 
 router.post('/register', authLimiter, (req, res) => controller.register(req, res));
-router.post('/login', authLimiter, (req, res) => controller.login(req, res));
+router.post('/login', loginLimiter, loginLockout, (req, res) => controller.login(req, res));
 router.post('/forgot-password', authLimiter, (req, res) => controller.forgotPassword(req, res));
 router.post('/reset-password', resetLimiter, (req, res) => controller.resetPassword(req, res));
 router.post('/web-handoff', authMiddleware, (req, res) => controller.webHandoff(req as any, res));

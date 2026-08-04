@@ -16,17 +16,18 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { recipeApi } from '../../data/api/recipeApi';
 import { saleApi } from '../../data/api/saleApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi, demoIngredientApi } from '../../data/demo/demoApi';
-import { applySaleDeduction } from '../../data/api/stockApi';
+import { applySaleDeduction, reverseSaleDeduction } from '../../data/api/stockApi';
 import { customProductStorage } from '../../data/storage/customProductStorage';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { PaymentMethod } from '../../domain/entities/Sale';
+import { RootStackParamList } from '../navigation/types';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
@@ -65,13 +66,20 @@ type SaleMode = 'recipe' | 'custom';
 
 export const CreateSaleScreen: React.FC = () => {
   const navigation = useNavigation();
+  const route = useRoute<RouteProp<RootStackParamList, 'CreateSale'>>();
+  const editingSale = route.params?.sale ?? null;
+  const editing = !!editingSale;
   const { t } = useTranslation();
   const { showToast } = useToast();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
-  const [mode, setMode] = useState<SaleMode>('recipe');
+  // Só pix/dinheiro/credito/debito têm chip; 'cartao' (legado) cai no default.
+  const validPayment = (p: PaymentMethod | null | undefined): p is PaymentMethod =>
+    p === 'pix' || p === 'dinheiro' || p === 'credito' || p === 'debito';
+
+  const [mode, setMode] = useState<SaleMode>(editingSale ? (editingSale.recipeId ? 'recipe' : 'custom') : 'recipe');
 
   /* recipe mode */
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -80,24 +88,31 @@ export const CreateSaleScreen: React.FC = () => {
   const [showPicker, setShowPicker] = useState(false);
 
   /* custom product mode */
-  const [customName, setCustomName] = useState('');
+  const [customName, setCustomName] = useState(editingSale && !editingSale.recipeId ? editingSale.recipeName : '');
   const [savedProducts, setSavedProducts] = useState<string[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   /* shared fields */
-  const [quantity, setQuantity] = useState('');
-  const [salePrice, setSalePrice] = useState('');
+  const [quantity, setQuantity] = useState(editingSale ? String(editingSale.quantitySold) : '');
+  const [salePrice, setSalePrice] = useState(editingSale ? String(editingSale.salePrice).replace('.', ',') : '');
   const [discountType, setDiscountType] = useState<DiscountType>('fixed');
-  const [discountValue, setDiscountValue] = useState('');
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix');
-  const [clientName, setClientName] = useState('');
-  const [notes, setNotes] = useState('');
+  const [discountValue, setDiscountValue] = useState(editingSale && editingSale.discount > 0 ? String(editingSale.discount).replace('.', ',') : '');
+  const [saleDate, setSaleDate] = useState(editingSale?.saleDate ?? new Date().toISOString().split('T')[0]);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(validPayment(editingSale?.paymentMethod) ? editingSale!.paymentMethod! : 'pix');
+  const [clientName, setClientName] = useState(editingSale?.clientName ?? '');
+  const [notes, setNotes] = useState(editingSale?.notes ?? '');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    rApi.getAll().then(setRecipes).catch(() => {});
+    rApi.getAll().then(list => {
+      setRecipes(list);
+      // Ao editar uma venda de receita, pré-seleciona a receita quando a lista chega.
+      if (editingSale?.recipeId) {
+        const found = list.find(r => r.id === editingSale.recipeId);
+        if (found) setSelectedRecipe(found);
+      }
+    }).catch(() => {});
     iApi.getAll().then(setIngredients).catch(() => {});
     customProductStorage.getAll().then(setSavedProducts).catch(() => {});
   }, []);
@@ -132,17 +147,54 @@ export const CreateSaleScreen: React.FC = () => {
       const soldQty = parseInt(quantity);
       const subtotal = soldQty * parseLocaleNumber(salePrice);
       const discount = computeDiscountAmount(subtotal, discountType, parseLocaleNumber(discountValue));
+      const dto = mode === 'recipe'
+        ? {
+            recipeId: selectedRecipe!.id,
+            quantitySold: soldQty,
+            salePrice: parseLocaleNumber(salePrice),
+            discount,
+            saleDate,
+            paymentMethod,
+            clientName: clientName.trim() || undefined,
+            notes: notes.trim() || undefined,
+          }
+        : {
+            recipeId: null,
+            productName: customName.trim(),
+            quantitySold: soldQty,
+            salePrice: parseLocaleNumber(salePrice),
+            discount,
+            saleDate,
+            paymentMethod,
+            clientName: clientName.trim() || undefined,
+            notes: notes.trim() || undefined,
+          };
+
+      if (editing) {
+        await sApi.update(editingSale!.id, dto);
+        // Reconciliação de estoque: só mexe se o que afeta o consumo mudou
+        // (receita ou quantidade). Estorna a baixa antiga e aplica a nova.
+        const oldRecipeId = editingSale!.recipeId;
+        const newRecipeId = mode === 'recipe' ? selectedRecipe!.id : null;
+        if (oldRecipeId !== newRecipeId || editingSale!.quantitySold !== soldQty) {
+          try {
+            if (oldRecipeId) {
+              const oldRecipe = recipes.find(r => r.id === oldRecipeId);
+              if (oldRecipe) await reverseSaleDeduction(oldRecipe, recipes, ingredients, editingSale!.quantitySold);
+            }
+            if (mode === 'recipe') {
+              await applySaleDeduction(selectedRecipe!, recipes, ingredients, soldQty);
+            }
+          } catch { /* best-effort */ }
+        }
+        if (mode === 'custom') { await customProductStorage.add(customName.trim()); }
+        showToast('Venda atualizada!', 'success');
+        navigation.goBack();
+        return;
+      }
+
       if (mode === 'recipe') {
-        await sApi.create({
-          recipeId: selectedRecipe!.id,
-          quantitySold: soldQty,
-          salePrice: parseLocaleNumber(salePrice),
-          discount,
-          saleDate,
-          paymentMethod,
-          clientName: clientName.trim() || undefined,
-          notes: notes.trim() || undefined,
-        });
+        await sApi.create(dto);
         let lowStock: { name: string }[] = [];
         try {
           lowStock = await applySaleDeduction(selectedRecipe!, recipes, ingredients, soldQty);
@@ -154,17 +206,7 @@ export const CreateSaleScreen: React.FC = () => {
           lowStock.length > 0 ? 'warning' : 'success',
         );
       } else {
-        await sApi.create({
-          recipeId: null,
-          productName: customName.trim(),
-          quantitySold: soldQty,
-          salePrice: parseLocaleNumber(salePrice),
-          discount,
-          saleDate,
-          paymentMethod,
-          clientName: clientName.trim() || undefined,
-          notes: notes.trim() || undefined,
-        });
+        await sApi.create(dto);
         await customProductStorage.add(customName.trim());
         setSavedProducts(await customProductStorage.getAll());
         showToast('Venda registrada!', 'success');
@@ -193,7 +235,7 @@ export const CreateSaleScreen: React.FC = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={st.bk}>
           <Ionicons name="arrow-back" size={20} color={INK} />
         </TouchableOpacity>
-        <View style={st.shT}><Text style={st.shH1}>Registrar venda</Text></View>
+        <View style={st.shT}><Text style={st.shH1}>{editing ? 'Editar venda' : 'Registrar venda'}</Text></View>
         <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.8}
           style={[st.actPill, { backgroundColor: PINK, shadowColor: PINK, shadowOpacity: 0.3 }]}>
           {loading ? <ActivityIndicator size="small" color="#fff" /> : <Text style={st.actPillText}>Salvar</Text>}
@@ -394,7 +436,7 @@ export const CreateSaleScreen: React.FC = () => {
           <TouchableOpacity onPress={handleSave} disabled={loading} activeOpacity={0.85}>
             <LinearGradient colors={[colors.pinkBright, PINK]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={st.btn}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>Salvar venda</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={st.btnText}>{editing ? 'Salvar alterações' : 'Salvar venda'}</Text>}
             </LinearGradient>
           </TouchableOpacity>
 

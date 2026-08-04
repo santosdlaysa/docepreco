@@ -131,3 +131,27 @@ export const applySaleDeduction = async (
     return [];
   }
 };
+
+/**
+ * Estorna a baixa de estoque de uma venda (usado ao EDITAR uma venda: estorna o
+ * consumo antigo e depois reaplica o novo via applySaleDeduction). Devolve ao
+ * estoque exatamente o que a venda havia consumido — mesma base de cálculo do
+ * deduct, então é simétrico. Best-effort: falhas não quebram a edição.
+ */
+export const reverseSaleDeduction = async (
+  recipe: Recipe,
+  allRecipes: Recipe[],
+  ingredients: Ingredient[],
+  quantitySold: number,
+): Promise<void> => {
+  const usage = computeUsageForSale(recipe, allRecipes, ingredients, quantitySold);
+  const ingById = new Map(ingredients.map(i => [i.id, i]));
+  for (const [ingredientId, qty] of Object.entries(usage)) {
+    if (qty <= 0) continue;
+    const ing = ingById.get(ingredientId);
+    if (!ing) continue;
+    try {
+      await addEntry(ing, qty, `Estorno edição · ${recipe.name}`);
+    } catch { /* best-effort */ }
+  }
+};

@@ -208,7 +208,9 @@ export const SalesScreen: React.FC = () => {
         )}
         ItemSeparatorComponent={() => <View style={st.sep} />}
         renderItem={({ item }) => (
-          <TouchableOpacity activeOpacity={0.6} onLongPress={() => handleDelete(item)}>
+          <TouchableOpacity activeOpacity={0.6}
+            onPress={() => guardAction(() => navigation.navigate('CreateSale', { sale: item }))}
+            onLongPress={() => handleDelete(item)}>
             <View style={st.row}>
               <View style={st.gi}>
                 <Ionicons name="cash-outline" size={18} color={GREEN} />
