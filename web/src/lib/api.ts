@@ -408,6 +408,27 @@ export interface WinbackCampaignResult {
   users: Array<{ userId: string; companyName: string; push: boolean; email: boolean; whatsapp: boolean }>;
 }
 
+export interface BusinessMetrics {
+  period: { start: string; end: string };
+  churn: { base: number; lost: number; renewed: number; ratePct: number | null };
+  conversion: {
+    leads: number;
+    payers: number;
+    ratePct: number | null;
+    cumulativeRatePct: number | null;
+    totalAccounts: number;
+    activePayers: number;
+  };
+  ltv: { arpuBRL: number | null; avgLifetimeMonths: number | null; valueBRL: number | null };
+  revenue: {
+    periodBRL: number;
+    prevPeriodBRL: number;
+    momGrowthPct: number | null;
+    ticketAvgBRL: number;
+    activeSubscribers: number;
+  };
+}
+
 // ── Endpoints ─────────────────────────────────────────────────────────────
 
 export const api = {
@@ -423,6 +444,8 @@ export const api = {
   getStats: () => req<Stats>('/admin/stats'),
 
   getSubscriptionDashboard: () => req<SubscriptionDashboard>('/admin/subscriptions'),
+
+  getBusinessMetrics: () => req<BusinessMetrics>('/admin/business-metrics'),
 
   getWinbackEligible: () => req<WinbackEligibleUser[]>('/admin/winback/eligible'),
   getWinbackOffers: () => req<WinbackOffer[]>('/admin/winback'),

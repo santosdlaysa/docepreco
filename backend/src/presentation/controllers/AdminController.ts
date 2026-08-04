@@ -1300,6 +1300,87 @@ export class AdminController {
     }
   }
 
+  /**
+   * Métricas de saúde do negócio (churn, conversão, LTV, ARPU) calculadas sobre
+   * o ÚLTIMO MÊS FECHADO (ex.: em agosto, considera julho). Espelha as métricas
+   * pedidas em formulários de aceleradora/edital.
+   */
+  async getBusinessMetrics(req: Request, res: Response): Promise<void> {
+    try {
+      const PAID = `('INITIAL_PURCHASE','RENEWAL','UNCANCELLATION','PRODUCT_CHANGE','NON_RENEWING_PURCHASE')`;
+      const result = await pool.query(`
+        WITH bounds AS (
+          SELECT date_trunc('month', NOW() - INTERVAL '1 month') AS p_start,
+                 date_trunc('month', NOW())                      AS p_end,
+                 date_trunc('month', NOW() - INTERVAL '2 month')  AS pp_start
+        ),
+        base AS (
+          SELECT DISTINCT pe.user_id
+          FROM premium_events pe, bounds b
+          WHERE pe.created_at < b.p_start AND pe.expiration_at > b.p_start
+            AND pe.amount_cents > 0
+        ),
+        base_last AS (
+          SELECT pe.user_id, MAX(pe.expiration_at) AS mx
+          FROM premium_events pe JOIN base ON base.user_id = pe.user_id
+          GROUP BY pe.user_id
+        )
+        SELECT
+          (SELECT COUNT(*)::int FROM base) AS "baseCount",
+          (SELECT COUNT(*)::int FROM base_last, bounds b WHERE mx >= b.p_start AND mx < b.p_end) AS "churned",
+          (SELECT COUNT(*)::int FROM base_last, bounds b WHERE mx >= b.p_end) AS "renewed",
+          (SELECT COUNT(*)::int FROM users u, bounds b WHERE u.created_at >= b.p_start AND u.created_at < b.p_end) AS "leads",
+          (SELECT COUNT(DISTINCT pe.user_id)::int FROM premium_events pe, bounds b
+             WHERE pe.event_type = 'INITIAL_PURCHASE' AND pe.created_at >= b.p_start AND pe.created_at < b.p_end) AS "payers",
+          (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END),0)::bigint FROM premium_events pe, bounds b
+             WHERE pe.event_type IN ${PAID} AND pe.created_at >= b.p_start AND pe.created_at < b.p_end) AS "periodCents",
+          (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END),0)::bigint FROM premium_events pe, bounds b
+             WHERE pe.event_type IN ${PAID} AND pe.created_at >= b.pp_start AND pe.created_at < b.p_start) AS "prevCents",
+          (SELECT COALESCE(AVG(amount_cents),0)::float FROM premium_events pe, bounds b
+             WHERE pe.event_type IN ${PAID} AND pe.amount_cents > 0 AND pe.created_at >= b.p_start AND pe.created_at < b.p_end) AS "ticketCents",
+          (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND (premium_until IS NULL OR premium_until > NOW())) AS "activeSubscribers",
+          (SELECT COUNT(*)::int FROM users) AS "totalAccounts",
+          (SELECT to_char(b.p_start, 'YYYY-MM-DD') FROM bounds b) AS "periodStart",
+          (SELECT to_char(b.p_end, 'YYYY-MM-DD') FROM bounds b) AS "periodEnd"
+      `);
+
+      const r = result.rows[0];
+      const baseCount = parseInt(r.baseCount || '0');
+      const churned = parseInt(r.churned || '0');
+      const renewed = parseInt(r.renewed || '0');
+      const leads = parseInt(r.leads || '0');
+      const payers = parseInt(r.payers || '0');
+      const periodBRL = parseInt(r.periodCents || '0') / 100;
+      const prevBRL = parseInt(r.prevCents || '0') / 100;
+      const ticketAvgBRL = (r.ticketCents || 0) / 100;
+      const activeSubscribers = parseInt(r.activeSubscribers || '0');
+      const totalAccounts = parseInt(r.totalAccounts || '0');
+
+      const churnPct = baseCount > 0 ? (churned / baseCount) * 100 : null;
+      const conversionPct = leads > 0 ? (payers / leads) * 100 : null;
+      const cumulativeConversionPct = totalAccounts > 0 ? (activeSubscribers / totalAccounts) * 100 : null;
+      const momGrowthPct = prevBRL > 0 ? ((periodBRL - prevBRL) / prevBRL) * 100 : null;
+      const arpuBRL = activeSubscribers > 0 ? periodBRL / activeSubscribers : null;
+      const avgLifetimeMonths = churnPct && churnPct > 0 ? 100 / churnPct : null;
+      const ltvBRL = arpuBRL && avgLifetimeMonths ? arpuBRL * avgLifetimeMonths : null;
+
+      res.json({
+        success: true,
+        data: {
+          period: { start: r.periodStart, end: r.periodEnd },
+          churn: { base: baseCount, lost: churned, renewed, ratePct: churnPct },
+          conversion: { leads, payers, ratePct: conversionPct, cumulativeRatePct: cumulativeConversionPct, totalAccounts, activePayers: activeSubscribers },
+          ltv: { arpuBRL, avgLifetimeMonths, valueBRL: ltvBRL },
+          revenue: { periodBRL, prevPeriodBRL: prevBRL, momGrowthPct, ticketAvgBRL, activeSubscribers },
+        },
+      });
+    } catch (error) {
+      console.error('[Admin] getBusinessMetrics error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async executeQuery(req: Request, res: Response): Promise<void> {
     const { sql } = req.body;
     if (!sql || typeof sql !== 'string' || !sql.trim()) {
