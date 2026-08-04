@@ -327,9 +327,22 @@ export class AdminController {
       res.status(400).json({ error: 'isPremium boolean required' });
       return;
     }
+    // Do not silently turn an unknown/missing paid tier into Premium. Besides
+    // making admin mistakes hard to spot, that fallback could downgrade a
+    // request for Master coming from an outdated client payload.
+    if (isPremium && planTier !== 'premium' && planTier !== 'master') {
+      res.status(400).json({ error: 'planTier deve ser premium ou master ao liberar acesso' });
+      return;
+    }
     try {
       const until = premiumUntil ? new Date(premiumUntil) : null;
-      const tier = isPremium ? (planTier === 'master' ? 'master' : 'premium') : 'free';
+      if (until && Number.isNaN(until.getTime())) {
+        res.status(400).json({ error: 'premiumUntil inválido' });
+        return;
+      }
+      const tier: 'free' | 'premium' | 'master' = isPremium
+        ? (planTier as 'premium' | 'master')
+        : 'free';
       const user = await userRepo.updatePlanTier(id, tier, until, isPremium ? 'manual' : null);
       if (!user) {
         res.status(404).json({ error: 'Usuário não encontrado' });

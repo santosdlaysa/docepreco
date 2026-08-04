@@ -92,15 +92,7 @@ android {
         applicationId 'com.orgenyx'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 82
-        versionName "2.12.0"
-
-        buildConfigField "String", "REACT_NATIVE_RELEASE_LEVEL", "\"${findProperty('reactNativeReleaseLevel') ?: 'stable'}\""
-    }
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
+        versionCode 821 [´~1]            storePassword 'android'
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
