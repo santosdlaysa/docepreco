@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from './client';
 import { isDemoMode } from '../demo/demoMode';
 import {
@@ -96,6 +97,52 @@ export const addEntry = async (ingredient: Ingredient, qty: number, note?: strin
     unit: ingredient.unit,
     reason: note,
   });
+};
+
+/**
+ * Migração única (por aparelho) do estoque que ficava salvo LOCALMENTE
+ * (AsyncStorage, versões antigas do app) para o SERVIDOR. Como o estoque só
+ * passou a persistir no backend em 27/07/2026, aparelhos com build antigo têm
+ * saldos guardados só localmente — esta função os "pega e grava" no servidor.
+ *
+ * Regras para não perder nem duplicar nada:
+ *  - roda no máximo uma vez por aparelho (flag em AsyncStorage);
+ *  - NÃO sobrescreve itens que já existem no servidor (se um segundo aparelho
+ *    migrar depois, ele só preenche os ingredientes que ainda faltam);
+ *  - um item problemático (ex.: ingrediente removido) é pulado, não trava o resto.
+ * Retorna quantos itens foram enviados.
+ */
+const MIGRATION_FLAG = '@docepreco_stock_migrated_v1';
+
+export const migrateLocalStockToServer = async (ingredients: Ingredient[]): Promise<number> => {
+  if (isDemoMode()) return 0;
+  try {
+    if (await AsyncStorage.getItem(MIGRATION_FLAG)) return 0;
+    const local = await localGetStockState();
+    const ids = Object.keys(local);
+    if (ids.length === 0) {
+      await AsyncStorage.setItem(MIGRATION_FLAG, '1');
+      return 0;
+    }
+    const server = await getStockState();
+    const ingById = new Map(ingredients.map(i => [i.id, i]));
+    let migrated = 0;
+    for (const id of ids) {
+      if (server[id]) continue; // já existe no servidor → preserva o que está lá
+      const ing = ingById.get(id);
+      const entry = local[id];
+      if (!ing || !entry) continue;
+      try {
+        await setQty(ing, entry.qty, entry.min ?? 0);
+        migrated++;
+      } catch { /* ingrediente inválido no servidor → pula */ }
+    }
+    await AsyncStorage.setItem(MIGRATION_FLAG, '1');
+    return migrated;
+  } catch {
+    // Falha de rede ao ler o servidor: não marca a flag para tentar de novo depois.
+    return 0;
+  }
 };
 
 /**

@@ -26,6 +26,7 @@ import { demoIngredientApi } from '../../data/demo/demoApi';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import {
   getStockState, getEntry, setQty, addEntry, getMovements, unitCost,
+  migrateLocalStockToServer,
   StockState, StockMovement,
 } from '../../data/api/stockApi';
 import { parseLocaleNumber } from '../utils/number';
@@ -72,12 +73,15 @@ export const StockScreen: React.FC = () => {
   const load = async () => {
     const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
     try {
-      const [items, state] = await Promise.all([
-        iApi.getAll() as Promise<Ingredient[]>,
-        getStockState(),
-      ]);
+      const items = (await iApi.getAll()) as Ingredient[];
+      // Migração única: sobe o estoque salvo localmente (build antigo) ao servidor.
+      const migrated = await migrateLocalStockToServer(items);
+      const state = await getStockState();
       setIngredients(items.sort((a, b) => a.name.localeCompare(b.name)));
       setStock(state);
+      if (migrated > 0) {
+        showToast(`${migrated} ${migrated === 1 ? 'item enviado' : 'itens enviados'} ao servidor`, 'success');
+      }
     } catch {
       // empty state
     } finally {
