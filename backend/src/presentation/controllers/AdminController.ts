@@ -1071,6 +1071,196 @@ export class AdminController {
     }
   }
 
+  /**
+   * Funde ingredientes DUPLICADOS de um usuário (mesmo nome, ids diferentes) em
+   * um único ingrediente. Duplicatas surgem quando o ingrediente é apagado e
+   * recriado (novo id) — a ficha técnica passa a apontar para um id e o saldo de
+   * estoque fica preso no outro, então "atualizar o estoque não resolve".
+   *
+   * Regra de fusão (por grupo de nome, LOWER(TRIM(name))):
+   *  - vencedor = o mais referenciado por fichas técnicas (empate → mais antigo),
+   *    para que o custo das receitas não mude;
+   *  - stock_movements e ingredient_price_history dos perdedores são reapontados;
+   *  - recipe_ingredients é reapontado; se a receita já tiver o vencedor, a linha
+   *    do perdedor é removida (evita o mesmo ingrediente duplicado na ficha);
+   *  - stock_items são SOMADOS no vencedor (respeitando o UNIQUE user+ingredient),
+   *    usando o maior estoque mínimo, com um movimento 'set' de consolidação;
+   *  - o ingrediente perdedor é apagado.
+   * Grupos com unidades diferentes entre os duplicados são PULADOS (merge manual).
+   *
+   * POST /api/admin/users/:id/ingredients/merge-duplicates
+   * Body: { dryRun?: boolean }  — padrão dryRun=true (só simula e faz ROLLBACK).
+   * Para aplicar de fato, envie { "dryRun": false }.
+   */
+  async mergeUserDuplicateIngredients(req: Request, res: Response): Promise<void> {
+    const userId = req.params.id;
+    const dryRun = (req.body?.dryRun ?? true) !== false;
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const groupsRes = await client.query(
+        `SELECT LOWER(TRIM(name)) AS key, COUNT(*)::int AS cnt
+           FROM ingredients
+          WHERE user_id = $1
+          GROUP BY LOWER(TRIM(name))
+         HAVING COUNT(*) > 1`,
+        [userId]
+      );
+
+      const report: any[] = [];
+      for (const grp of groupsRes.rows) {
+        const rowsRes = await client.query(
+          `SELECT i.id, i.name, i.unit, i.created_at,
+                  (SELECT COUNT(*)::int FROM recipe_ingredients ri WHERE ri.ingredient_id = i.id) AS recipe_refs
+             FROM ingredients i
+            WHERE i.user_id = $1 AND LOWER(TRIM(i.name)) = $2
+            ORDER BY recipe_refs DESC, i.created_at ASC, i.id ASC`,
+          [userId, grp.key]
+        );
+        const rows = rowsRes.rows;
+        const winner = rows[0];
+        const losers = rows.slice(1);
+
+        const groupReport: any = {
+          name: winner.name,
+          winner: { id: winner.id, recipeRefs: winner.recipe_refs },
+          losers: losers.map((l: any) => ({ id: l.id, recipeRefs: l.recipe_refs })),
+          skipped: false,
+          movements: 0,
+          priceHistory: 0,
+          recipeLinesReassigned: 0,
+          recipeLinesRemovedAsDuplicate: 0,
+          stockCombined: false,
+        };
+
+        const units = new Set(rows.map((r: any) => r.unit));
+        if (units.size > 1) {
+          groupReport.skipped = true;
+          groupReport.reason = `unidades diferentes (${[...units].join(', ')}) — fundir manualmente`;
+          report.push(groupReport);
+          continue;
+        }
+
+        for (const loser of losers) {
+          const mv = await client.query(
+            `UPDATE stock_movements SET ingredient_id = $1 WHERE user_id = $2 AND ingredient_id = $3`,
+            [winner.id, userId, loser.id]
+          );
+          groupReport.movements += mv.rowCount ?? 0;
+
+          const ph = await client.query(
+            `UPDATE ingredient_price_history SET ingredient_id = $1 WHERE user_id = $2 AND ingredient_id = $3`,
+            [winner.id, userId, loser.id]
+          );
+          groupReport.priceHistory += ph.rowCount ?? 0;
+
+          // Ficha técnica: remove a linha do perdedor onde a receita já usa o
+          // vencedor (senão o ingrediente ficaria em dobro na ficha)...
+          const dupLines = await client.query(
+            `DELETE FROM recipe_ingredients ri
+              WHERE ri.ingredient_id = $1
+                AND EXISTS (
+                  SELECT 1 FROM recipe_ingredients w
+                   WHERE w.recipe_id = ri.recipe_id AND w.ingredient_id = $2
+                )`,
+            [loser.id, winner.id]
+          );
+          groupReport.recipeLinesRemovedAsDuplicate += dupLines.rowCount ?? 0;
+          // ...e reaponta as demais para o vencedor.
+          const movedLines = await client.query(
+            `UPDATE recipe_ingredients SET ingredient_id = $1 WHERE ingredient_id = $2`,
+            [winner.id, loser.id]
+          );
+          groupReport.recipeLinesReassigned += movedLines.rowCount ?? 0;
+
+          // Estoque: soma o saldo do perdedor no vencedor.
+          const loserStock = await client.query(
+            `SELECT quantity, min_quantity, unit FROM stock_items WHERE user_id = $1 AND ingredient_id = $2`,
+            [userId, loser.id]
+          );
+          if ((loserStock.rowCount ?? 0) > 0) {
+            const ls = loserStock.rows[0];
+            const winnerStock = await client.query(
+              `SELECT id FROM stock_items WHERE user_id = $1 AND ingredient_id = $2`,
+              [userId, winner.id]
+            );
+            if ((winnerStock.rowCount ?? 0) > 0) {
+              await client.query(
+                `UPDATE stock_items
+                    SET quantity = ROUND((quantity + $3)::numeric, 3),
+                        min_quantity = GREATEST(min_quantity, $4),
+                        updated_at = NOW()
+                  WHERE user_id = $1 AND ingredient_id = $2`,
+                [userId, winner.id, ls.quantity, ls.min_quantity]
+              );
+              await client.query(
+                `DELETE FROM stock_items WHERE user_id = $1 AND ingredient_id = $2`,
+                [userId, loser.id]
+              );
+            } else {
+              // Vencedor ainda não tinha saldo → transfere o do perdedor.
+              await client.query(
+                `UPDATE stock_items SET ingredient_id = $1, updated_at = NOW()
+                  WHERE user_id = $2 AND ingredient_id = $3`,
+                [winner.id, userId, loser.id]
+              );
+            }
+            groupReport.stockCombined = true;
+          }
+        }
+
+        // Movimento de auditoria com o saldo consolidado final do vencedor.
+        if (groupReport.stockCombined) {
+          const finalStock = await client.query(
+            `SELECT quantity FROM stock_items WHERE user_id = $1 AND ingredient_id = $2`,
+            [userId, winner.id]
+          );
+          if ((finalStock.rowCount ?? 0) > 0) {
+            const bal = finalStock.rows[0].quantity;
+            await client.query(
+              `INSERT INTO stock_movements (user_id, ingredient_id, type, quantity, balance, reason)
+               VALUES ($1, $2, 'set', $3, $3, $4)`,
+              [userId, winner.id, bal, 'Consolidação de ingrediente duplicado']
+            );
+            groupReport.finalBalance = parseFloat(bal);
+          }
+        }
+
+        // Apaga os perdedores (já sem referências).
+        for (const loser of losers) {
+          await client.query(`DELETE FROM ingredients WHERE id = $1 AND user_id = $2`, [loser.id, userId]);
+        }
+        groupReport.deleted = losers.length;
+        report.push(groupReport);
+      }
+
+      if (dryRun) {
+        await client.query('ROLLBACK');
+      } else {
+        await client.query('COMMIT');
+      }
+
+      res.json({
+        success: true,
+        dryRun,
+        data: {
+          groups: report,
+          groupsFound: report.length,
+          groupsMerged: report.filter(g => !g.skipped).length,
+          ingredientsDeleted: report.reduce((s, g) => s + (g.deleted ?? 0), 0),
+        },
+      });
+    } catch (error) {
+      await client.query('ROLLBACK');
+      console.error('[Admin] mergeUserDuplicateIngredients error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Internal error' });
+    } finally {
+      client.release();
+    }
+  }
+
   async updateUserRecipe(req: Request, res: Response): Promise<void> {
     const { id, recipeId } = req.params;
     try {

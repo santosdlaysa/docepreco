@@ -22,6 +22,7 @@ router.post('/users/:id/grant-trial', (req, res) => controller.grantTrial(req, r
 router.post('/users/:id/impersonate', (req, res) => controller.impersonateUser(req, res));
 router.get('/users/:id/data', (req, res) => controller.getUserData(req, res));
 router.put('/users/:id/ingredients/:ingredientId', (req, res) => controller.updateUserIngredient(req, res));
+router.post('/users/:id/ingredients/merge-duplicates', (req, res) => controller.mergeUserDuplicateIngredients(req, res));
 router.put('/users/:id/recipes/:recipeId', (req, res) => controller.updateUserRecipe(req, res));
 router.post('/users/:id/reset-password', (req, res) => controller.resetUserPassword(req, res));
 router.post('/users/:id/toggle-active', (req, res) => controller.toggleUserActive(req, res));
