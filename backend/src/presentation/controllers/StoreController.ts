@@ -6,6 +6,14 @@ import { normalizePixKey, PixKeyType, PIX_KEY_TYPES } from '../../domain/service
 
 const repo = new PostgresStoreRepository();
 
+// Categoria do produto no cardápio: texto livre. Normaliza (trim, limita a 60
+// caracteres) e trata vazio como null (produto sem categoria → "Outros").
+function normalizeCategory(raw: unknown): string | null {
+  if (raw == null) return null;
+  const s = String(raw).trim().slice(0, 60);
+  return s || null;
+}
+
 // Geocodifica em segundo plano (não atrasa a resposta). Só sobrescreve as
 // coordenadas quando encontra resultado — falha de rede não apaga o que já existe.
 function refreshCoordinates(userId: string, address: string | null, city: string | null): void {
@@ -157,6 +165,7 @@ export class StoreController {
         discountType:  b.discountType ?? null,
         discountValue: b.discountValue != null ? Number(b.discountValue) : null,
         stock:         b.stock != null ? Math.max(0, Math.floor(Number(b.stock))) : null,
+        category:      normalizeCategory(b.category),
       });
       res.status(201).json({ success: true, data: product });
     } catch (error) {
@@ -178,6 +187,7 @@ export class StoreController {
       if ('discountType' in b)         patch.discountType = b.discountType ?? null;
       if ('discountValue' in b)        patch.discountValue = b.discountValue != null ? Number(b.discountValue) : null;
       if ('stock' in b)                patch.stock = b.stock != null ? Math.max(0, Math.floor(Number(b.stock))) : null;
+      if ('category' in b)             patch.category = normalizeCategory(b.category);
       const product = await repo.updateProduct(req.params.id, req.userId!, patch as any);
       if (!product) {
         res.status(404).json({ success: false, message: 'Produto não encontrado' });

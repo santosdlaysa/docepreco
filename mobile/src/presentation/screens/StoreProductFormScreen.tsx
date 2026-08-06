@@ -75,6 +75,8 @@ export const StoreProductFormScreen: React.FC = () => {
   const [discountValue, setDiscountValue] = useState('');
   const [available, setAvailable] = useState(true);
   const [stockText, setStockText] = useState('');
+  const [category, setCategory] = useState('');
+  const [knownCategories, setKnownCategories] = useState<string[]>([]);
   const [photoUrl, setPhotoUrl] = useState<string>('');
   const [recipeId, setRecipeId] = useState<string | undefined>(undefined);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -84,9 +86,16 @@ export const StoreProductFormScreen: React.FC = () => {
 
   useEffect(() => {
     recipeApi.getAll().then(setRecipes).catch(() => {});
-    if (isEditing) {
-      sApi.getProducts()
-        .then(all => {
+    // Carrega os produtos para (a) preencher o formulário na edição e (b) extrair as
+    // categorias já usadas, oferecidas como sugestão para manter os nomes consistentes.
+    sApi.getProducts()
+      .then(all => {
+        const cats = Array.from(
+          new Set(all.map(p => (p.category ?? '').trim()).filter(Boolean))
+        ).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+        setKnownCategories(cats);
+
+        if (isEditing) {
           const found = all.find(p => p.id === productId);
           if (!found) return;
           setName(found.name);
@@ -100,10 +109,11 @@ export const StoreProductFormScreen: React.FC = () => {
           setStockText(found.stock != null ? String(found.stock) : '');
           setPhotoUrl(found.photoUrl ?? '');
           setRecipeId(found.recipeId);
-        })
-        .catch(() => showToast('Erro ao carregar produto', 'error'))
-        .finally(() => setLoading(false));
-    }
+          setCategory(found.category ?? '');
+        }
+      })
+      .catch(() => { if (isEditing) showToast('Erro ao carregar produto', 'error'); })
+      .finally(() => setLoading(false));
   }, []);
 
   const handlePickPhoto = async () => {
@@ -156,6 +166,7 @@ export const StoreProductFormScreen: React.FC = () => {
         discountType: discountValueNum > 0 ? discountType : null,
         discountValue: discountValueNum > 0 ? discountValueNum : null,
         stock: stockText.trim() === '' ? null : Math.max(0, parseInt(stockText, 10) || 0),
+        category: category.trim() || null,
       };
 
       if (isEditing && productId) {
@@ -315,6 +326,36 @@ export const StoreProductFormScreen: React.FC = () => {
             multiline
           />
 
+          {/* ── Categoria ── */}
+          <Text style={st.label}>Categoria (opcional)</Text>
+          <TextInput
+            style={st.input}
+            value={category}
+            onChangeText={setCategory}
+            placeholder="Ex: Bolos, Tortas, Doces"
+            placeholderTextColor={INK3}
+          />
+          <Text style={st.stockHint}>
+            Produtos com a mesma categoria ficam agrupados no cardápio. Deixe vazio para "Outros".
+          </Text>
+          {knownCategories.length > 0 && (
+            <View style={st.catChips}>
+              {knownCategories.map(c => {
+                const active = category.trim().toLowerCase() === c.toLowerCase();
+                return (
+                  <TouchableOpacity
+                    key={c}
+                    style={[st.catChip, active && st.catChipOn]}
+                    onPress={() => setCategory(active ? '' : c)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[st.catChipText, active && st.catChipTextOn]}>{c}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+
           {/* ── Price ── */}
           <Text style={st.label}>Preço público (R$) *</Text>
           <View style={st.priceInput}>
@@ -432,6 +473,15 @@ const st = StyleSheet.create({
   },
   pricePre: { fontSize: 15, fontWeight: '700', color: INK3 },
   priceField: { flex: 1, fontSize: 15, color: INK, padding: 0 },
+
+  catChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
+  catChip: {
+    backgroundColor: '#fff', borderRadius: 20, paddingVertical: 7, paddingHorizontal: 14,
+    borderWidth: 1, borderColor: colors.border,
+  },
+  catChipOn: { backgroundColor: PINK, borderColor: PINK },
+  catChipText: { fontSize: 13, color: INK2, fontWeight: '600' },
+  catChipTextOn: { color: '#fff' },
 
   recipeSelect: {
     backgroundColor: '#fff', borderRadius: 14, padding: 14,

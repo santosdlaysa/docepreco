@@ -8,6 +8,27 @@ import { parseLocaleNumber } from '../number';
 
 const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
+const SEM_CATEGORIA = 'Outros';
+// Agrupa os produtos por categoria (alfabética; "Outros" no fim). Os cabeçalhos
+// só aparecem quando há mais de um grupo — com uma categoria só, não polui.
+function groupProductsByCategory(
+  products: StoreProduct[]
+): { category: string; items: StoreProduct[]; showHeader: boolean }[] {
+  const map = new Map<string, StoreProduct[]>();
+  for (const p of products) {
+    const cat = (p.category ?? '').trim() || SEM_CATEGORIA;
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat)!.push(p);
+  }
+  const cats = Array.from(map.keys()).sort((a, b) => {
+    if (a === SEM_CATEGORIA) return 1;
+    if (b === SEM_CATEGORIA) return -1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+  const showHeader = cats.length > 1;
+  return cats.map(category => ({ category, items: map.get(category)!, showHeader }));
+}
+
 function defaultBusinessHours(): StoreBusinessHours[] {
   return Array.from({ length: 7 }, (_, dayOfWeek) => ({
     dayOfWeek,
@@ -269,29 +290,38 @@ export function StorePage({ toast }: { toast: ToastFn }) {
               </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {store.products.map(product => (
-                  <div key={product.id} className="px-4 py-3 flex items-center gap-3">
-                    {product.photoUrl ? (
-                      <img src={product.photoUrl} alt={product.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
-                    ) : (
-                      <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
-                        <ShoppingBag size={16} className="text-gray-400" />
+                {groupProductsByCategory(store.products).map(group => (
+                  <div key={group.category}>
+                    {group.showHeader && (
+                      <div className="px-4 pt-3 pb-1 bg-gray-50 dark:bg-gray-900/40">
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{group.category}</p>
                       </div>
                     )}
-                    <button onClick={() => setProductModal(product)} className="flex-1 min-w-0 text-left">
-                      <p className="font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
-                      <p className="text-xs text-gray-400 truncate">
-                        {formatBRL(product.publicPrice)}
-                        {product.stock != null ? ` · ${product.stock} em estoque` : ''}
-                        {!product.available ? ' · Indisponível' : ''}
-                      </p>
-                    </button>
-                    <button onClick={() => setProductModal(product)} className={iconBtn}>
-                      <Pencil size={16} />
-                    </button>
-                    <button onClick={() => setConfirmProductId(product.id)} className={iconBtnDanger}>
-                      <Trash2 size={16} />
-                    </button>
+                    {group.items.map(product => (
+                      <div key={product.id} className="px-4 py-3 flex items-center gap-3">
+                        {product.photoUrl ? (
+                          <img src={product.photoUrl} alt={product.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center shrink-0">
+                            <ShoppingBag size={16} className="text-gray-400" />
+                          </div>
+                        )}
+                        <button onClick={() => setProductModal(product)} className="flex-1 min-w-0 text-left">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
+                          <p className="text-xs text-gray-400 truncate">
+                            {formatBRL(product.publicPrice)}
+                            {product.stock != null ? ` · ${product.stock} em estoque` : ''}
+                            {!product.available ? ' · Indisponível' : ''}
+                          </p>
+                        </button>
+                        <button onClick={() => setProductModal(product)} className={iconBtn}>
+                          <Pencil size={16} />
+                        </button>
+                        <button onClick={() => setConfirmProductId(product.id)} className={iconBtnDanger}>
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
                 ))}
               </div>
@@ -355,6 +385,9 @@ export function StorePage({ toast }: { toast: ToastFn }) {
         <StoreProductForm
           initial={productModal === 'new' ? null : productModal}
           recipes={recipes}
+          knownCategories={Array.from(
+            new Set((store?.products ?? []).map(p => (p.category ?? '').trim()).filter(Boolean))
+          ).sort((a, b) => a.localeCompare(b, 'pt-BR'))}
           onClose={() => setProductModal(null)}
           onSaved={() => { setProductModal(null); load(); }}
           toast={toast}
@@ -391,12 +424,14 @@ export function StorePage({ toast }: { toast: ToastFn }) {
 function StoreProductForm({
   initial,
   recipes,
+  knownCategories,
   onClose,
   onSaved,
   toast,
 }: {
   initial: StoreProduct | null;
   recipes: Recipe[];
+  knownCategories: string[];
   onClose: () => void;
   onSaved: () => void;
   toast: ToastFn;
@@ -407,6 +442,7 @@ function StoreProductForm({
   const [price, setPrice] = useState(initial ? Number(initial.publicPrice).toFixed(2).replace('.', ',') : '');
   const [available, setAvailable] = useState(initial?.available ?? true);
   const [stock, setStock] = useState(initial?.stock != null ? String(initial.stock) : '');
+  const [category, setCategory] = useState(initial?.category ?? '');
   const [photoUrl, setPhotoUrl] = useState(initial?.photoUrl ?? '');
   const [recipeId, setRecipeId] = useState(initial?.recipeId ?? '');
   const [discountType, setDiscountType] = useState<DiscountType>(initial?.discountType ?? 'fixed');
@@ -442,6 +478,7 @@ function StoreProductForm({
       stock: stock.trim() === '' ? null : Math.max(0, parseInt(stock, 10) || 0),
       discountType: discN > 0 ? discountType : null,
       discountValue: discN > 0 ? discN : null,
+      category: category.trim() || null,
     };
     try {
       if (editingId) {
@@ -524,6 +561,40 @@ function StoreProductForm({
             <input type="text" inputMode="numeric" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ilimitado" className={inputClass} />
           </FormField>
         </div>
+
+        {/* Categoria */}
+        <FormField label="Categoria (opcional)">
+          <input
+            type="text"
+            value={category}
+            onChange={e => setCategory(e.target.value)}
+            placeholder="Ex.: Bolos, Tortas, Doces"
+            maxLength={60}
+            className={inputClass}
+          />
+          {knownCategories.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {knownCategories.map(c => {
+                const active = category.trim().toLowerCase() === c.toLowerCase();
+                return (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCategory(active ? '' : c)}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
+                      active
+                        ? 'bg-primary-500 border-primary-500 text-white'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:border-primary-400'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <p className="text-xs text-gray-400 mt-1.5">Produtos com a mesma categoria ficam agrupados no cardápio. Vazio = "Outros".</p>
+        </FormField>
 
         {/* Desconto */}
         <FormField label="Desconto (opcional)">

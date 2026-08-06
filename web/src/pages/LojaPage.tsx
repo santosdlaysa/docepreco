@@ -14,6 +14,8 @@ interface StoreProduct {
   originalPrice?: number;
   /** Saldo restante para pedidos. null = ilimitado; 0 = esgotado. */
   stock?: number | null;
+  /** Categoria para agrupar o cardápio. null/vazio = sem categoria ("Outros"). */
+  category?: string | null;
 }
 interface StoreAddon {
   id: string;
@@ -28,6 +30,28 @@ interface CartLine {
 }
 const lineKey = (productId: string, addonIds: string[]) =>
   `${productId}|${[...addonIds].sort().join(',')}`;
+
+const SEM_CATEGORIA = 'Outros';
+// Agrupa os produtos do cardápio por categoria (alfabética; "Outros" no fim).
+// Os cabeçalhos só aparecem quando há mais de um grupo — com categoria única a
+// loja continua vendo a lista simples de sempre.
+function groupByCategory(
+  products: StoreProduct[]
+): { category: string; items: StoreProduct[]; showHeaders: boolean }[] {
+  const map = new Map<string, StoreProduct[]>();
+  for (const p of products) {
+    const cat = (p.category ?? '').trim() || SEM_CATEGORIA;
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat)!.push(p);
+  }
+  const cats = Array.from(map.keys()).sort((a, b) => {
+    if (a === SEM_CATEGORIA) return 1;
+    if (b === SEM_CATEGORIA) return -1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+  const showHeaders = cats.length > 1;
+  return cats.map(category => ({ category, items: map.get(category)!, showHeaders }));
+}
 
 interface StoreData {
   storeName: string;
@@ -892,18 +916,27 @@ export function LojaPage() {
                   {store.products.length} {store.products.length === 1 ? 'item' : 'itens'}
                 </span>
               </div>
-              <div className="flex flex-col gap-3">
-                {store.products.map(p => (
-                  <ProductRow
-                    key={p.id}
-                    product={p}
-                    qty={productQty(p.id)}
-                    onOpen={() => openDetail(p)}
-                    disabled={isStoreClosed}
-                    soldOut={remainingStock(p.id) <= 0}
-                  />
-                ))}
-              </div>
+              {groupByCategory(store.products).map(group => (
+                <div key={group.category} className={group.showHeaders ? 'mb-6' : ''}>
+                  {group.showHeaders && (
+                    <h3 className="text-[13px] font-bold uppercase tracking-wide text-gray-500 mb-2.5 px-1">
+                      {group.category}
+                    </h3>
+                  )}
+                  <div className="flex flex-col gap-3">
+                    {group.items.map(p => (
+                      <ProductRow
+                        key={p.id}
+                        product={p}
+                        qty={productQty(p.id)}
+                        onOpen={() => openDetail(p)}
+                        disabled={isStoreClosed}
+                        soldOut={remainingStock(p.id) <= 0}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
             </>
           )}
 

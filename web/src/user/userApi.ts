@@ -392,6 +392,8 @@ export interface StoreProduct {
   discountValue?: number | null;
   /** null = estoque ilimitado. */
   stock?: number | null;
+  /** Categoria no cardápio (texto livre). null/vazio = sem categoria ("Outros"). */
+  category?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -405,6 +407,7 @@ export interface CreateStoreProductDTO {
   discountType?: DiscountType | null;
   discountValue?: number | null;
   stock?: number | null;
+  category?: string | null;
 }
 
 export interface StoreAddon {

@@ -1182,6 +1182,11 @@ export async function runMigrations() {
     // catálogo ao zerar; a reposição é manual (o dono edita o produto e informa o novo saldo).
     await addColumnIfMissing(client, 'store_products', 'stock', 'INTEGER NULL');
 
+    // Categoria do produto no cardápio online (texto livre digitado pelo dono, ex.:
+    // "Bolos", "Tortas", "Doces"). NULL/vazio = produto sem categoria (agrupado em
+    // "Outros" no fim do cardápio). Só organiza a exibição — não afeta preço/estoque.
+    await addColumnIfMissing(client, 'store_products', 'category', 'VARCHAR(60) NULL');
+
     // Limpeza de segurança: logs antigos de rotas de auth gravaram senhas em claro no
     // request_body (e tokens no response_body) antes da redação ser implementada.
     await client.query(`

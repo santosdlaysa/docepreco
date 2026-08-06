@@ -66,6 +66,8 @@ export interface StoreProduct {
   discountValue?: number | null;
   /** Saldo de estoque para pedidos online. NULL = ilimitado. */
   stock?: number | null;
+  /** Categoria no cardápio (texto livre). NULL = sem categoria ("Outros"). */
+  category?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -171,6 +173,7 @@ function mapProduct(row: Record<string, unknown>): StoreProduct {
     discountType: (row.discount_type as DiscountType | null) ?? null,
     discountValue: row.discount_value != null ? Number(row.discount_value) : null,
     stock: row.stock != null ? Number(row.stock) : null,
+    category: (row.category as string | null) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -371,12 +374,13 @@ export class PostgresStoreRepository {
     discountType?: DiscountType | null;
     discountValue?: number | null;
     stock?: number | null;
+    category?: string | null;
   }): Promise<StoreProduct> {
     const result = await pool.query(
-      `INSERT INTO store_products (user_id, name, description, photo_url, public_price, available, recipe_id, discount_type, discount_value, stock)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO store_products (user_id, name, description, photo_url, public_price, available, recipe_id, discount_type, discount_value, stock, category)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
-      [userId, data.name, data.description ?? null, data.photoUrl ?? null, data.publicPrice, data.available, data.recipeId ?? null, data.discountType ?? null, data.discountValue ?? null, data.stock ?? null]
+      [userId, data.name, data.description ?? null, data.photoUrl ?? null, data.publicPrice, data.available, data.recipeId ?? null, data.discountType ?? null, data.discountValue ?? null, data.stock ?? null, data.category ?? null]
     );
     return mapProduct(result.rows[0]);
   }
@@ -391,6 +395,7 @@ export class PostgresStoreRepository {
     discountType: DiscountType | null;
     discountValue: number | null;
     stock: number | null;
+    category: string | null;
   }>): Promise<StoreProduct | null> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -405,6 +410,7 @@ export class PostgresStoreRepository {
     if ('discountType' in data)         { fields.push(`discount_type = $${idx++}`); values.push(data.discountType ?? null); }
     if ('discountValue' in data)        { fields.push(`discount_value = $${idx++}`); values.push(data.discountValue ?? null); }
     if ('stock' in data)                { fields.push(`stock = $${idx++}`);          values.push(data.stock ?? null); }
+    if ('category' in data)             { fields.push(`category = $${idx++}`);       values.push(data.category ?? null); }
 
     if (fields.length === 0) return this.getProductById(id, userId);
 

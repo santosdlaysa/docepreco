@@ -100,6 +100,28 @@ const SettingsRow: React.FC<{
   </View>
 );
 
+// Agrupa os produtos por categoria para o catálogo. Categorias em ordem
+// alfabética, produtos sem categoria em "Outros" no fim. Só mostra os cabeçalhos
+// quando existe mais de um grupo (com categoria única não polui a tela).
+const SEM_CATEGORIA = 'Outros';
+function groupProductsByCategory(
+  products: StoreProduct[]
+): { category: string; items: StoreProduct[]; showHeader: boolean }[] {
+  const map = new Map<string, StoreProduct[]>();
+  for (const p of products) {
+    const cat = (p.category ?? '').trim() || SEM_CATEGORIA;
+    if (!map.has(cat)) map.set(cat, []);
+    map.get(cat)!.push(p);
+  }
+  const cats = Array.from(map.keys()).sort((a, b) => {
+    if (a === SEM_CATEGORIA) return 1;
+    if (b === SEM_CATEGORIA) return -1;
+    return a.localeCompare(b, 'pt-BR');
+  });
+  const showHeader = cats.length > 1;
+  return cats.map(category => ({ category, items: map.get(category)!, showHeader }));
+}
+
 export const StoreScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
@@ -580,39 +602,47 @@ export const StoreScreen: React.FC = () => {
               </View>
             ) : (
               <View style={{ gap: 10 }}>
-                {products.map(product => (
-                  <View key={product.id} style={st.productCard}>
-                    <TouchableOpacity
-                      style={st.productMain}
-                      onPress={() => navigation.navigate('StoreProductForm', { productId: product.id })}
-                      onLongPress={() => handleDeleteProduct(product)}
-                      activeOpacity={0.85}
-                    >
-                      {product.photoUrl ? (
-                        <Image source={{ uri: product.photoUrl }} style={st.productThumb} />
-                      ) : (
-                        <View style={[st.productThumb, st.productThumbPlaceholder]}>
-                          <Ionicons name="image-outline" size={22} color={INK3} />
+                {groupProductsByCategory(products).map(group => (
+                  <View key={group.category} style={{ gap: 10 }}>
+                    {/* Cabeçalho da categoria só aparece quando há mais de um grupo */}
+                    {group.showHeader && (
+                      <Text style={st.catHeader}>{group.category}</Text>
+                    )}
+                    {group.items.map(product => (
+                      <View key={product.id} style={st.productCard}>
+                        <TouchableOpacity
+                          style={st.productMain}
+                          onPress={() => navigation.navigate('StoreProductForm', { productId: product.id })}
+                          onLongPress={() => handleDeleteProduct(product)}
+                          activeOpacity={0.85}
+                        >
+                          {product.photoUrl ? (
+                            <Image source={{ uri: product.photoUrl }} style={st.productThumb} />
+                          ) : (
+                            <View style={[st.productThumb, st.productThumbPlaceholder]}>
+                              <Ionicons name="image-outline" size={22} color={INK3} />
+                            </View>
+                          )}
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={st.productName} numberOfLines={1}>{product.name}</Text>
+                            {product.description ? (
+                              <Text style={st.productDesc} numberOfLines={1}>{product.description}</Text>
+                            ) : null}
+                            <Text style={st.productPrice}>{fmtCurrency(product.publicPrice)}</Text>
+                          </View>
+                        </TouchableOpacity>
+                        <View style={st.productRight}>
+                          <Switch
+                            value={product.available}
+                            onValueChange={() => toggleProductAvailable(product)}
+                            disabled={togglingProduct === product.id}
+                          />
+                          <Text style={[st.productAvailLabel, { color: product.available ? GREEN : INK3 }]}>
+                            {product.available ? 'Ativo' : 'Oculto'}
+                          </Text>
                         </View>
-                      )}
-                      <View style={{ flex: 1, minWidth: 0 }}>
-                        <Text style={st.productName} numberOfLines={1}>{product.name}</Text>
-                        {product.description ? (
-                          <Text style={st.productDesc} numberOfLines={1}>{product.description}</Text>
-                        ) : null}
-                        <Text style={st.productPrice}>{fmtCurrency(product.publicPrice)}</Text>
                       </View>
-                    </TouchableOpacity>
-                    <View style={st.productRight}>
-                      <Switch
-                        value={product.available}
-                        onValueChange={() => toggleProductAvailable(product)}
-                        disabled={togglingProduct === product.id}
-                      />
-                      <Text style={[st.productAvailLabel, { color: product.available ? GREEN : INK3 }]}>
-                        {product.available ? 'Ativo' : 'Oculto'}
-                      </Text>
-                    </View>
+                    ))}
                   </View>
                 ))}
                 <Text style={st.hint}>Pressione e segure um produto para excluí-lo.</Text>
@@ -1235,6 +1265,7 @@ const st = StyleSheet.create({
     justifyContent: 'space-between', marginBottom: 12,
   },
   secTitle: { fontSize: 16, fontWeight: '700', color: INK },
+  catHeader: { fontSize: 13, fontWeight: '800', color: INK2, textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 6, marginBottom: 2, marginLeft: 2 },
   addBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     backgroundColor: PINK, paddingHorizontal: 14, paddingVertical: 8,

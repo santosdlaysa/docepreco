@@ -14,6 +14,8 @@ export interface StoreProduct {
   discountValue?: number | null;
   /** Saldo de estoque para pedidos online. null/undefined = ilimitado. */
   stock?: number | null;
+  /** Categoria no cardápio (texto livre). null/vazio = sem categoria ("Outros"). */
+  category?: string | null;
   createdAt: string;
   updatedAt: string;
 }

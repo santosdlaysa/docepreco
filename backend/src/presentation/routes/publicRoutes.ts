@@ -255,7 +255,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     const u = userResult.rows[0] ?? {};
     // Buscar produtos disponíveis
     const productsResult = await pool.query(
-      'SELECT id, name, description, photo_url, public_price, discount_type, discount_value, stock FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
+      'SELECT id, name, description, photo_url, public_price, discount_type, discount_value, stock, category FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
       [s.user_id]
     );
     // Itens adicionais disponíveis — o cliente escolhe no detalhe do produto
@@ -293,6 +293,8 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
             originalPrice: discountAmount > 0 ? publicPrice : undefined,
             // NULL = ilimitado; número = saldo restante (o PWA limita a quantidade e marca "Esgotado")
             stock: p.stock != null ? Number(p.stock) : null,
+            // Categoria para agrupar o cardápio; null = sem categoria ("Outros")
+            category: p.category ?? null,
           };
         }),
         addons: addonsResult.rows.map(a => ({
