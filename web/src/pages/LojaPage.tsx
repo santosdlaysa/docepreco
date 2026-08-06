@@ -253,6 +253,8 @@ export function LojaPage() {
   const prevTotal = useRef(0);
   const [cartVisible, setCartVisible] = useState(false);
   const [copied, setCopied] = useState(false);
+  // Filtro de categoria selecionado no topo do cardápio. null = "Todos".
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
   const handleShare = async () => {
     const url = window.location.href;
@@ -908,37 +910,80 @@ export function LojaPage() {
               </div>
               <p className="text-gray-400 text-sm">Nenhum produto disponível no momento.</p>
             </div>
-          ) : (
-            <>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-[18px] font-bold text-gray-900">Cardápio</h2>
-                <span className="text-xs text-gray-400 font-medium">
-                  {store.products.length} {store.products.length === 1 ? 'item' : 'itens'}
-                </span>
-              </div>
-              {groupByCategory(store.products).map(group => (
-                <div key={group.category} className={group.showHeaders ? 'mb-6' : ''}>
-                  {group.showHeaders && (
-                    <h3 className="text-[13px] font-bold uppercase tracking-wide text-gray-500 mb-2.5 px-1">
-                      {group.category}
-                    </h3>
-                  )}
-                  <div className="flex flex-col gap-3">
-                    {group.items.map(p => (
-                      <ProductRow
-                        key={p.id}
-                        product={p}
-                        qty={productQty(p.id)}
-                        onOpen={() => openDetail(p)}
-                        disabled={isStoreClosed}
-                        soldOut={remainingStock(p.id) <= 0}
-                      />
-                    ))}
-                  </div>
+          ) : (() => {
+            const groups = groupByCategory(store.products);
+            // Barra de filtro só faz sentido com mais de uma categoria real.
+            const showFilter = groups.length > 1;
+            // Se o filtro selecionado sumiu (categoria removida), volta pra "Todos".
+            const selected = activeCategory && groups.some(g => g.category === activeCategory)
+              ? activeCategory
+              : null;
+            const visibleGroups = selected ? groups.filter(g => g.category === selected) : groups;
+            return (
+              <>
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-[18px] font-bold text-gray-900">Cardápio</h2>
+                  <span className="text-xs text-gray-400 font-medium">
+                    {store.products.length} {store.products.length === 1 ? 'item' : 'itens'}
+                  </span>
                 </div>
-              ))}
-            </>
-          )}
+
+                {/* Filtro de categorias clicável (chips roláveis, gruda no topo) */}
+                {showFilter && (
+                  <div className="sticky top-0 z-20 -mx-4 px-4 py-2.5 mb-4 bg-[#F5F5F7]/95 backdrop-blur-sm">
+                    <div className="flex gap-2 overflow-x-auto scrollbar-hide">
+                      <button
+                        onClick={() => setActiveCategory(null)}
+                        className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+                          selected === null
+                            ? 'bg-[#EA4B92] text-white shadow-sm'
+                            : 'bg-white text-gray-600 shadow-sm'
+                        }`}
+                      >
+                        Todos
+                      </button>
+                      {groups.map(g => (
+                        <button
+                          key={g.category}
+                          onClick={() => setActiveCategory(g.category)}
+                          className={`shrink-0 px-4 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-colors ${
+                            selected === g.category
+                              ? 'bg-[#EA4B92] text-white shadow-sm'
+                              : 'bg-white text-gray-600 shadow-sm'
+                          }`}
+                        >
+                          {g.category}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {visibleGroups.map(group => (
+                  <div key={group.category} className={group.showHeaders && !selected ? 'mb-6' : ''}>
+                    {/* Com um filtro ativo a barra já diz a categoria — não repete o cabeçalho */}
+                    {group.showHeaders && !selected && (
+                      <h3 className="text-[13px] font-bold uppercase tracking-wide text-gray-500 mb-2.5 px-1">
+                        {group.category}
+                      </h3>
+                    )}
+                    <div className="flex flex-col gap-3">
+                      {group.items.map(p => (
+                        <ProductRow
+                          key={p.id}
+                          product={p}
+                          qty={productQty(p.id)}
+                          onOpen={() => openDetail(p)}
+                          disabled={isStoreClosed}
+                          soldOut={remainingStock(p.id) <= 0}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </>
+            );
+          })()}
 
           <div className="mt-12 flex items-center justify-center gap-1 opacity-40">
             <span className="text-[11px] text-gray-400">Criado com</span>
