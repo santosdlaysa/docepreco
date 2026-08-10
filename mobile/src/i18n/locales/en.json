@@ -299,6 +299,12 @@
     "unitsAndProfit": "{{yield}} units • {{margin}}% profit",
     "recipeName": "Recipe name"
   },
+  "updateAlert": {
+    "title": "New version available",
+    "body": "A new version of the app is out with improvements and fixes. Update to get the best experience.",
+    "updateNow": "Update now",
+    "later": "Not now"
+  },
   "createRecipe": {
     "titleNew": "New Recipe",
     "titleEdit": "Edit Recipe",

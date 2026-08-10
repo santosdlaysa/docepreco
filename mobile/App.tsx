@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import * as Updates from 'expo-updates';
 import './src/i18n';
 import { AppNavigator } from './src/presentation/navigation/AppNavigator';
+import { UpdateGate } from './src/presentation/components/UpdateGate';
 import { ToastProvider } from './src/presentation/context/ToastContext';
 import { PremiumProvider } from './src/presentation/context/PremiumContext';
 import { CurrencyProvider } from './src/context/CurrencyContext';
@@ -88,6 +89,7 @@ function App() {
             <ToastProvider>
               <StatusBar style="dark" backgroundColor="#FFF0F3" />
               <AppNavigator />
+              <UpdateGate />
             </ToastProvider>
           </PremiumProvider>
         </UnitSystemProvider>
