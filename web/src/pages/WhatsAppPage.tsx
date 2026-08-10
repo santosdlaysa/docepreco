@@ -94,7 +94,7 @@ export function WhatsAppPage({ toast }: { toast: ToastFn }) {
       </div>
 
       {/* Status card */}
-      <div className={`rounded-xl border p-5 flex items-center gap-4 ${connected ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-red-50 dark:bg-red-900/20 border-red-200'}`}>
+      <div className={`rounded-xl border p-5 flex items-center flex-wrap gap-4 ${connected ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-red-50 dark:bg-red-900/20 border-red-200'}`}>
         {connected ? <Wifi size={24} className="text-green-600" /> : <WifiOff size={24} className="text-red-500" />}
         <div className="flex-1">
           <p className={`font-semibold text-sm ${connected ? 'text-green-800' : 'text-red-800'}`}>

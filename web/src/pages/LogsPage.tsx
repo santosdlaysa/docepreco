@@ -134,7 +134,7 @@ export function LogsPage() {
                 <Icon size={14} className={cfg.iconColor} />
                 {cfg.label}
               </p>
-              <p className="text-2xl font-bold mt-1">{counts[type] ?? 0}</p>
+              <p className="text-xl sm:text-2xl font-bold mt-1">{counts[type] ?? 0}</p>
               <p className="text-xs opacity-60">nos últimos 100 eventos</p>
             </div>
           );

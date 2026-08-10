@@ -95,22 +95,22 @@ export function FeedbacksPage({ toast }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Total</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{feedbacks.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">{feedbacks.length}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Pendentes</p>
-          <p className="text-2xl font-bold text-yellow-600 mt-1">{pendingCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600 mt-1">{pendingCount}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Nota média</p>
           <div className="flex items-center gap-2 mt-1">
-            <p className="text-2xl font-bold text-gray-900 dark:text-white">{avgRating}</p>
+            <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">{avgRating}</p>
             <Star size={18} className="text-amber-400 fill-amber-400" />
           </div>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Respondidos</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{feedbacks.filter(f => f.status === 'replied').length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{feedbacks.filter(f => f.status === 'replied').length}</p>
         </div>
       </div>
 

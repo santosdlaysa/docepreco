@@ -26,11 +26,11 @@ function StatCard({ label, value, sub, color, data }: {
 }) {
   const sparkData = data?.map((v, i) => ({ v })) ?? [];
   return (
-    <div className={`${card} p-5 flex flex-col justify-between gap-3`}>
+    <div className={`${card} p-4 sm:p-5 flex flex-col justify-between gap-3`}>
       <p className="text-xs font-medium text-gray-400 uppercase tracking-wider">{label}</p>
       <div className="flex items-end justify-between gap-4">
-        <div>
-          <p className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{value}</p>
+        <div className="min-w-0">
+          <p className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white tracking-tight">{value}</p>
           {sub && (
             <span className={`inline-flex items-center gap-1 mt-1.5 text-xs font-semibold ${color}`}>
               <ArrowUpRight size={12} />
@@ -39,7 +39,7 @@ function StatCard({ label, value, sub, color, data }: {
           )}
         </div>
         {sparkData.length > 0 && (
-          <div className="w-24 h-12 shrink-0 opacity-70">
+          <div className="hidden sm:block w-24 h-12 shrink-0 opacity-70">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={sparkData} margin={{ top: 2, right: 0, left: 0, bottom: 0 }}>
                 <defs>
@@ -651,7 +651,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Dashboard</p>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">Visao Geral</h2>
@@ -666,7 +666,7 @@ export function DashboardPage({ toast }: { toast: (msg: string, type?: 'success'
       <PixPendingCard toast={toast} />
 
       {/* KPI row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-5">
         <StatCard label="Total de Usuarios" value={stats.totalUsers} sub={`+${stats.newUsersToday} hoje`} color="text-blue-600" data={spark1} />
         <StatCard label="Assinantes" value={stats.premiumUsers} sub={`${premiumPct}% conversao · ${premiumOnlyUsers} Premium · ${masterUsers} Master`} color="text-primary-600" data={spark2} />
         <StatCard label="Vendas do Mes" value={fmt(stats.revenueThisMonth)} sub="confeiteiras" color="text-emerald-600" data={spark3} />

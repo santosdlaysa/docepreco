@@ -139,6 +139,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [name, setName] = useState('');
   const [yieldAmount, setYieldAmount] = useState('');
   const [yieldMode, setYieldMode] = useState<'manual' | 'estimated'>('manual');
+  const [showYieldInfo, setShowYieldInfo] = useState(false);
   const [totalReadyWeight, setTotalReadyWeight] = useState('');
   const [totalReadyUnit, setTotalReadyUnit] = useState<'g' | 'kg'>('g');
   const [weightPerUnit, setWeightPerUnit] = useState('');
@@ -986,7 +987,12 @@ export const CreateRecipeScreen: React.FC = () => {
             )}
           </View>
           <View style={{ gap: 8 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Rendimento</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: 2 }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: INK }}>Rendimento</Text>
+              <TouchableOpacity onPress={() => setShowYieldInfo(true)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} activeOpacity={0.7}>
+                <Ionicons name="information-circle" size={18} color={colors.blue} />
+              </TouchableOpacity>
+            </View>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               <TouchableOpacity
                 onPress={() => setYieldMode('manual')}
@@ -1788,6 +1794,28 @@ export const CreateRecipeScreen: React.FC = () => {
                 </Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal de explicação do rendimento */}
+      <Modal visible={showYieldInfo} transparent animationType="fade" onRequestClose={() => setShowYieldInfo(false)}>
+        <View style={styles.confirmOverlay}>
+          <View style={styles.confirmBox}>
+            <View style={[styles.confirmIconCircle, { backgroundColor: colors.blueBg }]}>
+              <Ionicons name="information-circle" size={32} color={colors.blue} />
+            </View>
+            <Text style={styles.confirmTitle}>{t('createRecipe.yieldInfoTitle')}</Text>
+            <Text style={{ fontSize: 14, lineHeight: 21, color: colors.textSecondary, textAlign: 'left', width: '100%' }}>
+              {t('createRecipe.yieldInfoBody')}
+            </Text>
+            <TouchableOpacity
+              style={[styles.confirmAddBtn, { marginTop: 20, alignSelf: 'stretch' }]}
+              onPress={() => setShowYieldInfo(false)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.confirmAddText}>{t('createRecipe.yieldInfoOk')}</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

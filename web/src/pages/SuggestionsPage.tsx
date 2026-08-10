@@ -106,15 +106,15 @@ export function SuggestionsPage({ toast }: Props) {
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Total</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{suggestions.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mt-1">{suggestions.length}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Pendentes</p>
-          <p className="text-2xl font-bold text-yellow-600 mt-1">{pendingCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-yellow-600 mt-1">{pendingCount}</p>
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Concluídas</p>
-          <p className="text-2xl font-bold text-green-600 mt-1">{doneCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-green-600 mt-1">{doneCount}</p>
         </div>
       </div>
 

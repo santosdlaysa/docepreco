@@ -701,7 +701,7 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <p className="text-xs text-gray-400 uppercase tracking-wider font-medium">Dashboard</p>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mt-0.5">Assinaturas</h2>

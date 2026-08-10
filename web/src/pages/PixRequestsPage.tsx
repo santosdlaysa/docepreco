@@ -218,7 +218,7 @@ export function PixRequestsPage({ toast }: Props) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-4 text-sm">
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
                     <div className="text-center">
                       <p className="text-xs text-gray-400">{isAd ? 'Tipo' : 'Plano'}</p>
                       {isAd ? (

@@ -127,7 +127,7 @@ export function OnboardingPage({ toast }: Props) {
         </div>
       </div>
 
-      <div className="flex gap-6">
+      <div className="flex flex-col lg:flex-row gap-6">
         {/* List */}
         <div className={`bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden ${preview ? 'flex-1' : 'w-full'}`}>
           {loading ? (
@@ -253,7 +253,7 @@ export function OnboardingPage({ toast }: Props) {
               {/* Icon picker */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Ícone e cores</label>
-                <div className="grid grid-cols-8 gap-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-40 overflow-y-auto">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-40 overflow-y-auto">
                   {ICON_SUGGESTIONS.map(({ icon, label, color, bg }) => (
                     <button key={icon} onClick={() => setForm({ ...form, icon, iconColor: color, iconBg: bg })}
                       className={`w-9 h-9 rounded-lg flex items-center justify-center transition-all hover:scale-110 ${form.icon === icon ? 'ring-2 ring-primary-400 shadow-sm' : 'hover:shadow-sm'}`}

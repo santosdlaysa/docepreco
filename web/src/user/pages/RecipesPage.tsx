@@ -435,6 +435,7 @@ function RecipeForm({
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [saving, setSaving] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [showYieldInfo, setShowYieldInfo] = useState(false);
 
   const availableSubRecipes = allRecipes.filter(r => r.id !== initial?.id);
 
@@ -597,8 +598,17 @@ function RecipeForm({
         </FormField>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
+          <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
             Rendimento
+            <button
+              type="button"
+              onClick={() => setShowYieldInfo(true)}
+              title="Por que informar o rendimento?"
+              aria-label="Por que informar o rendimento?"
+              className="text-sky-500 hover:text-sky-600 transition-colors"
+            >
+              <Info size={15} />
+            </button>
           </label>
           <div className="grid grid-cols-2 gap-2 mb-3">
             <button
@@ -1130,6 +1140,50 @@ function RecipeForm({
                   className="text-sm px-4 py-2 rounded-lg bg-primary-500 text-white font-medium"
                 >
                   Fechar
+                </button>
+              </div>
+            </div>
+          </ModalOverlay>
+        )}
+
+        {showYieldInfo && (
+          <ModalOverlay onClose={() => setShowYieldInfo(false)}>
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4 max-w-md">
+              <div className="flex items-center gap-2">
+                <Info size={20} className="text-sky-500 shrink-0" />
+                <h3 className="font-bold text-lg text-gray-900 dark:text-white">
+                  Por que informar o rendimento?
+                </h3>
+              </div>
+              <div className="space-y-3 text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
+                <p>
+                  A <strong>quantidade das receitas que você juntou</strong> serve para calcular
+                  quanto o bolo <strong>custou</strong> (a soma de tudo que entrou nele).
+                </p>
+                <p>
+                  O <strong>rendimento</strong> serve para outra coisa: dizer em{' '}
+                  <strong>quantas fatias, porções ou unidades</strong> esse bolo vai ser vendido —
+                  ou seja, o custo de <strong>cada pedaço</strong>.
+                </p>
+                <div className="rounded-xl bg-sky-50 dark:bg-sky-900/20 border border-sky-100 dark:border-sky-900/40 p-3 space-y-1.5">
+                  <p className="font-semibold text-sky-800 dark:text-sky-200">Exemplo</p>
+                  <p className="text-sky-800 dark:text-sky-200">
+                    O bolo custou <strong>R$ 40</strong> e rende <strong>10 fatias</strong>{' '}
+                    → cada fatia custa <strong>R$ 4</strong>. Com esse valor o app sugere o preço de venda.
+                  </p>
+                </div>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Sem o rendimento, o app sabe o custo do bolo inteiro, mas não consegue saber quanto
+                  cobrar por fatia. Por isso os dois campos se completam — não são a mesma informação.
+                </p>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setShowYieldInfo(false)}
+                  className="text-sm px-4 py-2 rounded-lg bg-primary-500 text-white font-medium"
+                >
+                  Entendi
                 </button>
               </div>
             </div>

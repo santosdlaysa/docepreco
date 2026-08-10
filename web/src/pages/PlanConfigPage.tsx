@@ -193,7 +193,7 @@ export function PlanConfigPage({ toast }: Props) {
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Crown size={18} className="text-amber-500" /> Plano Premium
             </h3>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço mensal (R$)</label>
                 <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
@@ -233,7 +233,7 @@ export function PlanConfigPage({ toast }: Props) {
             <h3 className="text-base font-bold text-gray-900 dark:text-white flex items-center gap-2">
               <Crown size={18} className="text-purple-500" /> Plano Master
             </h3>
-            <div className="flex gap-4">
+            <div className="flex flex-col sm:flex-row gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Preço mensal (R$)</label>
                 <input type="number" step="0.01" min="0" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"

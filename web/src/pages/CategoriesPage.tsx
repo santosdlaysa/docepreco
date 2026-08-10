@@ -191,7 +191,7 @@ export function CategoriesPage({ toast }: Props) {
                     maxLength={4} />
                   <span className="text-xs text-gray-400">ou escolha abaixo</span>
                 </div>
-                <div className="grid grid-cols-8 gap-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-48 overflow-y-auto">
+                <div className="grid grid-cols-6 sm:grid-cols-8 gap-1.5 bg-gray-50 dark:bg-gray-900 rounded-lg p-3 max-h-48 overflow-y-auto">
                   {EMOJI_SUGGESTIONS.map(({ emoji, label }) => (
                     <button key={emoji} onClick={() => setForm({ ...form, icon: emoji, name: form.name || label })}
                       className={`w-9 h-9 rounded-lg flex items-center justify-center text-lg transition-all hover:scale-110 ${form.icon === emoji ? 'bg-primary-100 ring-2 ring-primary-400 shadow-sm' : 'hover:bg-white dark:hover:bg-gray-600 hover:shadow-sm'}`}

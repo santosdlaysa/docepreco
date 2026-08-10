@@ -116,7 +116,7 @@ function StatCard({ icon: Icon, label, value, tone }: {
         <Icon size={14} />
         {label}
       </p>
-      <p className="text-2xl font-bold mt-1">{value}</p>
+      <p className="text-xl sm:text-2xl font-bold mt-1">{value}</p>
     </div>
   );
 }

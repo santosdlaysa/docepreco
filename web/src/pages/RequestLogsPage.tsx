@@ -157,7 +157,7 @@ export function RequestLogsPage() {
             <Activity size={14} className="text-gray-400" />
             Total
           </p>
-          <p className="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{logs.length}</p>
+          <p className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-gray-100 mt-1">{logs.length}</p>
           <p className="text-xs text-gray-400">últimas requisições</p>
         </div>
         <div className="rounded-xl border px-4 py-3 bg-red-50 dark:bg-red-900/20 border-red-200">
@@ -165,7 +165,7 @@ export function RequestLogsPage() {
             <AlertOctagon size={14} />
             Erros (4xx/5xx)
           </p>
-          <p className="text-2xl font-bold text-red-700 mt-1">{errorCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-red-700 mt-1">{errorCount}</p>
           <p className="text-xs text-red-400">{logs.length ? Math.round(errorCount / logs.length * 100) : 0}% do total</p>
         </div>
         <div className="rounded-xl border px-4 py-3 bg-blue-50 dark:bg-blue-900/20 border-blue-200">
@@ -173,7 +173,7 @@ export function RequestLogsPage() {
             <Clock size={14} />
             Tempo médio
           </p>
-          <p className="text-2xl font-bold text-blue-700 mt-1">{avgDuration}ms</p>
+          <p className="text-xl sm:text-2xl font-bold text-blue-700 mt-1">{avgDuration}ms</p>
           <p className="text-xs text-blue-400">por requisição</p>
         </div>
         <div className="rounded-xl border px-4 py-3 bg-green-50 dark:bg-green-900/20 border-green-200">
