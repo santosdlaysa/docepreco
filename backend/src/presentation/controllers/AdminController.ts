@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { pool } from '../../infrastructure/database/connection';
+import { MASTER_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
 import { getJwtSecret } from '../../config/secrets';
 import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
@@ -285,7 +286,7 @@ export class AdminController {
             u.phone,
             u.is_premium         AS "isPremium",
             u.plan_tier          AS "planTier",
-            (u.plan_tier IN ('premium', 'master') AND (u.premium_until IS NULL OR u.premium_until > NOW())) AS "hasActivePlan",
+            ${MASTER_PLAN_ACTIVE_SQL} AS "hasActivePlan",
             (SELECT COUNT(*)::int FROM store_products sp WHERE sp.user_id = u.id) AS "productCount",
             (SELECT COUNT(*)::int FROM orders o WHERE o.user_id = u.id AND o.source = 'online') AS "onlineOrderCount",
             (SELECT MAX(o.created_at) FROM orders o WHERE o.user_id = u.id AND o.source = 'online') AS "lastOnlineOrderAt"
