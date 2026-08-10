@@ -5,7 +5,7 @@ import { PostgresPushTokenRepository } from '../../infrastructure/repositories/P
 import { PostgresStoreRepository } from '../../infrastructure/repositories/PostgresStoreRepository';
 import { computeDiscountAmount, DiscountType } from '../../domain/utils/discount';
 import { isStoreOpenNow } from '../../domain/utils/businessHours';
-import { hasTier, PAID_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
+import { hasTier, MASTER_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
 import { PlanTier } from '../../domain/entities/User';
 import { publicListLimiter, publicOrderLimiter } from '../middleware/rateLimiter';
 import { buildStaticPixPayload } from '../../domain/services/pixBrCode';
@@ -45,14 +45,14 @@ async function buildOrderPix(opts: {
   }
 }
 
-/** Dono da loja com plano pago vigente — loja de assinante expirado sai do ar. */
-function ownerHasPaidPlan(row: { owner_plan_tier?: string | null; owner_premium_until?: Date | string | null }): boolean {
+/** Dono da loja com plano Master vigente — loja é exclusiva do Master; quem não é Master (ou expirou) sai do ar. */
+function ownerHasMasterPlan(row: { owner_plan_tier?: string | null; owner_premium_until?: Date | string | null }): boolean {
   return hasTier(
     {
       planTier: (row.owner_plan_tier as PlanTier | null) ?? 'free',
       premiumUntil: row.owner_premium_until ? new Date(row.owner_premium_until).toISOString() : null,
     },
-    'premium'
+    'master'
   );
 }
 
@@ -152,7 +152,7 @@ router.get('/products/featured', publicListLimiter, async (req: Request, res: Re
        JOIN store_settings s ON s.user_id = p.user_id
        JOIN users u ON u.id = p.user_id
        WHERE p.available = TRUE AND s.active = TRUE
-         AND ${PAID_PLAN_ACTIVE_SQL}
+         AND ${MASTER_PLAN_ACTIVE_SQL}
          AND ($1::text = '' OR s.city ILIKE '%' || $1 || '%')
        ORDER BY p.created_at DESC
        LIMIT $2`,
@@ -196,7 +196,7 @@ router.get('/products/search', publicListLimiter, async (req: Request, res: Resp
        JOIN store_settings s ON s.user_id = p.user_id
        JOIN users u ON u.id = p.user_id
        WHERE p.available = TRUE AND s.active = TRUE
-         AND ${PAID_PLAN_ACTIVE_SQL}
+         AND ${MASTER_PLAN_ACTIVE_SQL}
          AND p.name ILIKE '%' || $1 || '%'
        ORDER BY p.name ASC
        LIMIT $2`,
@@ -241,7 +241,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     // Loja despublicada ou de dono com plano expirado some do ar (404); loja
     // publicada mas fechada (toggle manual ou fora do horário) continua visível,
     // com acceptingOrders = false para o PWA mostrar "Loja fechada" e bloquear pedidos.
-    if (settingsResult.rows.length === 0 || !settingsResult.rows[0].active || !ownerHasPaidPlan(settingsResult.rows[0])) {
+    if (settingsResult.rows.length === 0 || !settingsResult.rows[0].active || !ownerHasMasterPlan(settingsResult.rows[0])) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
       return;
     }
@@ -332,7 +332,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
        WHERE st.slug = $1`,
       [slug]
     );
-    if (settingsResult.rows.length === 0 || !settingsResult.rows[0].active || !ownerHasPaidPlan(settingsResult.rows[0])) {
+    if (settingsResult.rows.length === 0 || !settingsResult.rows[0].active || !ownerHasMasterPlan(settingsResult.rows[0])) {
       res.status(404).json({ success: false, error: 'Loja não encontrada ou inativa' });
       return;
     }

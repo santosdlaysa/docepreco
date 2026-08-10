@@ -1,7 +1,7 @@
 import { pool } from '../database/connection';
 import { DiscountType } from '../../domain/utils/discount';
 import { DayHours, isStoreOpenNow } from '../../domain/utils/businessHours';
-import { PAID_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
+import { MASTER_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
 
 export interface StoreSettings {
   id: string;
@@ -306,7 +306,7 @@ export class PostgresStoreRepository {
     // Lojas fechadas (toggle manual ou fora do horário) continuam na lista — o PWA
     // as mostra esmaecidas com selo "Fechada". A ordenação abertas-primeiro é feita
     // em JS dentro da página, pois o horário de funcionamento é avaliado em JS.
-    // Lojas de dono com plano expirado saem do marketplace (PAID_PLAN_ACTIVE_SQL).
+    // Loja é exclusiva do Master: lojas de quem não é Master (ou expirou) saem do marketplace (MASTER_PLAN_ACTIVE_SQL).
     // distance_km via fórmula de Haversine; lojas sem coordenadas ficam por último (NULLS LAST).
     const rows = await pool.query(
       `SELECT * FROM (
@@ -323,7 +323,7 @@ export class PostgresStoreRepository {
          FROM store_settings st
          JOIN users u ON u.id = st.user_id
          WHERE st.active = TRUE
-           AND ${PAID_PLAN_ACTIVE_SQL}
+           AND ${MASTER_PLAN_ACTIVE_SQL}
            AND ($1::text IS NULL OR st.store_name ILIKE '%' || $1 || '%')
            AND ($2::text IS NULL OR st.category = $2)
            AND ($3::text IS NULL OR st.city ILIKE $3)
@@ -341,7 +341,7 @@ export class PostgresStoreRepository {
        FROM store_settings st
        JOIN users u ON u.id = st.user_id
        WHERE st.active = TRUE
-         AND ${PAID_PLAN_ACTIVE_SQL}
+         AND ${MASTER_PLAN_ACTIVE_SQL}
          AND ($1::text IS NULL OR st.store_name ILIKE '%' || $1 || '%')
          AND ($2::text IS NULL OR st.category = $2)
          AND ($3::text IS NULL OR st.city ILIKE $3)
