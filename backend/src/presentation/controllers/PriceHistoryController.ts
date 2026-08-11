@@ -10,7 +10,8 @@ export class PriceHistoryController {
       const { ingredientId } = req.params;
       const entries = await repo.findByIngredient(userId, ingredientId);
       res.json({ success: true, data: entries });
-    } catch {
+    } catch (error) {
+      console.error('Erro ao buscar histórico de preço:', error);
       res.status(500).json({ success: false, message: 'Erro ao buscar histórico' });
     }
   }
@@ -26,7 +27,8 @@ export class PriceHistoryController {
       }
       const entry = await repo.add(userId, ingredientId, { price, purchaseQuantity, unit, recordedAt });
       res.status(201).json({ success: true, data: entry });
-    } catch {
+    } catch (error) {
+      console.error('Erro ao salvar histórico de preço:', error);
       res.status(500).json({ success: false, message: 'Erro ao salvar histórico' });
     }
   }

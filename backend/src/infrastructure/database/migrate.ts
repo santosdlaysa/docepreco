@@ -1314,6 +1314,10 @@ export async function runMigrations() {
     // Aumenta o campo purchase_quantity para acomodar valores grandes se necessário
     await client.query(`ALTER TABLE ingredients ALTER COLUMN purchase_quantity TYPE DECIMAL(15,3)`).catch(() => {});
 
+    // Mesmo alargamento no histórico de preços (evita numeric field overflow ao salvar quantidades grandes)
+    await client.query(`ALTER TABLE ingredient_price_history ALTER COLUMN purchase_quantity TYPE DECIMAL(15,3)`).catch(() => {});
+    await client.query(`ALTER TABLE ingredient_price_history ALTER COLUMN purchase_unit_weight TYPE DECIMAL(15,3)`).catch(() => {});
+
     await client.query('COMMIT');
     console.log('\n✨ Migrations applied successfully');
   } catch (error) {
