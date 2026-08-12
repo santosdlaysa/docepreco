@@ -52,9 +52,30 @@ export const pixApi = {
     planLabel: string,
     amountCents: number,
     planTier: 'premium' | 'master' = 'premium',
+    couponCode?: string,
   ): Promise<PixRequest> => {
-    const response = await apiClient.post('/pix/request', { planLabel, amountCents, planTier });
+    const response = await apiClient.post('/pix/request', {
+      planLabel,
+      amountCents,
+      planTier,
+      ...(couponCode ? { couponCode } : {}),
+    });
     return response.data.data;
+  },
+
+  /**
+   * Valida um cupom e devolve o percentual de desconto (ou null se inválido/
+   * expirado/esgotado). O desconto real é sempre reaplicado no servidor ao gerar
+   * o PIX — aqui é só para o feedback imediato na tela.
+   */
+  validateCoupon: async (code: string): Promise<{ discountPercent: number } | null> => {
+    try {
+      const response = await apiClient.get(`/admin/coupons/validate/${encodeURIComponent(code.trim().toUpperCase())}`);
+      const pct = response.data?.data?.discountPercent;
+      return typeof pct === 'number' ? { discountPercent: pct } : null;
+    } catch {
+      return null;
+    }
   },
 
   getStatus: async (): Promise<PixRequest | null> => {

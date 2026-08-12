@@ -14,6 +14,7 @@ import {
   getMpAuthorizedPayment,
 } from '../../infrastructure/services/mercadoPagoService';
 import { PostgresBannerRepository } from '../../infrastructure/repositories/PostgresBannerRepository';
+import { PostgresCouponRepository } from '../../infrastructure/repositories/PostgresCouponRepository';
 import { getActiveOffer, applyDiscount, attachPixRequest, redeemByPixRequest } from '../../infrastructure/services/winbackService';
 import { getActiveTier } from '../../domain/services/premium';
 import { getPixAmountCents } from './PlanConfigController';
@@ -22,6 +23,31 @@ import { isValidEmail, INVALID_ACCOUNT_EMAIL_ERROR } from '../../domain/services
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
 const bannerRepo = new PostgresBannerRepository();
+const couponRepo = new PostgresCouponRepository();
+
+/**
+ * Valida um cupom no servidor (nunca confia no desconto vindo do app) e devolve
+ * o percentual + id. Regras idênticas ao endpoint público /coupons/validate:
+ * precisa existir, estar ativo, não expirado e não esgotado.
+ */
+async function resolveCoupon(
+  code?: string | null
+): Promise<{ id: string; discountPercent: number; code: string } | null> {
+  if (!code || !code.trim()) return null;
+  const coupon = await couponRepo.findByCode(code.trim().toUpperCase()).catch(() => null);
+  if (!coupon || !coupon.isActive) return null;
+  if (coupon.expiresAt && new Date(coupon.expiresAt).getTime() < Date.now()) return null;
+  if (coupon.maxUses > 0 && coupon.usedCount >= coupon.maxUses) return null;
+  return { id: coupon.id, discountPercent: coupon.discountPercent, code: coupon.code };
+}
+
+/** Credita o uso do cupom (used_count) — chamado só quando o pagamento é aprovado. */
+async function creditCoupon(couponId: string | null | undefined): Promise<void> {
+  if (!couponId) return;
+  await couponRepo.incrementUsage(couponId).catch((err) => {
+    console.error('[PIX] Erro ao creditar uso do cupom:', err);
+  });
+}
 
 export class PixController {
   /**
@@ -36,21 +62,33 @@ export class PixController {
       return;
     }
 
-    const { planLabel, amountCents, planTier } = req.body as {
+    const { planLabel, amountCents, planTier, couponCode } = req.body as {
       planLabel?: string;
       amountCents?: number;
       planTier?: 'premium' | 'master';
+      couponCode?: string;
     };
     const tier: 'premium' | 'master' = planTier === 'master' ? 'master' : 'premium';
 
-    // Oferta win-back ativa → o valor do PIX já sai com o desconto aplicado,
-    // sem depender de mudança no app (o QR do Mercado Pago cobra o valor final).
+    // Desconto aplicado SEMPRE no servidor (o app só informa o código do cupom —
+    // nunca o valor com desconto). O QR do Mercado Pago cobra o valor final.
+    // Precedência: oferta win-back automática > cupom digitado (não empilham).
     const winbackOffer = await getActiveOffer(userId).catch(() => null);
+    const coupon = winbackOffer ? null : await resolveCoupon(couponCode);
     const baseCents = amountCents ?? 0;
-    const finalCents = winbackOffer ? applyDiscount(baseCents, winbackOffer.discountPercent) : baseCents;
-    const finalLabel = winbackOffer
-      ? `${planLabel ?? 'Mensal'} • Volta com ${winbackOffer.discountPercent}% OFF`
-      : (planLabel ?? 'Mensal');
+    let discountPercent = 0;
+    let discountSuffix = '';
+    let couponId: string | null = null;
+    if (winbackOffer) {
+      discountPercent = winbackOffer.discountPercent;
+      discountSuffix = ` • Volta com ${discountPercent}% OFF`;
+    } else if (coupon) {
+      discountPercent = coupon.discountPercent;
+      couponId = coupon.id;
+      discountSuffix = ` • Cupom ${coupon.code} (${discountPercent}% OFF)`;
+    }
+    const finalCents = applyDiscount(baseCents, discountPercent);
+    const finalLabel = `${planLabel ?? 'Mensal'}${discountSuffix}`;
 
     try {
       // Check if user already has a pending request
@@ -60,28 +98,45 @@ export class PixController {
       );
       if (existing.rows.length > 0) {
         const row = existing.rows[0];
-        let mpQrCode: string | null = row.mp_qr_code;
-        let mpQrCodeBase64: string | null = row.mp_qr_code_base64;
+        // Pedido pendente ainda com o valor certo e QR pronto → devolve como está.
+        // Se o valor mudou (ex.: usuário acabou de aplicar um cupom) ou falta o QR,
+        // regenera a cobrança com o valor final para o cupom valer de fato.
+        const needsRegen = !row.mp_qr_code || row.amount_cents !== finalCents;
+        if (!needsRegen) {
+          res.json({
+            success: true,
+            data: {
+              id: row.id,
+              status: row.status,
+              alreadyExists: true,
+              mp_qr_code: row.mp_qr_code,
+              mp_qr_code_base64: row.mp_qr_code_base64,
+            },
+          });
+          return;
+        }
 
-        // Pedido antigo sem QR do MP — gera agora com o valor gravado no pedido
-        if (!mpQrCode) {
-          try {
-            const user = await userRepo.findById(userId);
-            const mp = await createMpPixPayment({
-              amountCents: row.amount_cents ?? finalCents,
-              description: `DocePreço ${row.plan_label ?? finalLabel} - ${tier}`,
-              payerEmail: user?.email ?? 'cliente@docepreco.com',
-              externalReference: row.id,
-            });
-            mpQrCode = mp.qrCode;
-            mpQrCodeBase64 = mp.qrCodeBase64;
-            await pool.query(
-              `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3 WHERE id = $4`,
-              [mp.paymentId, mpQrCode, mpQrCodeBase64, row.id]
-            );
-          } catch (mpErr) {
-            console.error('[PIX] Erro ao gerar QR para pedido existente:', mpErr);
-          }
+        let mpQrCode: string | null = null;
+        let mpQrCodeBase64: string | null = null;
+        try {
+          const user = await userRepo.findById(userId);
+          const mp = await createMpPixPayment({
+            amountCents: finalCents,
+            description: `DocePreço ${finalLabel} - ${tier}`,
+            payerEmail: user?.email ?? 'cliente@docepreco.com',
+            externalReference: row.id,
+          });
+          mpQrCode = mp.qrCode;
+          mpQrCodeBase64 = mp.qrCodeBase64;
+          await pool.query(
+            `UPDATE pix_requests
+             SET plan_label = $1, amount_cents = $2, coupon_id = $3,
+                 mp_payment_id = $4, mp_qr_code = $5, mp_qr_code_base64 = $6
+             WHERE id = $7`,
+            [finalLabel, finalCents, couponId, mp.paymentId, mpQrCode, mpQrCodeBase64, row.id]
+          );
+        } catch (mpErr) {
+          console.error('[PIX] Erro ao regenerar QR para pedido existente:', mpErr);
         }
 
         res.json({
@@ -98,10 +153,10 @@ export class PixController {
       }
 
       const result = await pool.query(
-        `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents, coupon_id)
+         VALUES ($1, $2, $3, $4, $5)
          RETURNING id, status, created_at`,
-        [userId, finalLabel, tier, finalCents]
+        [userId, finalLabel, tier, finalCents, couponId]
       );
 
       const pixRequestId: string = result.rows[0].id;
@@ -758,7 +813,7 @@ export class PixController {
     try {
       // Get the request
       const reqResult = await pool.query(
-        `SELECT user_id, status, plan_tier, amount_cents, product_type, ref_id FROM pix_requests WHERE id = $1`,
+        `SELECT user_id, status, plan_tier, amount_cents, product_type, ref_id, coupon_id FROM pix_requests WHERE id = $1`,
         [id]
       );
       if (reqResult.rows.length === 0) {
@@ -820,6 +875,9 @@ export class PixController {
 
       // Oferta win-back vinculada a este pedido → marca como resgatada
       await redeemByPixRequest(id).catch(() => {});
+
+      // Cupom usado neste pedido → credita o uso agora que o pagamento entrou.
+      await creditCoupon(reqResult.rows[0].coupon_id);
 
       // Record premium event (com o valor efetivamente recebido)
       const pixAmountCents = receivedCents;
@@ -895,7 +953,7 @@ export class PixController {
 
       // Busca a pix_request correspondente
       const reqResult = await pool.query(
-        `SELECT id, user_id, status, plan_tier, amount_cents, product_type, ref_id FROM pix_requests WHERE id = $1`,
+        `SELECT id, user_id, status, plan_tier, amount_cents, product_type, ref_id, coupon_id FROM pix_requests WHERE id = $1`,
         [pixRequestId]
       );
 
@@ -950,6 +1008,9 @@ export class PixController {
 
       // Oferta win-back vinculada a este pedido → marca como resgatada
       await redeemByPixRequest(pixRequestId).catch(() => {});
+
+      // Cupom usado neste pedido → credita o uso na confirmação automática.
+      await creditCoupon(reqResult.rows[0].coupon_id);
 
       const pixAmountCents = reqResult.rows[0].amount_cents ?? null;
       await pool.query(

@@ -10,6 +10,7 @@ import {
   Alert,
   Image,
   ImageSourcePropType,
+  TextInput,
 } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as ClipboardModule from 'expo-clipboard';
@@ -124,6 +125,11 @@ export const PixPaymentScreen: React.FC = () => {
   const [subscription, setSubscription] = useState<PixSubscription | null>(null);
   // Link de autorização aberto no navegador — aguardando o usuário confirmar
   const [subWaiting, setSubWaiting] = useState(false);
+  // Cupom de desconto (só no Pix comum). O desconto real é reaplicado no servidor.
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number } | null>(null);
+  const [couponChecking, setCouponChecking] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   const monthlyPlan = isMaster
     ? (serverMasterMonthly ?? MASTER_MONTHLY)
@@ -187,11 +193,44 @@ export const PixPaymentScreen: React.FC = () => {
     setTimeout(() => setCopied(false), 3000);
   };
 
+  // Preço final considerando o cupom aplicado (o servidor reaplica o desconto).
+  const discountedCents = appliedCoupon
+    ? Math.max(0, Math.round(plan.priceCents * (100 - appliedCoupon.discountPercent) / 100))
+    : plan.priceCents;
+
+  const handleApplyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setCouponChecking(true);
+    setCouponError(null);
+    try {
+      const result = await pixApi.validateCoupon(code);
+      if (result) {
+        setAppliedCoupon({ code, discountPercent: result.discountPercent });
+        setCouponInput(code);
+        showToast(`Cupom aplicado — ${result.discountPercent}% de desconto!`, 'success');
+      } else {
+        setAppliedCoupon(null);
+        setCouponError('Cupom inválido, expirado ou esgotado.');
+      }
+    } catch {
+      setCouponError('Não foi possível validar o cupom. Tente novamente.');
+    } finally {
+      setCouponChecking(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+  };
+
   // Gera o QR de pagamento no Mercado Pago e exibe para o usuário pagar
   const handleGenerateQr = async () => {
     setSending(true);
     try {
-      const result = await pixApi.createRequest(plan.label, plan.priceCents, tier);
+      const result = await pixApi.createRequest(plan.label, plan.priceCents, tier, appliedCoupon?.code);
       if (result.mp_qr_code && result.mp_qr_code_base64) {
         setDynamicQr({ copyPaste: result.mp_qr_code, base64: result.mp_qr_code_base64 });
       }
@@ -530,6 +569,59 @@ export const PixPaymentScreen: React.FC = () => {
               )}
             </View>
 
+            {/* Cupom de desconto — apenas no Pix comum (o QR avulso cobra o valor final) */}
+            {mode === 'once' && (
+              <View style={styles.couponCard}>
+                {appliedCoupon ? (
+                  <>
+                    <View style={styles.couponApplied}>
+                      <Ionicons name="pricetag" size={18} color={colors.success} />
+                      <Text style={styles.couponAppliedText}>
+                        Cupom {appliedCoupon.code} • {appliedCoupon.discountPercent}% OFF
+                      </Text>
+                      <TouchableOpacity onPress={handleRemoveCoupon} hitSlop={8}>
+                        <Ionicons name="close-circle" size={20} color={colors.textMuted} />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.couponPriceRow}>
+                      <Text style={styles.couponOldPrice}>{fmtCents(plan.priceCents)}</Text>
+                      <Text style={[styles.couponNewPrice, { color: accent }]}>{fmtCents(discountedCents)}</Text>
+                    </View>
+                  </>
+                ) : (
+                  <>
+                    <Text style={styles.couponLabel}>Tem um cupom de desconto?</Text>
+                    <View style={styles.couponInputRow}>
+                      <TextInput
+                        value={couponInput}
+                        onChangeText={(v) => { setCouponInput(v); setCouponError(null); }}
+                        placeholder="Digite o código"
+                        placeholderTextColor={colors.textMuted}
+                        autoCapitalize="characters"
+                        autoCorrect={false}
+                        style={styles.couponInput}
+                        onSubmitEditing={handleApplyCoupon}
+                        returnKeyType="done"
+                      />
+                      <TouchableOpacity
+                        style={[styles.couponApplyBtn, { backgroundColor: accent }, (!couponInput.trim() || couponChecking) && styles.couponApplyBtnDisabled]}
+                        onPress={handleApplyCoupon}
+                        disabled={!couponInput.trim() || couponChecking}
+                        activeOpacity={0.85}
+                      >
+                        {couponChecking ? (
+                          <ActivityIndicator color="#fff" size="small" />
+                        ) : (
+                          <Text style={styles.couponApplyText}>Aplicar</Text>
+                        )}
+                      </TouchableOpacity>
+                    </View>
+                    {couponError && <Text style={styles.couponError}>{couponError}</Text>}
+                  </>
+                )}
+              </View>
+            )}
+
             {/* CTA — assina (Pix Automático) ou gera QR avulso no Mercado Pago */}
             <TouchableOpacity
               style={[styles.cta, { backgroundColor: accent, shadowColor: accent }]}
@@ -823,6 +915,44 @@ const styles = StyleSheet.create({
   },
   stepNumberText: { ...typography.bodySmall, color: colors.primary, fontWeight: '800' },
   stepText: { ...typography.body, color: colors.textSecondary, flex: 1 },
+
+  // Coupon
+  couponCard: {
+    backgroundColor: colors.surface,
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  couponLabel: { ...typography.body, color: colors.text, fontWeight: '600', marginBottom: 10 },
+  couponInputRow: { flexDirection: 'row', gap: 10 },
+  couponInput: {
+    flex: 1,
+    height: 44,
+    backgroundColor: colors.background,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.border,
+    paddingHorizontal: 14,
+    ...typography.body,
+    color: colors.text,
+  },
+  couponApplyBtn: {
+    paddingHorizontal: 20,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  couponApplyBtnDisabled: { opacity: 0.5 },
+  couponApplyText: { ...typography.button, color: '#fff', fontSize: 15 },
+  couponError: { ...typography.caption, color: colors.error, marginTop: 8 },
+  couponApplied: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  couponAppliedText: { ...typography.body, color: colors.success, fontWeight: '700', flex: 1 },
+  couponPriceRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  couponOldPrice: { ...typography.body, color: colors.textMuted, textDecorationLine: 'line-through' },
+  couponNewPrice: { ...typography.h3, fontWeight: '800' },
 
   // CTA
   cta: {

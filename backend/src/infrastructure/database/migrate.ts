@@ -576,6 +576,9 @@ export async function runMigrations() {
     // pix_requests genérico: 'subscription' (assinatura) | 'ad_banner' (compra de anúncio).
     await addColumnIfMissing(client, 'pix_requests', 'product_type', "VARCHAR(20) NOT NULL DEFAULT 'subscription'");
     await addColumnIfMissing(client, 'pix_requests', 'ref_id', 'UUID NULL');
+    // Cupom de desconto aplicado nesta solicitação (o valor do QR já sai com o
+    // desconto). Guardado para creditar o uso (used_count) só quando aprovado.
+    await addColumnIfMissing(client, 'pix_requests', 'coupon_id', 'UUID NULL');
 
     // Permite segmentar notificações para Master e ex-assinantes com plano expirado (além de all/premium/free).
     await client.query(`ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_target_check`);
