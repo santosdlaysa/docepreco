@@ -23,6 +23,7 @@ interface PixConfig {
 
 interface PlanConfig {
   freeRecipeLimit: number;
+  freeSaleLimit: number;
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];
@@ -66,6 +67,7 @@ export const DEFAULT_PIX: PixConfig = {
 
 const DEFAULTS: PlanConfig = {
   freeRecipeLimit: 3,
+  freeSaleLimit: 20,
   premiumPrice: 14.90,
   premiumFeatures: ['Receitas ilimitadas', 'Ficha técnica em PDF', 'Relatórios avançados'],
   freeFeatures: ['Até 3 receitas', 'Cálculo de custos', 'Registro de vendas'],
@@ -141,6 +143,7 @@ export class PlanConfigController {
 
       const config: PlanConfig = {
         freeRecipeLimit: settings.plan_free_recipe_limit ? parseInt(settings.plan_free_recipe_limit) : DEFAULTS.freeRecipeLimit,
+        freeSaleLimit: settings.plan_free_sale_limit ? parseInt(settings.plan_free_sale_limit) : DEFAULTS.freeSaleLimit,
         premiumPrice: settings.plan_premium_price ? parseFloat(settings.plan_premium_price) : DEFAULTS.premiumPrice,
         premiumFeatures: settings.plan_premium_features ? JSON.parse(settings.plan_premium_features) : DEFAULTS.premiumFeatures,
         freeFeatures: settings.plan_free_features ? JSON.parse(settings.plan_free_features) : DEFAULTS.freeFeatures,
@@ -170,7 +173,7 @@ export class PlanConfigController {
 
   async update(req: Request, res: Response): Promise<void> {
     try {
-      const { freeRecipeLimit, premiumPrice, premiumFeatures, freeFeatures, premiumFreeDays, masterPrice, masterFeatures, masterFreeDays, newUserTrialTier, pix, adBanner } = req.body as Partial<PlanConfig>;
+      const { freeRecipeLimit, freeSaleLimit, premiumPrice, premiumFeatures, freeFeatures, premiumFreeDays, masterPrice, masterFeatures, masterFreeDays, newUserTrialTier, pix, adBanner } = req.body as Partial<PlanConfig>;
       const adBannerConfig: AdBannerConfig = {
         enabled: typeof adBanner?.enabled === 'boolean' ? adBanner.enabled : DEFAULT_AD_BANNER.enabled,
         periods: Array.isArray(adBanner?.periods) && adBanner.periods.length > 0 ? adBanner.periods : DEFAULT_AD_BANNER.periods,
@@ -183,6 +186,7 @@ export class PlanConfigController {
       };
       const pairs: [string, string][] = [
         ['plan_free_recipe_limit', String(freeRecipeLimit ?? DEFAULTS.freeRecipeLimit)],
+        ['plan_free_sale_limit', String(freeSaleLimit ?? DEFAULTS.freeSaleLimit)],
         ['plan_premium_price', String(premiumPrice ?? DEFAULTS.premiumPrice)],
         ['plan_premium_features', JSON.stringify(premiumFeatures ?? DEFAULTS.premiumFeatures)],
         ['plan_free_features', JSON.stringify(freeFeatures ?? DEFAULTS.freeFeatures)],
@@ -206,6 +210,7 @@ export class PlanConfigController {
       }
       const config: PlanConfig = {
         freeRecipeLimit: freeRecipeLimit ?? DEFAULTS.freeRecipeLimit,
+        freeSaleLimit: freeSaleLimit ?? DEFAULTS.freeSaleLimit,
         premiumPrice: premiumPrice ?? DEFAULTS.premiumPrice,
         premiumFeatures: premiumFeatures ?? DEFAULTS.premiumFeatures,
         freeFeatures: freeFeatures ?? DEFAULTS.freeFeatures,

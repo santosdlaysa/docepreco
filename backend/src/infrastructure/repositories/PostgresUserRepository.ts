@@ -178,6 +178,14 @@ export class PostgresUserRepository {
     return result.rows[0].total;
   }
 
+  async countSales(userId: string): Promise<number> {
+    const result = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM sales WHERE user_id = $1',
+      [userId]
+    );
+    return result.rows[0].total;
+  }
+
   async createPasswordResetCode(userId: string): Promise<string> {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes

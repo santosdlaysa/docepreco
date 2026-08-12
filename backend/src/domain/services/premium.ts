@@ -5,6 +5,7 @@ const TIER_RANK: Record<PlanTier, number> = { free: 0, premium: 1, master: 2 };
 
 export const FREE_LIMITS = {
   recipes: 3,
+  sales: 20,
 } as const;
 
 export type LimitedFeature = keyof typeof FREE_LIMITS;
@@ -26,6 +27,25 @@ export async function getFreeRecipeLimit(): Promise<number> {
     // fall through to default
   }
   return FREE_LIMITS.recipes;
+}
+
+/**
+ * Returns the free sale limit from app_settings (plan_free_sale_limit).
+ * Falls back to the hardcoded FREE_LIMITS.sales if not configured.
+ */
+export async function getFreeSaleLimit(): Promise<number> {
+  try {
+    const result = await pool.query(
+      `SELECT value FROM app_settings WHERE key = 'plan_free_sale_limit'`
+    );
+    if (result.rows.length > 0) {
+      const parsed = parseInt(result.rows[0].value);
+      if (!isNaN(parsed) && parsed > 0) return parsed;
+    }
+  } catch {
+    // fall through to default
+  }
+  return FREE_LIMITS.sales;
 }
 
 /**
@@ -82,4 +102,5 @@ export function canCreateMore(
 
 export const PREMIUM_ERROR_CODES = {
   recipes: 'RECIPE_LIMIT',
+  sales: 'SALE_LIMIT',
 } as const;

@@ -166,6 +166,12 @@ export function PlanConfigPage({ toast }: Props) {
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Máximo de receitas no plano gratuito</p>
             </div>
             <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Limite de vendas</label>
+              <input type="number" min="1" className="w-40 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none"
+                value={config.freeSaleLimit} onChange={e => setConfig({ ...config, freeSaleLimit: parseInt(e.target.value) || 1 })} />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Máximo de vendas registradas no plano gratuito</p>
+            </div>
+            <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">Funcionalidades do plano Free</label>
               <div className="space-y-2">
                 {config.freeFeatures.map((f, i) => (

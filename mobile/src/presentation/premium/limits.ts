@@ -4,6 +4,7 @@
  */
 export const FREE_LIMITS = {
   recipes: 3,
+  sales: 20,
 } as const;
 
 export type LimitedFeature = keyof typeof FREE_LIMITS;
@@ -73,5 +74,9 @@ export const FREE_LIMIT_COPY: Record<LimitedFeature, { title: string; descriptio
   recipes: {
     title: `Até ${FREE_LIMITS.recipes} receitas`,
     description: `O plano gratuito permite até ${FREE_LIMITS.recipes} receitas. Vire Premium para ilimitado.`,
+  },
+  sales: {
+    title: `Até ${FREE_LIMITS.sales} vendas`,
+    description: `O plano gratuito permite registrar até ${FREE_LIMITS.sales} vendas. Vire Premium para registrar vendas ilimitadas.`,
   },
 };

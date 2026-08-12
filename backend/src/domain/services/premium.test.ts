@@ -50,6 +50,34 @@ describe('canCreateMore — receitas', () => {
   });
 });
 
+describe('canCreateMore — vendas', () => {
+  const SALE_LIMIT = 20;
+
+  describe('usuário free', () => {
+    it('pode registrar enquanto abaixo do limite', () => {
+      expect(canCreateMore(freeUser, 'sales', 0, SALE_LIMIT)).toBe(true);
+      expect(canCreateMore(freeUser, 'sales', 19, SALE_LIMIT)).toBe(true);
+    });
+    it('não pode registrar quando atingiu o limite', () => {
+      expect(canCreateMore(freeUser, 'sales', 20, SALE_LIMIT)).toBe(false);
+      expect(canCreateMore(freeUser, 'sales', 50, SALE_LIMIT)).toBe(false);
+    });
+  });
+
+  describe('usuário premium/master ativo', () => {
+    it('registra independente da quantidade', () => {
+      expect(canCreateMore(premiumUser, 'sales', 100, SALE_LIMIT)).toBe(true);
+      expect(canCreateMore(masterUser, 'sales', 100, SALE_LIMIT)).toBe(true);
+    });
+  });
+
+  describe('usuário premium expirado', () => {
+    it('é tratado como free e não pode registrar além do limite', () => {
+      expect(canCreateMore(expiredUser, 'sales', 20, SALE_LIMIT)).toBe(false);
+    });
+  });
+});
+
 describe('isActivePremium', () => {
   it('free → false',          () => expect(isActivePremium(freeUser)).toBe(false));
   it('premium ativo → true',  () => expect(isActivePremium(premiumUser)).toBe(true));

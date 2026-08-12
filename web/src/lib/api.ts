@@ -977,6 +977,7 @@ export interface AdBannerConfig {
 
 export interface PlanConfig {
   freeRecipeLimit: number;
+  freeSaleLimit: number;
   premiumPrice: number;
   premiumFeatures: string[];
   freeFeatures: string[];

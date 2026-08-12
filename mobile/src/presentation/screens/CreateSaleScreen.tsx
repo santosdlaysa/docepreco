@@ -29,6 +29,8 @@ import { Ingredient } from '../../domain/entities/Ingredient';
 import { PaymentMethod } from '../../domain/entities/Sale';
 import { RootStackParamList } from '../navigation/types';
 import { useToast } from '../context/ToastContext';
+import { usePaywall } from '../premium/usePaywall';
+import { FREE_LIMITS } from '../premium/limits';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
 import { computeDiscountAmount, DiscountType } from '../utils/discount';
@@ -71,6 +73,7 @@ export const CreateSaleScreen: React.FC = () => {
   const editing = !!editingSale;
   const { t } = useTranslation();
   const { showToast } = useToast();
+  const { openPaywall } = usePaywall();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const sApi = isDemoMode() ? demoSaleApi : saleApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
@@ -213,7 +216,12 @@ export const CreateSaleScreen: React.FC = () => {
       }
       navigation.goBack();
     } catch (error) {
-      showToast((error as Error).message || 'Erro ao salvar', 'error');
+      const err = error as Error & { code?: string; current?: number };
+      if (err.code === 'SALE_LIMIT') {
+        openPaywall({ kind: 'limit', feature: 'sales', current: err.current ?? FREE_LIMITS.sales });
+        return;
+      }
+      showToast(err.message || 'Erro ao salvar', 'error');
     } finally {
       setLoading(false);
     }
