@@ -1098,6 +1098,13 @@ export async function runMigrations() {
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_additional_costs_recipe ON recipe_additional_costs (recipe_id)`);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_recipe_sub_recipes_recipe ON recipe_sub_recipes (recipe_id)`);
 
+    // Índices em user_id de sales e ingredients: o painel admin de usuários calcula
+    // COUNT/SUM por usuário via subqueries correlacionadas. Sem estes índices, cada
+    // linha da lista dispara um sequential scan na tabela inteira (sales cresce muito),
+    // deixando a listagem lenta no mobile e na web.
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_sales_user ON sales (user_id)`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_ingredients_user ON ingredients (user_id)`);
+
     // Valor pago por evento de assinatura — alimenta o histórico financeiro no admin.
     await addColumnIfMissing(client, 'premium_events', 'amount_cents', 'INTEGER');
     await addColumnIfMissing(client, 'premium_events', 'currency', "VARCHAR(3) NOT NULL DEFAULT 'BRL'");
