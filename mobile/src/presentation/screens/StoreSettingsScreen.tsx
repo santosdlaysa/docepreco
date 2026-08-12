@@ -223,8 +223,11 @@ export const StoreSettingsScreen: React.FC = () => {
       });
       showToast('Configurações salvas!', 'success');
       navigation.goBack();
-    } catch {
-      showToast('Erro ao salvar configurações', 'error');
+    } catch (e) {
+      // Mostra a mensagem real do backend (ex.: "Telefone inválido") em vez do
+      // genérico, para o dono saber o que corrigir. Cai no genérico só se não vier.
+      const msg = e instanceof Error && e.message ? e.message : 'Erro ao salvar configurações';
+      showToast(msg, 'error');
     } finally {
       setSaving(false);
     }

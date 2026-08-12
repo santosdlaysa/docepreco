@@ -109,7 +109,11 @@ export function normalizePixKey(
       return { valid: true, normalized: d };
     }
     case 'phone': {
-      const d = k.replace(/\D/g, '');
+      let d = k.replace(/\D/g, '');
+      // Idempotência: a chave já salva volta com o DDI (+55...). Remove o 55 inicial
+      // quando sobra dígito além do DDD+número, senão a revalidação (10–11 dígitos)
+      // rejeitaria a própria chave que acabou de ser gravada.
+      if (d.length > 11 && d.startsWith('55')) d = d.slice(2);
       if (d.length < 10 || d.length > 11) return { valid: false, error: 'Telefone inválido' };
       return { valid: true, normalized: `+55${d}` };
     }

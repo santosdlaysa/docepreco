@@ -41,7 +41,7 @@ apiClient.interceptors.response.use(
     if (!isDemoMode() && ((status === 401 && !isAdminRoute) || (status === 404 && url?.includes('/auth/me')))) {
       tokenStorage.removeToken().then(() => onForceLogout?.()).catch(() => {});
     }
-    const rawMessage = error.response?.data?.error || error.message || 'Unknown error';
+    const rawMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Unknown error';
     const message = !error.response && (error.code === 'ECONNABORTED' || error.message?.includes('Network Error'))
       ? 'Sem conexão com o servidor. Tente novamente em alguns segundos.'
       : rawMessage;
