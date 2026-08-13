@@ -368,7 +368,7 @@ export const StoreSettingsScreen: React.FC = () => {
               <View style={[st.toggleIcon, { backgroundColor: acceptsDelivery ? colors.pinkBg : colors.gray }]}>
                 <Ionicons name="bicycle-outline" size={20} color={acceptsDelivery ? PINK : INK3} />
               </View>
-              <View>
+              <View style={st.toggleText}>
                 <Text style={st.toggleLabel}>Entrega</Text>
                 <Text style={st.toggleSub}>Você entrega no endereço do cliente</Text>
               </View>
@@ -400,7 +400,7 @@ export const StoreSettingsScreen: React.FC = () => {
               <View style={[st.toggleIcon, { backgroundColor: acceptsPickup ? colors.pinkBg : colors.gray }]}>
                 <Ionicons name="bag-outline" size={20} color={acceptsPickup ? PINK : INK3} />
               </View>
-              <View>
+              <View style={st.toggleText}>
                 <Text style={st.toggleLabel}>Retirada</Text>
                 <Text style={st.toggleSub}>Cliente retira no seu local</Text>
               </View>
@@ -420,7 +420,7 @@ export const StoreSettingsScreen: React.FC = () => {
                   <View style={[st.toggleIcon, { backgroundColor: on ? colors.pinkBg : colors.gray }]}>
                     <Ionicons name={m.icon} size={20} color={on ? PINK : INK3} />
                   </View>
-                  <View>
+                  <View style={st.toggleText}>
                     <Text style={st.toggleLabel}>{m.label}</Text>
                     <Text style={st.toggleSub}>{m.sub}</Text>
                   </View>
@@ -477,7 +477,7 @@ export const StoreSettingsScreen: React.FC = () => {
               <View style={[st.toggleIcon, { backgroundColor: useBusinessHours ? colors.pinkBg : colors.gray }]}>
                 <Ionicons name="time-outline" size={20} color={useBusinessHours ? PINK : INK3} />
               </View>
-              <View>
+              <View style={st.toggleText}>
                 <Text style={st.toggleLabel}>Horário de funcionamento</Text>
                 <Text style={st.toggleSub}>Ativa e desativa a loja sozinha, conforme o horário</Text>
               </View>
@@ -622,7 +622,8 @@ const st = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     marginBottom: 8, ...SHADOW,
   },
-  toggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  toggleLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12, marginRight: 12 },
+  toggleText: { flex: 1 },
   toggleIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   toggleLabel: { fontSize: 14.5, fontWeight: '700', color: INK },
   toggleSub: { fontSize: 12, color: INK2, marginTop: 2 },

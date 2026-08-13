@@ -61,6 +61,7 @@ const FEATS = [
 
 // Recursos exclusivos do Master (somados a tudo do Premium).
 const MASTER_EXTRA = [
+  'Loja online com link para clientes',
   'Gestão financeira completa (DRE)',
   'Controle de estoque com baixa automática',
   'Dicas de vendas e precificação',
@@ -248,8 +249,8 @@ export const PaywallScreen: React.FC = () => {
   const showAnnual = !isMasterTier;
   // Pacotes da loja filtrados pelo nível (e sem o anual quando for Master)
   const tierPackages = (packages ?? []).filter(p => p.tier === tier && (showAnnual || !isAnnualId(p.identifier)));
-  // Lista de benefícios mostrada conforme o nível
-  const feats = isMasterTier ? [...FEATS, ...MASTER_EXTRA] : FEATS;
+  // Lista de benefícios mostrada conforme o nível (extras do Master primeiro)
+  const feats = isMasterTier ? [...MASTER_EXTRA, ...FEATS] : FEATS;
   const accent = isMasterTier ? PURPLE : PINK;
   // PIX disponível para o nível: Premium sempre; Master só após configuração no painel
   const pixAvailable = isMasterTier ? masterPixAvailable : true;
@@ -405,7 +406,7 @@ export const PaywallScreen: React.FC = () => {
           {/* ── Features ── */}
           <View style={st.featCard}>
             {feats.map((f, i) => {
-              const isExtra = isMasterTier && i >= FEATS.length;
+              const isExtra = isMasterTier && i < MASTER_EXTRA.length;
               return (
                 <View key={i} style={[st.feat, i > 0 && { borderTopWidth: 1, borderTopColor: LINE }]}>
                   <View style={[st.featCheck, isExtra && { backgroundColor: colors.purpleBg }]}>
