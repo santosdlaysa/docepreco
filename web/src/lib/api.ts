@@ -693,6 +693,8 @@ export const api = {
   getSupportUnreadCount: () => req<{ unreadCount: number }>('/support/admin/unread'),
   sendSupportTyping: (userId: string) =>
     req<void>(`/support/admin/conversations/${userId}/typing`, { method: 'POST' }),
+  deleteSupportMessage: (messageId: string) =>
+    req<void>(`/support/admin/messages/${messageId}`, { method: 'DELETE' }),
 
   // ── Changelog ──
   listChangelog: () => req<ChangelogEntry[]>('/admin/changelog'),

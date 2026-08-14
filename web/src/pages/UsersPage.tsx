@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent, SupportMessage } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, MessageSquare, ImagePlus, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, MessageSquare, ImagePlus, Send, Trash2, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
 
 const MAX_CHAT_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -916,6 +916,16 @@ function UserChatModal({ userId, userName, userEmail, onClose, toast }: {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Apagar esta mensagem? Ela some para você e para a pessoa.')) return;
+    try {
+      await api.deleteSupportMessage(id);
+      setMessages(prev => prev.filter(m => m.id !== id));
+    } catch {
+      toast.error('Erro ao apagar mensagem');
+    }
+  };
+
   const handlePickImage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -989,7 +999,17 @@ function UserChatModal({ userId, userName, userEmail, onClose, toast }: {
             </div>
           ) : (
             messages.map(msg => (
-              <div key={msg.id} className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}>
+              <div key={msg.id} className={`group flex items-center gap-1.5 ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                {msg.senderType === 'admin' && (
+                  <button
+                    onClick={() => handleDelete(msg.id)}
+                    className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity flex-shrink-0"
+                    title="Apagar mensagem"
+                    aria-label="Apagar mensagem"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <div
                   className={`max-w-[75%] rounded-2xl px-4 py-2.5 ${
                     msg.senderType === 'admin'

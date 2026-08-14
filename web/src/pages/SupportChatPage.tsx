@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { api, SupportConversation, SupportMessage, AdminUser } from '../lib/api';
 import { TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Headset, Send, MessageCircle, Search, PenSquare, X, ImagePlus } from 'lucide-react';
+import { Headset, Send, MessageCircle, Search, PenSquare, X, ImagePlus, Trash2 } from 'lucide-react';
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -190,6 +190,16 @@ export function SupportChatPage({ toast }: Props) {
     }
   };
 
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Apagar esta mensagem? Ela some para você e para a pessoa.')) return;
+    try {
+      await api.deleteSupportMessage(id);
+      setMessages(prev => prev.filter(m => m.id !== id));
+    } catch {
+      toast.error('Erro ao apagar mensagem');
+    }
+  };
+
   const handlePickImage = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
@@ -368,7 +378,17 @@ export function SupportChatPage({ toast }: Props) {
                     <div className="text-center text-gray-400 py-8">Nenhuma mensagem</div>
                   ) : (
                     messages.map(msg => (
-                      <div key={msg.id} className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                      <div key={msg.id} className={`group flex items-center gap-1.5 ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}>
+                        {msg.senderType === 'admin' && (
+                          <button
+                            onClick={() => handleDelete(msg.id)}
+                            className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-500 transition-opacity flex-shrink-0"
+                            title="Apagar mensagem"
+                            aria-label="Apagar mensagem"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
                         <div
                           className={`max-w-[70%] rounded-2xl px-4 py-2.5 ${
                             msg.senderType === 'admin'

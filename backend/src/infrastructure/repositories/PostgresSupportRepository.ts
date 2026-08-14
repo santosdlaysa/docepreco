@@ -37,6 +37,16 @@ export class PostgresSupportRepository {
     return this.mapRow(result.rows[0]);
   }
 
+  // Remove uma mensagem enviada pelo admin. Restrito a sender_type = 'admin'
+  // para o admin só conseguir apagar as próprias mensagens (nunca as da confeiteira).
+  async deleteAdminMessage(id: string): Promise<boolean> {
+    const result = await pool.query(
+      `DELETE FROM support_messages WHERE id = $1 AND sender_type = 'admin'`,
+      [id]
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async markAsRead(userId: string, senderType: 'user' | 'admin'): Promise<void> {
     await pool.query(
       `UPDATE support_messages SET read_at = NOW() WHERE user_id = $1 AND sender_type = $2 AND read_at IS NULL`,

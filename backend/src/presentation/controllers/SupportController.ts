@@ -121,6 +121,20 @@ export class SupportController {
     }
   }
 
+  async adminDeleteMessage(req: Request, res: Response): Promise<void> {
+    try {
+      const { messageId } = req.params;
+      const deleted = await repo.deleteAdminMessage(messageId);
+      if (!deleted) {
+        res.status(404).json({ success: false, error: 'Mensagem não encontrada' });
+        return;
+      }
+      res.json({ success: true });
+    } catch {
+      res.status(500).json({ success: false, error: 'Erro ao apagar mensagem' });
+    }
+  }
+
   async adminSetTyping(req: Request, res: Response): Promise<void> {
     const { userId } = req.params;
     adminTyping.set(userId, Date.now());
