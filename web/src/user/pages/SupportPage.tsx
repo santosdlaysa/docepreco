@@ -1,12 +1,24 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Send, ImagePlus, Headset, X, Loader2 } from 'lucide-react';
-import { userApi, SupportMessage } from '../userApi';
+import { Send, ImagePlus, Headset, X, Loader2, Crown } from 'lucide-react';
+import { userApi, SupportMessage, PlanTier } from '../userApi';
 import { ToastFn } from '../../components';
+import { SubscribeModal } from '../SubscribeModal';
 
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+// A equipe pode enviar [[assinar]] (ou [[assinar:master]]) numa mensagem; isso vira
+// um botão "Assinar agora" que abre a tela de planos aqui mesmo no app.
+const SUBSCRIBE_CTA_RE = /\[\[assinar(?::(master|premium))?\]\]/i;
+
+function parseSubscribeCta(message: string): { text: string; cta: 'premium' | 'master' | null } {
+  const match = message.match(SUBSCRIBE_CTA_RE);
+  if (!match) return { text: message, cta: null };
+  const cta = match[1]?.toLowerCase() === 'master' ? 'master' : 'premium';
+  return { text: message.replace(SUBSCRIBE_CTA_RE, '').trim(), cta };
 }
 
 export function SupportPage({ toast }: { toast: ToastFn }) {
@@ -16,6 +28,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
   const [image, setImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [adminTyping, setAdminTyping] = useState(false);
+  const [subscribeTier, setSubscribeTier] = useState<PlanTier | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
@@ -112,6 +125,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
         ) : (
           messages.map(m => {
             const mine = m.senderType === 'user';
+            const { text, cta } = mine ? { text: m.message, cta: null as 'premium' | 'master' | null } : parseSubscribeCta(m.message);
             return (
               <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
                 <div
@@ -124,7 +138,16 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
                   {m.imageUrl && (
                     <img src={m.imageUrl} alt="" className="rounded-lg mb-1.5 max-h-52 w-auto" />
                   )}
-                  {m.message && <p className="text-sm whitespace-pre-wrap break-words">{m.message}</p>}
+                  {text && <p className="text-sm whitespace-pre-wrap break-words">{text}</p>}
+                  {cta && (
+                    <button
+                      onClick={() => setSubscribeTier(cta)}
+                      className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-primary-600 transition-colors"
+                    >
+                      <Crown size={15} />
+                      Assinar {cta === 'master' ? 'Master' : 'agora'}
+                    </button>
+                  )}
                   <p className={`text-[10px] mt-1 ${mine ? 'text-white/70' : 'text-gray-400'}`}>{formatTime(m.createdAt)}</p>
                 </div>
               </div>
@@ -185,6 +208,10 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
           {sending ? <Loader2 size={18} className="animate-spin-slow" /> : <Send size={18} />}
         </button>
       </div>
+
+      {subscribeTier && (
+        <SubscribeModal initialTier={subscribeTier} onClose={() => setSubscribeTier(null)} toast={toast} />
+      )}
     </div>
   );
 }

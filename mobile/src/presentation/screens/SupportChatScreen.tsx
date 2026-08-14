@@ -19,9 +19,22 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Skeleton } from '../components/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/types';
 import * as ImagePicker from 'expo-image-picker';
 import { supportApi, SupportMessage } from '../../data/api/supportApi';
 import { useTranslation } from 'react-i18next';
+
+// A equipe pode enviar [[assinar]] (ou [[assinar:master]]) numa mensagem; isso vira
+// um botão "Assinar agora" que abre a tela de planos (Paywall) dentro do app.
+const SUBSCRIBE_CTA_RE = /\[\[assinar(?::(master|premium))?\]\]/i;
+
+function parseSubscribeCta(message: string): { text: string; cta: 'premium' | 'master' | null } {
+  const match = message.match(SUBSCRIBE_CTA_RE);
+  if (!match) return { text: message, cta: null };
+  const cta = match[1]?.toLowerCase() === 'master' ? 'master' : 'premium';
+  return { text: message.replace(SUBSCRIBE_CTA_RE, '').trim(), cta };
+}
 
 // ── Design tokens ──
 const INK = colors.text;
@@ -76,7 +89,7 @@ function TypingDots() {
 
 export const SupportChatScreen: React.FC = () => {
   const { t } = useTranslation();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -175,7 +188,24 @@ export const SupportChatScreen: React.FC = () => {
             {item.imageUrl ? (
               <Image source={{ uri: item.imageUrl }} style={s.msgImage} resizeMode="cover" />
             ) : null}
-            {item.message ? <Text style={s.bubbleTextAdmin}>{item.message}</Text> : null}
+            {(() => {
+              const { text, cta } = parseSubscribeCta(item.message);
+              return (
+                <>
+                  {text ? <Text style={s.bubbleTextAdmin}>{text}</Text> : null}
+                  {cta ? (
+                    <TouchableOpacity
+                      onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
+                      activeOpacity={0.85}
+                      style={s.ctaBtn}
+                    >
+                      <Ionicons name="star" size={15} color="#fff" />
+                      <Text style={s.ctaBtnText}>Assinar {cta === 'master' ? 'Master' : 'agora'}</Text>
+                    </TouchableOpacity>
+                  ) : null}
+                </>
+              );
+            })()}
           </View>
         )}
         <Text style={[s.bubbleTime, isUser ? s.timeRight : s.timeLeft]}>
@@ -373,6 +403,18 @@ const s = StyleSheet.create({
   },
   bubbleTextUser: { fontSize: 14, fontWeight: '500', color: '#fff', lineHeight: 20 },
   bubbleTextAdmin: { fontSize: 14, fontWeight: '500', color: INK, lineHeight: 20 },
+  ctaBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 10,
+    backgroundColor: PINK,
+    borderRadius: 14,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  ctaBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   bubbleTime: { fontSize: 10, fontWeight: '600', marginTop: 3 },
   timeRight: { color: INK3, alignSelf: 'flex-end' },
   timeLeft: { color: INK3, alignSelf: 'flex-start' },

@@ -5,6 +5,19 @@ import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSig
 
 const MAX_CHAT_IMAGE_BYTES = 3 * 1024 * 1024;
 
+// Marcador de call-to-action de assinatura. O admin escreve [[assinar]] (ou [[assinar:master]])
+// na mensagem; no chat da pessoa isso vira um botão "Assinar agora" que abre o paywall no app.
+const SUBSCRIBE_CTA_RE = /\[\[assinar(?::(master|premium))?\]\]/i;
+
+function parseSubscribeCta(message: string): { text: string; cta: 'premium' | 'master' | null } {
+  const match = message.match(SUBSCRIBE_CTA_RE);
+  if (!match) return { text: message, cta: null };
+  const cta = match[1]?.toLowerCase() === 'master' ? 'master' : 'premium';
+  return { text: message.replace(SUBSCRIBE_CTA_RE, '').trim(), cta };
+}
+
+const SUBSCRIBE_PRESET = 'Oi! 💖 Que tal desbloquear todos os recursos do DocePreço? É só tocar no botão abaixo para assinar:\n[[assinar]]';
+
 interface Props {
   toast: ToastFn;
   onImpersonate?: (userId: string) => void;
@@ -992,7 +1005,21 @@ function UserChatModal({ userId, userName, userEmail, onClose, toast }: {
                       onClick={() => setExpandedImage(msg.imageUrl)}
                     />
                   )}
-                  {msg.message && <p className="text-sm whitespace-pre-wrap break-words">{msg.message}</p>}
+                  {(() => {
+                    const parsed = msg.senderType === 'admin'
+                      ? parseSubscribeCta(msg.message)
+                      : { text: msg.message, cta: null as 'premium' | 'master' | null };
+                    return (
+                      <>
+                        {parsed.text && <p className="text-sm whitespace-pre-wrap break-words">{parsed.text}</p>}
+                        {parsed.cta && (
+                          <span className="mt-1.5 inline-flex items-center gap-1 rounded-lg bg-white/20 px-2 py-1 text-[11px] font-semibold">
+                            <Crown size={12} /> Botão: Assinar {parsed.cta === 'master' ? 'Master' : 'agora'}
+                          </span>
+                        )}
+                      </>
+                    );
+                  })()}
                   <p className={`text-[10px] mt-1 text-right ${msg.senderType === 'admin' ? 'text-white/70' : 'text-gray-400'}`}>
                     {fmtMsgDate(msg.createdAt)}
                   </p>
@@ -1021,6 +1048,26 @@ function UserChatModal({ userId, userName, userEmail, onClose, toast }: {
 
         {/* Input */}
         <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          {/* Ações rápidas: insere o texto de assinatura (com o marcador [[assinar]]) para você editar antes de enviar. */}
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                setNewMessage(prev =>
+                  SUBSCRIBE_CTA_RE.test(prev)
+                    ? prev
+                    : (prev.trim() ? `${prev.trimEnd()}\n[[assinar]]` : SUBSCRIBE_PRESET)
+                );
+                setTimeout(() => textareaRef.current?.focus(), 0);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 px-3 py-1 text-xs font-semibold text-primary-700 dark:text-primary-300 hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors"
+              title="Insere uma mensagem com botão de assinatura para você editar antes de enviar"
+            >
+              <Crown size={13} />
+              Botão de assinatura
+            </button>
+            <span className="text-[11px] text-gray-400">A tag <code className="text-primary-500">[[assinar]]</code> vira um botão "Assinar agora" no chat da pessoa.</span>
+          </div>
           {selectedImage && (
             <div className="mb-2 flex items-center gap-2 rounded-xl bg-gray-50 dark:bg-gray-700 p-2">
               <img src={selectedImage} alt="Pré-visualização" className="h-16 w-16 rounded-lg object-cover" />
