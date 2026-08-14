@@ -695,6 +695,8 @@ export const api = {
     req<void>(`/support/admin/conversations/${userId}/typing`, { method: 'POST' }),
   deleteSupportMessage: (messageId: string) =>
     req<void>(`/support/admin/messages/${messageId}`, { method: 'DELETE' }),
+  getSupportPushStatus: (userId: string) =>
+    req<{ hasToken: boolean; tokenCount: number }>(`/support/admin/conversations/${userId}/push-status`),
 
   // ── Changelog ──
   listChangelog: () => req<ChangelogEntry[]>('/admin/changelog'),

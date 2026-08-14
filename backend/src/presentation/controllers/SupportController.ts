@@ -121,6 +121,19 @@ export class SupportController {
     }
   }
 
+  // Diz se a pessoa tem algum token de push registrado (app instalado + notificações
+  // permitidas). Serve de diagnóstico: se não houver token, a mensagem do admin não vira
+  // notificação no celular dela.
+  async adminGetPushStatus(req: Request, res: Response): Promise<void> {
+    try {
+      const { userId } = req.params;
+      const tokens = await pushTokenRepo.findByUserId(userId);
+      res.json({ success: true, data: { hasToken: tokens.length > 0, tokenCount: tokens.length } });
+    } catch {
+      res.status(500).json({ success: false, error: 'Erro ao verificar notificações' });
+    }
+  }
+
   async adminDeleteMessage(req: Request, res: Response): Promise<void> {
     try {
       const { messageId } = req.params;

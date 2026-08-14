@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent, SupportMessage } from '../lib/api';
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, MessageSquare, ImagePlus, Send, Trash2, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
+import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, MessageSquare, ImagePlus, Send, Trash2, Bell, BellOff, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
 
 const MAX_CHAT_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -862,6 +862,7 @@ function UserChatModal({ userId, userName, userEmail, onClose, toast }: {
   const [selectedImageName, setSelectedImageName] = useState('');
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [pushStatus, setPushStatus] = useState<{ hasToken: boolean; tokenCount: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -894,6 +895,11 @@ function UserChatModal({ userId, userName, userEmail, onClose, toast }: {
   useEffect(() => {
     setTimeout(() => textareaRef.current?.focus(), 0);
   }, []);
+
+  // Verifica se a pessoa tem app com notificações ativas (senão o push não chega).
+  useEffect(() => {
+    api.getSupportPushStatus(userId).then(setPushStatus).catch(() => setPushStatus(null));
+  }, [userId]);
 
   const fmtMsgDate = (iso: string) =>
     new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -979,6 +985,17 @@ function UserChatModal({ userId, userName, userEmail, onClose, toast }: {
             <div className="min-w-0">
               <p className="font-medium text-sm text-gray-800 dark:text-gray-100 truncate">{userName || 'Usuário'}</p>
               <p className="text-xs text-gray-400 truncate">{userEmail}</p>
+              {pushStatus && (
+                <span
+                  className={`mt-0.5 inline-flex items-center gap-1 text-[11px] font-medium ${pushStatus.hasToken ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}
+                  title={pushStatus.hasToken
+                    ? 'A pessoa tem o app com notificações ativas — recebe push ao enviar.'
+                    : 'A pessoa não tem app com notificações ativas — sua mensagem não vira notificação no celular.'}
+                >
+                  {pushStatus.hasToken ? <Bell size={11} /> : <BellOff size={11} />}
+                  {pushStatus.hasToken ? 'Recebe notificações' : 'Sem notificações no app'}
+                </span>
+              )}
             </div>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0" aria-label="Fechar chat">

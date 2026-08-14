@@ -15,6 +15,7 @@ router.get('/typing', authMiddleware, (req, res) => controller.getAdminTyping(re
 // Admin routes
 router.get('/admin/conversations', adminMiddleware, (req, res) => controller.adminGetConversations(req, res));
 router.get('/admin/conversations/:userId', adminMiddleware, (req, res) => controller.adminGetMessages(req, res));
+router.get('/admin/conversations/:userId/push-status', adminMiddleware, (req, res) => controller.adminGetPushStatus(req, res));
 router.post('/admin/conversations/:userId', adminMiddleware, (req, res) => controller.adminSendMessage(req, res));
 router.post('/admin/conversations/:userId/typing', adminMiddleware, (req, res) => controller.adminSetTyping(req, res));
 router.delete('/admin/messages/:messageId', adminMiddleware, (req, res) => controller.adminDeleteMessage(req, res));
