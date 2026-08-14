@@ -436,6 +436,8 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   const [discountPercent, setDiscountPercent] = useState(50);
   const [validDays, setValidDays] = useState(7);
   const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 5;
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -475,6 +477,14 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   };
 
   const redeemedCount = offers.filter(o => o.status === 'redeemed').length;
+
+  const totalPages = Math.max(1, Math.ceil(offers.length / pageSize));
+  const pagedOffers = offers.slice((page - 1) * pageSize, page * pageSize);
+
+  // Volta para uma página válida se a lista encolher (ex.: após recarregar).
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
 
   return (
     <div className={card}>
@@ -566,7 +576,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
               </tr>
             </thead>
             <tbody>
-              {offers.map(offer => {
+              {pagedOffers.map(offer => {
                 const badge = winbackStatusBadge[offer.status];
                 return (
                   <tr key={offer.id} className="border-b border-gray-50 dark:border-gray-700/30 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
@@ -597,6 +607,29 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
               })}
             </tbody>
           </table>
+          {totalPages > 1 && (
+            <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
+              <span className="text-xs text-gray-400">
+                Página {page} de {totalPages} · {offers.length} ofertas
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
