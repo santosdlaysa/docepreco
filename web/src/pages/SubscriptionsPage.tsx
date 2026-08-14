@@ -141,7 +141,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
   const [filterMonth, setFilterMonth] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired'>('all');
-  const pageSize = 15;
+  const pageSize = 5;
 
   const eventMonth = (dateValue: string) => {
     if (!dateValue) return '';
