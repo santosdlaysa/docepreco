@@ -6,7 +6,9 @@ import {
   Download, Filter, X, RefreshCw, Calendar, CheckCircle,
   Loader2, Eye, ChevronLeft, ChevronRight, Gift, Send, Mail, Bell, MessageCircle,
 } from 'lucide-react';
+import { MessageSquare } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { UserChatModal } from './UserChatModal';
 
 const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -438,6 +440,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 5;
+  const [chatUser, setChatUser] = useState<{ id: string; name: string; email: string } | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -581,9 +584,19 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
                 return (
                   <tr key={offer.id} className="border-b border-gray-50 dark:border-gray-700/30 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
                     <td className="px-5 py-3 max-w-[220px]">
-                      <div className="min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-white truncate">{offer.companyName}</p>
-                        <p className="text-xs text-gray-400 truncate">{offer.email}</p>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <button
+                          onClick={() => setChatUser({ id: offer.userId, name: offer.companyName, email: offer.email })}
+                          className="text-gray-300 hover:text-primary-500 transition-colors flex-shrink-0"
+                          title="Abrir chat com a pessoa"
+                          aria-label={`Abrir chat com ${offer.companyName}`}
+                        >
+                          <MessageSquare size={15} />
+                        </button>
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-white truncate">{offer.companyName}</p>
+                          <p className="text-xs text-gray-400 truncate">{offer.email}</p>
+                        </div>
                       </div>
                     </td>
                     <td className="px-5 py-3 text-center font-semibold text-gray-900 dark:text-white whitespace-nowrap">{offer.discountPercent}%</td>
@@ -661,6 +674,16 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
             </div>
           </div>
         </ModalOverlay>
+      )}
+
+      {chatUser && (
+        <UserChatModal
+          userId={chatUser.id}
+          userName={chatUser.name}
+          userEmail={chatUser.email}
+          onClose={() => setChatUser(null)}
+          onError={(m) => toast(m, 'error')}
+        />
       )}
     </div>
   );

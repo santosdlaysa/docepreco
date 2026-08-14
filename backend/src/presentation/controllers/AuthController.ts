@@ -4,6 +4,7 @@ import { User, LGPD_VERSION } from '../../domain/entities/User';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
 import { PostgresReferralRepository } from '../../infrastructure/repositories/PostgresReferralRepository';
+import { PostgresSupportRepository } from '../../infrastructure/repositories/PostgresSupportRepository';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone, notifyAccountLockout } from '../../infrastructure/services/telegramService';
 import { recordLoginFailure, resetLoginFailures, LOCK_MINUTES } from '../middleware/loginLockout';
@@ -14,6 +15,25 @@ import { getJwtSecret } from '../../config/secrets';
 const userRepo = new PostgresUserRepository();
 const suggestionRepo = new PostgresSuggestionRepository();
 const referralRepo = new PostgresReferralRepository();
+const supportRepo = new PostgresSupportRepository();
+
+// Mensagem de boas-vindas enviada no chat de suporte para todo usuário novo.
+// O marcador [[assinar]] vira o botão "Assinar agora" no chat da confeiteira.
+const WELCOME_MESSAGE = `🍰 Assine o Doce Preço! 💜
+
+Tenha tudo o que precisa para calcular seus custos, precificar seus doces, controlar suas vendas e organizar melhor sua confeitaria. ✨
+
+💜 Plano Premium – R$ 14,90/mês
+Ideal para quem quer organizar o negócio, controlar custos e precificar seus produtos com mais segurança.
+
+🚀 Plano Master – R$ 25,00/mês
+Para quem quer mais recursos e uma gestão completa, incluindo o Catálogo da Loja para divulgar seus produtos e facilitar seus pedidos. 🛍️📲
+
+✨ Escolha o plano que mais combina com sua confeitaria e deixe o Doce Preço facilitar a parte mais difícil da gestão!
+
+👉 Assine agora e comece a cuidar do seu negócio de forma mais simples e profissional. 💜
+
+[[assinar]]`;
 
 const TYPO_MAP: Record<string, string> = {
   'gamil.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmial.com': 'gmail.com',
@@ -73,6 +93,9 @@ export class AuthController {
         return;
       }
       const user = await userRepo.create({ companyName, email, password, phone, platform });
+      // Mensagem de boas-vindas no chat de suporte (best-effort; nunca quebra o cadastro).
+      supportRepo.create({ userId: user.id, senderType: 'admin', message: WELCOME_MESSAGE })
+        .catch(e => console.error('[Support] Falha ao enviar mensagem de boas-vindas:', e));
       // Programa de indicação: registra a indicação como pendente (best-effort,
       // nunca quebra o cadastro). Vira válida quando o indicado cria a 1ª receita.
       if (referralCode) {
