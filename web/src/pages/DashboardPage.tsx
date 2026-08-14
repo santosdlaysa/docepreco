@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, Stats, TopRevenueUser, TopActivityUser, PremiumSubscriber, RecentUser, PixRequestItem, AdminUserDetail } from '../lib/api';
-import { Skeleton, TableSkeleton, ModalOverlay } from '../components';
+import { Skeleton, TableSkeleton, ModalOverlay, PageSizeSelect } from '../components';
 import {
   Users, Crown, CalendarPlus, CalendarDays,
   BookOpen, Egg, ShoppingCart, DollarSign, TrendingUp,
@@ -86,7 +86,6 @@ function Avatar({ name, index }: { name: string; index: number }) {
 }
 
 /* ─── Pagination ─── */
-const PAGE_SIZE = 8;
 
 function Pagination({ page, totalPages, onPrev, onNext }: { page: number; totalPages: number; onPrev: () => void; onNext: () => void }) {
   if (totalPages <= 1) return null;
@@ -404,6 +403,7 @@ function PlanBadge({ planTier }: { planTier?: string | null }) {
 
 function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [platform, setPlatform] = useState<string | null>(null);
 
   // Plataformas presentes entre os assinantes (para as opções do filtro)
@@ -418,17 +418,20 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
     [subscribers, platform],
   );
 
-  // Volta para a primeira página ao trocar o filtro
-  useEffect(() => { setPage(1); }, [platform]);
+  // Volta para a primeira página ao trocar o filtro ou o tamanho da página
+  useEffect(() => { setPage(1); }, [platform, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div className={card}>
       <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">Assinantes Ativos</h3>
-        <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md">{filtered.length}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md">{filtered.length}</span>
+          <PageSizeSelect value={pageSize} onChange={setPageSize} />
+        </div>
       </div>
       {filtered.length === 0 ? (
         <p className="text-center text-gray-400 py-8 text-sm">Nenhum assinante</p>
@@ -474,14 +477,23 @@ function PremiumSubscribersTable({ subscribers }: { subscribers: PremiumSubscrib
 
 function ExpiredSubscribersTable({ subscribers }: { subscribers: PremiumSubscriber[] }) {
   const [page, setPage] = useState(1);
-  const totalPages = Math.max(1, Math.ceil(subscribers.length / PAGE_SIZE));
-  const paged = subscribers.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const [pageSize, setPageSize] = useState(10);
+  const totalPages = Math.max(1, Math.ceil(subscribers.length / pageSize));
+  const paged = subscribers.slice((page - 1) * pageSize, page * pageSize);
+
+  const handlePageSizeChange = (n: number) => {
+    setPageSize(n);
+    setPage(1);
+  };
 
   return (
     <div className={card}>
       <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
         <h3 className="text-sm font-bold text-gray-900 dark:text-white">Assinantes Expirados</h3>
-        <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">{subscribers.length}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">{subscribers.length}</span>
+          <PageSizeSelect value={pageSize} onChange={handlePageSizeChange} />
+        </div>
       </div>
       {subscribers.length === 0 ? (
         <p className="text-center text-gray-400 py-8 text-sm">Nenhuma assinatura expirada</p>

@@ -456,7 +456,7 @@ export const api = {
     }),
 
   listUsers: (params: {
-    search?: string; page?: number; isPremium?: boolean | null; sortBy?: string;
+    search?: string; page?: number; limit?: number; isPremium?: boolean | null; sortBy?: string;
     planTier?: 'free' | 'premium' | 'master';
     signupPlatform?: 'ios' | 'android' | 'web';
     ddd?: string;
@@ -467,6 +467,7 @@ export const api = {
     const q = new URLSearchParams();
     if (params.search) q.set('search', params.search);
     if (params.page) q.set('page', String(params.page));
+    if (params.limit) q.set('limit', String(params.limit));
     if (params.isPremium != null) q.set('isPremium', String(params.isPremium));
     if (params.planTier) q.set('planTier', params.planTier);
     if (params.sortBy) q.set('sortBy', params.sortBy);
@@ -483,10 +484,11 @@ export const api = {
     return req<UsersResponse>(`/admin/users?${q}`);
   },
 
-  listStores: (params: { search?: string; page?: number; active?: boolean | null; hasOnlineOrders?: boolean } = {}) => {
+  listStores: (params: { search?: string; page?: number; limit?: number; active?: boolean | null; hasOnlineOrders?: boolean } = {}) => {
     const q = new URLSearchParams();
     if (params.search) q.set('search', params.search);
     if (params.page) q.set('page', String(params.page));
+    if (params.limit) q.set('limit', String(params.limit));
     q.set('active', params.active == null ? 'all' : String(params.active));
     if (params.hasOnlineOrders) q.set('hasOnlineOrders', 'true');
     return req<StoresResponse>(`/admin/stores?${q}`);

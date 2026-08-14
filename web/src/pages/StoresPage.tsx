@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, AdminStore } from '../lib/api';
-import { TableSkeleton, ToastFn } from '../components';
+import { TableSkeleton, ToastFn, PageSizeSelect } from '../components';
 import { Search, ChevronLeft, ChevronRight, RefreshCw, ExternalLink, MessageCircle, Store, Truck, ShoppingBag, Crown } from 'lucide-react';
 
 interface Props {
@@ -77,6 +77,7 @@ export function StoresPage({ toast }: Props) {
   const [filter, setFilter] = useState<ActiveFilter>('active');
   const [onlyWithOrders, setOnlyWithOrders] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
@@ -89,6 +90,7 @@ export function StoresPage({ toast }: Props) {
       const data = await api.listStores({
         search: debouncedSearch || undefined,
         page,
+        limit: pageSize,
         active: filter === 'all' ? null : filter === 'active',
         hasOnlineOrders: onlyWithOrders || undefined,
       });
@@ -101,11 +103,16 @@ export function StoresPage({ toast }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [debouncedSearch, page, filter, onlyWithOrders, toast]);
+  }, [debouncedSearch, page, pageSize, filter, onlyWithOrders, toast]);
 
   useEffect(() => { load(); }, [load]);
 
-  const totalPages = Math.ceil(total / 20);
+  const totalPages = Math.ceil(total / pageSize);
+
+  const handlePageSizeChange = (n: number) => {
+    setPageSize(n);
+    setPage(1);
+  };
   const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR');
 
   const FILTERS: { id: ActiveFilter; label: string; count: number | null }[] = [
@@ -120,6 +127,7 @@ export function StoresPage({ toast }: Props) {
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Lojas online</h2>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400">{total} {total === 1 ? 'loja' : 'lojas'}</span>
+          <PageSizeSelect value={pageSize} onChange={handlePageSizeChange} />
           <button
             onClick={load}
             disabled={loading}

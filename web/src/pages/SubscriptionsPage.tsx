@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { api, SubscriptionDashboard, SubscriptionEvent, WinbackOffer, WinbackEligibleUser } from '../lib/api';
-import { Skeleton, ModalOverlay, TableSkeleton } from '../components';
+import { Skeleton, ModalOverlay, TableSkeleton, PageSizeSelect } from '../components';
 import {
   TrendingUp, TrendingDown, DollarSign, Users, Crown, Zap,
   Download, Filter, X, RefreshCw, Calendar, CheckCircle,
@@ -143,7 +143,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
   const [filterMonth, setFilterMonth] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired'>('all');
-  const pageSize = 5;
+  const [pageSize, setPageSize] = useState(10);
 
   const eventMonth = (dateValue: string) => {
     if (!dateValue) return '';
@@ -216,7 +216,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterStatus]);
+  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterStatus, pageSize]);
 
   return (
     <div className={`${card}`}>
@@ -225,13 +225,16 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">Eventos Recentes</h3>
           <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">{filtered.length}</span>
         </div>
-        <button
-          onClick={onExport}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
-        >
-          <Download size={14} />
-          Exportar CSV
-        </button>
+        <div className="flex items-center gap-3">
+          <PageSizeSelect value={pageSize} onChange={setPageSize} />
+          <button
+            onClick={onExport}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
+          >
+            <Download size={14} />
+            Exportar CSV
+          </button>
+        </div>
       </div>
 
       {(platforms.length > 0 || months.length > 0) && (
@@ -439,7 +442,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   const [validDays, setValidDays] = useState(7);
   const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
   const [page, setPage] = useState(1);
-  const pageSize = 5;
+  const [pageSize, setPageSize] = useState(10);
   const [chatUser, setChatUser] = useState<{ id: string; name: string; email: string } | null>(null);
 
   const load = useCallback(async () => {
@@ -566,6 +569,10 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
       </p>
 
       {offers.length > 0 && (
+        <>
+        <div className="px-5 py-2.5 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-end">
+          <PageSizeSelect value={pageSize} onChange={(n) => { setPageSize(n); setPage(1); }} />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -644,6 +651,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
             </div>
           )}
         </div>
+        </>
       )}
 
       {confirmOpen && (

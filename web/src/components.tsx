@@ -61,6 +61,34 @@ export function useToast() {
   return { toasts, toast, removeToast };
 }
 
+// Seletor de "linhas por página" reutilizável (10/20/50) para as tabelas do painel.
+export function PageSizeSelect({
+  value,
+  onChange,
+  options = [10, 20, 50],
+  className = '',
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  options?: number[];
+  className?: string;
+}) {
+  return (
+    <label className={`flex items-center gap-1.5 text-xs text-gray-500 dark:text-gray-400 ${className}`}>
+      <span className="whitespace-nowrap">Linhas por página</span>
+      <select
+        value={value}
+        onChange={e => onChange(Number(e.target.value))}
+        className="h-8 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 text-xs font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400 cursor-pointer"
+      >
+        {options.map(o => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 const TOAST_ICON = {
   success: CheckCircle,
   error: AlertCircle,

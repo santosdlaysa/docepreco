@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, AdminUser, AdminUserDetail, PremiumEvent, SupportMessage } from '../lib/api';
-import { Skeleton, TableSkeleton, ModalOverlay, ToastFn } from '../components';
+import { Skeleton, TableSkeleton, ModalOverlay, ToastFn, PageSizeSelect } from '../components';
 import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, MessageSquare, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
 import { UserChatModal } from './UserChatModal';
 
@@ -837,6 +837,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
   const [search, setSearch] = useState('');
   const [planTierFilter, setPlanTierFilter] = useState<'free' | 'premium' | 'master' | null>(null);
   const [signupPlatform, setSignupPlatform] = useState<'ios' | 'android' | 'web' | undefined>();
@@ -899,7 +900,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     setLoading(true);
     try {
       const res = await api.listUsers({
-        search, page, sortBy,
+        search, page, limit: pageSize, sortBy,
         planTier: planTierFilter ?? undefined,
         signupPlatform,
         ddd,
@@ -915,7 +916,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [search, page, planTierFilter, signupPlatform, ddd, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
+  }, [search, page, pageSize, planTierFilter, signupPlatform, ddd, hasPhone, hasInstagram, minRecipes, minIngredients, minSales, minRevenue, lastSeenDays, createdDays, sortBy]);
 
   const updateUserInList = useCallback((updated: AdminUserDetail) => {
     setUsers(prev => prev.map(u => (u.id === updated.id ? {
@@ -936,7 +937,12 @@ export function UsersPage({ toast, onImpersonate }: Props) {
     setPage(1);
   };
 
-  const totalPages = Math.ceil(total / 20);
+  const totalPages = Math.ceil(total / pageSize);
+
+  const handlePageSizeChange = (n: number) => {
+    setPageSize(n);
+    setPage(1);
+  };
 
   const ColHeader = ({ label, sortKey }: { label: string; sortKey: SortKey }) => (
     <th
@@ -968,6 +974,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Usuários</h2>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-400">{total} no total</span>
+          <PageSizeSelect value={pageSize} onChange={handlePageSizeChange} />
           <button
             onClick={load}
             disabled={loading}
