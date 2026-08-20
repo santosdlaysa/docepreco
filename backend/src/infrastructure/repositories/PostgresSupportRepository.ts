@@ -10,6 +10,11 @@ export interface SupportMessage {
   createdAt: string;
 }
 
+// Públicos possíveis para um broadcast no chat — espelham os alvos de push
+// (ver PostgresPushTokenRepository.findByTarget) para o admin poder mandar a
+// mesma mensagem no chat e na notificação para a mesma audiência.
+export type BroadcastTarget = 'all' | 'premium' | 'free' | 'master' | 'expired';
+
 export interface ConversationSummary {
   userId: string;
   userName: string;
@@ -35,6 +40,19 @@ export class PostgresSupportRepository {
       [data.userId, data.senderType, data.message, data.imageUrl ?? null]
     );
     return this.mapRow(result.rows[0]);
+  }
+
+  // Grava a MESMA mensagem do admin na conversa de todos os usuários do público
+  // escolhido, de uma vez (INSERT ... SELECT, sem loop). Retorna quantos usuários
+  // receberam. O filtro por público espelha PostgresPushTokenRepository.findByTarget.
+  async createBroadcast(data: { message: string; imageUrl?: string | null; target: BroadcastTarget }): Promise<number> {
+    const where = broadcastWhereClause(data.target);
+    const result = await pool.query(
+      `INSERT INTO support_messages (user_id, sender_type, message, image_url)
+       SELECT u.id, 'admin', $1, $2 FROM users u ${where}`,
+      [data.message, data.imageUrl ?? null]
+    );
+    return result.rowCount ?? 0;
   }
 
   // Remove uma mensagem enviada pelo admin. Restrito a sender_type = 'admin'
@@ -115,5 +133,23 @@ export class PostgresSupportRepository {
       readAt: row.read_at ? (row.read_at as Date).toISOString() : null,
       createdAt: (row.created_at as Date).toISOString(),
     };
+  }
+}
+
+// Cláusula WHERE (sobre a tabela users aliasada como u) que seleciona o público
+// do broadcast. Mantida em sincronia com PostgresPushTokenRepository.findByTarget.
+function broadcastWhereClause(target: BroadcastTarget): string {
+  switch (target) {
+    case 'expired':
+      return 'WHERE u.premium_until IS NOT NULL AND u.premium_until <= NOW()';
+    case 'master':
+      return "WHERE u.plan_tier = 'master'";
+    case 'premium':
+      return "WHERE u.plan_tier = 'premium' AND (u.premium_until IS NULL OR u.premium_until > NOW())";
+    case 'free':
+      return 'WHERE u.is_premium = FALSE OR (u.is_premium = TRUE AND u.premium_until <= NOW())';
+    case 'all':
+    default:
+      return '';
   }
 }

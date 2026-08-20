@@ -692,6 +692,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ message, imageUrl }),
     }),
+  broadcastSupportMessage: (message: string, target: SupportBroadcastTarget = 'all', imageUrl?: string | null) =>
+    req<{ recipients: number; target: SupportBroadcastTarget }>('/support/admin/broadcast', {
+      method: 'POST',
+      body: JSON.stringify({ message, target, imageUrl }),
+    }),
   getSupportUnreadCount: () => req<{ unreadCount: number }>('/support/admin/unread'),
   sendSupportTyping: (userId: string) =>
     req<void>(`/support/admin/conversations/${userId}/typing`, { method: 'POST' }),
@@ -1070,6 +1075,8 @@ export interface Feedback {
 }
 
 // ── Support Chat ──
+
+export type SupportBroadcastTarget = 'all' | 'premium' | 'free' | 'master' | 'expired';
 
 export interface SupportMessage {
   id: string;

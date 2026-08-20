@@ -1,7 +1,15 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { api, SupportConversation, SupportMessage, AdminUser } from '../lib/api';
+import { api, SupportConversation, SupportMessage, AdminUser, SupportBroadcastTarget } from '../lib/api';
 import { TableSkeleton, ModalOverlay, ToastFn } from '../components';
-import { Headset, Send, MessageCircle, Search, PenSquare, X, ImagePlus, Trash2 } from 'lucide-react';
+import { Headset, Send, MessageCircle, Search, PenSquare, X, ImagePlus, Trash2, Megaphone } from 'lucide-react';
+
+const BROADCAST_TARGETS: { value: SupportBroadcastTarget; label: string; hint: string }[] = [
+  { value: 'all', label: 'Todos os usuários', hint: 'Toda a base' },
+  { value: 'premium', label: 'Premium', hint: 'Assinatura premium vigente' },
+  { value: 'master', label: 'Master', hint: 'Plano master' },
+  { value: 'free', label: 'Gratuitos', hint: 'Sem plano pago ativo' },
+  { value: 'expired', label: 'Expirados', hint: 'Ex-assinantes que venceram' },
+];
 
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
@@ -39,6 +47,11 @@ export function SupportChatPage({ toast }: Props) {
   const [searchTerm, setSearchTerm] = useState('');
   // Nova conversa (iniciar suporte proativamente)
   const [showNewConv, setShowNewConv] = useState(false);
+  // Broadcast (enviar a mesma mensagem para o chat de vários usuários)
+  const [showBroadcast, setShowBroadcast] = useState(false);
+  const [broadcastMessage, setBroadcastMessage] = useState('');
+  const [broadcastTarget, setBroadcastTarget] = useState<SupportBroadcastTarget>('all');
+  const [broadcasting, setBroadcasting] = useState(false);
   const [userSearch, setUserSearch] = useState('');
   const [userResults, setUserResults] = useState<AdminUser[]>([]);
   const [searchingUsers, setSearchingUsers] = useState(false);
@@ -190,6 +203,27 @@ export function SupportChatPage({ toast }: Props) {
     }
   };
 
+  const handleBroadcast = async () => {
+    const text = broadcastMessage.trim();
+    if (!text || broadcasting) return;
+    const targetLabel = BROADCAST_TARGETS.find(t => t.value === broadcastTarget)?.label ?? 'os usuários';
+    if (!window.confirm(`Enviar esta mensagem para o chat de "${targetLabel}"? Ela aparece no suporte de cada pessoa e dispara uma notificação.`)) return;
+    setBroadcasting(true);
+    try {
+      const res = await api.broadcastSupportMessage(text, broadcastTarget);
+      toast.success(`Mensagem enviada para ${res.recipients} usuário${res.recipients !== 1 ? 's' : ''}`);
+      setShowBroadcast(false);
+      setBroadcastMessage('');
+      setBroadcastTarget('all');
+      // Recarrega a lista para refletir as conversas atualizadas
+      loadConversations();
+    } catch {
+      toast.error('Erro ao enviar mensagem em massa');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     if (!window.confirm('Apagar esta mensagem? Ela some para você e para a pessoa.')) return;
     try {
@@ -264,6 +298,13 @@ export function SupportChatPage({ toast }: Props) {
             {totalUnread > 0 && <span className="ml-2 text-red-500 font-medium">{totalUnread} não lida{totalUnread !== 1 ? 's' : ''}</span>}
           </p>
         </div>
+        <button
+          onClick={() => setShowBroadcast(true)}
+          className="flex items-center gap-2 border border-primary-300 text-primary-600 dark:text-primary-400 text-sm font-medium rounded-xl px-4 py-2 hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors"
+        >
+          <Megaphone size={16} />
+          Enviar para todos
+        </button>
         <button
           onClick={() => setShowNewConv(true)}
           className="flex items-center gap-2 bg-primary-500 text-white text-sm font-medium rounded-xl px-4 py-2 hover:bg-primary-600 transition-colors"
@@ -561,6 +602,77 @@ export function SupportChatPage({ toast }: Props) {
                   );
                 })
               )}
+            </div>
+          </div>
+        </ModalOverlay>
+      )}
+
+      {/* Modal: enviar mensagem para todos (broadcast no chat) */}
+      {showBroadcast && (
+        <ModalOverlay onClose={() => !broadcasting && setShowBroadcast(false)}>
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl overflow-hidden w-[32rem] max-w-full">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 dark:border-gray-700">
+              <div className="flex items-center gap-2">
+                <Megaphone size={18} className="text-primary-500" />
+                <h2 className="font-bold text-gray-800 dark:text-gray-100">Enviar para todos</h2>
+              </div>
+              <button onClick={() => !broadcasting && setShowBroadcast(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                A mensagem aparece no chat de suporte de cada pessoa e dispara uma notificação no celular.
+              </p>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Público</label>
+                <select
+                  value={broadcastTarget}
+                  onChange={e => setBroadcastTarget(e.target.value as SupportBroadcastTarget)}
+                  disabled={broadcasting}
+                  className="w-full px-3 py-2.5 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:border-primary-400"
+                >
+                  {BROADCAST_TARGETS.map(t => (
+                    <option key={t.value} value={t.value}>{t.label} — {t.hint}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1.5">Mensagem</label>
+                <textarea
+                  autoFocus
+                  value={broadcastMessage}
+                  onChange={e => setBroadcastMessage(e.target.value)}
+                  disabled={broadcasting}
+                  placeholder="Escreva o aviso que todos vão receber..."
+                  rows={4}
+                  className="w-full resize-none border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-primary-400"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  onClick={() => setShowBroadcast(false)}
+                  disabled={broadcasting}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-300 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleBroadcast}
+                  disabled={!broadcastMessage.trim() || broadcasting}
+                  className="flex items-center gap-2 bg-primary-500 text-white text-sm font-medium rounded-xl px-4 py-2 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {broadcasting ? (
+                    <><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" /> Enviando...</>
+                  ) : (
+                    <><Megaphone size={16} /> Enviar</>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </ModalOverlay>

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/authMiddleware';
-import { PostgresSupportRepository } from '../../infrastructure/repositories/PostgresSupportRepository';
+import { PostgresSupportRepository, BroadcastTarget } from '../../infrastructure/repositories/PostgresSupportRepository';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { pool } from '../../infrastructure/database/connection';
 import { notifySupportMessage } from '../../infrastructure/services/telegramService';
@@ -118,6 +118,42 @@ export class SupportController {
       }
       const detail = process.env.NODE_ENV !== 'production' && error instanceof Error ? error.message : 'Erro ao enviar mensagem';
       res.status(500).json({ success: false, error: detail });
+    }
+  }
+
+  // Envia a mesma mensagem para o chat de TODOS os usuários do público escolhido
+  // (default: all). Grava no chat de cada um e dispara push avisando (best-effort).
+  async adminBroadcast(req: Request, res: Response): Promise<void> {
+    try {
+      const { message, imageUrl } = req.body;
+      const target: BroadcastTarget = ['all', 'premium', 'free', 'master', 'expired'].includes(req.body?.target)
+        ? req.body.target
+        : 'all';
+      const trimmed = (message ?? '').trim();
+      if (!trimmed && !imageUrl) {
+        res.status(400).json({ success: false, error: 'message ou imageUrl é obrigatório' });
+        return;
+      }
+
+      const recipients = await repo.createBroadcast({ message: trimmed, imageUrl: imageUrl ?? null, target });
+
+      // Push para o mesmo público (fire-and-forget) — assim as pessoas percebem a
+      // mensagem sem precisar abrir o suporte por acaso.
+      pushTokenRepo.findByTarget(target)
+        .then(tokens => {
+          if (tokens.length > 0) {
+            const tokenStrings = tokens.map(t => t.token);
+            const preview = trimmed || '📷 Imagem';
+            sendPushNotifications(tokenStrings, 'Suporte DocePreço', preview, { screen: 'SupportChat' });
+          }
+        })
+        .catch(() => {});
+
+      res.status(201).json({ success: true, data: { recipients, target } });
+    } catch (error: any) {
+      console.error('[Support] adminBroadcast error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro ao enviar mensagem em massa' });
     }
   }
 
