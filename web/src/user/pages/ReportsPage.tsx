@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import {
-  ChefHat, Package, TrendingUp, TrendingDown, CalendarDays,
+  ChefHat, Package, TrendingUp, TrendingDown, CalendarDays, Star,
   Trophy, Receipt, ShoppingBag, Filter, Download,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -45,6 +45,23 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
   const [creating, setCreating] = useState(false);
   const [filterRecipe, setFilterRecipe] = useState<string>('all');
   const [filterPeriod, setFilterPeriod] = useState<PeriodId>('month');
+  const [satisfactionRating, setSatisfactionRating] = useState<number | null>(null);
+  const [satisfactionSent, setSatisfactionSent] = useState(false);
+  const [sendingSatisfaction, setSendingSatisfaction] = useState(false);
+
+  const sendSatisfaction = async () => {
+    if (!satisfactionRating || sendingSatisfaction) return;
+    setSendingSatisfaction(true);
+    try {
+      await userApi.sendFeedback('Pesquisa de satisfação da home', satisfactionRating);
+      setSatisfactionSent(true);
+      toast.success('Obrigado por avaliar sua experiência!');
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSendingSatisfaction(false);
+    }
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -474,6 +491,52 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                     <span className="font-semibold text-green-600 dark:text-green-400">{formatBRL(s.totalRevenue)}</span>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+
+          {/* ── Pesquisa de satisfação ── */}
+          <div className="bg-gradient-to-br from-primary-50 to-white dark:from-primary-900/30 dark:to-gray-800 rounded-xl border border-primary-100 dark:border-primary-800 p-4">
+            {satisfactionSent ? (
+              <div className="flex items-center gap-3 py-1">
+                <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-300">✓</div>
+                <div>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">Obrigado pela sua avaliação!</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Sua resposta foi registrada e ajuda a melhorar o DocePreço.</p>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">Como está sua experiência com o DocePreço?</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Escolha uma opção para avaliar sua experiência.</p>
+                <div className="flex flex-wrap gap-2 mt-3">
+                  {[
+                    { rating: 1, label: 'Muito ruim' },
+                    { rating: 2, label: 'Ruim' },
+                    { rating: 3, label: 'Regular' },
+                    { rating: 4, label: 'Boa' },
+                    { rating: 5, label: 'Excelente' },
+                  ].map(option => (
+                    <button
+                      key={option.rating}
+                      type="button"
+                      disabled={sendingSatisfaction}
+                      onClick={() => setSatisfactionRating(option.rating)}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors ${satisfactionRating === option.rating ? 'border-primary-500 bg-primary-500 text-white' : 'border-primary-100 bg-white text-gray-600 hover:border-primary-300 dark:border-primary-800 dark:bg-gray-800 dark:text-gray-300'}`}
+                    >
+                      <Star size={13} className={satisfactionRating === option.rating ? 'fill-white' : 'text-amber-400 fill-amber-400'} />
+                      {option.label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    disabled={!satisfactionRating || sendingSatisfaction}
+                    onClick={sendSatisfaction}
+                    className="rounded-lg bg-primary-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-700"
+                  >
+                    {sendingSatisfaction ? 'Enviando...' : 'Enviar avaliação'}
+                  </button>
+                </div>
               </div>
             )}
           </div>

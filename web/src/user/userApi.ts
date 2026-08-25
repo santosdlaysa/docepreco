@@ -674,6 +674,10 @@ export const userApi = {
   getSupportUnread: () => req<{ unreadCount: number }>('/support/unread'),
   getSupportTyping: () => req<{ typing: boolean }>('/support/typing'),
 
+  // Pesquisa de satisfação exibida no painel inicial
+  sendFeedback: (message: string, rating: number) =>
+    req<unknown>('/admin/feedbacks', { method: 'POST', body: JSON.stringify({ message, rating }) }),
+
   // Vendas
   listSales: (period?: 'week' | 'month') =>
     req<Sale[]>(`/sales${period ? `?period=${period}` : ''}`),

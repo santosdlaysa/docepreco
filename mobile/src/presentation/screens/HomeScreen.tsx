@@ -45,6 +45,7 @@ import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 import { planConfigApi } from '../../data/api/planConfigApi';
 import { orderApi } from '../../data/api/orderApi';
 import { notificationReadStorage } from '../../data/storage/notificationReadStorage';
+import { feedbackApi } from '../../data/api/feedbackApi';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -93,7 +94,28 @@ export const HomeScreen: React.FC = () => {
   const [showCityModal, setShowCityModal] = useState(false);
   const [showExpiringModal, setShowExpiringModal] = useState(false);
   const [openingWeb, setOpeningWeb] = useState(false);
+  const [satisfactionRating, setSatisfactionRating] = useState<number | null>(null);
+  const [satisfactionSent, setSatisfactionSent] = useState(false);
+  const [sendingSatisfaction, setSendingSatisfaction] = useState(false);
   const planBannerRef = useRef<ScrollView>(null);
+
+  const sendSatisfaction = async () => {
+    if (!satisfactionRating || sendingSatisfaction) return;
+    if (isDemoMode()) {
+      Alert.alert('Modo demonstração', 'A avaliação só pode ser registrada em uma conta conectada.');
+      return;
+    }
+    setSendingSatisfaction(true);
+    try {
+      await feedbackApi.sendSatisfaction(satisfactionRating);
+      setSatisfactionSent(true);
+      Alert.alert('Obrigado!', 'Sua avaliação foi registrada e ajuda a melhorar o DocePreço.');
+    } catch (error) {
+      Alert.alert('Não foi possível enviar', error instanceof Error ? error.message : 'Tente novamente em alguns instantes.');
+    } finally {
+      setSendingSatisfaction(false);
+    }
+  };
 
   // Abre a versão web (docepreco.site/app) já logada, reaproveitando o login do
   // app: pede um código de transferência de curta duração ao backend e o passa
@@ -615,6 +637,57 @@ export const HomeScreen: React.FC = () => {
           </View>
         </View>
 
+        {/* ═══════ SATISFACTION SURVEY ═══════ */}
+        <View style={s.satisfactionCard}>
+          {satisfactionSent ? (
+            <View style={s.satisfactionThanks}>
+              <View style={s.satisfactionThanksIcon}>
+                <Ionicons name="checkmark" size={20} color={GREEN} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.satisfactionTitle}>Obrigado pela sua avaliação!</Text>
+                <Text style={s.satisfactionSub}>Sua resposta foi registrada.</Text>
+              </View>
+            </View>
+          ) : (
+            <>
+              <Text style={s.satisfactionTitle}>Como está sua experiência com o DocePreço?</Text>
+              <Text style={s.satisfactionSub}>Escolha uma opção para avaliar sua experiência.</Text>
+              <View style={s.satisfactionOptions}>
+                {[
+                  { rating: 1, label: 'Muito ruim' },
+                  { rating: 2, label: 'Ruim' },
+                  { rating: 3, label: 'Regular' },
+                  { rating: 4, label: 'Boa' },
+                  { rating: 5, label: 'Excelente' },
+                ].map(option => {
+                  const selected = satisfactionRating === option.rating;
+                  return (
+                    <TouchableOpacity
+                      key={option.rating}
+                      style={[s.satisfactionOption, selected && s.satisfactionOptionSelected]}
+                      onPress={() => setSatisfactionRating(option.rating)}
+                      disabled={sendingSatisfaction}
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons name="star" size={13} color={selected ? '#fff' : colors.amberDark} />
+                      <Text style={[s.satisfactionOptionText, selected && s.satisfactionOptionTextSelected]}>{option.label}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              <TouchableOpacity
+                style={[s.satisfactionButton, (!satisfactionRating || sendingSatisfaction) && s.satisfactionButtonDisabled]}
+                onPress={sendSatisfaction}
+                disabled={!satisfactionRating || sendingSatisfaction}
+                activeOpacity={0.8}
+              >
+                {sendingSatisfaction ? <ActivityIndicator size="small" color="#fff" /> : <Text style={s.satisfactionButtonText}>Enviar avaliação</Text>}
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
+
         {/* ═══════ BEGINNER GUIDE ═══════ */}
         {showGuide && (
           <TouchableOpacity
@@ -1089,6 +1162,39 @@ const s = StyleSheet.create({
     lineHeight: 15,
     flexShrink: 1,
   },
+
+  /* ── Satisfaction survey ── */
+  satisfactionCard: {
+    marginHorizontal: 18,
+    marginBottom: 20,
+    padding: 16,
+    borderRadius: 20,
+    backgroundColor: colors.pinkBg3,
+    borderWidth: 1,
+    borderColor: '#FFD6E9',
+  },
+  satisfactionTitle: { fontSize: 14, fontWeight: '800', color: INK, lineHeight: 19 },
+  satisfactionSub: { fontSize: 11.5, color: INK2, fontWeight: '500', marginTop: 3 },
+  satisfactionOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 12 },
+  satisfactionOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 9,
+    paddingVertical: 8,
+    borderRadius: 9,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#FFD6E9',
+  },
+  satisfactionOptionSelected: { backgroundColor: PINK, borderColor: PINK },
+  satisfactionOptionText: { fontSize: 10.5, fontWeight: '700', color: INK2 },
+  satisfactionOptionTextSelected: { color: '#fff' },
+  satisfactionButton: { alignSelf: 'flex-start', marginTop: 11, paddingHorizontal: 13, paddingVertical: 9, borderRadius: 9, backgroundColor: PINK },
+  satisfactionButtonDisabled: { backgroundColor: '#D9C9D1' },
+  satisfactionButtonText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  satisfactionThanks: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  satisfactionThanksIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.greenBg },
 
   /* ── Section header ── */
   secHeader: {

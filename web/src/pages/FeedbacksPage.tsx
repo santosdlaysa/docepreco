@@ -133,6 +133,7 @@ export function FeedbacksPage({ toast }: Props) {
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {filtered.map(f => {
               const statusCfg = STATUS_CONFIG[f.status];
+              const isSatisfaction = f.message === 'Pesquisa de satisfação da home';
               return (
                 <div key={f.id} className={`px-5 py-4 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors ${f.status === 'pending' ? 'bg-yellow-50/30' : ''}`}>
                   <div className="flex items-start gap-3">
@@ -141,9 +142,12 @@ export function FeedbacksPage({ toast }: Props) {
                         <span className="text-sm font-medium text-gray-900 dark:text-white">{f.userName}</span>
                         <span className="text-xs text-gray-400">{f.userEmail}</span>
                         <Stars rating={f.rating} />
+                        {isSatisfaction && (
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">Pesquisa da home</span>
+                        )}
                         <span className={`text-xs font-semibold px-2 py-0.5 rounded ${statusCfg.color}`}>{statusCfg.label}</span>
                       </div>
-                      <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">{f.message}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-200 mt-1">{isSatisfaction ? 'Avaliação da experiência na home' : f.message}</p>
                       {f.reply && (
                         <div className="mt-2 pl-3 border-l-2 border-primary-200">
                           <p className="text-xs text-primary-600 font-medium">Sua resposta:</p>
