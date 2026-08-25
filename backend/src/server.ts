@@ -209,6 +209,10 @@ app.use('/api', stockRoutes);
 // mobile sem secret de admin). Se ficasse depois, o adminMiddleware de adminRoutes
 // interceptaria a rota e devolveria 401, fazendo o app cair nos valores embutidos.
 app.use('/api/admin/settings/plans', planConfigRoutes);
+// Feedbacks e sugestões têm POST autenticado por JWT de usuário. Precisam vir
+// antes do adminRoutes, cujo middleware global bloquearia esses POSTs com 401.
+app.use('/api/admin/feedbacks', feedbackRoutes);
+app.use('/api/admin/suggestions', suggestionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/whatsapp', whatsappRoutes);
 app.use('/api', evolutionWebhookRoutes);
@@ -227,8 +231,6 @@ app.use('/api/admin/feature-flags', featureFlagRoutes);
 app.use('/api/admin/faq', faqRoutes);
 app.use('/api/admin/coupons', couponRoutes);
 app.use('/api/admin/categories', categoryRoutes);
-app.use('/api/admin/feedbacks', feedbackRoutes);
-app.use('/api/admin/suggestions', suggestionRoutes);
 app.use('/api/admin/changelog', changelogRoutes);
 app.use('/api/admin/onboarding', onboardingRoutes);
 app.use('/api/admin/telegram-alerts', telegramAlertRoutes);
