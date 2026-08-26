@@ -35,7 +35,7 @@
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.orgenyx",
-      "versionCode": 88,
+      "versionCode": 89,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
