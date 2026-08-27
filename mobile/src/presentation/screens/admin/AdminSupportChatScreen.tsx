@@ -2,7 +2,7 @@ import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Image,
+  StyleSheet, ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Image, Modal,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,7 +13,7 @@ import { AdminStackParamList } from './types';
 
 type Route = RouteProp<AdminStackParamList, 'AdminSupportChat'>;
 
-function Bubble({ msg }: { msg: AdminMessage }) {
+function Bubble({ msg, onImagePress }: { msg: AdminMessage; onImagePress: (url: string) => void }) {
   const isAdmin = msg.senderType === 'admin';
   const time = new Date(msg.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   return (
@@ -21,7 +21,9 @@ function Bubble({ msg }: { msg: AdminMessage }) {
       <View style={[styles.bubble, isAdmin ? styles.bubbleAdmin : styles.bubbleUser]}>
         {isAdmin && <Text style={styles.adminTag}>Admin</Text>}
         {msg.imageUrl ? (
-          <Image source={{ uri: msg.imageUrl }} style={styles.msgImage} resizeMode="cover" />
+          <TouchableOpacity onPress={() => onImagePress(msg.imageUrl!)} activeOpacity={0.85}>
+            <Image source={{ uri: msg.imageUrl }} style={styles.msgImage} resizeMode="cover" />
+          </TouchableOpacity>
         ) : null}
         {msg.message ? <Text style={[styles.bubbleText, isAdmin && { color: '#fff' }]}>{msg.message}</Text> : null}
         <Text style={[styles.bubbleTime, isAdmin && { color: 'rgba(255,255,255,0.65)' }]}>{time}</Text>
@@ -39,6 +41,7 @@ export const AdminSupportChatScreen: React.FC = () => {
   const [text, setText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
 
   const load = useCallback(async () => {
@@ -125,7 +128,7 @@ export const AdminSupportChatScreen: React.FC = () => {
             keyExtractor={m => m.id}
             contentContainerStyle={{ paddingVertical: 12 }}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-            renderItem={({ item }) => <Bubble msg={item} />}
+            renderItem={({ item }) => <Bubble msg={item} onImagePress={setExpandedImage} />}
             ListEmptyComponent={
               <View style={{ padding: 48, alignItems: 'center' }}>
                 <Ionicons name="chatbubble-outline" size={36} color={colors.textMuted} />
@@ -134,6 +137,15 @@ export const AdminSupportChatScreen: React.FC = () => {
             }
           />
         )}
+
+        <Modal visible={!!expandedImage} transparent animationType="fade" onRequestClose={() => setExpandedImage(null)}>
+          <TouchableOpacity style={styles.imageModal} activeOpacity={1} onPress={() => setExpandedImage(null)}>
+            <TouchableOpacity style={styles.imageModalClose} onPress={() => setExpandedImage(null)} activeOpacity={0.8}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            {expandedImage ? <Image source={{ uri: expandedImage }} style={styles.expandedImage} resizeMode="contain" /> : null}
+          </TouchableOpacity>
+        </Modal>
 
         {/* Image preview */}
         {selectedImage ? (
@@ -191,4 +203,7 @@ const styles = StyleSheet.create({
   input: { flex: 1, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, fontSize: 14, color: colors.text, maxHeight: 120 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   msgImage: { width: 180, height: 180, borderRadius: 10, marginBottom: 4 },
+  imageModal: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  expandedImage: { width: '100%', height: '80%' },
+  imageModalClose: { position: 'absolute', top: 48, right: 20, zIndex: 1, padding: 8 },
 });

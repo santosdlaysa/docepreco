@@ -13,6 +13,7 @@ import {
   Animated,
   Image,
   Alert,
+  Modal,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -96,6 +97,7 @@ export const SupportChatScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [adminTyping, setAdminTyping] = useState(false);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const checkAdminTyping = useCallback(async () => {
@@ -179,14 +181,18 @@ export const SupportChatScreen: React.FC = () => {
             style={[s.bubble, s.bubbleUser]}
           >
             {item.imageUrl ? (
-              <Image source={{ uri: item.imageUrl }} style={s.msgImage} resizeMode="cover" />
+              <TouchableOpacity onPress={() => setExpandedImage(item.imageUrl!)} activeOpacity={0.85}>
+                <Image source={{ uri: item.imageUrl }} style={s.msgImage} resizeMode="cover" />
+              </TouchableOpacity>
             ) : null}
             {item.message ? <Text style={s.bubbleTextUser}>{item.message}</Text> : null}
           </LinearGradient>
         ) : (
           <View style={[s.bubble, s.bubbleAdmin]}>
             {item.imageUrl ? (
-              <Image source={{ uri: item.imageUrl }} style={s.msgImage} resizeMode="cover" />
+              <TouchableOpacity onPress={() => setExpandedImage(item.imageUrl!)} activeOpacity={0.85}>
+                <Image source={{ uri: item.imageUrl }} style={s.msgImage} resizeMode="cover" />
+              </TouchableOpacity>
             ) : null}
             {(() => {
               const { text, cta } = parseSubscribeCta(item.message);
@@ -279,6 +285,15 @@ export const SupportChatScreen: React.FC = () => {
         )}
 
         {adminTyping && !sending && <TypingDots />}
+
+        <Modal visible={!!expandedImage} transparent animationType="fade" onRequestClose={() => setExpandedImage(null)}>
+          <TouchableOpacity style={s.imageModal} activeOpacity={1} onPress={() => setExpandedImage(null)}>
+            <TouchableOpacity style={s.imageModalClose} onPress={() => setExpandedImage(null)} activeOpacity={0.8}>
+              <Ionicons name="close" size={24} color="#fff" />
+            </TouchableOpacity>
+            {expandedImage ? <Image source={{ uri: expandedImage }} style={s.expandedImage} resizeMode="contain" /> : null}
+          </TouchableOpacity>
+        </Modal>
 
         {/* ── Image preview ── */}
         {selectedImage ? (
@@ -498,6 +513,9 @@ const s = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 4,
   },
+  imageModal: { flex: 1, backgroundColor: 'rgba(0,0,0,0.9)', alignItems: 'center', justifyContent: 'center', padding: 16 },
+  expandedImage: { width: '100%', height: '80%' },
+  imageModalClose: { position: 'absolute', top: 48, right: 20, zIndex: 1, padding: 8 },
 
   /* ── Empty state ── */
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32 },
