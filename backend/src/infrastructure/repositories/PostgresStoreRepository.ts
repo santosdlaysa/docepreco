@@ -32,6 +32,9 @@ export interface StoreSettings {
   useBusinessHours: boolean;
   businessHours: DayHours[];
   isOpenNow: boolean;
+  loyaltyEnabled: boolean;
+  loyaltyGoal: number;
+  loyaltyReward?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -125,6 +128,9 @@ function mapSettings(row: Record<string, unknown>): StoreSettings {
     useBusinessHours,
     businessHours,
     isOpenNow: isStoreOpenNow({ active: row.active as boolean, accepting_orders: (row.accepting_orders as boolean) ?? true, use_business_hours: useBusinessHours, business_hours: businessHours }),
+    loyaltyEnabled: (row.loyalty_enabled as boolean) ?? false,
+    loyaltyGoal: Math.max(1, Number(row.loyalty_goal ?? 10)),
+    loyaltyReward: (row.loyalty_reward as string | null) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -234,6 +240,9 @@ export class PostgresStoreRepository {
     category: string | null;
     useBusinessHours: boolean;
     businessHours: DayHours[];
+    loyaltyEnabled: boolean;
+    loyaltyGoal: number;
+    loyaltyReward: string | null;
   }>): Promise<StoreSettings> {
     const fields: string[] = [];
     const values: unknown[] = [];
@@ -258,6 +267,9 @@ export class PostgresStoreRepository {
     if ('category' in data)                { fields.push(`category = $${idx++}`);         values.push(data.category ?? null); }
     if (data.useBusinessHours !== undefined) { fields.push(`use_business_hours = $${idx++}`); values.push(data.useBusinessHours); }
     if (data.businessHours !== undefined)    { fields.push(`business_hours = $${idx++}`);     values.push(JSON.stringify(data.businessHours)); }
+    if (data.loyaltyEnabled !== undefined)  { fields.push(`loyalty_enabled = $${idx++}`);     values.push(data.loyaltyEnabled); }
+    if (data.loyaltyGoal !== undefined)    { fields.push(`loyalty_goal = $${idx++}`);       values.push(Math.max(1, Math.min(100, Math.floor(data.loyaltyGoal)))); }
+    if ('loyaltyReward' in data)           { fields.push(`loyalty_reward = $${idx++}`);      values.push(data.loyaltyReward ?? null); }
 
     fields.push(`updated_at = NOW()`);
     values.push(userId);

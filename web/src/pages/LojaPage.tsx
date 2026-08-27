@@ -71,6 +71,14 @@ interface StoreData {
   address: string | null;
   products: StoreProduct[];
   addons: StoreAddon[];
+  loyalty?: {
+    enabled: boolean;
+    goal: number;
+    reward: string | null;
+    completed?: number;
+    total?: number;
+    rewardReady?: boolean;
+  };
 }
 
 interface AdminStorePreviewData {
@@ -275,7 +283,11 @@ export function LojaPage() {
     if (!slug) return;
     let cancelled = false;
     const adminSecret = localStorage.getItem('admin_secret') ?? '';
-    const previewQuery = previewMode ? '?preview=1' : '';
+    const knownPhone = getCustomerProfile().phone?.replace(/\D/g, '') ?? '';
+    const query = new URLSearchParams();
+    if (previewMode) query.set('preview', '1');
+    if (knownPhone.length >= 8) query.set('phone', knownPhone);
+    const previewQuery = query.toString() ? `?${query.toString()}` : '';
     const applyStore = (data: StoreData) => {
       setStore(data);
       const defaultType = data.acceptsDelivery ? 'delivery' : 'pickup';
@@ -606,6 +618,7 @@ export function LojaPage() {
       setOrderId(json.data.orderId);
       setOrderStatus('pending');
       setPix(json.data.pix ?? null);
+      if (json.data.loyalty) setStore(prev => prev ? { ...prev, loyalty: { ...prev.loyalty, ...json.data.loyalty } } : prev);
       setPixDeadline(json.data.pix ? Date.now() + PIX_TTL_MS : null);
       // Salvar cliente e pedido no localStorage
       try {
@@ -857,6 +870,28 @@ export function LojaPage() {
             </div>
           </div>
         </div>
+
+        {store.loyalty?.enabled && store.loyalty.completed != null && (
+          <div className="max-w-lg mx-auto px-4 pt-4">
+            <div className="rounded-2xl bg-gradient-to-r from-[#FFF0F6] to-[#F4EEFF] border border-pink-100 px-4 py-3.5 shadow-sm">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-extrabold text-gray-900">💖 Cartão fidelidade</p>
+                  <p className="text-xs text-gray-500 mt-0.5">
+                    {store.loyalty.rewardReady
+                      ? `Você ganhou: ${store.loyalty.reward || 'seu benefício'}!`
+                      : `${store.loyalty.goal - store.loyalty.completed!} pedido(s) para ganhar ${store.loyalty.reward || 'seu benefício'}`}
+                  </p>
+                </div>
+                <div className="flex gap-1.5 flex-shrink-0">
+                  {Array.from({ length: Math.min(store.loyalty.goal, 10) }, (_, i) => (
+                    <span key={i} className={`w-2.5 h-2.5 rounded-full ${i < (store.loyalty!.rewardReady ? store.loyalty!.goal : store.loyalty!.completed!) ? 'bg-[#EA4B92]' : 'bg-white border border-pink-200'}`} />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {isStoreClosed && (
           <div className="max-w-lg mx-auto px-4 pt-4">

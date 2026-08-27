@@ -65,4 +65,7 @@ export interface StoreSettings {
   businessHours: StoreBusinessHours[];
   /** Calculado pelo backend no momento da consulta (ativa + dentro do horário, se aplicável). */
   isOpenNow?: boolean;
+  loyaltyEnabled?: boolean;
+  loyaltyGoal?: number;
+  loyaltyReward?: string | null;
 }

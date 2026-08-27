@@ -1155,6 +1155,12 @@ export async function runMigrations() {
     // mas fechada para novos pedidos quando accepting_orders = FALSE.
     await addColumnIfMissing(client, 'store_settings', 'accepting_orders', 'BOOLEAN NOT NULL DEFAULT TRUE');
 
+    // Cartão fidelidade da loja: o cliente acumula pedidos entregues até a meta
+    // e recebe o benefício cadastrado pelo empresário.
+    await addColumnIfMissing(client, 'store_settings', 'loyalty_enabled', 'BOOLEAN NOT NULL DEFAULT FALSE');
+    await addColumnIfMissing(client, 'store_settings', 'loyalty_goal', 'INTEGER NOT NULL DEFAULT 10');
+    await addColumnIfMissing(client, 'store_settings', 'loyalty_reward', 'VARCHAR(255) NULL');
+
     // PIX estático de recebimento da loja: chave do confeiteiro. O checkout gera
     // o copia-e-cola/QR com o valor do pedido e o cliente paga direto na conta do
     // dono (o DocePreço não intermedia o dinheiro). Confirmação manual pelo dono.

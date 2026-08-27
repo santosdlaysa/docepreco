@@ -126,6 +126,9 @@ export const StoreSettingsScreen: React.FC = () => {
   const [pixReceiverName, setPixReceiverName] = useState('');
   const [useBusinessHours, setUseBusinessHours] = useState(false);
   const [businessHours, setBusinessHours] = useState<StoreBusinessHours[]>(defaultBusinessHours());
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(false);
+  const [loyaltyGoalText, setLoyaltyGoalText] = useState('10');
+  const [loyaltyReward, setLoyaltyReward] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -149,6 +152,9 @@ export const StoreSettingsScreen: React.FC = () => {
         setPixReceiverName(s.pixReceiverName ?? '');
         setUseBusinessHours(s.useBusinessHours ?? false);
         setBusinessHours(s.businessHours?.length === 7 ? s.businessHours : defaultBusinessHours());
+        setLoyaltyEnabled(s.loyaltyEnabled ?? false);
+        setLoyaltyGoalText(String(s.loyaltyGoal ?? 10));
+        setLoyaltyReward(s.loyaltyReward ?? '');
       })
       .catch(() => showToast('Erro ao carregar configurações', 'error'))
       .finally(() => setLoading(false));
@@ -200,6 +206,10 @@ export const StoreSettingsScreen: React.FC = () => {
       showToast('Selecione ao menos uma forma de pagamento', 'warning');
       return;
     }
+    if (loyaltyEnabled && !loyaltyReward.trim()) {
+      showToast('Cadastre o benefício do cartão fidelidade', 'warning');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -220,6 +230,9 @@ export const StoreSettingsScreen: React.FC = () => {
         pixReceiverName: pixReceiverName.trim() || null,
         useBusinessHours,
         businessHours,
+        loyaltyEnabled,
+        loyaltyGoal: Math.max(1, Math.min(100, Math.floor(Number(loyaltyGoalText) || 10))),
+        loyaltyReward: loyaltyReward.trim() || null,
       });
       showToast('Configurações salvas!', 'success');
       navigation.goBack();
@@ -470,6 +483,44 @@ export const StoreSettingsScreen: React.FC = () => {
             placeholder={storeName || 'Aparece no app do banco do cliente'}
             placeholderTextColor={INK3}
           />
+
+          {/* ── Cartão fidelidade ── */}
+          <Text style={[st.label, { marginTop: 24 }]}>Cartão fidelidade</Text>
+          <TouchableOpacity style={st.toggleRow} onPress={() => setLoyaltyEnabled(v => !v)} activeOpacity={0.7}>
+            <View style={st.toggleLeft}>
+              <View style={[st.toggleIcon, { backgroundColor: loyaltyEnabled ? colors.pinkBg : colors.gray }]}>
+                <Ionicons name="heart-outline" size={20} color={loyaltyEnabled ? PINK : INK3} />
+              </View>
+              <View style={st.toggleText}>
+                <Text style={st.toggleLabel}>Ativar cartão fidelidade</Text>
+                <Text style={st.toggleSub}>O cliente acompanha os pedidos entregues na sua loja</Text>
+              </View>
+            </View>
+            <View style={[st.track, loyaltyEnabled && st.trackOn]}><View style={[st.thumb, loyaltyEnabled && st.thumbOn]} /></View>
+          </TouchableOpacity>
+          {loyaltyEnabled && (
+            <>
+              <Text style={st.label}>Pedidos para ganhar o benefício</Text>
+              <TextInput
+                style={st.input}
+                value={loyaltyGoalText}
+                onChangeText={setLoyaltyGoalText}
+                placeholder="10"
+                placeholderTextColor={INK3}
+                keyboardType="number-pad"
+              />
+              <Text style={st.label}>Benefício cadastrado</Text>
+              <TextInput
+                style={st.input}
+                value={loyaltyReward}
+                onChangeText={setLoyaltyReward}
+                placeholder="Ex.: 1 fatia de bolo grátis"
+                placeholderTextColor={INK3}
+                maxLength={255}
+              />
+              <Text style={st.pixHint}>A contagem considera apenas pedidos entregues. Depois do resgate, o cartão começa novamente.</Text>
+            </>
+          )}
 
           {/* ── Horário de funcionamento ── */}
           <TouchableOpacity style={[st.toggleRow, { marginTop: 20 }]} onPress={() => setUseBusinessHours(v => !v)} activeOpacity={0.7}>

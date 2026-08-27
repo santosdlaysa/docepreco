@@ -247,6 +247,21 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     }
     const s = settingsResult.rows[0];
     const acceptingOrders = isStoreOpenNow(s);
+    const customerPhone = typeof req.query.phone === 'string' ? req.query.phone.replace(/\D/g, '') : '';
+    let loyalty = null;
+    if (s.loyalty_enabled && customerPhone.length >= 8) {
+      const loyaltyResult = await pool.query(
+        `SELECT COUNT(*)::int AS delivered_count
+         FROM orders
+         WHERE user_id = $1 AND source = 'online'
+           AND regexp_replace(client_phone, '\\D', '', 'g') = $2
+           AND status = 'delivered'`,
+        [s.user_id, customerPhone]
+      );
+      const total = Number(loyaltyResult.rows[0]?.delivered_count ?? 0);
+      const goal = Math.max(1, Number(s.loyalty_goal ?? 10));
+      loyalty = { enabled: true, goal, reward: s.loyalty_reward ?? null, completed: total % goal, total, rewardReady: total > 0 && total % goal === 0 };
+    }
     // Buscar info de contato do dono da loja
     const userResult = await pool.query(
       'SELECT phone, instagram_handle FROM users WHERE id = $1',
@@ -279,6 +294,12 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
         logoUrl: s.logo_url ?? null,
         paymentMethods: s.payment_methods ?? ['pix', 'cash', 'credit', 'debit'],
         address: s.address ?? null,
+        loyalty: {
+          enabled: Boolean(s.loyalty_enabled),
+          goal: Math.max(1, Number(s.loyalty_goal ?? 10)),
+          reward: s.loyalty_reward ?? null,
+          ...(loyalty ? { completed: loyalty.completed, total: loyalty.total, rewardReady: loyalty.rewardReady } : {}),
+        },
         phone: u.phone ?? null,
         instagramHandle: u.instagram_handle ?? null,
         products: productsResult.rows.map(p => {
@@ -480,6 +501,22 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
       return;
     }
 
+    let loyalty = null;
+    if (settingsResult.rows[0].loyalty_enabled && b.clientPhone) {
+      const phone = String(b.clientPhone).replace(/\D/g, '');
+      if (phone.length >= 8) {
+        const countResult = await pool.query(
+          `SELECT COUNT(*)::int AS delivered_count FROM orders
+           WHERE user_id = $1 AND source = 'online'
+             AND regexp_replace(client_phone, '\\D', '', 'g') = $2 AND status = 'delivered'`,
+          [userId, phone]
+        );
+        const total = Number(countResult.rows[0]?.delivered_count ?? 0);
+        const goal = Math.max(1, Number(settingsResult.rows[0].loyalty_goal ?? 10));
+        loyalty = { enabled: true, goal, reward: settingsResult.rows[0].loyalty_reward ?? null, completed: total % goal, total, rewardReady: total > 0 && total % goal === 0 };
+      }
+    }
+
     // Push notification para o dono da loja (fire-and-forget)
     try {
       const tokenRepo = new PostgresPushTokenRepository();
@@ -519,7 +556,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
         })
       : null;
 
-    res.status(201).json({ success: true, data: { orderId, orderNumber, pix } });
+    res.status(201).json({ success: true, data: { orderId, orderNumber, pix, loyalty } });
   } catch (error) {
     console.error('[Public Store] order error:', error);
     res.status(500).json({ success: false, error: 'Erro ao criar pedido' });

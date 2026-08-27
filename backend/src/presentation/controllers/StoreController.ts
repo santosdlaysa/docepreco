@@ -99,6 +99,19 @@ export class StoreController {
       if ('category' in b)                  patch.category        = b.category ?? null;
       if (b.useBusinessHours !== undefined) patch.useBusinessHours = b.useBusinessHours;
       if (Array.isArray(b.businessHours))   patch.businessHours   = b.businessHours;
+      if (b.loyaltyEnabled !== undefined)  patch.loyaltyEnabled  = Boolean(b.loyaltyEnabled);
+      if (b.loyaltyGoal !== undefined) {
+        const goal = Number(b.loyaltyGoal);
+        if (!Number.isInteger(goal) || goal < 1 || goal > 100) {
+          res.status(400).json({ success: false, message: 'A meta do cartão deve estar entre 1 e 100 pedidos' });
+          return;
+        }
+        patch.loyaltyGoal = goal;
+      }
+      if ('loyaltyReward' in b) {
+        const reward = b.loyaltyReward == null ? '' : String(b.loyaltyReward).trim().slice(0, 255);
+        patch.loyaltyReward = reward || null;
+      }
 
       // PIX de recebimento da loja: valida/normaliza a chave conforme o tipo.
       // Chave vazia limpa o PIX (desativa o recebimento por PIX no checkout).
