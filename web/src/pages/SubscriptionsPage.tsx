@@ -14,6 +14,23 @@ const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', c
 const fmtDate = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const fmtDateTime = (d: string) => new Date(d).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 
+function eventPlan(event: SubscriptionEvent): string {
+  const product = (event.productId || '').toLowerCase();
+  return product.includes('master') ? 'Master' : 'Premium';
+}
+
+function eventCycle(event: SubscriptionEvent): string {
+  const product = (event.productId || '').toLowerCase();
+  if (product.includes('annual') || product.includes('anual') || product.includes('year')) return 'Anual';
+  // Eventos PIX anuais antigos não guardavam o ciclo no product_id;
+  // a validade de aproximadamente um ano permite identificá-los.
+  if (event.expirationAt) {
+    const days = (new Date(event.expirationAt).getTime() - new Date(event.createdAt).getTime()) / 86400000;
+    if (days >= 180) return 'Anual';
+  }
+  return 'Mensal';
+}
+
 const card = 'bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50';
 
 function StatMetric({ label, value, sub, icon: Icon, color }: {
@@ -360,6 +377,8 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
               <thead>
                 <tr className="border-b border-gray-100 dark:border-gray-700/50">
                   <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Empresa</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Plano</th>
+                  <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Ciclo</th>
                   <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Plataforma</th>
                   <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Tipo</th>
                   <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Valor</th>
@@ -376,6 +395,12 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                         <p className="text-xs text-gray-400 truncate">{event.email}</p>
                       </div>
                     </td>
+                    <td className="px-5 py-3 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${eventPlan(event) === 'Master' ? 'bg-violet-50 text-violet-700 dark:bg-violet-900/20 dark:text-violet-300' : 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-300'}`}>
+                        {eventPlan(event)}
+                      </span>
+                    </td>
+                    <td className="px-5 py-3 whitespace-nowrap text-xs font-semibold text-gray-700 dark:text-gray-300">{eventCycle(event)}</td>
                     <td className="px-5 py-3 whitespace-nowrap">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 dark:bg-blue-900/20 dark:text-blue-400">
                         {event.platform || '—'}
