@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Activity, BookOpen, RefreshCw, Search, ShoppingCart, Users } from 'lucide-react';
+import { Activity, BookOpen, MessageSquare, RefreshCw, Search, ShoppingCart, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { api, AdminUser, Stats } from '../lib/api';
+import { UserChatModal } from './UserChatModal';
 
 const card = 'bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50';
 const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
@@ -21,6 +22,7 @@ export function ActivityUsersPage() {
   const [activeFree, setActiveFree] = useState(0);
   const [search, setSearch] = useState('');
   const [planTier, setPlanTier] = useState<'all' | 'free' | 'paid' | 'premium' | 'master'>('all');
+  const [chatUser, setChatUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -128,13 +130,14 @@ export function ActivityUsersPage() {
                 <th className="px-4 py-3 font-medium">Usuário</th><th className="px-4 py-3 font-medium text-center">Plano</th><th className="px-4 py-3 font-medium">Último acesso</th><th className="px-4 py-3 font-medium text-right">Receitas</th><th className="px-4 py-3 font-medium text-right">Ingredientes</th><th className="px-4 py-3 font-medium text-right">Vendas</th><th className="px-4 py-3 font-medium text-right">Faturamento</th>
               </tr></thead>
               <tbody>{users.map(user => <tr key={user.id} className="border-b last:border-0 border-gray-50 dark:border-gray-700/30 hover:bg-gray-50 dark:hover:bg-gray-700/30">
-                <td className="px-4 py-3"><p className="font-semibold text-gray-900 dark:text-white">{user.companyName}</p><p className="text-xs text-gray-400">{user.email}</p></td><td className="px-4 py-3 text-center"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${user.planTier === 'master' ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' : user.isPremium ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>{planLabel(user)}</span></td>
+                <td className="px-4 py-3"><div className="flex items-center gap-2"><div className="min-w-0"><p className="font-semibold text-gray-900 dark:text-white truncate">{user.companyName}</p><p className="text-xs text-gray-400 truncate">{user.email}</p></div><button type="button" onClick={() => setChatUser(user)} title="Abrir chat" className="inline-flex shrink-0 items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold text-primary-600 bg-primary-50 dark:bg-primary-900/20 hover:bg-primary-100 dark:hover:bg-primary-900/40"><MessageSquare size={13} /> Chat</button></div></td><td className="px-4 py-3 text-center"><span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-bold ${user.planTier === 'master' ? 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300' : user.isPremium ? 'bg-primary-100 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'}`}>{planLabel(user)}</span></td>
                 <td className="px-4 py-3 text-gray-600 dark:text-gray-300">{date(user.lastSeenAt)}</td><td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">{user.recipeCount}</td><td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">{user.ingredientCount}</td><td className="px-4 py-3 text-right font-semibold text-gray-900 dark:text-white">{user.saleCount}</td><td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">{fmt(user.totalRevenue)}</td>
               </tr>)}</tbody>
             </table>
           </div>
         )}
       </div>
+      {chatUser && <UserChatModal userId={chatUser.id} userName={chatUser.companyName} userEmail={chatUser.email} onClose={() => setChatUser(null)} onError={message => window.alert(message)} />}
     </div>
   );
 }
