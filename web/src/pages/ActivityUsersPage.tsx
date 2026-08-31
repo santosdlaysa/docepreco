@@ -18,6 +18,7 @@ export function ActivityUsersPage() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [total, setTotal] = useState(0);
   const [search, setSearch] = useState('');
+  const [planTier, setPlanTier] = useState<'all' | 'free' | 'premium' | 'master'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -27,7 +28,7 @@ export function ActivityUsersPage() {
     try {
       const [summary, result] = await Promise.all([
         api.getStats(),
-        api.listUsers({ search: search.trim() || undefined, limit: 50, sortBy: 'saleCount', lastSeenDays: 30 }),
+        api.listUsers({ search: search.trim() || undefined, limit: 50, sortBy: 'saleCount', lastSeenDays: 30, planTier: planTier === 'all' ? undefined : planTier }),
       ]);
       setStats(summary);
       setUsers(result.users);
@@ -37,7 +38,7 @@ export function ActivityUsersPage() {
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, [search, planTier]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -73,15 +74,43 @@ export function ActivityUsersPage() {
         </div>
       )}
 
+      {stats && (
+        <div className={`${card} p-5`}>
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+            <div>
+              <h2 className="font-bold text-gray-900 dark:text-white">Distribuição dos cadastros</h2>
+              <p className="text-xs text-gray-400 mt-1">Base completa de {stats.totalUsers} usuários cadastrados.</p>
+            </div>
+            <div className="text-sm text-gray-600 dark:text-gray-300">
+              <span className="font-bold text-primary-600">{stats.premiumUsers} pagos</span>
+              <span className="mx-2 text-gray-300">·</span>
+              <span className="font-bold text-gray-700 dark:text-gray-200">{Math.max(0, stats.totalUsers - stats.premiumUsers)} gratuitos</span>
+            </div>
+          </div>
+          <div className="mt-4 h-3 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex" title={`${stats.premiumUsers} pagos e ${Math.max(0, stats.totalUsers - stats.premiumUsers)} gratuitos`}>
+            <div className="h-full bg-primary-500" style={{ width: `${stats.totalUsers ? (stats.premiumUsers / stats.totalUsers) * 100 : 0}%` }} />
+            <div className="h-full bg-gray-300 dark:bg-gray-600 flex-1" />
+          </div>
+        </div>
+      )}
+
       <div className={`${card} overflow-hidden`}>
         <div className="p-4 border-b border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
             <h2 className="font-bold text-gray-900 dark:text-white">Cadastros mais ativos</h2>
             <p className="text-xs text-gray-400 mt-1">Ordenados pela quantidade total de vendas, entre quem acessou nos últimos 30 dias.</p>
           </div>
-          <div className="relative w-full sm:w-64">
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <select value={planTier} onChange={e => setPlanTier(e.target.value as typeof planTier)} className="h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 text-sm text-gray-700 dark:text-gray-200 outline-none focus:ring-2 focus:ring-primary-200">
+              <option value="all">Todos os planos</option>
+              <option value="premium">Premium</option>
+              <option value="master">Master</option>
+              <option value="free">Gratuito</option>
+            </select>
+            <div className="relative w-full sm:w-64">
             <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
             <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Buscar usuário..." className="w-full pl-9 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-transparent text-sm text-gray-900 dark:text-white outline-none focus:ring-2 focus:ring-primary-200" />
+            </div>
           </div>
         </div>
         {error ? <p className="p-6 text-sm text-red-500">{error}</p> : loading ? <p className="p-6 text-sm text-gray-400">Carregando...</p> : users.length === 0 ? <p className="p-6 text-sm text-gray-400">Nenhum usuário ativo encontrado.</p> : (
