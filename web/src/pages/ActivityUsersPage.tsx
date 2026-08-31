@@ -54,9 +54,11 @@ export function ActivityUsersPage() {
       </div>
 
       {stats && (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {([
             [Users, 'Total de usuários', stats.totalUsers, 'todos os cadastros'],
+            [Activity, 'Pagos', stats.premiumUsers, 'Premium + Master'],
+            [Users, 'Gratuitos', Math.max(0, stats.totalUsers - stats.premiumUsers), 'sem assinatura ativa'],
             [Activity, 'Ativos (30 dias)', total, 'com acesso recente'],
             [ShoppingCart, 'Vendas registradas', stats.totalSales, 'em toda a base'],
             [BookOpen, 'Receitas cadastradas', stats.totalRecipes, 'em toda a base'],
