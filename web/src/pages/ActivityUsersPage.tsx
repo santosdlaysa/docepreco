@@ -20,7 +20,7 @@ export function ActivityUsersPage() {
   const [activePaid, setActivePaid] = useState(0);
   const [activeFree, setActiveFree] = useState(0);
   const [search, setSearch] = useState('');
-  const [planTier, setPlanTier] = useState<'all' | 'free' | 'premium' | 'master'>('all');
+  const [planTier, setPlanTier] = useState<'all' | 'free' | 'paid' | 'premium' | 'master'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -30,7 +30,7 @@ export function ActivityUsersPage() {
     try {
       const [summary, result, paidPremium, paidMaster, freeUsers] = await Promise.all([
         api.getStats(),
-        api.listUsers({ search: search.trim() || undefined, limit: 50, sortBy: 'saleCount', lastSeenDays: 30, planTier: planTier === 'all' ? undefined : planTier }),
+        api.listUsers({ search: search.trim() || undefined, limit: 50, sortBy: 'saleCount', lastSeenDays: 30, isPremium: planTier === 'paid' ? true : undefined, planTier: planTier === 'all' || planTier === 'paid' ? undefined : planTier }),
         api.listUsers({ limit: 1, lastSeenDays: 30, planTier: 'premium' }),
         api.listUsers({ limit: 1, lastSeenDays: 30, planTier: 'master' }),
         api.listUsers({ limit: 1, lastSeenDays: 30, planTier: 'free' }),
@@ -110,6 +110,7 @@ export function ActivityUsersPage() {
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <select value={planTier} onChange={e => setPlanTier(e.target.value as typeof planTier)} className="h-9 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-3 text-sm text-gray-700 dark:text-gray-200 outline-none focus:ring-2 focus:ring-primary-200">
               <option value="all">Todos os planos</option>
+              <option value="paid">Ativos pagos (Premium + Master)</option>
               <option value="premium">Premium</option>
               <option value="master">Master</option>
               <option value="free">Gratuito</option>
