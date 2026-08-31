@@ -16,7 +16,9 @@ function planLabel(user: AdminUser): string {
 export function ActivityUsersPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [total, setTotal] = useState(0);
+  const [activeTotal, setActiveTotal] = useState(0);
+  const [activePaid, setActivePaid] = useState(0);
+  const [activeFree, setActiveFree] = useState(0);
   const [search, setSearch] = useState('');
   const [planTier, setPlanTier] = useState<'all' | 'free' | 'premium' | 'master'>('all');
   const [loading, setLoading] = useState(true);
@@ -26,13 +28,18 @@ export function ActivityUsersPage() {
     setLoading(true);
     setError('');
     try {
-      const [summary, result] = await Promise.all([
+      const [summary, result, paidPremium, paidMaster, freeUsers] = await Promise.all([
         api.getStats(),
         api.listUsers({ search: search.trim() || undefined, limit: 50, sortBy: 'saleCount', lastSeenDays: 30, planTier: planTier === 'all' ? undefined : planTier }),
+        api.listUsers({ limit: 1, lastSeenDays: 30, planTier: 'premium' }),
+        api.listUsers({ limit: 1, lastSeenDays: 30, planTier: 'master' }),
+        api.listUsers({ limit: 1, lastSeenDays: 30, planTier: 'free' }),
       ]);
       setStats(summary);
       setUsers(result.users);
-      setTotal(result.total);
+      setActiveTotal(planTier === 'all' && !search.trim() ? result.total : paidPremium.total + paidMaster.total + freeUsers.total);
+      setActivePaid(paidPremium.total + paidMaster.total);
+      setActiveFree(freeUsers.total);
     } catch {
       setError('Não foi possível carregar os dados de atividade.');
     } finally {
@@ -58,9 +65,9 @@ export function ActivityUsersPage() {
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {([
             [Users, 'Total de usuários', stats.totalUsers, 'todos os cadastros'],
-            [Activity, 'Pagos', stats.premiumUsers, 'Premium + Master'],
-            [Users, 'Gratuitos', Math.max(0, stats.totalUsers - stats.premiumUsers), 'sem assinatura ativa'],
-            [Activity, 'Ativos (30 dias)', total, 'com acesso recente'],
+            [Activity, 'Ativos pagos', activePaid, 'Premium + Master · 30 dias'],
+            [Users, 'Ativos gratuitos', activeFree, 'sem assinatura · 30 dias'],
+            [Activity, 'Ativos (30 dias)', activeTotal, 'com acesso recente'],
             [ShoppingCart, 'Vendas registradas', stats.totalSales, 'em toda a base'],
             [BookOpen, 'Receitas cadastradas', stats.totalRecipes, 'em toda a base'],
           ] as Array<[LucideIcon, string, number, string]>).map(([Icon, label, value, sub]) => (
@@ -79,16 +86,16 @@ export function ActivityUsersPage() {
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div>
               <h2 className="font-bold text-gray-900 dark:text-white">Distribuição dos cadastros</h2>
-              <p className="text-xs text-gray-400 mt-1">Base completa de {stats.totalUsers} usuários cadastrados.</p>
+              <p className="text-xs text-gray-400 mt-1">Usuários com acesso nos últimos 30 dias.</p>
             </div>
             <div className="text-sm text-gray-600 dark:text-gray-300">
-              <span className="font-bold text-primary-600">{stats.premiumUsers} pagos</span>
+              <span className="font-bold text-primary-600">{activePaid} pagos</span>
               <span className="mx-2 text-gray-300">·</span>
-              <span className="font-bold text-gray-700 dark:text-gray-200">{Math.max(0, stats.totalUsers - stats.premiumUsers)} gratuitos</span>
+              <span className="font-bold text-gray-700 dark:text-gray-200">{activeFree} gratuitos</span>
             </div>
           </div>
-          <div className="mt-4 h-3 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex" title={`${stats.premiumUsers} pagos e ${Math.max(0, stats.totalUsers - stats.premiumUsers)} gratuitos`}>
-            <div className="h-full bg-primary-500" style={{ width: `${stats.totalUsers ? (stats.premiumUsers / stats.totalUsers) * 100 : 0}%` }} />
+          <div className="mt-4 h-3 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden flex" title={`${activePaid} pagos e ${activeFree} gratuitos entre os ativos`}>
+            <div className="h-full bg-primary-500" style={{ width: `${activeTotal ? (activePaid / activeTotal) * 100 : 0}%` }} />
             <div className="h-full bg-gray-300 dark:bg-gray-600 flex-1" />
           </div>
         </div>
