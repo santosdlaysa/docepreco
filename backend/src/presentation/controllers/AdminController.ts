@@ -137,7 +137,7 @@ export class AdminController {
     let idx = 1;
 
     if (search) {
-      conditions.push(`(u.company_name ILIKE $${idx} OR u.email ILIKE $${idx} OR u.phone ILIKE $${idx} OR u.instagram_handle ILIKE $${idx})`);
+      conditions.push(`(u.id::text ILIKE $${idx} OR u.company_name ILIKE $${idx} OR u.email ILIKE $${idx} OR u.phone ILIKE $${idx} OR u.instagram_handle ILIKE $${idx})`);
       params.push(`%${search}%`);
       idx++;
     }
