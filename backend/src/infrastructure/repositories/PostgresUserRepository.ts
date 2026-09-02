@@ -235,6 +235,15 @@ export class PostgresUserRepository {
         `DELETE FROM recipe_ingredients WHERE recipe_id IN (SELECT id FROM recipes WHERE user_id = $1)`,
         [userId]
       );
+      // Libera ingredientes do usuário mesmo se houver alguma referência
+      // inconsistente em uma receita que não pertence a ele. Sem isso,
+      // ingredients -> recipe_ingredients (ON DELETE RESTRICT) bloqueia o
+      // DELETE CASCADE da conta.
+      await client.query(
+        `DELETE FROM recipe_ingredients
+         WHERE ingredient_id IN (SELECT id FROM ingredients WHERE user_id = $1)`,
+        [userId]
+      );
       // Now delete the user — remaining FKs all use ON DELETE CASCADE
       const result = await client.query('DELETE FROM users WHERE id = $1', [userId]);
       await client.query('COMMIT');
