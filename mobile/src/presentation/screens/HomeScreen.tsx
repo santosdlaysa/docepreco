@@ -73,7 +73,7 @@ const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { companyName, companyLogo } = useAuth();
-  const { isPremium, isMaster, isAdmin, isInTrial, daysLeft } = usePremium();
+  const { isPremium, isMaster, isAdmin, isInTrial, daysLeft, planTier } = usePremium();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { requirePremium } = usePaywall();
 
@@ -238,6 +238,10 @@ export const HomeScreen: React.FC = () => {
     if (b.audience === 'non_master') return !isMaster;
     return true; // 'all'
   });
+  const visibleBanners = banners.filter(b => {
+    const targets = b.targetPlans;
+    return !targets?.length || targets.includes('all') || targets.includes(planTier);
+  });
 
   // Nº de slides do carrossel = planos (só p/ não-premium) + institucionais
   // (Loja Online, por público) + patrocinados + slide "anuncie".
@@ -347,7 +351,7 @@ export const HomeScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <Ionicons name="notifications-outline" size={22} color={INK} />
-              {(banners.length > 0 || hasMandatoryAlert || hasUnreadOrders) && (
+              {(visibleBanners.length > 0 || hasMandatoryAlert || hasUnreadOrders) && (
                 <View style={[s.bellDot, hasMandatoryAlert && { backgroundColor: colors.redDark }]} />
               )}
             </TouchableOpacity>
@@ -574,7 +578,7 @@ export const HomeScreen: React.FC = () => {
         </View>
 
         {/* ═══════ NOTIFICATION BANNERS ═══════ */}
-        {banners.map(banner => {
+        {visibleBanners.map(banner => {
           const cfg = BANNER_CONFIG[banner.type];
           const hasLink = !!(banner.actionUrl && banner.actionUrl.trim());
           const openLink = () => {

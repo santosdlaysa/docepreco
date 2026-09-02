@@ -571,6 +571,9 @@ export async function runMigrations() {
     // Banners institucionais do carrossel (placement='plan'): divulgam features por
     // público (audience) — ex.: upsell da Loja Online p/ não-Master e aviso p/ Master.
     await addColumnIfMissing(client, 'banners', 'audience', "VARCHAR(20) NOT NULL DEFAULT 'all'");
+    // Planos que recebem banners informativos. Mantemos separado de `audience`,
+    // usado pelos banners do carrossel legados.
+    await addColumnIfMissing(client, 'banners', 'target_plans', "TEXT[] NOT NULL DEFAULT ARRAY['all']::TEXT[]");
     await addColumnIfMissing(client, 'banners', 'eyebrow', 'VARCHAR(60) NULL');
     await addColumnIfMissing(client, 'banners', 'cta_label', 'VARCHAR(40) NULL');
     // pix_requests genérico: 'subscription' (assinatura) | 'ad_banner' (compra de anúncio).

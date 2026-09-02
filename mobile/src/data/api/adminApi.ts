@@ -191,6 +191,7 @@ export interface Banner {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  targetPlans?: Array<'all' | 'free' | 'premium' | 'master'>;
 }
 
 export interface AdminLogEntry {
@@ -404,6 +405,7 @@ export const adminApi = {
     actionUrl?: string;
     startsAt?: string;
     endsAt?: string;
+    targetPlans?: Array<'all' | 'free' | 'premium' | 'master'>;
   }): Promise<Banner> {
     const { data } = await adminClient.post('/banners', payload);
     return data.data;
@@ -417,6 +419,7 @@ export const adminApi = {
     startsAt: string;
     endsAt: string | null;
     isActive: boolean;
+    targetPlans?: Array<'all' | 'free' | 'premium' | 'master'>;
   }>): Promise<Banner> {
     const { data } = await adminClient.put(`/banners/${id}`, payload);
     return data.data;

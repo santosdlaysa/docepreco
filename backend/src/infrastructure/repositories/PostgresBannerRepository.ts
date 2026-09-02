@@ -15,6 +15,7 @@ export interface Banner {
   placement: 'notification' | 'carousel' | 'plan';
   /** Público-alvo dos banners 'plan': 'all' | 'non_master' | 'master'. */
   audience: 'all' | 'non_master' | 'master';
+  targetPlans: string[];
   /** Texto pequeno acima do título (banners 'plan'). */
   eyebrow: string | null;
   /** Rótulo do botão (banners 'plan'). */
@@ -92,12 +93,13 @@ export class PostgresBannerRepository {
     endsAt?: string;
     placement?: string;
     audience?: string;
+    targetPlans?: string[];
     eyebrow?: string | null;
     ctaLabel?: string | null;
   }): Promise<Banner> {
     const result = await pool.query(
-      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at, placement, audience, eyebrow, cta_label)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at, placement, audience, target_plans, eyebrow, cta_label)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
        RETURNING *`,
       [
         data.title,
@@ -108,6 +110,7 @@ export class PostgresBannerRepository {
         data.endsAt ?? null,
         data.placement ?? 'notification',
         data.audience ?? 'all',
+        data.targetPlans?.length ? data.targetPlans : ['all'],
         data.eyebrow ?? null,
         data.ctaLabel ?? null,
       ]
@@ -169,6 +172,7 @@ export class PostgresBannerRepository {
       endsAt?: string | null;
       isActive?: boolean;
       audience?: string;
+      targetPlans?: string[];
       eyebrow?: string | null;
       ctaLabel?: string | null;
     }
@@ -183,8 +187,9 @@ export class PostgresBannerRepository {
         ends_at = COALESCE($7, ends_at),
         is_active = COALESCE($8, is_active),
         audience = COALESCE($9, audience),
-        eyebrow = COALESCE($10, eyebrow),
-        cta_label = COALESCE($11, cta_label),
+        target_plans = COALESCE($10, target_plans),
+        eyebrow = COALESCE($11, eyebrow),
+        cta_label = COALESCE($12, cta_label),
         updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -198,6 +203,7 @@ export class PostgresBannerRepository {
         data.endsAt !== undefined ? data.endsAt : null,
         data.isActive ?? null,
         data.audience ?? null,
+        data.targetPlans !== undefined ? (data.targetPlans.length ? data.targetPlans : ['all']) : null,
         data.eyebrow !== undefined ? data.eyebrow : null,
         data.ctaLabel !== undefined ? data.ctaLabel : null,
       ]
@@ -225,6 +231,7 @@ export class PostgresBannerRepository {
       updatedAt: (row.updated_at as Date).toISOString(),
       placement: ((row.placement as string) ?? 'notification') as Banner['placement'],
       audience: ((row.audience as string) ?? 'all') as Banner['audience'],
+      targetPlans: Array.isArray(row.target_plans) && row.target_plans.length ? row.target_plans as string[] : ['all'],
       eyebrow: (row.eyebrow as string) ?? null,
       ctaLabel: (row.cta_label as string) ?? null,
       imageUrl: (row.image_url as string) ?? null,

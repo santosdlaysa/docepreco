@@ -9,6 +9,7 @@ export interface Banner {
   startsAt: string;
   endsAt: string | null;
   isActive: boolean;
+  targetPlans?: Array<'all' | 'free' | 'premium' | 'master'>;
 }
 
 /** Banner patrocinado de confeitaria exibido no carrossel da Home. */

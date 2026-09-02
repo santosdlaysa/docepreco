@@ -40,6 +40,12 @@ const EMPTY: Omit<Banner, 'id' | 'createdAt' | 'updatedAt'> = {
   startsAt: new Date().toISOString().slice(0, 16),
   endsAt: null,
   isActive: true,
+  targetPlans: ['all'],
+};
+
+type TargetPlan = 'all' | 'free' | 'premium' | 'master';
+const TARGET_PLAN_LABEL: Record<TargetPlan, string> = {
+  all: 'Todos', free: 'Free', premium: 'Premium', master: 'Master',
 };
 
 type Audience = 'all' | 'non_master' | 'master';
@@ -99,6 +105,7 @@ export function BannersPage({ toast }: Props) {
       startsAt: b.startsAt.slice(0, 16),
       endsAt: b.endsAt ? b.endsAt.slice(0, 16) : null,
       isActive: b.isActive,
+      targetPlans: b.targetPlans?.length ? b.targetPlans : ['all'],
     });
     setShowModal(true);
   };
@@ -440,6 +447,28 @@ export function BannersPage({ toast }: Props) {
                     onChange={e => setForm({ ...form, endsAt: e.target.value || null })}
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Exibir para quais planos?</label>
+                <div className="flex flex-wrap gap-3 text-sm text-gray-700 dark:text-gray-200">
+                  {(['all', 'free', 'premium', 'master'] as TargetPlan[]).map(plan => {
+                    const targets = (form.targetPlans ?? ['all']) as TargetPlan[];
+                    const selected = targets.includes(plan);
+                    return (
+                      <label key={plan} className="flex items-center gap-1.5 cursor-pointer">
+                        <input type="checkbox" checked={selected} onChange={() => {
+                          if (plan === 'all') setForm({ ...form, targetPlans: ['all'] });
+                          else {
+                            const next = targets.filter(p => p !== 'all' && p !== plan);
+                            setForm({ ...form, targetPlans: (selected ? (next.length ? next : ['all']) : [...next, plan]) as TargetPlan[] });
+                          }
+                        }} />
+                        {TARGET_PLAN_LABEL[plan]}
+                      </label>
+                    );
+                  })}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Você pode escolher um ou vários planos.</p>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-6">

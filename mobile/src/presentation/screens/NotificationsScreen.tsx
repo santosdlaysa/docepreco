@@ -65,7 +65,7 @@ const BANNER_CONFIG: Record<Banner['type'], { bg: string; border: string; icon: 
 
 export const NotificationsScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { isMaster } = usePremium();
+  const { isMaster, planTier } = usePremium();
   const sApi = isDemoMode() ? demoStoreApi : storeApi;
   const { formatCurrency } = useCurrencyFormat();
 
@@ -80,7 +80,11 @@ export const NotificationsScreen: React.FC = () => {
     const bannersPromise = bannerApi.getActive().then(async active => {
       await bannerStorage.clearExpired(active.map(b => b.id));
       const dismissed = await bannerStorage.getDismissedIds();
-      setBanners(active.filter(b => !dismissed.includes(b.id)));
+      setBanners(active.filter(b => {
+        if (dismissed.includes(b.id)) return false;
+        const targets = b.targetPlans;
+        return !targets?.length || targets.includes('all') || targets.includes(planTier);
+      }));
     }).catch(() => {});
 
     const storePromise = isMaster
@@ -99,7 +103,7 @@ export const NotificationsScreen: React.FC = () => {
 
     await Promise.all([bannersPromise, storePromise, ordersPromise]);
     setReadIds(await notificationReadStorage.getReadIds());
-  }, [isMaster]);
+  }, [isMaster, planTier]);
 
   useFocusEffect(useCallback(() => { loadData().finally(() => setLoading(false)); }, [loadData]));
 

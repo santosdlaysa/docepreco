@@ -174,7 +174,7 @@ export class BannerController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { title, message, type, actionUrl, startsAt, endsAt, placement, audience, eyebrow, ctaLabel } = req.body;
+      const { title, message, type, actionUrl, startsAt, endsAt, placement, audience, targetPlans, eyebrow, ctaLabel } = req.body;
       if (!title || !message) {
         res.status(400).json({ success: false, error: 'title e message são obrigatórios' });
         return;
@@ -190,6 +190,10 @@ export class BannerController {
         res.status(400).json({ success: false, error: 'audience inválido' });
         return;
       }
+      if (!isPlan && targetPlans !== undefined && (!Array.isArray(targetPlans) || targetPlans.length === 0 || targetPlans.some((p: unknown) => !['all', 'free', 'premium', 'master'].includes(String(p))))) {
+        res.status(400).json({ success: false, error: 'targetPlans inválido' });
+        return;
+      }
       const banner = await repo.create({
         title,
         message,
@@ -199,6 +203,7 @@ export class BannerController {
         endsAt,
         placement: isPlan ? 'plan' : undefined,
         audience: isPlan ? (audience ?? 'all') : undefined,
+        targetPlans: !isPlan ? targetPlans : undefined,
         eyebrow: isPlan ? (eyebrow ?? null) : undefined,
         ctaLabel: isPlan ? (ctaLabel ?? null) : undefined,
       });
@@ -211,12 +216,16 @@ export class BannerController {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, eyebrow, ctaLabel } = req.body;
+      const { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel } = req.body;
       if (audience && !['all', 'non_master', 'master'].includes(audience)) {
         res.status(400).json({ success: false, error: 'audience inválido' });
         return;
       }
-      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, eyebrow, ctaLabel });
+      if (targetPlans !== undefined && (!Array.isArray(targetPlans) || targetPlans.length === 0 || targetPlans.some((p: unknown) => !['all', 'free', 'premium', 'master'].includes(String(p))))) {
+        res.status(400).json({ success: false, error: 'targetPlans inválido' });
+        return;
+      }
+      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel });
       if (!banner) {
         res.status(404).json({ success: false, error: 'Banner não encontrado' });
         return;

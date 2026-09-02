@@ -28,6 +28,7 @@ const EMPTY_FORM = {
   startsAt: '',
   endsAt: '',
   isActive: true,
+  targetPlans: ['all'] as Array<'all' | 'free' | 'premium' | 'master'>,
 };
 
 export const AdminBannersScreen: React.FC = () => {
@@ -58,6 +59,7 @@ export const AdminBannersScreen: React.FC = () => {
       startsAt: b.startsAt ? b.startsAt.slice(0, 10) : '',
       endsAt: b.endsAt ? b.endsAt.slice(0, 10) : '',
       isActive: b.isActive,
+      targetPlans: b.targetPlans?.length ? b.targetPlans : ['all'],
     });
     setModalVisible(true);
   };
@@ -77,6 +79,7 @@ export const AdminBannersScreen: React.FC = () => {
         startsAt: form.startsAt ? new Date(form.startsAt).toISOString() : undefined,
         endsAt: form.endsAt ? new Date(form.endsAt).toISOString() : undefined,
         isActive: form.isActive,
+        targetPlans: form.targetPlans,
       };
       if (editing) await adminApi.updateBanner(editing.id, payload);
       else await adminApi.createBanner(payload);
@@ -218,6 +221,21 @@ export const AdminBannersScreen: React.FC = () => {
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
               />
+
+              <Text style={styles.label}>Exibir para quais planos?</Text>
+              <View style={styles.chipsRow}>
+                {(['all', 'free', 'premium', 'master'] as const).map(plan => {
+                  const selected = form.targetPlans.includes(plan);
+                  const label = plan === 'all' ? 'Todos' : plan[0].toUpperCase() + plan.slice(1);
+                  return <TouchableOpacity key={plan} onPress={() => setForm(f => {
+                    if (plan === 'all') return { ...f, targetPlans: ['all'] };
+                    const next = f.targetPlans.filter(p => p !== 'all' && p !== plan);
+                    return { ...f, targetPlans: selected ? (next.length ? next : ['all']) : [...next, plan] };
+                  })} style={[styles.chip, selected && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+                    <Text style={[styles.chipText, selected && { color: '#fff' }]}>{label}</Text>
+                  </TouchableOpacity>;
+                })}
+              </View>
 
               <View style={{ flexDirection: 'row', gap: 12 }}>
                 <View style={{ flex: 1 }}>

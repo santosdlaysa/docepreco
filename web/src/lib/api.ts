@@ -863,6 +863,7 @@ export interface Banner {
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+  targetPlans?: Array<'all' | 'free' | 'premium' | 'master'>;
   /** 'notification' = aviso; 'carousel' = anúncio patrocinado; 'plan' = banner institucional do carrossel. */
   placement?: 'notification' | 'carousel' | 'plan';
   /** Público-alvo dos banners 'plan'. */
