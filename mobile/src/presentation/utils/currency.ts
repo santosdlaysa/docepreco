@@ -5,6 +5,7 @@ export const CURRENCY_INFO: Record<Currency, { symbol: string; name: string; loc
   USD: { symbol: '$', name: 'Dólar Americano', locale: 'en-US' },
   EUR: { symbol: '€', name: 'Euro', locale: 'de-DE' },
   GBP: { symbol: '£', name: 'Libra Esterlina', locale: 'en-GB' },
+  NZD: { symbol: 'NZ$', name: 'Dólar Neozelandês', locale: 'en-NZ' },
   ARS: { symbol: '$', name: 'Peso Argentino', locale: 'es-AR' },
   CLP: { symbol: '$', name: 'Peso Chileno', locale: 'es-CL' },
   COP: { symbol: '$', name: 'Peso Colombiano', locale: 'es-CO' },

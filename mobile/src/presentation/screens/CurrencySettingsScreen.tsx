@@ -11,7 +11,7 @@ import { CURRENCY_INFO } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const CURRENCIES: Currency[] = ['BRL', 'USD', 'EUR', 'GBP', 'ARS', 'CLP', 'COP', 'MXN'];
+const CURRENCIES: Currency[] = ['BRL', 'USD', 'EUR', 'GBP', 'NZD', 'ARS', 'CLP', 'COP', 'MXN'];
 
 const INK = colors.text;
 const INK2 = colors.textSecondary;

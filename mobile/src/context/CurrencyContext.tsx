@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-export type Currency = 'BRL' | 'USD' | 'EUR' | 'GBP' | 'ARS' | 'CLP' | 'COP' | 'MXN';
+export type Currency = 'BRL' | 'USD' | 'EUR' | 'GBP' | 'NZD' | 'ARS' | 'CLP' | 'COP' | 'MXN';
 
 interface CurrencyContextType {
   currency: Currency;
@@ -58,5 +58,5 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 export const useCurrency = () => useContext(CurrencyContext);
 
 export const isValidCurrency = (value: string): value is Currency => {
-  return ['BRL', 'USD', 'EUR', 'GBP', 'ARS', 'CLP', 'COP', 'MXN'].includes(value);
+  return ['BRL', 'USD', 'EUR', 'GBP', 'NZD', 'ARS', 'CLP', 'COP', 'MXN'].includes(value);
 };
