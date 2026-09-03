@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, AppNotification } from '../lib/api';
 import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
-import { Send, Trash2, Plus, Bell } from 'lucide-react';
+import { Send, Trash2, Plus, Bell, Sparkles } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -36,6 +36,8 @@ export function NotificationsPage({ toast }: Props) {
   const [form, setForm] = useState({ title: '', body: '', target: 'all', schedule: false, scheduledAt: '' });
   const [confirmSend, setConfirmSend] = useState<AppNotification | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<AppNotification | null>(null);
+  const [pixPrices, setPixPrices] = useState<{ premium: string; master: string } | null>(null);
+  const [loadingPixPrices, setLoadingPixPrices] = useState(false);
 
   const load = async () => {
     try {
@@ -50,9 +52,33 @@ export function NotificationsPage({ toast }: Props) {
 
   useEffect(() => { load(); }, []);
 
-  const openNew = () => {
+  const openNew = async () => {
     setForm({ title: '', body: '', target: 'all', schedule: false, scheduledAt: '' });
     setShowModal(true);
+    setLoadingPixPrices(true);
+    try {
+      const config = await api.getPlanConfig();
+      setPixPrices({
+        premium: config.pix?.monthly?.priceLabel ?? `R$ ${config.premiumPrice.toFixed(2).replace('.', ',')}`,
+        master: config.pix?.masterMonthly?.priceLabel ?? `R$ ${config.masterPrice.toFixed(2).replace('.', ',')}`,
+      });
+    } catch {
+      setPixPrices(null);
+    } finally {
+      setLoadingPixPrices(false);
+    }
+  };
+
+  const usePixPromotionTemplate = () => {
+    if (!pixPrices) {
+      toast.error('Não foi possível carregar os preços atuais do PIX.');
+      return;
+    }
+    setForm(current => ({
+      ...current,
+      title: '🎉 Promoção especial no PIX!',
+      body: `Renove ou adquira agora um de nossos planos: Master por ${pixPrices.master}/mês ou Premium por ${pixPrices.premium}/mês. Oferta válida somente para pagamento via PIX. Aproveite!`,
+    }));
   };
 
   const save = async () => {
@@ -203,6 +229,22 @@ export function NotificationsPage({ toast }: Props) {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Nova notificação</h3>
             <div className="space-y-3">
+              <div className="rounded-lg border border-pink-200 bg-pink-50 dark:border-pink-900 dark:bg-pink-950/20 p-3">
+                <button
+                  type="button"
+                  onClick={usePixPromotionTemplate}
+                  disabled={loadingPixPrices || !pixPrices}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary-600 disabled:text-gray-400"
+                >
+                  <Sparkles size={15} />
+                  {loadingPixPrices ? 'Carregando preços...' : 'Usar modelo da promoção PIX'}
+                </button>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  {pixPrices
+                    ? `Valores atuais: Premium ${pixPrices.premium} • Master ${pixPrices.master}.`
+                    : 'Usa os valores definidos em Configuração de Planos.'}
+                </p>
+              </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Título</label>
                 <input

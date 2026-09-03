@@ -1092,7 +1092,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             </select>
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Receitas (min)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Receitas (mín.; 0 = nenhuma)</label>
             <input
               type="number"
               min={0}
@@ -1103,7 +1103,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Ingredientes (min)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Ingredientes (mín.; 0 = nenhum)</label>
             <input
               type="number"
               min={0}
@@ -1114,7 +1114,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
             />
           </div>
           <div>
-            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Vendas (min)</label>
+            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 block mb-1">Vendas (mín.; 0 = nenhuma)</label>
             <input
               type="number"
               min={0}

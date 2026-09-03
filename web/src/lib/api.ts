@@ -475,9 +475,10 @@ export const api = {
     if (params.ddd) q.set('ddd', params.ddd);
     if (params.hasPhone != null) q.set('hasPhone', String(params.hasPhone));
     if (params.hasInstagram != null) q.set('hasInstagram', String(params.hasInstagram));
-    if (params.minRecipes) q.set('minRecipes', String(params.minRecipes));
-    if (params.minIngredients) q.set('minIngredients', String(params.minIngredients));
-    if (params.minSales) q.set('minSales', String(params.minSales));
+    // Zero é um filtro válido: significa usuários sem nenhum cadastro naquele item.
+    if (params.minRecipes != null) q.set('minRecipes', String(params.minRecipes));
+    if (params.minIngredients != null) q.set('minIngredients', String(params.minIngredients));
+    if (params.minSales != null) q.set('minSales', String(params.minSales));
     if (params.minRevenue) q.set('minRevenue', String(params.minRevenue));
     if (params.lastSeenDays != null) q.set('lastSeenDays', String(params.lastSeenDays));
     if (params.createdDays != null) q.set('createdDays', String(params.createdDays));

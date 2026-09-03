@@ -113,9 +113,9 @@ export class AdminController {
     const ddd = req.query.ddd as string | undefined;
     const hasPhone = req.query.hasPhone as string | undefined;
     const hasInstagram = req.query.hasInstagram as string | undefined;
-    const minRecipes = req.query.minRecipes ? parseInt(req.query.minRecipes as string) : undefined;
-    const minIngredients = req.query.minIngredients ? parseInt(req.query.minIngredients as string) : undefined;
-    const minSales = req.query.minSales ? parseInt(req.query.minSales as string) : undefined;
+    const minRecipes = req.query.minRecipes !== undefined ? parseInt(req.query.minRecipes as string) : undefined;
+    const minIngredients = req.query.minIngredients !== undefined ? parseInt(req.query.minIngredients as string) : undefined;
+    const minSales = req.query.minSales !== undefined ? parseInt(req.query.minSales as string) : undefined;
     const minRevenue = req.query.minRevenue ? parseFloat(req.query.minRevenue as string) : undefined;
     const lastSeenDays = req.query.lastSeenDays ? parseInt(req.query.lastSeenDays as string) : undefined;
     const createdDays = req.query.createdDays ? parseInt(req.query.createdDays as string) : undefined;
@@ -175,14 +175,20 @@ export class AdminController {
     if (createdDays !== undefined && createdDays > 0) {
       conditions.push(`u.created_at >= NOW() - INTERVAL '${createdDays} days'`);
     }
-    if (minRecipes !== undefined && minRecipes > 0) {
-      conditions.push(`(SELECT COUNT(*)::int FROM recipes r WHERE r.user_id = u.id) >= ${minRecipes}`);
+    if (minRecipes !== undefined && Number.isInteger(minRecipes) && minRecipes >= 0) {
+      conditions.push(`(SELECT COUNT(*)::int FROM recipes r WHERE r.user_id = u.id) ${minRecipes === 0 ? '=' : '>='} $${idx}`);
+      params.push(minRecipes);
+      idx++;
     }
-    if (minIngredients !== undefined && minIngredients > 0) {
-      conditions.push(`(SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) >= ${minIngredients}`);
+    if (minIngredients !== undefined && Number.isInteger(minIngredients) && minIngredients >= 0) {
+      conditions.push(`(SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) ${minIngredients === 0 ? '=' : '>='} $${idx}`);
+      params.push(minIngredients);
+      idx++;
     }
-    if (minSales !== undefined && minSales > 0) {
-      conditions.push(`(SELECT COUNT(*)::int FROM sales s WHERE s.user_id = u.id) >= ${minSales}`);
+    if (minSales !== undefined && Number.isInteger(minSales) && minSales >= 0) {
+      conditions.push(`(SELECT COUNT(*)::int FROM sales s WHERE s.user_id = u.id) ${minSales === 0 ? '=' : '>='} $${idx}`);
+      params.push(minSales);
+      idx++;
     }
     if (minRevenue !== undefined && minRevenue > 0) {
       conditions.push(`(SELECT COALESCE(SUM(s.total_revenue),0)::float FROM sales s WHERE s.user_id = u.id) >= ${minRevenue}`);

@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { adminApi, AppNotification } from '../../../data/api/adminApi';
+import { planConfigApi } from '../../../data/api/planConfigApi';
 
 const TARGETS: { value: AppNotification['target']; label: string }[] = [
   { value: 'all', label: 'Todos' },
@@ -62,6 +63,8 @@ export const AdminNotificationsScreen: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [acting, setActing] = useState<string | null>(null);
+  const [pixPrices, setPixPrices] = useState<{ premium: string; master: string } | null>(null);
+  const [loadingPixPrices, setLoadingPixPrices] = useState(false);
 
   const load = useCallback(async () => {
     try { setItems(await adminApi.listNotifications()); } catch {}
@@ -70,7 +73,29 @@ export const AdminNotificationsScreen: React.FC = () => {
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
   const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
 
-  const openCreate = () => { setForm(EMPTY_FORM); setModalVisible(true); };
+  const openCreate = async () => {
+    setForm(EMPTY_FORM);
+    setModalVisible(true);
+    setLoadingPixPrices(true);
+    try {
+      const pix = await planConfigApi.getPixConfig();
+      setPixPrices(pix ? { premium: pix.monthly.priceLabel, master: pix.masterMonthly.priceLabel } : null);
+    } finally {
+      setLoadingPixPrices(false);
+    }
+  };
+
+  const usePixPromotionTemplate = () => {
+    if (!pixPrices) {
+      Alert.alert('Preços indisponíveis', 'Não foi possível carregar os preços atuais do PIX.');
+      return;
+    }
+    setForm(current => ({
+      ...current,
+      title: '🎉 Promoção especial no PIX!',
+      body: `Renove ou adquira agora um de nossos planos: Master por ${pixPrices.master}/mês ou Premium por ${pixPrices.premium}/mês. Oferta válida somente para pagamento via PIX. Aproveite!`,
+    }));
+  };
 
   const handleSend = async () => {
     if (!form.title.trim() || !form.body.trim()) {
@@ -208,6 +233,24 @@ export const AdminNotificationsScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.templateBox}>
+                <TouchableOpacity
+                  onPress={usePixPromotionTemplate}
+                  disabled={loadingPixPrices || !pixPrices}
+                  style={styles.templateButton}
+                >
+                  <Ionicons name="sparkles-outline" size={16} color={pixPrices ? colors.primary : colors.textMuted} />
+                  <Text style={[styles.templateButtonText, !pixPrices && { color: colors.textMuted }]}>
+                    {loadingPixPrices ? 'Carregando preços...' : 'Usar modelo da promoção PIX'}
+                  </Text>
+                </TouchableOpacity>
+                <Text style={styles.templateHint}>
+                  {pixPrices
+                    ? `Valores atuais: Premium ${pixPrices.premium} • Master ${pixPrices.master}.`
+                    : 'Usa os valores definidos em Configuração de Planos.'}
+                </Text>
+              </View>
+
               <Text style={styles.label}>Título</Text>
               <TextInput
                 style={styles.input}
@@ -300,6 +343,10 @@ const styles = StyleSheet.create({
   modalCard: { backgroundColor: colors.surface, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '85%' },
   modalHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   modalTitle: { fontSize: 18, fontWeight: '800', color: colors.text },
+  templateBox: { padding: 12, borderWidth: 1, borderColor: colors.primaryLight, borderRadius: 12, backgroundColor: colors.pinkBg2 },
+  templateButton: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  templateButtonText: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  templateHint: { color: colors.textMuted, fontSize: 11, marginTop: 4 },
   label: { fontSize: 13, fontWeight: '600', color: colors.textSecondary, marginBottom: 6, marginTop: 12 },
   input: { borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: colors.text, backgroundColor: colors.background },
   chipsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
