@@ -12,6 +12,12 @@ const num = (n: number | null, d = 1) => (n == null ? '—' : n.toFixed(d));
 
 const card = 'bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50';
 
+function previousMonthValue(): string {
+  const now = new Date();
+  const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}`;
+}
+
 function periodLabel(start: string): string {
   const [y, m] = start.split('-').map(Number);
   const label = new Date(y, m - 1, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
@@ -76,11 +82,12 @@ export function BusinessMetricsPage({ toast }: { toast: (msg: string, type?: 'su
   const [data, setData] = useState<BusinessMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedMonth, setSelectedMonth] = useState(previousMonthValue);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
     try {
-      const d = await api.getBusinessMetrics();
+      const d = await api.getBusinessMetrics(selectedMonth);
       setData(d);
     } catch {
       toast('Erro ao carregar métricas de negócio', 'error');
@@ -88,7 +95,7 @@ export function BusinessMetricsPage({ toast }: { toast: (msg: string, type?: 'su
       setLoading(false);
       setRefreshing(false);
     }
-  }, [toast]);
+  }, [toast, selectedMonth]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -112,7 +119,7 @@ export function BusinessMetricsPage({ toast }: { toast: (msg: string, type?: 'su
 
   if (!data) return null;
 
-  const { churn, conversion, ltv, revenue, period } = data;
+  const { churn, conversion, renewals, ltv, revenue, period } = data;
   const label = periodLabel(period.start);
   const mom = revenue.momGrowthPct;
 
@@ -123,20 +130,37 @@ export function BusinessMetricsPage({ toast }: { toast: (msg: string, type?: 'su
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Métricas de Negócio</h1>
           <p className="text-sm text-gray-400 flex items-center gap-1.5 mt-0.5">
-            <Calendar size={14} /> Período de referência: <span className="font-medium text-gray-600 dark:text-gray-300">{label}</span> (último mês fechado)
+            <Calendar size={14} /> Período de referência: <span className="font-medium text-gray-600 dark:text-gray-300">{label}</span>
           </p>
         </div>
-        <button
-          onClick={() => load(true)}
-          disabled={refreshing}
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors disabled:opacity-60"
-        >
-          <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> Atualizar
-        </button>
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium text-gray-500 dark:text-gray-400" htmlFor="business-metrics-month">Mês</label>
+          <input
+            id="business-metrics-month"
+            type="month"
+            value={selectedMonth}
+            max={previousMonthValue()}
+            onChange={e => setSelectedMonth(e.target.value || previousMonthValue())}
+            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
+          />
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors disabled:opacity-60"
+          >
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> Atualizar
+          </button>
+        </div>
       </div>
 
       {/* KPIs */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+        <KpiCard
+          label="Novos cadastros no mês"
+          value={String(conversion.leads)}
+          sub={`${conversion.totalAccounts} contas acumuladas até o fim do período`}
+          icon={Users} color="bg-blue-500"
+        />
         <KpiCard
           label="Churn (mês)"
           value={pct(churn.ratePct)}
@@ -161,6 +185,18 @@ export function BusinessMetricsPage({ toast }: { toast: (msg: string, type?: 'su
           sub={mom == null ? `ticket médio ${fmt(revenue.ticketAvgBRL)}` : `${mom >= 0 ? '▲' : '▼'} ${Math.abs(mom).toFixed(1)}% vs mês anterior`}
           icon={DollarSign} color="bg-primary-500"
           tone={mom == null ? 'neutral' : mom >= 0 ? 'good' : 'bad'}
+        />
+        <KpiCard
+          label="Renovaram no mês"
+          value={String(renewals.users)}
+          sub={`${renewals.count} renovação(ões) registrada(s)`}
+          icon={Repeat} color="bg-cyan-500" tone="good"
+        />
+        <KpiCard
+          label="Receita das renovações"
+          value={fmt(renewals.revenueBRL)}
+          sub={`No período de ${label}`}
+          icon={DollarSign} color="bg-emerald-600" tone="good"
         />
       </div>
 

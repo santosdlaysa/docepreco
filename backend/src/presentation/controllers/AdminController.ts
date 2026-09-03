@@ -1397,6 +1397,9 @@ export class AdminController {
             (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND premium_until IS NOT NULL AND premium_until <= NOW()) AS "expiredSubscribers",
             (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE')) AS "totalReceivedCents",
             (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyReceivedCents",
+            (SELECT COUNT(*)::int FROM premium_events WHERE event_type = 'RENEWAL' AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyRenewalCount",
+            (SELECT COUNT(DISTINCT user_id)::int FROM premium_events WHERE event_type = 'RENEWAL' AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyRenewingUsers",
+            (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type = 'RENEWAL' AND created_at >= DATE_TRUNC('month', NOW())) AS "monthlyRenewalRevenueCents",
             (SELECT COALESCE(SUM(CASE WHEN amount_cents > 0 THEN amount_cents ELSE 0 END), 0)::bigint FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND created_at >= DATE_TRUNC('month', NOW() - INTERVAL '1 month') AND created_at < DATE_TRUNC('month', NOW())) AS "lastMonthCents",
             (SELECT COALESCE(AVG(amount_cents), 0)::float FROM premium_events WHERE event_type IN ('INITIAL_PURCHASE', 'RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'NON_RENEWING_PURCHASE') AND amount_cents > 0) AS "avgValue",
             (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE) AS "totalSubscribers"
@@ -1453,6 +1456,7 @@ export class AdminController {
       const activeSubscribers = parseInt(overview.activeSubscribers || '0');
       const totalReceivedCents = parseInt(overview.totalReceivedCents || '0');
       const monthlyReceivedCents = parseInt(overview.monthlyReceivedCents || '0');
+      const monthlyRenewalRevenueCents = parseInt(overview.monthlyRenewalRevenueCents || '0');
       const lastMonthCents = parseInt(overview.lastMonthCents || '0');
 
       const mrr = activeSubscribers > 0 ? monthlyReceivedCents / activeSubscribers / 100 : 0;
@@ -1469,6 +1473,9 @@ export class AdminController {
             totalSubscribers: parseInt(overview.totalSubscribers || '0'),
             totalReceivedBRL: totalReceivedCents / 100,
             monthlyReceivedBRL: monthlyReceivedCents / 100,
+            monthlyRenewalCount: parseInt(overview.monthlyRenewalCount || '0'),
+            monthlyRenewingUsers: parseInt(overview.monthlyRenewingUsers || '0'),
+            monthlyRenewalRevenueBRL: monthlyRenewalRevenueCents / 100,
             lastMonthBRL: lastMonthCents / 100,
             avgValueBRL: overview.avgValue || 0,
             mrr,
@@ -1511,18 +1518,26 @@ export class AdminController {
   }
 
   /**
-   * Métricas de saúde do negócio (churn, conversão, LTV, ARPU) calculadas sobre
-   * o ÚLTIMO MÊS FECHADO (ex.: em agosto, considera julho). Espelha as métricas
-   * pedidas em formulários de aceleradora/edital.
+   * Métricas de saúde do negócio (churn, conversão, LTV, ARPU) calculadas para
+   * o mês informado em ?month=AAAA-MM. Sem o parâmetro, usa o último mês fechado.
    */
   async getBusinessMetrics(req: Request, res: Response): Promise<void> {
+    const requestedMonth = typeof req.query.month === 'string' ? req.query.month : undefined;
+    if (requestedMonth && !/^\d{4}-(0[1-9]|1[0-2])$/.test(requestedMonth)) {
+      res.status(400).json({ success: false, error: 'month deve estar no formato AAAA-MM' });
+      return;
+    }
+
     try {
       const PAID = `('INITIAL_PURCHASE','RENEWAL','UNCANCELLATION','PRODUCT_CHANGE','NON_RENEWING_PURCHASE')`;
       const result = await pool.query(`
         WITH bounds AS (
-          SELECT date_trunc('month', NOW() - INTERVAL '1 month') AS p_start,
-                 date_trunc('month', NOW())                      AS p_end,
-                 date_trunc('month', NOW() - INTERVAL '2 month')  AS pp_start
+          SELECT selected.p_start,
+                 selected.p_start + INTERVAL '1 month' AS p_end,
+                 selected.p_start - INTERVAL '1 month' AS pp_start
+          FROM (
+            SELECT COALESCE($1::date, date_trunc('month', NOW() - INTERVAL '1 month')::date) AS p_start
+          ) selected
         ),
         base AS (
           SELECT DISTINCT pe.user_id
@@ -1548,11 +1563,19 @@ export class AdminController {
              WHERE pe.event_type IN ${PAID} AND pe.created_at >= b.pp_start AND pe.created_at < b.p_start) AS "prevCents",
           (SELECT COALESCE(AVG(amount_cents),0)::float FROM premium_events pe, bounds b
              WHERE pe.event_type IN ${PAID} AND pe.amount_cents > 0 AND pe.created_at >= b.p_start AND pe.created_at < b.p_end) AS "ticketCents",
-          (SELECT COUNT(DISTINCT id)::int FROM users WHERE is_premium = TRUE AND (premium_until IS NULL OR premium_until > NOW())) AS "activeSubscribers",
-          (SELECT COUNT(*)::int FROM users) AS "totalAccounts",
+          (SELECT COUNT(*)::int FROM premium_events pe, bounds b
+             WHERE pe.event_type = 'RENEWAL' AND pe.created_at >= b.p_start AND pe.created_at < b.p_end) AS "renewalCount",
+          (SELECT COUNT(DISTINCT pe.user_id)::int FROM premium_events pe, bounds b
+             WHERE pe.event_type = 'RENEWAL' AND pe.created_at >= b.p_start AND pe.created_at < b.p_end) AS "renewingUsers",
+          (SELECT COALESCE(SUM(CASE WHEN pe.amount_cents > 0 THEN pe.amount_cents ELSE 0 END),0)::bigint FROM premium_events pe, bounds b
+             WHERE pe.event_type = 'RENEWAL' AND pe.created_at >= b.p_start AND pe.created_at < b.p_end) AS "renewalCents",
+          (SELECT COUNT(DISTINCT pe.user_id)::int FROM premium_events pe, bounds b
+             WHERE pe.event_type IN ${PAID} AND pe.created_at < b.p_end
+               AND (pe.expiration_at IS NULL OR pe.expiration_at >= b.p_end)) AS "activeSubscribers",
+          (SELECT COUNT(*)::int FROM users u, bounds b WHERE u.created_at < b.p_end) AS "totalAccounts",
           (SELECT to_char(b.p_start, 'YYYY-MM-DD') FROM bounds b) AS "periodStart",
           (SELECT to_char(b.p_end, 'YYYY-MM-DD') FROM bounds b) AS "periodEnd"
-      `);
+      `, [requestedMonth ? `${requestedMonth}-01` : null]);
 
       const r = result.rows[0];
       const baseCount = parseInt(r.baseCount || '0');
@@ -1565,6 +1588,9 @@ export class AdminController {
       const ticketAvgBRL = (r.ticketCents || 0) / 100;
       const activeSubscribers = parseInt(r.activeSubscribers || '0');
       const totalAccounts = parseInt(r.totalAccounts || '0');
+      const renewalCount = parseInt(r.renewalCount || '0');
+      const renewingUsers = parseInt(r.renewingUsers || '0');
+      const renewalRevenueBRL = parseInt(r.renewalCents || '0') / 100;
 
       const churnPct = baseCount > 0 ? (churned / baseCount) * 100 : null;
       const conversionPct = leads > 0 ? (payers / leads) * 100 : null;
@@ -1580,6 +1606,7 @@ export class AdminController {
           period: { start: r.periodStart, end: r.periodEnd },
           churn: { base: baseCount, lost: churned, renewed, ratePct: churnPct },
           conversion: { leads, payers, ratePct: conversionPct, cumulativeRatePct: cumulativeConversionPct, totalAccounts, activePayers: activeSubscribers },
+          renewals: { users: renewingUsers, count: renewalCount, revenueBRL: renewalRevenueBRL },
           ltv: { arpuBRL, avgLifetimeMonths, valueBRL: ltvBRL },
           revenue: { periodBRL, prevPeriodBRL: prevBRL, momGrowthPct, ticketAvgBRL, activeSubscribers },
         },

@@ -160,6 +160,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
   const [filterMonth, setFilterMonth] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired'>('all');
+  const [filterEventType, setFilterEventType] = useState<'all' | 'INITIAL_PURCHASE' | 'RENEWAL'>('all');
   const [pageSize, setPageSize] = useState(10);
 
   const eventMonth = (dateValue: string) => {
@@ -206,15 +207,17 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
     return events.filter(event => {
       const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
       const monthMatches = filterMonth ? eventMonth(event.createdAt) === filterMonth : true;
-      return platformMatches && monthMatches && statusMatches(event);
+      const typeMatches = filterEventType === 'all' || event.eventType === filterEventType;
+      return platformMatches && monthMatches && typeMatches && statusMatches(event);
     });
-  }, [events, filterPlatform, filterMonth, filterStatus]);
+  }, [events, filterPlatform, filterMonth, filterStatus, filterEventType]);
 
   const monthlyTotals = useMemo(() => {
     return months.map(month => {
       const monthEvents = events.filter(event => {
         const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
-        return platformMatches && eventMonth(event.createdAt) === month && statusMatches(event);
+        const typeMatches = filterEventType === 'all' || event.eventType === filterEventType;
+        return platformMatches && typeMatches && eventMonth(event.createdAt) === month && statusMatches(event);
       });
 
       return {
@@ -223,7 +226,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
         totalBRL: monthEvents.reduce((sum, event) => sum + event.amountBRL, 0),
       };
     });
-  }, [events, filterPlatform, filterStatus, months]);
+  }, [events, filterPlatform, filterStatus, filterEventType, months]);
 
   const filteredTotalBRL = filtered.reduce((sum, event) => sum + event.amountBRL, 0);
   const selectedMonthTotal = filterMonth
@@ -233,7 +236,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterStatus, pageSize]);
+  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterStatus, filterEventType, pageSize]);
 
   return (
     <div className={`${card}`}>
@@ -272,6 +275,27 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                 }`}
               >
                 {status.label} ({events.filter(e => status.value === 'all' || eventStatus(e) === status.value).length})
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tipo</span>
+            {[
+              { value: 'all' as const, label: 'Todos' },
+              { value: 'INITIAL_PURCHASE' as const, label: 'Novas assinaturas' },
+              { value: 'RENEWAL' as const, label: 'Renovações' },
+            ].map(type => (
+              <button
+                key={type.value}
+                onClick={() => setFilterEventType(type.value)}
+                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
+                  filterEventType === type.value
+                    ? 'bg-primary-500 text-white'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
+                }`}
+              >
+                {type.label} ({events.filter(e => type.value === 'all' || e.eventType === type.value).length})
               </button>
             ))}
           </div>
@@ -841,6 +865,20 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
           sub={overview.momGrowth >= 0 ? `+${overview.momGrowth.toFixed(1)}% MoM` : `${overview.momGrowth.toFixed(1)}% MoM`}
           icon={Crown}
           color="bg-pink-500"
+        />
+        <StatMetric
+          label="Renovaram este mês"
+          value={overview.monthlyRenewingUsers}
+          sub={`${overview.monthlyRenewalCount} renovação(ões) registrada(s)`}
+          icon={RefreshCw}
+          color="bg-cyan-500"
+        />
+        <StatMetric
+          label="Receita de renovações"
+          value={fmt(overview.monthlyRenewalRevenueBRL)}
+          sub="Gerada neste mês"
+          icon={DollarSign}
+          color="bg-emerald-600"
         />
       </div>
 

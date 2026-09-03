@@ -108,6 +108,9 @@ export interface SubscriptionOverview {
   totalSubscribers: number;
   totalReceivedBRL: number;
   monthlyReceivedBRL: number;
+  monthlyRenewalCount: number;
+  monthlyRenewingUsers: number;
+  monthlyRenewalRevenueBRL: number;
   lastMonthBRL: number;
   avgValueBRL: number;
   mrr: number;
@@ -419,6 +422,7 @@ export interface BusinessMetrics {
     totalAccounts: number;
     activePayers: number;
   };
+  renewals: { users: number; count: number; revenueBRL: number };
   ltv: { arpuBRL: number | null; avgLifetimeMonths: number | null; valueBRL: number | null };
   revenue: {
     periodBRL: number;
@@ -445,7 +449,8 @@ export const api = {
 
   getSubscriptionDashboard: () => req<SubscriptionDashboard>('/admin/subscriptions'),
 
-  getBusinessMetrics: () => req<BusinessMetrics>('/admin/business-metrics'),
+  getBusinessMetrics: (month?: string) =>
+    req<BusinessMetrics>(`/admin/business-metrics${month ? `?month=${encodeURIComponent(month)}` : ''}`),
 
   getWinbackEligible: () => req<WinbackEligibleUser[]>('/admin/winback/eligible'),
   getWinbackOffers: () => req<WinbackOffer[]>('/admin/winback'),
