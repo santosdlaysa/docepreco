@@ -3,7 +3,7 @@ import { api, BusinessMetrics } from '../lib/api';
 import { Skeleton } from '../components';
 import {
   RefreshCw, TrendingDown, TrendingUp, Users, Percent, Repeat,
-  DollarSign, Calendar, Info, HelpCircle,
+  DollarSign, Calendar, Info, HelpCircle, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 
 const fmt = (n: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n);
@@ -16,6 +16,20 @@ function previousMonthValue(): string {
   const now = new Date();
   const previous = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   return `${previous.getFullYear()}-${String(previous.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function shiftMonth(value: string, amount: number): string {
+  const [year, month] = value.split('-').map(Number);
+  const shifted = new Date(year, month - 1 + amount, 1);
+  return `${shifted.getFullYear()}-${String(shifted.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function monthOptions(total = 60): Array<{ value: string; label: string }> {
+  const latest = previousMonthValue();
+  return Array.from({ length: total }, (_, index) => {
+    const value = shiftMonth(latest, -index);
+    return { value, label: periodLabel(`${value}-01`) };
+  });
 }
 
 function periodLabel(start: string): string {
@@ -83,6 +97,13 @@ export function BusinessMetricsPage({ toast }: { toast: (msg: string, type?: 'su
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState(previousMonthValue);
+  const months = monthOptions();
+
+  const changeMonth = (month: string) => {
+    if (month === selectedMonth) return;
+    setRefreshing(true);
+    setSelectedMonth(month);
+  };
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -133,22 +154,50 @@ export function BusinessMetricsPage({ toast }: { toast: (msg: string, type?: 'su
             <Calendar size={14} /> Período de referência: <span className="font-medium text-gray-600 dark:text-gray-300">{label}</span>
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <label className="text-sm font-medium text-gray-500 dark:text-gray-400" htmlFor="business-metrics-month">Mês</label>
-          <input
-            id="business-metrics-month"
-            type="month"
-            value={selectedMonth}
-            max={previousMonthValue()}
-            onChange={e => setSelectedMonth(e.target.value || previousMonthValue())}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:border-primary-400 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200"
-          />
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <span className="hidden text-sm font-medium text-gray-500 dark:text-gray-400 sm:inline">Mês</span>
+          <div className="flex min-w-0 flex-1 items-center rounded-lg border border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-800 sm:flex-none">
+            <button
+              type="button"
+              aria-label="Ver mês anterior"
+              title="Mês anterior"
+              onClick={() => changeMonth(shiftMonth(selectedMonth, -1))}
+              disabled={refreshing || selectedMonth <= months[months.length - 1].value}
+              className="rounded-l-lg p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <label className="sr-only" htmlFor="business-metrics-month">Selecionar mês</label>
+            <select
+              id="business-metrics-month"
+              value={selectedMonth}
+              onChange={e => changeMonth(e.target.value)}
+              disabled={refreshing}
+              className="min-w-0 flex-1 border-x border-y-0 border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 outline-none focus:ring-2 focus:ring-primary-400 disabled:cursor-wait disabled:opacity-70 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 sm:w-44"
+            >
+              {months.map(month => (
+                <option key={month.value} value={month.value}>{month.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              aria-label="Ver próximo mês"
+              title="Próximo mês"
+              onClick={() => changeMonth(shiftMonth(selectedMonth, 1))}
+              disabled={refreshing || selectedMonth >= previousMonthValue()}
+              className="rounded-r-lg p-2 text-gray-500 transition-colors hover:bg-gray-50 hover:text-primary-600 disabled:cursor-not-allowed disabled:opacity-30 dark:text-gray-300 dark:hover:bg-gray-700"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
           <button
+            type="button"
             onClick={() => load(true)}
             disabled={refreshing}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-500 text-white text-sm font-medium hover:bg-primary-600 transition-colors disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 disabled:opacity-60"
           >
-            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} /> Atualizar
+            <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+            <span className="hidden sm:inline">Atualizar</span>
           </button>
         </div>
       </div>
