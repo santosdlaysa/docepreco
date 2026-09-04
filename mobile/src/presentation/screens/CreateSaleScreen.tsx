@@ -35,6 +35,9 @@ import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
 import { computeDiscountAmount, DiscountType } from '../utils/discount';
 import { DiscountInput } from '../components/DiscountInput';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 /* ─── Design tokens ─── */
 const INK = colors.text;
@@ -61,12 +64,12 @@ const PAYMENT_METHODS: { key: PaymentMethod; icon: keyof typeof Ionicons.glyphMa
   { key: 'debito', icon: 'card-outline', label: 'Débito' },
 ];
 
-const fmtCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
 type SaleMode = 'recipe' | 'custom';
 
 export const CreateSaleScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
+  const { formatCurrency: fmtCurrency } = useCurrencyFormat();
   const navigation = useNavigation();
   const route = useRoute<RouteProp<RootStackParamList, 'CreateSale'>>();
   const editingSale = route.params?.sale ?? null;
@@ -353,7 +356,7 @@ export const CreateSaleScreen: React.FC = () => {
             <View style={[st.field, { flex: 1 }]}>
               <Text style={st.label}>Preço unitário</Text>
               <View style={[st.input, errors.price ? st.inputErr : null]}>
-                <Text style={st.phTxt}>R$</Text>
+                <Text style={st.phTxt}>{symbol}</Text>
                 <TextInput style={st.inputText} value={salePrice} onChangeText={handlePriceChange}
                   placeholder="65,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
               </View>

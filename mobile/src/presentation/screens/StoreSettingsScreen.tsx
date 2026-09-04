@@ -26,6 +26,8 @@ import { demoStoreApi } from '../../data/demo/demoApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -101,6 +103,8 @@ const FOOD_CATEGORIES = [
 ];
 
 export const StoreSettingsScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
   const navigation = useNavigation<NavigationProp>();
   const { showToast } = useToast();
   const { guardMaster } = usePaywall();
@@ -362,7 +366,7 @@ export const StoreSettingsScreen: React.FC = () => {
           {/* ── Min order ── */}
           <Text style={st.label}>Valor mínimo de pedido (opcional)</Text>
           <View style={st.priceInput}>
-            <Text style={st.pricePre}>R$</Text>
+            <Text style={st.pricePre}>{symbol}</Text>
             <TextInput
               style={st.priceField}
               value={minOrderText}
@@ -395,7 +399,7 @@ export const StoreSettingsScreen: React.FC = () => {
             <>
               <Text style={st.label}>Taxa de entrega (opcional)</Text>
               <View style={st.priceInput}>
-                <Text style={st.pricePre}>R$</Text>
+                <Text style={st.pricePre}>{symbol}</Text>
                 <TextInput
                   style={st.priceField}
                   value={deliveryFeeText}

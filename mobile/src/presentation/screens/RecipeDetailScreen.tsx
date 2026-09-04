@@ -37,6 +37,7 @@ import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { parseLocaleNumber } from '../utils/number';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { useCurrency } from '../../context/CurrencyContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'RecipeDetail'>;
@@ -91,6 +92,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const { requirePremium } = usePaywall();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
+  const { currency } = useCurrency();
 
   useFocusEffect(
     useCallback(() => {
@@ -185,7 +187,7 @@ export const RecipeDetailScreen: React.FC = () => {
     if (!recipe || !calculation) return;
     setSharing(true);
     try {
-      await shareRecipeQuote({ recipe, calculation, companyName }, pdfSettings);
+      await shareRecipeQuote({ recipe, calculation, companyName, currency }, pdfSettings);
     } catch (error) {
       const msg = error instanceof Error ? error.message : t('recipeDetail.shareError');
       showToast(msg, 'error');

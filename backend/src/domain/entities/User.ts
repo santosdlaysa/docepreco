@@ -1,4 +1,4 @@
-export type PremiumPlatform = 'ios' | 'android' | 'manual' | 'card';
+export type PremiumPlatform = 'ios' | 'android' | 'manual' | 'card' | 'pix';
 
 export type PlanTier = 'free' | 'premium' | 'master';
 

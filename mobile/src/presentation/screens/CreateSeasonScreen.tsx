@@ -13,6 +13,7 @@ import { seasonApi } from '../../data/api/seasonApi';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { parseLocaleNumber } from '../utils/number';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 // ── Design tokens ──
 const INK = colors.text;
@@ -31,6 +32,7 @@ const SHADOW = {
 type RouteType = RouteProp<RootStackParamList, 'EditSeason'>;
 
 export const CreateSeasonScreen: React.FC = () => {
+  const { formatCurrency } = useCurrencyFormat();
   const { t } = useTranslation();
   const navigation = useNavigation();
   const route = useRoute<RouteType>();
@@ -202,8 +204,8 @@ export const CreateSeasonScreen: React.FC = () => {
               style={s.preview}
             >
               <Text style={s.previewLabel}>Pré-visualização</Text>
-              <Text style={s.previewSub}>Uma receita de <Text style={{ fontWeight: '700' }}>R$ 10,00</Text></Text>
-              <Text style={s.previewPrice}>passa a R$ {(10 * previewMultiplier).toFixed(2).replace('.', ',')}</Text>
+              <Text style={s.previewSub}>Uma receita de <Text style={{ fontWeight: '700' }}>{formatCurrency(10)}</Text></Text>
+              <Text style={s.previewPrice}>passa a {formatCurrency(10 * previewMultiplier)}</Text>
             </LinearGradient>
           )}
 

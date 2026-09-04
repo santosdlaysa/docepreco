@@ -8,6 +8,7 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "migrate": "ts-node src/infrastructure/database/migrate.ts",
+    "reconcile:stripe": "ts-node src/scripts/reconcileStripe.ts",
     "test": "jest",
     "test:e2e": "jest src/e2e --runInBand",
     "test:watch": "jest --watch",

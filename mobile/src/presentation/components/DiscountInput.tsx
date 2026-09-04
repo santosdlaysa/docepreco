@@ -2,6 +2,8 @@ import { colors } from '../theme/colors';
 import React from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import type { DiscountType } from '../utils/discount';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 interface DiscountInputProps {
   type: DiscountType;
@@ -32,6 +34,9 @@ export const DiscountInput: React.FC<DiscountInputProps> = ({
   label = 'Desconto (opcional)',
   compact = false,
 }) => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
+
   return (
     <View style={styles.field}>
       {!!label && <Text style={styles.label}>{label}</Text>}
@@ -42,7 +47,7 @@ export const DiscountInput: React.FC<DiscountInputProps> = ({
             onPress={() => onChangeType('fixed')}
             activeOpacity={0.8}
           >
-            <Text style={[styles.toggleText, type === 'fixed' && styles.toggleTextActive]}>R$</Text>
+            <Text style={[styles.toggleText, type === 'fixed' && styles.toggleTextActive]}>{symbol}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.toggleBtn, type === 'percent' && styles.toggleBtnActive]}

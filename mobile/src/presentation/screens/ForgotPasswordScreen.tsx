@@ -18,6 +18,7 @@ import { Button } from '../components/Button';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
+import { useAuthLayout } from '../hooks/useAuthLayout';
 
 type Step = 'email' | 'code' | 'password';
 
@@ -26,6 +27,7 @@ interface Props {
 }
 
 export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
+  const L = useAuthLayout();
   const { t } = useTranslation();
   const [step, setStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
@@ -233,15 +235,15 @@ export const ForgotPasswordScreen: React.FC<Props> = ({ onBack }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={[styles.container, { padding: L.compact ? L.cardPad : 24 }]} showsVerticalScrollIndicator={false}>
 
-          <View style={styles.logoArea}>
-            <View style={styles.logoIcon}>
-              <Ionicons name="lock-closed" size={40} color={colors.primary} />
+          <View style={[styles.logoArea, { marginBottom: L.compact ? L.blockGap : 32 }]}>
+            <View style={[styles.logoIcon, { width: L.compact ? L.logoSize : 80, height: L.compact ? L.logoSize : 80, borderRadius: L.compact ? L.logoRadius : 24 }]}>
+              <Ionicons name="lock-closed" size={L.compact ? 30 : 40} color={colors.primary} />
             </View>
           </View>
 
-          <View style={styles.form}>
+          <View style={[styles.form, { padding: L.compact ? L.cardPad : 24 }]}>
             <Text style={styles.title}>{stepTitles[step]}</Text>
 
             {error ? (

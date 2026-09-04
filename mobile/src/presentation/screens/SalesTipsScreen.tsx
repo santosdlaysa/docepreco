@@ -29,6 +29,7 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { demoStatsApi, demoSaleApi, demoRecipeApi } from '../../data/demo/demoApi';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Sale } from '../../domain/entities/Sale';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 /* ─── Design tokens ─── */
 const INK = colors.text;
@@ -48,8 +49,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type CatFilter = MarketingCategory | 'all';
 
-const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
 const STYLE_BY_TYPE: Record<Insight['type'], { bg: string; color: string }> = {
   positive: { bg: '#E4F6EA', color: GREEN },
   warning: { bg: '#FCEFD9', color: AMBER },
@@ -58,6 +57,7 @@ const STYLE_BY_TYPE: Record<Insight['type'], { bg: string; color: string }> = {
 };
 
 export const SalesTipsScreen: React.FC = () => {
+  const { formatCurrency: fmt } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const { guardMaster } = usePaywall();
 
@@ -87,8 +87,8 @@ export const SalesTipsScreen: React.FC = () => {
       let goal = null;
       try { goal = await goalApi.get(now.getMonth() + 1, now.getFullYear()); } catch { /* sem meta */ }
 
-      const base = generateInsights(stats, goal);
-      const pricing = await buildPricingTips(sales, recipes, rApi.calculate);
+      const base = generateInsights(stats, goal, fmt);
+      const pricing = await buildPricingTips(sales, recipes, rApi.calculate, fmt);
       setInsights([...pricing, ...base]);
     } catch {
       setInsights([]);
@@ -208,6 +208,7 @@ async function buildPricingTips(
   sales: Sale[],
   recipes: Recipe[],
   calculate: (id: string) => Promise<{ suggestedPrice: number; profitMargin: number; costPerUnit: number }>,
+  fmt: (v: number) => string,
 ): Promise<Insight[]> {
   const tips: Insight[] = [];
   if (sales.length === 0) return tips;

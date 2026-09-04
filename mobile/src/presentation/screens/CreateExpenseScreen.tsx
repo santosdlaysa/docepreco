@@ -15,6 +15,8 @@ import { demoExpenseApi } from '../../data/demo/demoApi';
 import { useToast } from '../context/ToastContext';
 import { useDraft } from '../hooks/useDraft';
 import { parseLocaleNumber } from '../utils/number';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteType = RouteProp<RootStackParamList, 'CreateExpense'>;
@@ -44,6 +46,8 @@ const parseDateInput = (str: string): string | null => {
 };
 
 export const CreateExpenseScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteType>();
   const { showToast } = useToast();
@@ -170,7 +174,7 @@ export const CreateExpenseScreen: React.FC = () => {
         />
 
         {/* Valor */}
-        <Text style={s.label}>Valor (R$) *</Text>
+        <Text style={s.label}>Valor ({symbol}) *</Text>
         <TextInput
           style={s.input}
           value={amount}

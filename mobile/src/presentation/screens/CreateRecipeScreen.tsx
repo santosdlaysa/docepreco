@@ -43,6 +43,8 @@ import { formatUnitLabel } from '../utils/units';
 import { getEffectivePurchaseQuantity } from '../../domain/services/ingredientPricing';
 import { parseLocaleNumber } from '../utils/number';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditRecipe'>;
@@ -86,6 +88,8 @@ const normalizeCostName = (value: string) =>
     .replace(/[^a-z0-9]/g, '');
 
 export const CreateRecipeScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
   const route = useRoute<RouteProps>();
@@ -1226,7 +1230,7 @@ export const CreateRecipeScreen: React.FC = () => {
                     style={{ fontSize: 15, fontWeight: '700', color: INK2, textAlign: 'right', minWidth: 70, padding: 0 }}
                     value={getAdditionalCostValue(cost.name)}
                     onChangeText={val => updateAdditionalCost(cost.name, val)}
-                    placeholder="R$ 0,00"
+                    placeholder={`${symbol} 0,00`}
                     placeholderTextColor={INK3}
                     keyboardType="decimal-pad"
                   />
@@ -1281,7 +1285,7 @@ export const CreateRecipeScreen: React.FC = () => {
                         value={monthlyIncome}
                         onChangeText={setMonthlyIncome}
                         keyboardType="decimal-pad"
-                        suffix="R$/mês"
+                        suffix={`${symbol}/mês`}
                       />
                       <View style={{ flexDirection: 'row' }}>
                         <View style={{ flex: 1, marginRight: 8 }}>
@@ -1333,7 +1337,7 @@ export const CreateRecipeScreen: React.FC = () => {
                       value={hourlyRate}
                       onChangeText={setHourlyRate}
                       keyboardType="decimal-pad"
-                      suffix="R$/h"
+                      suffix={`${symbol}/h`}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -1486,7 +1490,7 @@ export const CreateRecipeScreen: React.FC = () => {
                       <Text style={styles.modalIngInfo}>
                         {item.purchaseUnitLabel
                           ? `${item.purchaseQuantity} ${item.purchaseUnitLabel} (${item.purchaseQuantity * (item.purchaseUnitWeight ?? 0)} ${formatUnitLabel(item.unit)})`
-                          : `${item.purchaseQuantity} ${formatUnitLabel(item.unit)}`} — R$ {item.purchasePrice.toFixed(2)}
+                          : `${item.purchaseQuantity} ${formatUnitLabel(item.unit)}`} — {formatCurrency(item.purchasePrice)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -1676,7 +1680,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   <View key={idx} style={styles.confirmRow}>
                     <Text style={styles.confirmLabel}>{c.name}</Text>
                     <Text style={styles.confirmValueHighlight}>
-                      R$ {c.value.toFixed(2)}
+                      {formatCurrency(c.value)}
                     </Text>
                   </View>
                 ))}
@@ -1747,7 +1751,7 @@ export const CreateRecipeScreen: React.FC = () => {
               <View style={styles.confirmDetailRow}>
                 <Text style={styles.confirmDetailLabel}>{t('createRecipe.estimatedCost')}</Text>
                 <Text style={[styles.confirmDetailValue, { color: colors.primary, fontWeight: '800' }]}>
-                  R$ {ingredientConfirm?.cost?.toFixed(2).replace('.', ',')}
+                  {formatCurrency(ingredientConfirm?.cost ?? 0)}
                 </Text>
               </View>
             </View>

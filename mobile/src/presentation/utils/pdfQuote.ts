@@ -3,10 +3,8 @@ import * as Sharing from 'expo-sharing';
 import { Recipe } from '../../domain/entities/Recipe';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { PdfSettings } from '../../data/storage/pdfSettingsStorage';
-import { formatCurrencyUnit } from './currency';
-
-const formatCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+import { formatCurrency as fmtCurrency, formatCurrencyUnit } from './currency';
+import { Currency } from '../../context/CurrencyContext';
 
 const formatDate = (d: Date) =>
   d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
@@ -23,9 +21,12 @@ export interface QuoteInput {
   recipe: Recipe;
   calculation: CalculationResult;
   companyName?: string;
+  /** Moeda escolhida pelo usuário; sem ela o orçamento sai em real. */
+  currency?: Currency;
 }
 
-const buildHtml = ({ recipe, calculation, companyName }: QuoteInput, pdfSettings?: PdfSettings): string => {
+const buildHtml = ({ recipe, calculation, companyName, currency = 'BRL' }: QuoteInput, pdfSettings?: PdfSettings): string => {
+  const formatCurrency = (v: number) => fmtCurrency(v, currency);
   const company = companyName?.trim() ? escapeHtml(companyName) : 'DocePreço';
   const date = formatDate(new Date());
   const brandColor = pdfSettings?.brandColor || '#E91E63';
@@ -359,7 +360,7 @@ const buildHtml = ({ recipe, calculation, companyName }: QuoteInput, pdfSettings
       }
       <div class="breakdown-row">
         <span class="breakdown-label">Custo por unidade</span>
-        <span class="breakdown-value">${formatCurrencyUnit(calculation.costPerUnit)}</span>
+        <span class="breakdown-value">${formatCurrencyUnit(calculation.costPerUnit, currency)}</span>
       </div>
       <div class="breakdown-row total">
         <span class="breakdown-label">Custo total</span>

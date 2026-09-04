@@ -31,6 +31,7 @@ import {
 } from '../../data/api/stockApi';
 import { parseLocaleNumber } from '../utils/number';
 import { formatUnitLabel } from '../utils/units';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 /* ─── Design tokens ─── */
 const INK = colors.text;
@@ -46,7 +47,6 @@ const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 4 }, shadow
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const fmtMoney = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 const fmtQty = (v: number) => {
   const r = Math.round(v * 1000) / 1000;
   return Number.isInteger(r) ? String(r) : r.toFixed(2).replace(/\.?0+$/, '');
@@ -54,6 +54,7 @@ const fmtQty = (v: number) => {
 const parseNum = parseLocaleNumber;
 
 export const StockScreen: React.FC = () => {
+  const { formatCurrency: fmtMoney } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const { guardMaster } = usePaywall();
   const { showToast } = useToast();

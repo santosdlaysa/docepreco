@@ -36,6 +36,7 @@ import { PaymentMethodType } from '../../domain/entities/Order';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { Skeleton } from '../components/Skeleton';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'Store'>;
@@ -72,9 +73,6 @@ const SHADOW = {
   shadowRadius: 8,
   elevation: 3,
 };
-
-const fmtCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { key: 'pix',    icon: 'qr-code-outline', label: 'Pix' },
@@ -123,6 +121,7 @@ function groupProductsByCategory(
 }
 
 export const StoreScreen: React.FC = () => {
+  const { formatCurrency: fmtCurrency } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { guardMaster } = usePaywall();

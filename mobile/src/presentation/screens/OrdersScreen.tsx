@@ -32,6 +32,9 @@ import { Skeleton } from '../components/Skeleton';
 import { usePaywall } from '../premium/usePaywall';
 import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'Orders'>;
@@ -51,9 +54,6 @@ const SHADOW = {
   shadowRadius: 8,
   elevation: 3,
 };
-
-const fmtCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const parseMoney = (value: string) => {
   const sanitized = String(value ?? '').replace(/[^0-9.,]/g, '');
@@ -87,6 +87,9 @@ const FILTER_ALL: { key: FilterKey; label: string }[] = [
 ];
 
 export const OrdersScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
+  const { formatCurrency: fmtCurrency } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { guardScreen } = usePaywall();
@@ -433,7 +436,7 @@ export const OrdersScreen: React.FC = () => {
                 </View>
                 <Text style={st.payLabel}>Valor</Text>
                 <View style={st.payInput}>
-                  <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                  <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>{symbol}</Text>
                   <TextInput style={st.payInputText} value={newPaymentAmount} onChangeText={setNewPaymentAmount}
                     placeholder="0,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
                 </View>

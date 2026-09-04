@@ -30,6 +30,8 @@ import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { DiscountType } from '../utils/discount';
 import { DiscountInput } from '../components/DiscountInput';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'StoreProductForm'>;
@@ -57,6 +59,8 @@ const formatMoney = (n: number): string =>
   n === 0 ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export const StoreProductFormScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const productId = route.params?.productId;
@@ -357,9 +361,9 @@ export const StoreProductFormScreen: React.FC = () => {
           )}
 
           {/* ── Price ── */}
-          <Text style={st.label}>Preço público (R$) *</Text>
+          <Text style={st.label}>Preço público ({symbol}) *</Text>
           <View style={st.priceInput}>
-            <Text style={st.pricePre}>R$</Text>
+            <Text style={st.pricePre}>{symbol}</Text>
             <TextInput
               style={st.priceField}
               value={priceText}

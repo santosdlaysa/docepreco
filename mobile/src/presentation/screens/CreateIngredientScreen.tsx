@@ -29,17 +29,11 @@ import { parseLocaleNumber } from '../utils/number';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 import { useUnitSystem } from '../../context/UnitSystemContext';
 import { formatUnitLabel, getUnitOptions } from '../utils/units';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 type RouteProps = RouteProp<RootStackParamList, 'EditIngredient'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-
-const fmtBRL = (v: number): string => {
-  if (!isFinite(v) || isNaN(v)) return 'R$ 0,00';
-  if (v < 0.01 && v > 0) return `R$ ${v.toFixed(3).replace('.', ',')}`;
-  const fixed = v.toFixed(2);
-  const [int, dec] = fixed.split('.');
-  return `R$ ${int.replace(/\B(?=(\d{3})+(?!\d))/g, '.')},${dec}`;
-};
 
 /* ─── Design tokens ─── */
 const INK = colors.text;
@@ -58,6 +52,8 @@ const SHADOW = {
 };
 
 export const CreateIngredientScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { t } = useTranslation();
@@ -306,7 +302,7 @@ export const CreateIngredientScreen: React.FC = () => {
               <Text style={st.label}>Valor total pago</Text>
               <Text style={st.hint}>Valor da compra inteira, não preço por g/ml/un</Text>
               <View style={[st.input, errors.price ? st.inputErr : null]}>
-                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>{symbol}</Text>
                 <TextInput style={st.inputText} value={purchasePrice} onChangeText={handlePriceChange}
                   placeholder="14,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
               </View>

@@ -22,6 +22,7 @@ import { useToast } from '../context/ToastContext';
 import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { Skeleton } from '../components/Skeleton';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -41,14 +42,12 @@ const SHADOW = {
   elevation: 3,
 };
 
-const fmtCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
 const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
 
 type Section = { date: string; label: string; data: Sale[]; total: number };
 
 export const SalesScreen: React.FC = () => {
+  const { formatCurrency: fmtCurrency } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
   const { showToast } = useToast();

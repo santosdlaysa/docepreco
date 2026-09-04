@@ -11,6 +11,7 @@ export interface Insight {
 export function generateInsights(
   stats: AppStats,
   goal: RevenueGoal | null,
+  fmt: (v: number) => string,
 ): Insight[] {
   const insights: Insight[] = [];
   const { monthlySalesCount, monthlyRevenue, recentSales, recipesCount } = stats;
@@ -30,7 +31,7 @@ export function generateInsights(
       insights.push({
         id: 'goal-close',
         icon: 'flag-outline',
-        message: `Quase lá! Faltam ${falta.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} para bater a meta.`,
+        message: `Quase lá! Faltam ${fmt(falta)} para bater a meta.`,
         type: 'neutral',
       });
     } else if (pct > 0) {
@@ -49,7 +50,7 @@ export function generateInsights(
     insights.push({
       id: 'avg-ticket',
       icon: 'receipt-outline',
-      message: `Seu ticket médio é ${ticketMedio.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} por venda.`,
+      message: `Seu ticket médio é ${fmt(ticketMedio)} por venda.`,
       type: 'neutral',
     });
 
@@ -78,7 +79,7 @@ export function generateInsights(
       insights.push({
         id: 'top-recipe',
         icon: 'star-outline',
-        message: `"${top.name}" é o campeão de vendas recente, com ${top.total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} faturados.`,
+        message: `"${top.name}" é o campeão de vendas recente, com ${fmt(top.total)} faturados.`,
         type: 'positive',
       });
     }

@@ -27,12 +27,14 @@ import { shareRecipeQuote } from '../utils/pdfQuote';
 import { useTranslation } from 'react-i18next';
 import * as FileSystem from 'expo-file-system/legacy';
 import { useAuth } from '../../context/AuthContext';
+import { useCurrency } from '../../context/CurrencyContext';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 // COLOR_PRESETS moved inside component for i18n
 
 export const PdfSettingsScreen: React.FC = () => {
+  const { currency } = useCurrency();
   const { t } = useTranslation();
   const navigation = useNavigation<NavigationProp>();
   const { guardScreen } = usePaywall();
@@ -158,6 +160,7 @@ export const PdfSettingsScreen: React.FC = () => {
             subRecipesCost: 0,
           },
           companyName: 'Minha Confeitaria',
+          currency,
         },
         settings,
       );

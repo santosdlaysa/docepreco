@@ -20,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion, isValidEmail } from '../utils/emailTypoCheck';
 import { CountryCodePicker } from '../components/CountryCodePicker';
 import { LgpdConsentModal } from '../components/LgpdConsentModal';
+import { useAuthLayout } from '../hooks/useAuthLayout';
 
 interface Props {
   onRegister: () => void;
@@ -27,6 +28,7 @@ interface Props {
 }
 
 export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => {
+  const L = useAuthLayout();
   const { t } = useTranslation();
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -114,23 +116,23 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
           bounces={false}
         >
           {/* Header colorido */}
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: L.headerPadTop, paddingBottom: CARD_OVERLAP + (L.compact ? L.headerPadExtra : 24) }]}>
             <Animated.View style={[styles.logoArea, { opacity: fadeIn, transform: [{ scale: logoScale }] }]}>
-              <View style={styles.logoWrap}>
+              <View style={[styles.logoWrap, { width: L.logoSize, height: L.logoSize, borderRadius: L.logoRadius, marginBottom: L.logoGap }]}>
                 <Image
                   source={require('../../../assets/icon.png')}
-                  style={styles.logoImg}
+                  style={{ width: L.logoSize, height: L.logoSize }}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.brand}>Doce Preço</Text>
+              <Text style={[styles.brand, { fontSize: L.brandSize }]}>Doce Preço</Text>
             </Animated.View>
           </View>
 
           {/* Card sobreposto */}
-          <Animated.View style={[styles.card, { opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
+          <Animated.View style={[styles.card, { padding: L.cardPad, marginBottom: L.cardMarginBottom, opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
             <Text style={styles.cardTitle}>{t('register.title')}</Text>
-            <Text style={styles.cardSubtitle}>{t('register.subtitle')}</Text>
+            <Text style={[styles.cardSubtitle, { marginBottom: L.blockGap }]}>{t('register.subtitle')}</Text>
 
             {errors.general && (
               <View style={styles.errorBanner}>
@@ -140,6 +142,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
             )}
 
             <Input
+              containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.companyName')}
               placeholder={t('register.companyPlaceholder')}
               value={companyName}
@@ -148,6 +151,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               maxLength={30}
             />
             <Input
+              containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.emailLabel')}
               placeholder="seu@email.com"
               value={email}
@@ -157,6 +161,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               error={errors.email}
             />
             <Input
+              containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.phoneLabel')}
               placeholder={t('register.phonePlaceholder')}
               value={phone}
@@ -167,6 +172,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               leftElement={<CountryCodePicker value={countryCode} onChange={setCountryCode} />}
             />
             <Input
+              containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.passwordLabel')}
               placeholder={t('register.passwordPlaceholder')}
               value={password}
@@ -180,6 +186,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               }
             />
             <Input
+              containerStyle={{ marginBottom: L.fieldGap }}
               label="Confirmar senha"
               placeholder="Digite a senha novamente"
               value={confirmPassword}
@@ -188,6 +195,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               error={errors.confirmPassword}
             />
             <Input
+              containerStyle={{ marginBottom: L.fieldGap }}
               label="Código de indicação (opcional)"
               placeholder="Quem te indicou?"
               value={referralCode}
@@ -227,7 +235,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </TouchableOpacity>
 
-            <View style={styles.loginRow}>
+            <View style={[styles.loginRow, { marginTop: L.smallGap }]}>
               <Text style={styles.loginLabel}>{t('register.hasAccount')}</Text>
               <TouchableOpacity onPress={onGoToLogin} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={styles.loginLink}>{t('register.login')}</Text>
@@ -269,7 +277,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  logoImg: { width: 90, height: 90 },
   brand: {
     fontSize: 28,
     fontWeight: '800',

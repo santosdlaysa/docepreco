@@ -20,6 +20,7 @@ import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../d
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
+import { useAuthLayout } from '../hooks/useAuthLayout';
 
 interface Props {
   onLogin: () => void | Promise<void>;
@@ -30,6 +31,7 @@ interface Props {
 
 export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToForgotPassword, onDemoLogin }) => {
   const { t } = useTranslation();
+  const L = useAuthLayout();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -91,23 +93,23 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
           bounces={false}
         >
           {/* Header colorido */}
-          <View style={styles.header}>
+          <View style={[styles.header, { paddingTop: L.headerPadTop, paddingBottom: CARD_OVERLAP + L.headerPadExtra }]}>
             <Animated.View style={[styles.logoArea, { opacity: fadeIn, transform: [{ scale: logoScale }] }]}>
-              <View style={styles.logoWrap}>
+              <View style={[styles.logoWrap, { width: L.logoSize, height: L.logoSize, borderRadius: L.logoRadius, marginBottom: L.logoGap }]}>
                 <Image
                   source={require('../../../assets/icon.png')}
-                  style={styles.logoImg}
+                  style={{ width: L.logoSize, height: L.logoSize }}
                   resizeMode="contain"
                 />
               </View>
-              <Text style={styles.brand}>Doce Preço</Text>
-              <Text style={styles.tagline}>{t('login.tagline')}</Text>
+              <Text style={[styles.brand, { fontSize: L.brandSize }]}>Doce Preço</Text>
+              <Text style={[styles.tagline, { fontSize: L.taglineSize }]}>{t('login.tagline')}</Text>
             </Animated.View>
           </View>
 
           {/* Card sobreposto */}
-          <Animated.View style={[styles.card, { opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
-            <Text style={styles.cardTitle}>{t('login.title')}</Text>
+          <Animated.View style={[styles.card, { padding: L.cardPad, marginBottom: L.cardMarginBottom, opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
+            <Text style={[styles.cardTitle, { marginBottom: L.cardTitleGap }]}>{t('login.title')}</Text>
 
             {errors.general && (
               <View style={styles.errorBanner}>
@@ -124,6 +126,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               keyboardType="email-address"
               autoCapitalize="none"
               error={errors.email}
+              containerStyle={{ marginBottom: L.fieldGap }}
             />
 
             <Input
@@ -133,6 +136,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               onChangeText={(v) => { setPassword(v); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
               secureTextEntry={!showPassword}
               error={errors.password}
+              containerStyle={{ marginBottom: L.fieldGap }}
               rightElement={
                 <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 6 }}>
                   <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
@@ -141,7 +145,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
             />
 
             {onGoToForgotPassword && (
-              <TouchableOpacity onPress={onGoToForgotPassword} style={styles.forgotRow}>
+              <TouchableOpacity onPress={onGoToForgotPassword} style={[styles.forgotRow, { marginBottom: L.fieldGap }]}>
                 <Text style={styles.forgotText}>{t('login.forgotPassword')}</Text>
               </TouchableOpacity>
             )}
@@ -157,7 +161,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </TouchableOpacity>
 
-            <View style={styles.registerRow}>
+            <View style={[styles.registerRow, { marginTop: L.smallGap }]}>
               <Text style={styles.registerLabel}>{t('login.noAccount')}</Text>
               <TouchableOpacity onPress={onGoToRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={styles.registerLink}>{t('login.createAccount')}</Text>
@@ -166,7 +170,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 
             {onDemoLogin && (
               <>
-                <View style={styles.orRow}>
+                <View style={[styles.orRow, { marginTop: L.blockGap, marginBottom: L.fieldGap }]}>
                   <View style={styles.orLine} />
                   <Text style={styles.orText}>ou</Text>
                   <View style={styles.orLine} />
@@ -179,7 +183,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               </>
             )}
 
-            <Text style={styles.version}>v{Constants.expoConfig?.version ?? '?'}</Text>
+            <Text style={[styles.version, { marginTop: L.blockGap }]}>v{Constants.expoConfig?.version ?? '?'}</Text>
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -212,7 +216,6 @@ const styles = StyleSheet.create({
     borderWidth: 3,
     borderColor: 'rgba(255,255,255,0.3)',
   },
-  logoImg: { width: 90, height: 90 },
   brand: {
     fontSize: 28,
     fontWeight: '800',

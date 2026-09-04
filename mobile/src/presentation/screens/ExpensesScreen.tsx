@@ -14,6 +14,7 @@ import { expenseApi, Expense, EXPENSE_CATEGORIES } from '../../data/api/expenseA
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoExpenseApi } from '../../data/demo/demoApi';
 import { useToast } from '../context/ToastContext';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -25,8 +26,6 @@ const LINE = colors.border;
 const PURPLE = colors.purple;
 const RED = '#E8537A';
 const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.07, shadowRadius: 10, elevation: 3 };
-
-const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const fmtDate = (iso: string) => {
   const [y, m, d] = iso.slice(0, 10).split('-');
@@ -48,6 +47,7 @@ const periodMonths = () => {
 };
 
 export const ExpensesScreen: React.FC = () => {
+  const { formatCurrency: fmt } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const { showToast } = useToast();
   const api = isDemoMode() ? demoExpenseApi : expenseApi;

@@ -240,15 +240,15 @@ export const ProfileScreen: React.FC = () => {
 
           {/* ── Premium CTA / Status ── */}
           {isPremium ? (
-            <TouchableOpacity activeOpacity={expiringSoon ? 0.85 : 1} disabled={!expiringSoon} onPress={expiringSoon ? () => navigation.navigate('Paywall', { trigger: { kind: 'manual' } }) : undefined}>
+            <TouchableOpacity activeOpacity={0.85} onPress={() => navigation.navigate('MyPlan')}>
               <LinearGradient colors={[colors.amberBg, colors.pinkBg]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={st.proCta}>
                 <View style={st.proCtaIco}><Ionicons name="trophy" size={24} color={PINK} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={st.proCtaTitle}>Plano PRO ativo</Text>
                   <Text style={[st.proCtaSub, expiringSoon && { color: colors.redDark, fontWeight: '700' }]}>{expiryLabel}</Text>
-                  {expiringSoon && <Text style={st.proCtaRenew}>Toque para renovar →</Text>}
+                  <Text style={st.proCtaRenew}>{expiringSoon ? 'Toque para renovar →' : 'Ver benefícios e assinatura →'}</Text>
                 </View>
-                {expiringSoon && <Ionicons name="refresh-circle" size={22} color={PINK} />}
+                <Ionicons name={expiringSoon ? 'refresh-circle' : 'chevron-forward'} size={22} color={PINK} />
               </LinearGradient>
             </TouchableOpacity>
           ) : isExpired ? (

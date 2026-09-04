@@ -1117,6 +1117,22 @@ export async function runMigrations() {
 
     await addColumnIfMissing(client, 'support_messages', 'image_url', 'TEXT NULL');
 
+    // Cliente do Stripe, para abrir o portal de cobrança sem depender de busca por e-mail.
+    await addColumnIfMissing(client, 'users', 'stripe_customer_id', 'VARCHAR(100) NULL');
+
+    // Até aqui o pagamento por PIX era gravado como 'manual' — o mesmo valor que o
+    // admin usa ao liberar acesso de cortesia —, então a tela de plano não teria como
+    // saber onde a pessoa deve cancelar. Quem tem um pagamento PIX no histórico passa
+    // a ser marcado como 'pix'; o restante segue como cortesia.
+    await client.query(`
+      UPDATE users u SET premium_platform = 'pix'
+       WHERE u.premium_platform = 'manual'
+         AND EXISTS (
+           SELECT 1 FROM premium_events pe
+            WHERE pe.user_id = u.id AND pe.source IN ('pix', 'pix_premium', 'pix_master')
+         )
+    `);
+
     // Loja Online (plano Master)
     await client.query(`
       CREATE TABLE IF NOT EXISTS store_settings (

@@ -22,6 +22,7 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi, demoExpenseApi } from '../../data/demo/demoApi';
 import { Recipe } from '../../domain/entities/Recipe';
 import { Sale } from '../../domain/entities/Sale';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 
 /* ─── Design tokens ─── */
 const INK = colors.text;
@@ -36,8 +37,6 @@ const SHADOW = { shadowColor: INK, shadowOffset: { width: 0, height: 4 }, shadow
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type Period = 'month' | 'prev' | 'all';
-
-const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 const ymOf = (iso: string) => iso.slice(0, 7); // 'YYYY-MM'
 
@@ -60,6 +59,7 @@ interface ProductLine {
 }
 
 export const FinanceScreen: React.FC = () => {
+  const { formatCurrency: fmt } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const { guardMaster } = usePaywall();
 

@@ -44,6 +44,43 @@ const STRIPE_PRICE_IDS: Record<string, Record<string, string>> = {
   },
 };
 
+/**
+ * Fim do período pago da assinatura.
+ *
+ * Da API 2025-03-31.basil em diante a Stripe tirou `current_period_end` do
+ * objeto Subscription e passou a expô-lo em cada item — nesta conta a versão é
+ * 2026-05-27.dahlia, então `subscription.current_period_end` vem `undefined`.
+ * Lemos os itens e mantemos o campo antigo como fallback para assinaturas
+ * criadas em versões anteriores.
+ */
+export function periodEndOf(subscription: any): Date | null {
+  const items: any[] = subscription?.items?.data ?? [];
+  const fromItems = items
+    .map(i => i?.current_period_end)
+    .filter((v: any) => typeof v === 'number');
+
+  const epoch = fromItems.length
+    ? Math.max(...fromItems)
+    : (typeof subscription?.current_period_end === 'number' ? subscription.current_period_end : null);
+
+  return epoch ? new Date(epoch * 1000) : null;
+}
+
+/** Id da assinatura de uma fatura, nas duas formas que a API já usou. */
+function subscriptionIdOf(invoice: any): string | null {
+  const parent = invoice?.parent;
+  if (parent?.type === 'subscription_details' || parent?.subscription_details) {
+    const sub = parent.subscription_details?.subscription;
+    if (sub) return typeof sub === 'string' ? sub : sub.id;
+  }
+  const legacy = invoice?.subscription;
+  if (legacy) return typeof legacy === 'string' ? legacy : legacy.id;
+  return null;
+}
+
+/** Só liberamos acesso enquanto a assinatura está de fato valendo. */
+const ACTIVE_STATUSES = ['active', 'trialing'];
+
 export class StripeController {
   /**
    * Creates a Stripe Checkout Session and returns the URL.
@@ -136,6 +173,58 @@ export class StripeController {
   }
 
   /**
+   * Abre o portal de cobrança do Stripe, onde a pessoa vê a assinatura, troca o
+   * cartão e cancela. É o caminho oficial — a Stripe espera que o cancelamento
+   * aconteça por lá (ou via API), não numa tela própria.
+   * POST /api/stripe/portal
+   */
+  async portal(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const user = await userRepo.findById(userId);
+      if (!user) {
+        res.status(404).json({ success: false, error: 'User not found' });
+        return;
+      }
+
+      const stripe = getStripe();
+
+      let customerId: string | null = null;
+      const saved = await pool.query(`SELECT stripe_customer_id FROM users WHERE id = $1`, [userId]);
+      customerId = saved.rows[0]?.stripe_customer_id ?? null;
+
+      if (!customerId && user.email) {
+        const found = await stripe.customers.list({ email: user.email, limit: 1 });
+        customerId = found.data[0]?.id ?? null;
+        if (customerId) {
+          await pool.query(`UPDATE users SET stripe_customer_id = $2 WHERE id = $1`, [userId, customerId]);
+        }
+      }
+
+      if (!customerId) {
+        res.status(404).json({ success: false, error: 'Não encontramos uma assinatura de cartão nesta conta.' });
+        return;
+      }
+
+      const baseUrl = process.env.APP_BASE_URL ?? 'https://docepreco.onrender.com';
+      const session = await stripe.billingPortal.sessions.create({
+        customer: customerId,
+        return_url: `${baseUrl}/api/stripe/success`,
+      });
+
+      res.json({ success: true, data: { url: session.url } });
+    } catch (error: any) {
+      console.error('[Stripe] portal error:', error?.message ?? error);
+      res.status(500).json({ success: false, error: 'Não foi possível abrir o gerenciamento da assinatura.' });
+    }
+  }
+
+  /**
    * Stripe webhook — called automatically by Stripe after payment.
    * POST /api/stripe/webhook
    * Requires raw body (configured in server.ts before express.json).
@@ -162,8 +251,10 @@ export class StripeController {
     // Handle both one-time payment and subscription events
     const isCheckoutCompleted = event.type === 'checkout.session.completed';
     const isSubscriptionEvent = ['customer.subscription.created', 'customer.subscription.updated'].includes(event.type);
+    // Renovação: é a fatura paga que marca o novo ciclo (docs.stripe.com/billing/subscriptions/webhooks).
+    const isInvoicePaid = ['invoice.paid', 'invoice.payment_succeeded'].includes(event.type);
 
-    if (!isCheckoutCompleted && !isSubscriptionEvent) {
+    if (!isCheckoutCompleted && !isSubscriptionEvent && !isInvoicePaid) {
       res.json({ received: true });
       return;
     }
@@ -186,9 +277,21 @@ export class StripeController {
           return;
         }
 
-        const days = PLAN_DAYS[plan] ?? 30;
-        premiumUntil = new Date();
-        premiumUntil.setDate(premiumUntil.getDate() + days);
+        // Ancoramos no período real da assinatura para que checkout, subscription
+        // e fatura cheguem todos à mesma data — é o que torna o webhook idempotente.
+        if (session.subscription) {
+          const subId = typeof session.subscription === 'string' ? session.subscription : session.subscription.id;
+          try {
+            premiumUntil = periodEndOf(await getStripe().subscriptions.retrieve(subId));
+          } catch (e: any) {
+            console.warn(`[Stripe] Falha ao buscar assinatura ${subId} do checkout:`, e?.message ?? e);
+          }
+        }
+        if (!premiumUntil) {
+          const days = PLAN_DAYS[plan] ?? 30;
+          premiumUntil = new Date();
+          premiumUntil.setDate(premiumUntil.getDate() + days);
+        }
 
         amountCents = typeof session.amount_total === 'number'
           ? session.amount_total
@@ -208,12 +311,66 @@ export class StripeController {
           return;
         }
 
-        // Calculate premium_until from current_period_end
-        if (subscription.current_period_end) {
-          premiumUntil = new Date(subscription.current_period_end * 1000);
+        // 'updated' também chega em cancelamento/inadimplência — aí não se libera nada.
+        if (!ACTIVE_STATUSES.includes(subscription.status)) {
+          console.log(`[Stripe] Subscription ${subscription.id} em status '${subscription.status}' — sem liberar acesso`);
+          res.json({ received: true });
+          return;
         }
 
+        premiumUntil = periodEndOf(subscription);
+
         console.log(`[Stripe] Subscription event (${event.type}) for ${userId} (${tier} ${plan})`);
+      } else if (isInvoicePaid) {
+        const invoice = event.data.object;
+        const subId = subscriptionIdOf(invoice);
+
+        if (!subId) {
+          // Fatura avulsa (não é assinatura) — nada a liberar por aqui.
+          res.json({ received: true });
+          return;
+        }
+
+        // O snapshot do metadata vem na fatura; se faltar, buscamos a assinatura.
+        const snapshot = invoice?.parent?.subscription_details?.metadata ?? {};
+        ({ userId, plan, tier } = snapshot as any);
+
+        // Buscamos a assinatura de qualquer forma: é dela que saem o período pago
+        // e o status atual — a fatura sozinha não diz até quando liberar.
+        let subscription: any = null;
+        try {
+          subscription = await getStripe().subscriptions.retrieve(subId);
+        } catch (e: any) {
+          console.warn(`[Stripe] Falha ao buscar assinatura ${subId}:`, e?.message ?? e);
+        }
+
+        if ((!userId || !plan || !tier) && subscription?.metadata) {
+          ({ userId, plan, tier } = subscription.metadata as any);
+        }
+
+        if (!userId || !plan || !tier) {
+          console.warn(`[Stripe] Fatura paga da assinatura ${subId} sem metadata — nada a liberar`);
+          res.json({ received: true });
+          return;
+        }
+
+        if (subscription && !ACTIVE_STATUSES.includes(subscription.status)) {
+          console.log(`[Stripe] Assinatura ${subId} em status '${subscription.status}' — sem liberar acesso`);
+          res.json({ received: true });
+          return;
+        }
+
+        premiumUntil = periodEndOf(subscription ?? {});
+        if (!premiumUntil) {
+          // Último recurso: o período da linha da fatura.
+          const lineEnd = invoice?.lines?.data?.[0]?.period?.end;
+          if (typeof lineEnd === 'number') premiumUntil = new Date(lineEnd * 1000);
+        }
+
+        amountCents = typeof invoice.amount_paid === 'number' ? invoice.amount_paid : null;
+        currency = (invoice.currency ?? 'brl').toUpperCase();
+
+        console.log(`[Stripe] Fatura paga (${event.type}) de ${userId} (${tier} ${plan}) — assinatura ${subId}`);
       }
 
       if (!userId || !plan || !tier) {
@@ -238,27 +395,61 @@ export class StripeController {
 
       await userRepo.updatePlanTier(userId, planTier, premiumUntil, 'card');
 
+      // Guardamos o cliente do Stripe para abrir o portal de cobrança depois sem
+      // depender de procurar por e-mail (que muda e pode repetir entre contas).
+      const customer = event.data.object?.customer;
+      if (customer) {
+        const customerId = typeof customer === 'string' ? customer : customer.id;
+        await pool.query(
+          `UPDATE users SET stripe_customer_id = $2 WHERE id = $1 AND stripe_customer_id IS DISTINCT FROM $2`,
+          [userId, customerId]
+        );
+      }
+
+      // Uma mesma cobrança chega como checkout.session.completed, customer.subscription.*
+      // e invoice.paid. Como os três agora apontam para o mesmo fim de período, um
+      // registro já gravado significa que o ciclo foi processado: o acesso acima é
+      // idempotente, mas o histórico e o push não podem sair repetidos.
+      const already = await pool.query(
+        `SELECT 1 FROM premium_events
+          WHERE user_id = $1 AND source = 'stripe' AND expiration_at = $2
+          LIMIT 1`,
+        [userId, premiumUntil]
+      );
+      if ((already.rowCount ?? 0) > 0) {
+        console.log(`[Stripe] Ciclo até ${premiumUntil.toISOString()} já registrado para ${userId} — evento ignorado`);
+        res.json({ received: true });
+        return;
+      }
+
       amountCents = amountCents ?? (PRICES[planTier]?.[plan] ?? null);
+
+      // A fatura diz o motivo da cobrança; nos demais eventos, só a compra é inicial.
+      const billingReason = isInvoicePaid ? event.data.object?.billing_reason : null;
+      const isFirstCharge = isCheckoutCompleted
+        || event.type === 'customer.subscription.created'
+        || billingReason === 'subscription_create';
+      const eventType = isFirstCharge ? 'INITIAL_PURCHASE' : 'RENEWAL';
 
       await pool.query(
         `INSERT INTO premium_events (user_id, event_type, source, platform, product_id, expiration_at, store, amount_cents, currency)
          VALUES ($1, $2, 'stripe', 'card', $3, $4, 'STRIPE', $5, $6)`,
-        [userId, isCheckoutCompleted ? 'INITIAL_PURCHASE' : 'RENEWAL', `stripe_${planTier}_${plan}`, premiumUntil, amountCents, currency]
+        [userId, eventType, `stripe_${planTier}_${plan}`, premiumUntil, amountCents, currency]
       );
 
       const tokens = await pushTokenRepo.findByUserId(userId);
       if (tokens.length > 0) {
         await sendPushNotifications(
           tokens.map((t: any) => t.token),
-          isCheckoutCompleted ? 'Pagamento aprovado! 🎉' : 'Assinatura renovada ✨',
-          isCheckoutCompleted
+          isFirstCharge ? 'Pagamento aprovado! 🎉' : 'Assinatura renovada ✨',
+          isFirstCharge
             ? 'Seu pagamento via cartão foi confirmado. Aproveite o DocePreço!'
             : 'Sua assinatura foi renovada automaticamente.',
           { screen: 'Home' }
         );
       }
 
-      notifyPremiumEvent(user.companyName, isCheckoutCompleted ? 'INITIAL_PURCHASE' : 'RENEWAL', 'card');
+      notifyPremiumEvent(user.companyName, eventType, 'card');
       console.log(`[Stripe] Premium granted to ${userId} (${planTier} ${plan}) until ${premiumUntil.toISOString()}`);
       res.json({ received: true });
     } catch (error) {

@@ -871,7 +871,7 @@ export class PixController {
       );
 
       // Grant the chosen tier (manual platform).
-      await userRepo.updatePlanTier(userId, tier, premiumUntil, 'manual');
+      await userRepo.updatePlanTier(userId, tier, premiumUntil, 'pix');
 
       // Oferta win-back vinculada a este pedido → marca como resgatada
       await redeemByPixRequest(id).catch(() => {});
@@ -1004,7 +1004,7 @@ export class PixController {
         [pixRequestId]
       );
 
-      await userRepo.updatePlanTier(userId, tier, premiumUntil, 'manual');
+      await userRepo.updatePlanTier(userId, tier, premiumUntil, 'pix');
 
       // Oferta win-back vinculada a este pedido → marca como resgatada
       await redeemByPixRequest(pixRequestId).catch(() => {});
@@ -1130,7 +1130,7 @@ export class PixController {
     const premiumUntil = new Date();
     premiumUntil.setDate(premiumUntil.getDate() + premiumDays);
 
-    await userRepo.updatePlanTier(sub.user_id, tier, premiumUntil, 'manual');
+    await userRepo.updatePlanTier(sub.user_id, tier, premiumUntil, 'pix');
 
     const countResult = await pool.query(
       `SELECT COUNT(*)::int AS total FROM pix_subscription_charges WHERE subscription_id = $1`,

@@ -32,6 +32,9 @@ import { useTranslation } from 'react-i18next';
 import { computeDiscountAmount, DiscountType } from '../utils/discount';
 import { maskPhone, isValidPhone } from '../utils/phone';
 import { DiscountInput } from '../components/DiscountInput';
+import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { useCurrency } from '../../context/CurrencyContext';
+import { CURRENCY_INFO } from '../utils/currency';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type RouteProps = RouteProp<RootStackParamList, 'EditOrder'>;
@@ -51,9 +54,6 @@ const SHADOW = {
   shadowRadius: 8,
   elevation: 3,
 };
-
-const fmtCurrency = (v: number) =>
-  v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
 // Aceita vírgula, ponto e ponto de milhar no padrão BR.
 const num = (s: string) => {
@@ -84,6 +84,9 @@ const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.gly
 const THUMB_COLORS = [colors.pinkSoft, colors.primary, colors.blue, colors.amber, colors.green, '#7B68EE'];
 
 export const CreateOrderScreen: React.FC = () => {
+  const { currency } = useCurrency();
+  const symbol = CURRENCY_INFO[currency].symbol;
+  const { formatCurrency: fmtCurrency } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { t } = useTranslation();
@@ -411,7 +414,7 @@ export const CreateOrderScreen: React.FC = () => {
                   <View style={[st.field, { flex: 1 }]}>
                     <Text style={st.label}>Preço un.</Text>
                     <View style={[st.input, (errors.price && (!item.unitPrice || num(item.unitPrice) <= 0)) ? st.inputErr : null]}>
-                      <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                      <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>{symbol}</Text>
                       <TextInput style={st.inputText} value={item.unitPrice} placeholder="120,00" placeholderTextColor={INK3}
                         keyboardType="decimal-pad" editable={!isLocked}
                         onChangeText={v => setItems(prev => prev.map((it, i) => i === idx ? { ...it, unitPrice: v } : it))} />
@@ -540,7 +543,7 @@ export const CreateOrderScreen: React.FC = () => {
           {showAddPayment && (
             <View style={st.addPayForm}>
               <View style={st.input}>
-                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>R$</Text>
+                <Text style={{ color: INK3, fontWeight: '700', fontSize: 13 }}>{symbol}</Text>
                 <TextInput style={st.inputText} value={newPaymentAmount} onChangeText={setNewPaymentAmount}
                   placeholder="0,00" placeholderTextColor={INK3} keyboardType="decimal-pad" />
               </View>
@@ -644,18 +647,18 @@ export const CreateOrderScreen: React.FC = () => {
             <View style={{ backgroundColor: colors.grayBg, borderRadius: 14, padding: 14, gap: 6 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                 <Text style={{ fontSize: 13, color: INK2 }}>Total da encomenda</Text>
-                <Text style={{ fontSize: 13, fontWeight: '600', color: INK }}>R$ {totalPrice.toFixed(2).replace('.', ',')}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '600', color: INK }}>{fmtCurrency(totalPrice)}</Text>
               </View>
               {totalPaid > 0 && (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
                   <Text style={{ fontSize: 13, color: INK2 }}>Já recebido</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.greenDark }}>R$ {totalPaid.toFixed(2).replace('.', ',')}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '600', color: colors.greenDark }}>{fmtCurrency(totalPaid)}</Text>
                 </View>
               )}
               {remaining > 0 && (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: colors.grayBorder, paddingTop: 6, marginTop: 2 }}>
                   <Text style={{ fontSize: 13, fontWeight: '700', color: INK }}>Restante a receber</Text>
-                  <Text style={{ fontSize: 13, fontWeight: '700', color: PINK }}>R$ {remaining.toFixed(2).replace('.', ',')}</Text>
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: PINK }}>{fmtCurrency(remaining)}</Text>
                 </View>
               )}
               {remaining === 0 && (
