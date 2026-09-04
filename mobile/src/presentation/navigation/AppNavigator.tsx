@@ -494,11 +494,12 @@ export function AppNavigator() {
 
   const handleRegisterSuccess = async () => {
     await refreshPremium();
-    // Não abre mais o guia em tela cheia logo após o cadastro. Apenas deixa o
-    // guia disponível para que o banner "Primeiros passos" apareça na dashboard,
-    // onde a pessoa faz o tutorial se quiser.
+    // Quem acabou de se cadastrar vai direto para o guia em tela cheia. O
+    // resetGuide limpa a marca de "dispensado" de um cadastro anterior no mesmo
+    // aparelho; ao concluir ou pular, o guia continua acessível pelo banner
+    // "Primeiros passos" na dashboard.
     await resetGuide();
-    setAuthState('app');
+    setAuthState('beginnerGuide');
   };
 
   if (authState === 'auth') {
