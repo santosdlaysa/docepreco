@@ -18,6 +18,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { recipeApi } from '../../data/api/recipeApi';
 import { saleApi } from '../../data/api/saleApi';
 import { expenseApi, Expense } from '../../data/api/expenseApi';
+import { purchaseApi, PurchaseInvoice } from '../../data/api/purchaseApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi, demoExpenseApi } from '../../data/demo/demoApi';
 import { Recipe } from '../../domain/entities/Recipe';
@@ -66,6 +67,7 @@ export const FinanceScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
   const [costPerUnit, setCostPerUnit] = useState<Record<string, number>>({});
   const [recipeName, setRecipeName] = useState<Record<string, string>>({});
   const [period, setPeriod] = useState<Period>('month');
@@ -84,13 +86,15 @@ export const FinanceScreen: React.FC = () => {
     const { month, prev } = periodKeys();
     const expenseMonth = period === 'all' ? undefined : period === 'prev' ? prev : month;
     try {
-      const [allSales, recipes, allExpenses] = await Promise.all([
+      const [allSales, recipes, allExpenses, allPurchases] = await Promise.all([
         sApi.getAll() as Promise<Sale[]>,
         rApi.getAll() as Promise<Recipe[]>,
         eApi.getAll(expenseMonth) as Promise<Expense[]>,
+        isDemoMode() ? Promise.resolve([] as PurchaseInvoice[]) : purchaseApi.getAll(expenseMonth),
       ]);
       setSales(allSales);
       setExpenses(allExpenses);
+      setPurchases(allPurchases);
 
       const names: Record<string, string> = {};
       for (const r of recipes) names[r.id] = r.name;
@@ -125,8 +129,11 @@ export const FinanceScreen: React.FC = () => {
   });
 
   const revenue = filtered.reduce((sum, s) => sum + s.totalRevenue, 0);
-  const cost = filtered.reduce((sum, s) => sum + (costPerUnit[s.recipeId] ?? 0) * s.quantitySold, 0);
+  const cost = filtered.reduce((sum, sale) => sum + (sale.recipeId ? (costPerUnit[sale.recipeId] ?? 0) : 0) * sale.quantitySold, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const paidPurchases = purchases.filter(p => p.paymentStatus === 'paid').reduce((sum, p) => sum + p.total, 0);
+  const pendingPurchases = purchases.filter(p => p.paymentStatus === 'pending').reduce((sum, p) => sum + p.total, 0);
+  const cashBalance = revenue - totalExpenses - paidPurchases;
   const profit = revenue - cost - totalExpenses;
   const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
   const units = filtered.reduce((sum, s) => sum + s.quantitySold, 0);
@@ -134,15 +141,16 @@ export const FinanceScreen: React.FC = () => {
   // Quebra por produto
   const byProduct: Record<string, ProductLine> = {};
   for (const s of filtered) {
-    const line = byProduct[s.recipeId] ?? {
-      recipeId: s.recipeId,
-      name: s.recipeName || recipeName[s.recipeId] || 'Receita',
+    const recipeId = s.recipeId ?? '__unlinked__';
+    const line = byProduct[recipeId] ?? {
+      recipeId,
+      name: s.recipeName || (s.recipeId ? recipeName[s.recipeId] : undefined) || 'Venda sem receita',
       units: 0, revenue: 0, cost: 0, profit: 0, margin: 0,
     };
     line.units += s.quantitySold;
     line.revenue += s.totalRevenue;
-    line.cost += (costPerUnit[s.recipeId] ?? 0) * s.quantitySold;
-    byProduct[s.recipeId] = line;
+    line.cost += (s.recipeId ? (costPerUnit[s.recipeId] ?? 0) : 0) * s.quantitySold;
+    byProduct[recipeId] = line;
   }
   const products = Object.values(byProduct)
     .map(p => ({ ...p, profit: p.revenue - p.cost, margin: p.revenue > 0 ? ((p.revenue - p.cost) / p.revenue) * 100 : 0 }))
@@ -174,7 +182,7 @@ export const FinanceScreen: React.FC = () => {
           ))}
         </View>
 
-        {filtered.length === 0 ? (
+        {filtered.length === 0 && expenses.length === 0 && purchases.length === 0 ? (
           <View style={s.empty}>
             <Ionicons name="bar-chart-outline" size={40} color={INK3} />
             <Text style={s.emptyTitle}>Sem dados no período</Text>
@@ -221,6 +229,17 @@ export const FinanceScreen: React.FC = () => {
               </View>
             </View>
 
+            <Text style={s.secTitle}>Fluxo financeiro</Text>
+            <View style={s.card}>
+              <Text style={s.flowHint}>Compras afetam o caixa; no DRE, entram pelo custo dos produtos vendidos.</Text>
+              <FlowRow label="Entradas (vendas)" value={fmt(revenue)} color={GREEN} />
+              <FlowRow label="Compras pagas" value={`– ${fmt(paidPurchases)}`} color={RED} />
+              <FlowRow label="Despesas" value={`– ${fmt(totalExpenses)}`} color={RED} />
+              <View style={s.divider} />
+              <FlowRow label="Saldo estimado" value={fmt(cashBalance)} color={cashBalance >= 0 ? GREEN : RED} bold />
+              {pendingPurchases > 0 && <Text style={s.pendingText}>Compras pendentes: {fmt(pendingPurchases)}</Text>}
+            </View>
+
             {/* Por produto */}
             <Text style={s.secTitle}>Resultado por produto</Text>
             <View style={s.card}>
@@ -248,22 +267,17 @@ export const FinanceScreen: React.FC = () => {
   );
 };
 
-const Header: React.FC<{ navigation: NavigationProp }> = ({ navigation }) => (
+const Header: React.FC<{ navigation: NavigationProp }> = ({ navigation }) => (<>
   <View style={s.header}>
-    <TouchableOpacity onPress={() => navigation.goBack()} style={s.bk}>
-      <Ionicons name="arrow-back" size={20} color={INK} />
-    </TouchableOpacity>
-    <View style={{ flex: 1 }}>
-      <Text style={s.headerTitle}>Financeiro</Text>
-      <Text style={s.headerSub}>Gestão de resultado (DRE)</Text>
-    </View>
-    <TouchableOpacity onPress={() => navigation.navigate('Expenses')} style={s.expensesBtn} activeOpacity={0.8}>
-      <Ionicons name="receipt-outline" size={15} color={PURPLE} />
-      <Text style={s.expensesBtnTxt}>Despesas</Text>
-    </TouchableOpacity>
+    <TouchableOpacity onPress={() => navigation.goBack()} style={s.bk}><Ionicons name="arrow-back" size={20} color={INK} /></TouchableOpacity>
+    <View style={{ flex: 1 }}><Text style={s.headerTitle}>Financeiro</Text><Text style={s.headerSub}>Gestão de resultado (DRE)</Text></View>
     <View style={s.masterBadge}><Text style={s.masterBadgeTxt}>MASTER</Text></View>
   </View>
-);
+  <View style={s.financeNav}>
+    <TouchableOpacity onPress={() => navigation.navigate('Purchases')} style={s.financeNavBtn} activeOpacity={0.8}><Ionicons name="document-text-outline" size={16} color={PURPLE} /><Text style={s.expensesBtnTxt}>Compras</Text></TouchableOpacity>
+    <TouchableOpacity onPress={() => navigation.navigate('Expenses')} style={s.financeNavBtn} activeOpacity={0.8}><Ionicons name="receipt-outline" size={16} color={PURPLE} /><Text style={s.expensesBtnTxt}>Despesas</Text></TouchableOpacity>
+  </View>
+</>);
 
 const DreRow: React.FC<{ label: string; sub?: string; value: string; color: string; bold?: boolean; bar: number; barColor: string }> = ({ label, sub, value, color, bold, bar, barColor }) => (
   <View style={s.dreRow}>
@@ -280,6 +294,8 @@ const DreRow: React.FC<{ label: string; sub?: string; value: string; color: stri
   </View>
 );
 
+const FlowRow = ({ label, value, color, bold }: { label: string; value: string; color: string; bold?: boolean }) => <View style={s.flowRow}><Text style={[s.flowLabel, bold && { fontWeight: '800' }]}>{label}</Text><Text style={[s.flowValue, { color }, bold && { fontWeight: '800' }]}>{value}</Text></View>;
+
 const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#FFFFFF' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -288,10 +304,16 @@ const s = StyleSheet.create({
   bk: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
   headerTitle: { fontSize: 22, fontWeight: '700', color: INK },
   headerSub: { fontSize: 12.5, color: INK2, marginTop: 1 },
-  expensesBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.purpleBg, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, marginRight: 6 },
+  financeNav: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 8 },
+  financeNavBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, backgroundColor: colors.purpleBg, borderRadius: 11, paddingVertical: 9 },
   expensesBtnTxt: { fontSize: 12, fontWeight: '700', color: PURPLE },
   masterBadge: { backgroundColor: colors.purpleBg, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 5 },
   masterBadgeTxt: { fontSize: 10, fontWeight: '800', color: PURPLE, letterSpacing: 0.5 },
+  flowHint: { fontSize: 11.5, lineHeight: 17, color: INK2, marginBottom: 8 },
+  flowRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 7 },
+  flowLabel: { color: INK, fontSize: 13.5, fontWeight: '600' },
+  flowValue: { fontSize: 13.5, fontWeight: '700' },
+  pendingText: { color: '#D98B00', fontSize: 12, fontWeight: '600', marginTop: 8 },
 
   seg: { flexDirection: 'row', backgroundColor: '#F3E9F0', borderRadius: 13, padding: 4, marginBottom: 16 },
   segItem: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },

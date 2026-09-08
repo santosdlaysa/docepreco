@@ -421,6 +421,42 @@ CREATE TABLE IF NOT EXISTS expenses (
 CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses (user_id, expense_date DESC);
 CREATE INDEX IF NOT EXISTS idx_expenses_user_category ON expenses (user_id, category);
 
+CREATE TABLE IF NOT EXISTS purchase_invoices (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  supplier VARCHAR(255) NOT NULL,
+  document_number VARCHAR(100),
+  purchase_date DATE NOT NULL,
+  payment_method VARCHAR(30),
+  payment_status VARCHAR(10) NOT NULL DEFAULT 'paid' CHECK (payment_status IN ('paid', 'pending')),
+  subtotal DECIMAL(12,2) NOT NULL,
+  discount DECIMAL(12,2) NOT NULL DEFAULT 0,
+  freight DECIMAL(12,2) NOT NULL DEFAULT 0,
+  total DECIMAL(12,2) NOT NULL,
+  notes TEXT,
+  attachment_url TEXT,
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_purchase_invoices_user_date
+  ON purchase_invoices (user_id, purchase_date DESC);
+
+CREATE TABLE IF NOT EXISTS purchase_invoice_items (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  invoice_id UUID NOT NULL REFERENCES purchase_invoices(id) ON DELETE CASCADE,
+  ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE RESTRICT,
+  description VARCHAR(255) NOT NULL,
+  quantity DECIMAL(12,3) NOT NULL CHECK (quantity > 0),
+  unit VARCHAR(10) NOT NULL,
+  total DECIMAL(12,2) NOT NULL CHECK (total > 0),
+  update_ingredient_price BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_purchase_items_invoice ON purchase_invoice_items (invoice_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_ingredient ON purchase_invoice_items (ingredient_id);
+
 CREATE TABLE IF NOT EXISTS referrals (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   referrer_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

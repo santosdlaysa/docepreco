@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TrendingUp, Package, BarChart3 } from 'lucide-react';
-import { userApi, Sale, Expense } from '../userApi';
+import { userApi, Sale, Expense, PurchaseInvoice } from '../userApi';
 import { ToastFn, TableSkeleton } from '../../components';
 import { formatBRL } from '../format';
 import { EmptyState } from './IngredientsPage';
@@ -31,6 +31,7 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
+  const [purchases, setPurchases] = useState<PurchaseInvoice[]>([]);
   const [costPerUnit, setCostPerUnit] = useState<Record<string, number>>({});
   const [recipeName, setRecipeName] = useState<Record<string, string>>({});
   const [period, setPeriod] = useState<Period>('month');
@@ -40,13 +41,15 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
     const { month, prev } = periodKeys();
     const expenseMonth = period === 'all' ? undefined : period === 'prev' ? prev : month;
     try {
-      const [allSales, recipes, allExpenses] = await Promise.all([
+      const [allSales, recipes, allExpenses, allPurchases] = await Promise.all([
         userApi.listSales(),
         userApi.listRecipes(),
         userApi.listExpenses(expenseMonth),
+        userApi.listPurchases(expenseMonth),
       ]);
       setSales(allSales);
       setExpenses(allExpenses);
+      setPurchases(allPurchases);
 
       const names: Record<string, string> = {};
       for (const r of recipes) names[r.id] = r.name;
@@ -87,6 +90,9 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
   const revenue = filtered.reduce((sum, s) => sum + (s.totalRevenue || 0), 0);
   const cost = filtered.reduce((sum, s) => sum + (costPerUnit[s.recipeId] ?? 0) * s.quantitySold, 0);
   const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const paidPurchases = purchases.filter(p => p.paymentStatus === 'paid').reduce((sum, p) => sum + p.total, 0);
+  const pendingPurchases = purchases.filter(p => p.paymentStatus === 'pending').reduce((sum, p) => sum + p.total, 0);
+  const cashBalance = revenue - totalExpenses - paidPurchases;
   const profit = revenue - cost - totalExpenses;
   const margin = revenue > 0 ? (profit / revenue) * 100 : 0;
   const units = filtered.reduce((sum, s) => sum + s.quantitySold, 0);
@@ -139,7 +145,7 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <TableSkeleton rows={5} cols={2} />
         </div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && expenses.length === 0 && purchases.length === 0 ? (
         <EmptyState icon={BarChart3} text="Sem dados no período. Registre vendas para ver o resultado financeiro (DRE) do seu negócio." />
       ) : (
         <div className="space-y-4">
@@ -196,6 +202,19 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
             </div>
           </div>
 
+          {/* Fluxo financeiro: compras pagas são saída de caixa, não nova despesa no DRE. */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">Fluxo financeiro simplificado</p>
+            <p className="text-[11px] text-gray-400 mb-3">Compras aparecem aqui; no DRE, o ingrediente entra pelo custo do produto vendido.</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <FlowCard label="Entradas (vendas)" value={formatBRL(revenue)} className="text-green-600" />
+              <FlowCard label="Compras pagas" value={`− ${formatBRL(paidPurchases)}`} className="text-red-500" />
+              <FlowCard label="Despesas" value={`− ${formatBRL(totalExpenses)}`} className="text-red-500" />
+              <FlowCard label="Saldo estimado" value={formatBRL(cashBalance)} className={cashBalance >= 0 ? 'text-green-600' : 'text-red-500'} />
+            </div>
+            {pendingPurchases > 0 && <p className="text-xs text-amber-600 mt-3">Compras pendentes: {formatBRL(pendingPurchases)}</p>}
+          </div>
+
           {/* Por produto */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
@@ -226,6 +245,10 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
       )}
     </div>
   );
+}
+
+function FlowCard({ label, value, className }: { label: string; value: string; className: string }) {
+  return <div className="rounded-lg bg-gray-50 dark:bg-gray-700/50 p-3"><p className="text-[11px] text-gray-500 dark:text-gray-400">{label}</p><p className={`text-sm font-bold mt-1 ${className}`}>{value}</p></div>;
 }
 
 function DreRow({

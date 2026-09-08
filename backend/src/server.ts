@@ -45,6 +45,7 @@ import cashRoutes from './presentation/routes/cashRoutes';
 import referralRoutes from './presentation/routes/referralRoutes';
 import stripeRoutes from './presentation/routes/stripeRoutes';
 import expenseRoutes from './presentation/routes/expenseRoutes';
+import purchaseInvoiceRoutes from './presentation/routes/purchaseInvoiceRoutes';
 import clientRoutes from './presentation/routes/clientRoutes';
 import stockRoutes from './presentation/routes/stockRoutes';
 import storeRoutes from './presentation/routes/storeRoutes';
@@ -203,6 +204,7 @@ app.use('/api', pixRoutes);
 app.use('/api', referralRoutes);
 app.use('/api', stripeRoutes);
 app.use('/api', expenseRoutes);
+app.use('/api', purchaseInvoiceRoutes);
 app.use('/api', clientRoutes);
 app.use('/api', stockRoutes);
 // Montado ANTES de adminRoutes: GET /api/admin/settings/plans é público (lido pelo app

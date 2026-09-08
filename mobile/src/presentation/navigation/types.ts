@@ -32,6 +32,8 @@ export type RootStackParamList = {
   EditClient: { clientId: string };
   Reports: undefined;
   Finance: undefined;
+  Purchases: undefined;
+  CreatePurchase: undefined;
   Expenses: undefined;
   CreateExpense: Record<string, never>;
   Stock: undefined;

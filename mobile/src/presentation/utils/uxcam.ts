@@ -5,6 +5,5 @@ export function initUxCam(): void {
   RNUxcam.startWithConfiguration({
     userAppKey: 'ofgjy4vgtc523yt-us',
     enableAutomaticScreenNameTagging: false,
-    enableImprovedScreenCapture: true,
   });
 }

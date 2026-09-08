@@ -536,6 +536,52 @@ export const EXPENSE_CATEGORIES: { key: string; label: string }[] = [
   { key: 'outros', label: 'Outros' },
 ];
 
+/* ── Notas de compra ──────────────────────────────────────────────────── */
+
+export type PurchasePaymentStatus = 'paid' | 'pending';
+export interface PurchaseInvoiceItem {
+  id: string;
+  ingredientId: string;
+  description: string;
+  quantity: number;
+  unit: Unit;
+  total: number;
+  updateIngredientPrice: boolean;
+}
+export interface PurchaseInvoice {
+  id: string;
+  supplier: string;
+  documentNumber: string | null;
+  purchaseDate: string;
+  paymentMethod: string | null;
+  paymentStatus: PurchasePaymentStatus;
+  subtotal: number;
+  discount: number;
+  freight: number;
+  total: number;
+  notes: string | null;
+  items: PurchaseInvoiceItem[];
+  createdAt: string;
+}
+export interface CreatePurchaseInvoiceDTO {
+  supplier: string;
+  documentNumber?: string | null;
+  purchaseDate: string;
+  paymentMethod?: string | null;
+  paymentStatus: PurchasePaymentStatus;
+  discount?: number;
+  freight?: number;
+  notes?: string | null;
+  items: Array<{
+    ingredientId: string;
+    description?: string;
+    quantity: number;
+    unit: Unit;
+    total: number;
+    updateIngredientPrice: boolean;
+  }>;
+}
+
 /* ── Clientes ──────────────────────────────────────────────────────────── */
 
 export interface Client {
@@ -726,6 +772,12 @@ export const userApi = {
   updateExpense: (id: string, data: Partial<CreateExpenseDTO>) =>
     req<Expense>(`/expenses/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteExpense: (id: string) => req<void>(`/expenses/${id}`, { method: 'DELETE' }),
+
+  // Notas de compra (não entram como despesa operacional no DRE)
+  listPurchases: (month?: string) =>
+    req<PurchaseInvoice[]>(`/purchases${month ? `?month=${month}` : ''}`),
+  createPurchase: (data: CreatePurchaseInvoiceDTO) =>
+    req<PurchaseInvoice>('/purchases', { method: 'POST', body: JSON.stringify(data) }),
 
   // Clientes
   listClients: () => req<Client[]>('/clients'),

@@ -30,6 +30,8 @@ import { ClientsScreen } from '../screens/ClientsScreen';
 import { CreateClientScreen } from '../screens/CreateClientScreen';
 import { ReportsScreen } from '../screens/ReportsScreen';
 import { FinanceScreen } from '../screens/FinanceScreen';
+import { PurchasesScreen } from '../screens/PurchasesScreen';
+import { CreatePurchaseScreen } from '../screens/CreatePurchaseScreen';
 import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { CreateExpenseScreen } from '../screens/CreateExpenseScreen';
 import { StockScreen } from '../screens/StockScreen';
@@ -599,6 +601,8 @@ export function AppNavigator() {
           <Stack.Screen name="EditClient" component={CreateClientScreen} />
           <Stack.Screen name="Reports" component={ReportsScreen} />
           <Stack.Screen name="Finance" component={FinanceScreen} />
+          <Stack.Screen name="Purchases" component={PurchasesScreen} />
+          <Stack.Screen name="CreatePurchase" component={CreatePurchaseScreen} />
           <Stack.Screen name="Expenses" component={ExpensesScreen} />
           <Stack.Screen name="CreateExpense" component={CreateExpenseScreen} />
           <Stack.Screen name="Stock" component={StockScreen} />

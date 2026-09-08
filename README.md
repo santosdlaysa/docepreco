@@ -159,7 +159,7 @@ Copie os arquivos `.env.example`; nunca versione `.env` ou segredos reais.
 | Autenticação | `/api/auth` | registro, login, perfil, alteração/recuperação de senha, sugestão e exclusão de conta |
 | Produção | `/api/ingredients`, `/api/recipes`, `/api/ingredients/:ingredientId/price-history` | CRUD, cálculo de receita e histórico de preços |
 | Vendas | `/api/sales`, `/api/stats`, `/api/goals`, `/api/seasons`, `/api/orders` | vendas, indicadores, metas, temporadas e encomendas |
-| Financeiro | `/api/cash`, `/api/expenses` | caixa/sessões/movimentos e despesas/resumo |
+| Financeiro | `/api/cash`, `/api/expenses`, `/api/purchases` | caixa, despesas e notas de compra integradas ao estoque/preços |
 | Assinatura | `/api/premium/*`, `/api/webhooks/revenuecat`, `/api/stripe/*`, `/api/pix/*` | sincronização, teste, RevenueCat, checkout Stripe e PIX/Mercado Pago |
 | Loja autenticada | `/api/store` | configurações, catálogo e adicionais; escrita exige plano pago |
 | Loja pública | `/api/public` | estatísticas, marketplace, vitrine/busca, loja por slug e pedidos públicos |

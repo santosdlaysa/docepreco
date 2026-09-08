@@ -14,6 +14,7 @@ import { PlanTier } from './userApi';
 export const PAGE_REQUIREMENT: Record<string, Exclude<PlanTier, 'free'>> = {
   store: 'master',
   finance: 'master',
+  purchases: 'master',
   stock: 'master',
   tips: 'master',
   clients: 'premium',

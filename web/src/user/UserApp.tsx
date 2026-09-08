@@ -13,6 +13,7 @@ import {
   Store,
   PieChart,
   Receipt,
+  FileText,
   Boxes,
   Users,
   Lightbulb,
@@ -46,6 +47,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { StorePage } from './pages/StorePage';
 import { FinancePage } from './pages/FinancePage';
 import { ExpensesPage } from './pages/ExpensesPage';
+import { PurchasesPage } from './pages/PurchasesPage';
 import { StockPage } from './pages/StockPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { SalesTipsPage } from './pages/SalesTipsPage';
@@ -53,13 +55,14 @@ import { SupportPage } from './pages/SupportPage';
 
 type Page =
   | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production'
-  | 'cash' | 'seasons' | 'store' | 'profile' | 'finance' | 'expenses' | 'stock'
+  | 'cash' | 'seasons' | 'store' | 'profile' | 'finance' | 'purchases' | 'expenses' | 'stock'
   | 'clients' | 'tips' | 'support';
 
 const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'cash', label: 'Caixa', icon: Wallet },
   { id: 'reports', label: 'Relatórios', icon: LayoutDashboard },
   { id: 'finance', label: 'Financeiro', icon: PieChart },
+  { id: 'purchases', label: 'Compras', icon: FileText },
   { id: 'expenses', label: 'Despesas', icon: Receipt },
   { id: 'recipes', label: 'Receitas', icon: ChefHat },
   { id: 'ingredients', label: 'Ingredientes', icon: Package },
@@ -243,6 +246,7 @@ function Shell() {
                 <>
                   {page === 'reports' && <ReportsPage toast={toast} />}
                   {page === 'finance' && <FinancePage toast={toast} />}
+                  {page === 'purchases' && <PurchasesPage toast={toast} />}
                   {page === 'expenses' && <ExpensesPage toast={toast} />}
                   {page === 'recipes' && <RecipesPage toast={toast} />}
                   {page === 'ingredients' && <IngredientsPage toast={toast} />}
