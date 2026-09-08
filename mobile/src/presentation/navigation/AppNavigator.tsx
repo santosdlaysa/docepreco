@@ -529,6 +529,7 @@ export function AppNavigator() {
         onLogin={() => handleAuthSuccess()}
         onGoToRegister={() => setShowRegister(true)}
         onGoToForgotPassword={() => setShowForgotPassword(true)}
+        onSocialLogin={(isNew) => isNew ? handleRegisterSuccess() : handleAuthSuccess()}
       />
     );
   }

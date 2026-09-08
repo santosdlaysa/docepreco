@@ -5,6 +5,8 @@ import { PostgresUserRepository } from '../../infrastructure/repositories/Postgr
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
 import { PostgresReferralRepository } from '../../infrastructure/repositories/PostgresReferralRepository';
 import { PostgresSupportRepository } from '../../infrastructure/repositories/PostgresSupportRepository';
+import { PostgresSocialIdentityRepository } from '../../infrastructure/repositories/PostgresSocialIdentityRepository';
+import { SocialAuthError, verifySocialToken } from '../../infrastructure/services/socialTokenVerifier';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone, notifyAccountLockout } from '../../infrastructure/services/telegramService';
 import { recordLoginFailure, resetLoginFailures, LOCK_MINUTES } from '../middleware/loginLockout';
@@ -16,6 +18,7 @@ const userRepo = new PostgresUserRepository();
 const suggestionRepo = new PostgresSuggestionRepository();
 const referralRepo = new PostgresReferralRepository();
 const supportRepo = new PostgresSupportRepository();
+const socialIdentityRepo = new PostgresSocialIdentityRepository();
 
 // Mensagem de boas-vindas enviada no chat de suporte para todo usuário novo.
 // O marcador [[assinar]] vira o botão "Assinar agora" no chat da confeiteira.
@@ -50,6 +53,16 @@ const TYPO_MAP: Record<string, string> = {
 };
 
 export class AuthController {
+  async socialNonce(_req: Request, res: Response): Promise<void> {
+    try {
+      const nonce = await socialIdentityRepo.createAppleNonce();
+      res.json({ success: true, data: { nonce } });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Não foi possível iniciar o login Apple' });
+    }
+  }
+
   async register(req: Request, res: Response): Promise<void> {
     try {
       const { companyName, email, password, phone, referralCode, platform } = req.body;
@@ -165,6 +178,81 @@ export class AuthController {
       const { passwordHash, ...safeUser } = user;
       res.json({ success: true, data: { user: safeUser, token } });
     } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  /**
+   * Login aditivo por Google/Apple. O token do provedor só comprova a identidade;
+   * depois da validação emitimos o mesmo JWT usado pelo login tradicional.
+   */
+  async socialLogin(req: Request, res: Response): Promise<void> {
+    try {
+      const { provider, idToken, nonce, displayName, platform } = req.body;
+      if (provider !== 'google' && provider !== 'apple') {
+        res.status(400).json({ success: false, error: 'Provedor deve ser google ou apple' });
+        return;
+      }
+      if (typeof idToken !== 'string' || idToken.length < 20 || idToken.length > 20_000) {
+        res.status(400).json({ success: false, error: 'Token de identidade não informado' });
+        return;
+      }
+      if (platform && !['ios', 'android', 'web'].includes(platform)) {
+        res.status(400).json({ success: false, error: 'Plataforma inválida' });
+        return;
+      }
+
+      const identity = await verifySocialToken(
+        provider,
+        idToken,
+        typeof nonce === 'string' ? nonce : undefined,
+      );
+      if (provider === 'apple' && !(await socialIdentityRepo.consumeAppleNonce(nonce))) {
+        res.status(401).json({ success: false, error: 'Tentativa de login Apple inválida ou expirada' });
+        return;
+      }
+      const providerName = identity.displayName
+        || (typeof displayName === 'string' ? displayName.trim().slice(0, 255) : null);
+      const { userId, isNew } = await socialIdentityRepo.findOrCreateUser({
+        ...identity,
+        displayName: providerName,
+        platform: platform || null,
+      });
+      const user = await userRepo.findById(userId);
+      if (!user) {
+        res.status(500).json({ success: false, error: 'Não foi possível carregar a conta' });
+        return;
+      }
+      if (user.isActive === false) {
+        res.status(403).json({ success: false, error: 'Sua conta foi desativada. Entre em contato com o suporte.' });
+        return;
+      }
+
+      if (isNew) {
+        supportRepo.create({ userId: user.id, senderType: 'admin', message: WELCOME_MESSAGE })
+          .catch(e => console.error('[Support] Falha ao enviar mensagem de boas-vindas:', e));
+        notifyNewUser(user.companyName, user.email, platform || undefined);
+        userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
+      }
+
+      const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
+      const { passwordHash, ...safeUser } = user as User & { passwordHash?: string };
+      void passwordHash;
+      res.json({ success: true, data: { user: safeUser, token, isNew } });
+    } catch (error) {
+      if (error instanceof SocialAuthError) {
+        const status = error.kind === 'configuration' ? 503 : 401;
+        res.status(status).json({ success: false, error: error.message });
+        return;
+      }
+      if (error instanceof Error && error.message === 'EMAIL_REQUIRED_FOR_SOCIAL_SIGNUP') {
+        res.status(400).json({
+          success: false,
+          error: 'A Apple não forneceu o email. Remova o acesso ao Doce Preço nos ajustes da Apple e tente novamente.',
+        });
+        return;
+      }
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
     }

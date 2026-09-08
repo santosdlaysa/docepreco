@@ -15,7 +15,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
 import { authApi } from '../../data/api/authApi';
+import { googleSignInConfigured, signInWithApple, signInWithGoogle } from '../../data/auth/socialSignIn';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
@@ -27,15 +30,18 @@ interface Props {
   onGoToRegister: () => void;
   onGoToForgotPassword?: () => void;
   onDemoLogin?: () => void;
+  onSocialLogin?: (isNew: boolean) => void | Promise<void>;
 }
 
-export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToForgotPassword, onDemoLogin }) => {
+export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToForgotPassword, onDemoLogin, onSocialLogin }) => {
   const { t } = useTranslation();
   const L = useAuthLayout();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const fadeIn = useRef(new Animated.Value(0)).current;
@@ -48,6 +54,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
       Animated.timing(fadeIn, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(cardSlide, { toValue: 0, tension: 40, friction: 9, useNativeDriver: true }),
     ]).start();
+  }, []);
+
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
+    }
   }, []);
 
   const validate = () => {
@@ -79,6 +91,40 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
       const msg = error instanceof Error ? error.message : t('login.loginError');
       setErrors({ general: msg });
       setLoading(false);
+    }
+  };
+
+  const finishSocialLogin = async (result: Awaited<ReturnType<typeof signInWithGoogle>>) => {
+    if (!result) return;
+    await identifyRevenueCatUser(result.user.id);
+    void setRevenueCatLocationAttributes();
+    if (onSocialLogin) await onSocialLogin(result.isNew);
+    else await onLogin();
+  };
+
+  const handleGoogleLogin = async () => {
+    setSocialLoading('google');
+    setErrors({});
+    try {
+      await finishSocialLogin(await signInWithGoogle());
+    } catch (error) {
+      setErrors({ general: error instanceof Error ? error.message : t('login.socialLoginError') });
+    } finally {
+      setSocialLoading(null);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    setSocialLoading('apple');
+    setErrors({});
+    try {
+      await finishSocialLogin(await signInWithApple());
+    } catch (error: any) {
+      if (error?.code !== 'ERR_REQUEST_CANCELED') {
+        setErrors({ general: error instanceof Error ? error.message : t('login.socialLoginError') });
+      }
+    } finally {
+      setSocialLoading(null);
     }
   };
 
@@ -167,6 +213,42 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
                 <Text style={styles.registerLink}>{t('login.createAccount')}</Text>
               </TouchableOpacity>
             </View>
+
+            {(googleSignInConfigured || appleAvailable) && (
+              <>
+                <View style={[styles.orRow, { marginTop: L.blockGap, marginBottom: L.fieldGap }]}>
+                  <View style={styles.orLine} />
+                  <Text style={styles.orText}>{t('common.or')}</Text>
+                  <View style={styles.orLine} />
+                </View>
+
+                {googleSignInConfigured && (
+                  <View style={styles.socialButtonWrap} pointerEvents={socialLoading ? 'none' : 'auto'}>
+                    <GoogleSigninButton
+                      style={styles.googleButton}
+                      size={GoogleSigninButton.Size.Wide}
+                      color={GoogleSigninButton.Color.Light}
+                      disabled={Boolean(socialLoading)}
+                      onPress={() => void handleGoogleLogin()}
+                    />
+                    {socialLoading === 'google' && <ActivityIndicator style={styles.socialSpinner} color={colors.primary} />}
+                  </View>
+                )}
+
+                {appleAvailable && (
+                  <View style={styles.socialButtonWrap} pointerEvents={socialLoading ? 'none' : 'auto'}>
+                    <AppleAuthentication.AppleAuthenticationButton
+                      buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}
+                      buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.BLACK}
+                      cornerRadius={12}
+                      style={styles.appleButton}
+                      onPress={() => void handleAppleLogin()}
+                    />
+                    {socialLoading === 'apple' && <ActivityIndicator style={styles.socialSpinner} color="#fff" />}
+                  </View>
+                )}
+              </>
+            )}
 
             {onDemoLogin && (
               <>
@@ -313,6 +395,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.cream,
   },
   demoBtnText: { fontSize: 14, fontWeight: '600', color: colors.text },
+  socialButtonWrap: { position: 'relative', marginBottom: 10 },
+  googleButton: { width: '100%', height: 48 },
+  appleButton: { width: '100%', height: 48 },
+  socialSpinner: { position: 'absolute', right: 18, top: 14 },
 
   version: {
     fontSize: 11,

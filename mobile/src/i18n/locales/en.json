@@ -59,7 +59,8 @@
     "emailInvalid": "Invalid email",
     "emailTypo": "Did you mean {{suggestion}}?",
     "passwordRequired": "Password is required",
-    "loginError": "Error signing in"
+    "loginError": "Error signing in",
+    "socialLoginError": "Error signing in with the social account"
   },
   "register": {
     "title": "Create account",

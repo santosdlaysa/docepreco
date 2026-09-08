@@ -10,6 +10,10 @@ const userRepo = {
   markResetCodeUsed: jest.fn(), delete: jest.fn(),
 };
 const suggestionRepo = { create: jest.fn() };
+const socialRepo = {
+  createAppleNonce: jest.fn(), consumeAppleNonce: jest.fn(), findOrCreateUser: jest.fn(),
+};
+const mockVerifySocialToken = jest.fn();
 const sendReset = jest.fn();
 
 jest.mock('../infrastructure/database/connection', () => ({
@@ -20,6 +24,17 @@ jest.mock('../infrastructure/repositories/PostgresUserRepository', () => ({
 }));
 jest.mock('../infrastructure/repositories/PostgresSuggestionRepository', () => ({
   PostgresSuggestionRepository: jest.fn(() => suggestionRepo),
+}));
+jest.mock('../infrastructure/repositories/PostgresSocialIdentityRepository', () => ({
+  PostgresSocialIdentityRepository: jest.fn(() => socialRepo),
+}));
+jest.mock('../infrastructure/services/socialTokenVerifier', () => ({
+  verifySocialToken: (...args: unknown[]) => mockVerifySocialToken(...args),
+  SocialAuthError: class SocialAuthError extends Error {
+    constructor(message: string, public readonly kind: 'invalid_token' | 'configuration') {
+      super(message);
+    }
+  },
 }));
 jest.mock('../infrastructure/services/emailService', () => ({
   sendPasswordResetCode: (...args: unknown[]) => sendReset(...args),
@@ -58,9 +73,10 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  for (const repo of [userRepo, suggestionRepo]) {
+  for (const repo of [userRepo, suggestionRepo, socialRepo]) {
     for (const fn of Object.values(repo)) fn.mockReset();
   }
+  mockVerifySocialToken.mockReset();
   sendReset.mockReset();
 });
 
@@ -70,7 +86,7 @@ describe('Todas as rotas de autenticação', () => {
     userRepo.create.mockResolvedValue(user);
     userRepo.countAll.mockResolvedValue({ total: 1, premium: 0, today: 1 });
     expect((await request(createApp()).post('/auth/register').send({
-      companyName: 'Doces', email: 'doces@example.com', password: 'senha123',
+      companyName: 'Doces', email: 'doces@example.com', password: 'senha123', phone: '92999999999',
     })).status).toBe(201);
 
     userRepo.findByEmail.mockResolvedValueOnce(user);
@@ -78,6 +94,30 @@ describe('Todas as rotas de autenticação', () => {
     expect((await request(createApp()).post('/auth/login').send({
       email: 'doces@example.com', password: 'senha123',
     })).status).toBe(200);
+  });
+
+  it('autentica com provedor social e mantém o mesmo formato de sessão JWT', async () => {
+    mockVerifySocialToken.mockResolvedValue({
+      provider: 'google', subject: 'google-user-1', email: user.email, displayName: 'Doces',
+    });
+    socialRepo.findOrCreateUser.mockResolvedValue({ userId: USER_ID, isNew: false });
+    userRepo.findById.mockResolvedValue(user);
+
+    const response = await request(createApp()).post('/auth/social').send({
+      provider: 'google', idToken: 'id-token-google-com-tamanho-valido', platform: 'android',
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.data.user.email).toBe(user.email);
+    expect(response.body.data.token).toEqual(expect.any(String));
+    expect(response.body.data.user.passwordHash).toBeUndefined();
+  });
+
+  it('emite nonce Apple de uso único', async () => {
+    socialRepo.createAppleNonce.mockResolvedValue('nonce-seguro');
+    const response = await request(createApp()).post('/auth/social/nonce');
+    expect(response.status).toBe(200);
+    expect(response.body.data.nonce).toBe('nonce-seguro');
   });
 
   it('executa recuperação e redefinição de senha', async () => {

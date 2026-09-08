@@ -356,6 +356,19 @@ const spec = {
         responses: { 200: { description: 'Token JWT (30 dias)' }, 401: { description: 'Credenciais inválidas' } },
       },
     },
+    '/auth/social/nonce': {
+      post: {
+        tags: ['Auth'], summary: 'Gerar nonce de curta duração para login Apple',
+        responses: { 200: { description: 'Nonce válido por 5 minutos e de uso único' } },
+      },
+    },
+    '/auth/social': {
+      post: {
+        tags: ['Auth'], summary: 'Entrar ou criar conta com Google/Apple',
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['provider', 'idToken'], properties: { provider: { type: 'string', enum: ['google', 'apple'] }, idToken: { type: 'string' }, nonce: { type: 'string', description: 'Obrigatório para Apple' }, displayName: { type: 'string' }, platform: { type: 'string', enum: ['ios', 'android', 'web'] } } } } } },
+        responses: { 200: { description: 'Usuário e JWT de sessão (30 dias)' }, 401: { description: 'Token do provedor inválido' }, 503: { description: 'Provedor não configurado no servidor' } },
+      },
+    },
     '/auth/profile': {
       patch: {
         tags: ['Auth'], summary: 'Atualizar perfil', security: [{ BearerAuth: [] }],

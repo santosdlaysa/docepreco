@@ -9,6 +9,8 @@ const controller = new AuthController();
 
 router.post('/register', authLimiter, (req, res) => controller.register(req, res));
 router.post('/login', loginLimiter, loginLockout, (req, res) => controller.login(req, res));
+router.post('/social/nonce', authLimiter, (req, res) => controller.socialNonce(req, res));
+router.post('/social', loginLimiter, (req, res) => controller.socialLogin(req, res));
 router.post('/forgot-password', authLimiter, (req, res) => controller.forgotPassword(req, res));
 router.post('/reset-password', resetLimiter, (req, res) => controller.resetPassword(req, res));
 router.post('/web-handoff', authMiddleware, (req, res) => controller.webHandoff(req as any, res));

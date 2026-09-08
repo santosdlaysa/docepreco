@@ -20,7 +20,12 @@ apiClient.interceptors.request.use(async config => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   const method = config.method?.toUpperCase();
   const url = `${config.baseURL}${config.url}`;
-  console.log(`[API] → ${method} ${url}`, config.data ? config.data : '');
+  const loggedData = config.data && typeof config.data === 'object'
+    ? Object.fromEntries(Object.entries(config.data).map(([key, value]) => (
+      /token|password|nonce|code/i.test(key) ? [key, '[REDACTED]'] : [key, value]
+    )))
+    : config.data;
+  console.log(`[API] → ${method} ${url}`, loggedData || '');
   return config;
 });
 

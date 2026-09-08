@@ -1389,6 +1389,28 @@ export async function runMigrations() {
     await client.query(`ALTER TABLE ingredient_price_history ALTER COLUMN purchase_quantity TYPE DECIMAL(15,3)`).catch(() => {});
     await client.query(`ALTER TABLE ingredient_price_history ALTER COLUMN purchase_unit_weight TYPE DECIMAL(15,3)`).catch(() => {});
 
+    // Identidades Google/Apple são aditivas: usuários existentes mantêm email e senha.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS auth_identities (
+        id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+        user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        provider VARCHAR(20) NOT NULL CHECK (provider IN ('google', 'apple')),
+        provider_subject VARCHAR(255) NOT NULL,
+        provider_email VARCHAR(255),
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        UNIQUE (provider, provider_subject),
+        UNIQUE (user_id, provider)
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_auth_identities_user ON auth_identities (user_id)`);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS social_auth_nonces (
+        nonce_hash VARCHAR(64) PRIMARY KEY,
+        expires_at TIMESTAMP NOT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+
     await client.query('COMMIT');
     console.log('\n✨ Migrations applied successfully');
   } catch (error) {

@@ -20,6 +20,8 @@ export interface AuthUser {
   lgpdAcceptedAt: string | null;
 }
 
+export type SocialProvider = 'google' | 'apple';
+
 const normalizeUser = (raw: any): AuthUser => ({
   id: raw.id,
   companyName: raw.companyName,
@@ -53,6 +55,31 @@ export const authApi = {
     await tokenStorage.saveToken(token);
     await tokenStorage.saveUser(normalized);
     return normalized;
+  },
+
+  getSocialNonce: async (): Promise<string> => {
+    const response = await apiClient.post('/auth/social/nonce');
+    return response.data.data.nonce;
+  },
+
+  socialLogin: async (
+    provider: SocialProvider,
+    idToken: string,
+    options?: { nonce?: string; displayName?: string | null },
+  ): Promise<{ user: AuthUser; isNew: boolean }> => {
+    const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
+    const response = await apiClient.post('/auth/social', {
+      provider,
+      idToken,
+      nonce: options?.nonce,
+      displayName: options?.displayName,
+      platform,
+    });
+    const { user, token, isNew } = response.data.data;
+    const normalized = normalizeUser(user);
+    await tokenStorage.saveToken(token);
+    await tokenStorage.saveUser(normalized);
+    return { user: normalized, isNew: Boolean(isNew) };
   },
 
   me: async (): Promise<AuthUser> => {

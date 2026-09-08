@@ -59,7 +59,8 @@
     "emailInvalid": "Email inválido",
     "emailTypo": "Você quis dizer {{suggestion}}?",
     "passwordRequired": "Senha obrigatória",
-    "loginError": "Erro ao entrar"
+    "loginError": "Erro ao entrar",
+    "socialLoginError": "Erro ao entrar com a conta social"
   },
   "register": {
     "title": "Criar conta",
