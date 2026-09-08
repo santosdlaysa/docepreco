@@ -68,6 +68,7 @@ import { impersonationStorage } from '../../data/storage/impersonationStorage';
 import { authApi } from '../../data/api/authApi';
 import { LgpdConsentModal } from '../components/LgpdConsentModal';
 import { SatisfactionSurveyModal } from '../components/SatisfactionSurveyModal';
+import { WhatsNewModal } from '../components/WhatsNewModal';
 import { adminApi } from '../../data/api/adminApi';
 import { AuthContext } from '../../context/AuthContext';
 import { colors } from '../theme/colors';
@@ -236,6 +237,9 @@ export function AppNavigator() {
   // Aceite LGPD pendente (contas criadas antes do consentimento obrigatório).
   const [needsLgpd, setNeedsLgpd] = useState(false);
   const [lgpdChecked, setLgpdChecked] = useState(false);
+  // null enquanto o storage ainda está sendo consultado; evita sobrepor o
+  // convite de pesquisa ao modal de novidades.
+  const [whatsNewVisible, setWhatsNewVisible] = useState<boolean | null>(null);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
   const { reset: resetPremium, refresh: refreshPremium } = usePremium();
@@ -656,8 +660,13 @@ export function AppNavigator() {
         </Stack.Navigator>
       </NavigationContainer>
       <LgpdConsentModal visible={needsLgpd} required onClose={() => {}} onAccept={handleAcceptLgpd} />
-      <SatisfactionSurveyModal
+      <WhatsNewModal
         enabled={lgpdChecked && !needsLgpd && !demoMode && impersonatedCompany === null}
+        onVisibleChange={setWhatsNewVisible}
+        onExplore={() => navigationRef.current?.navigate('Finance')}
+      />
+      <SatisfactionSurveyModal
+        enabled={lgpdChecked && !needsLgpd && !demoMode && impersonatedCompany === null && whatsNewVisible === false}
       />
       </View>
     </AuthContext.Provider>
