@@ -24,7 +24,9 @@ export function buildProductionPlan(start: string, end: string, orders: Order[],
   const stockMap = new Map(stock.map(s => [s.ingredientId, s]));
   const products = new Map<string, ProductionPlan['products'][number]>();
   const required = new Map<string, number>();
-  const selected = orders.filter(o => ['pending', 'in_progress'].includes(o.status) && o.deliveryDate && o.deliveryDate >= start && o.deliveryDate <= end);
+  // Pedidos prontos (done) ainda fazem parte da fila operacional até a entrega;
+  // a tela antiga de produção já os exibia. Somente entregues/cancelados e rascunhos saem.
+  const selected = orders.filter(o => ['pending', 'in_progress', 'done'].includes(o.status) && o.deliveryDate && o.deliveryDate >= start && o.deliveryDate <= end);
 
   const expand = (recipe: Recipe, batches: number, path: Set<string>) => {
     if (path.has(recipe.id) || path.size >= 30) {

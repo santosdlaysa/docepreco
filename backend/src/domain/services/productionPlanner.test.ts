@@ -23,13 +23,13 @@ describe('production planner', () => {
     expect(result.products[0]).toMatchObject({ quantity: 75, batches: 1.5 });
     expect(result.ingredients[0].required).toBeCloseTo(0.3);
   });
-  it('includes date boundaries and excludes ready, delivered, cancelled, draft and undated orders', () => {
+  it('includes date boundaries and excludes delivered, cancelled, draft and undated orders', () => {
     const result = plan([
       order({ deliveryDate: '2026-09-14' }), order({ status: 'in_progress' }),
       ...(['done', 'delivered', 'cancelled', 'draft'] as const).map(status => order({ status })),
       order({ deliveryDate: null }), order({ deliveryDate: '2026-09-20' }), order({ deliveryDate: '2026-09-13' }),
     ]);
-    expect(result.orderCount).toBe(2);
+    expect(result.orderCount).toBe(3);
   });
   it('never infers a recipe by name and reports unknown stock', () => {
     const result = plan([order(), order({ recipeId: null })], [recipe()], [ingredient()], []);
