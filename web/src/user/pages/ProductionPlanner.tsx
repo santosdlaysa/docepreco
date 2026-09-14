@@ -6,7 +6,7 @@ import { inputClass } from './IngredientsPage';
 
 export function ProductionPlanner({ revision }: { revision: unknown }) {
   const [start, setStart] = useState(todayISO);
-  const [end, setEnd] = useState(() => { const date = new Date(); date.setDate(date.getDate() + 6); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; });
+  const [end, setEnd] = useState(() => { const date = new Date(); date.setDate(date.getDate() + 30); return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; });
   const [plan, setPlan] = useState<ProductionPlan | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');

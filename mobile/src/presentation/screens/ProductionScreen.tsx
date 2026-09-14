@@ -27,7 +27,9 @@ const maskDate = (text: string) => text.replace(/\D/g, '').slice(0, 8).replace(/
 export function ProductionScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [start, setStart] = useState(() => dateAfter(0));
-  const [end, setEnd] = useState(() => dateAfter(6));
+  // Janela inicial de 30 dias para que encomendas recém-criadas não fiquem
+  // escondidas quando a entrega já está agendada para a semana seguinte.
+  const [end, setEnd] = useState(() => dateAfter(30));
   const dates = useRef({ start, end }); dates.current = { start, end };
   const request = useRef(0);
   const [plan, setPlan] = useState<ProductionPlan | null>(null);
