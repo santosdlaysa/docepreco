@@ -35,6 +35,7 @@ import { CreatePurchaseScreen } from '../screens/CreatePurchaseScreen';
 import { ExpensesScreen } from '../screens/ExpensesScreen';
 import { CreateExpenseScreen } from '../screens/CreateExpenseScreen';
 import { StockScreen } from '../screens/StockScreen';
+import { ProductionScreen } from '../screens/ProductionScreen';
 import { SalesTipsScreen } from '../screens/SalesTipsScreen';
 import { PdfSettingsScreen } from '../screens/PdfSettingsScreen';
 import { CurrencySettingsScreen } from '../screens/CurrencySettingsScreen';
@@ -611,6 +612,7 @@ export function AppNavigator() {
           <Stack.Screen name="Expenses" component={ExpensesScreen} />
           <Stack.Screen name="CreateExpense" component={CreateExpenseScreen} />
           <Stack.Screen name="Stock" component={StockScreen} />
+          <Stack.Screen name="Production" component={ProductionScreen} />
           <Stack.Screen name="SalesTips" component={SalesTipsScreen} />
           <Stack.Screen name="PdfSettings" component={PdfSettingsScreen} />
           <Stack.Screen name="CurrencySettings" component={CurrencySettingsScreen} />

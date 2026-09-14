@@ -4,6 +4,7 @@ import { ToastFn } from '../../components';
 import { formatDate, todayISO } from '../format';
 import { Order, userApi } from '../userApi';
 import { Header, EmptyState, inputClass } from './IngredientsPage';
+import { ProductionPlanner } from './ProductionPlanner';
 
 type ProductionStatus = 'pending' | 'in_progress' | 'done';
 
@@ -55,11 +56,13 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
     }
   };
 
-  const totalItems = productionOrders.reduce((total, order) => total + order.quantity, 0);
+  const orderItems = (order: Order) => order.items?.length ? order.items : [order];
+  const totalItems = productionOrders.filter(order => order.status !== 'done').reduce((total, order) => total + orderItems(order).reduce((sum, item) => sum + item.quantity, 0), 0);
   const today = todayISO();
 
   return <div>
-    <Header title="Ordem de produção" subtitle="Gerada automaticamente a partir das encomendas em aberto" />
+    <Header title="Produção inteligente" subtitle="Organize suas encomendas e saiba o que precisa comprar" />
+    <ProductionPlanner revision={orders} />
 
     {loading ? <div className="py-16 flex justify-center"><Loader2 className="animate-spin text-primary-500" /></div>
       : productionOrders.length === 0 ? <EmptyState icon={CookingPot} text="Nenhuma produção pendente. As novas encomendas aparecerão aqui automaticamente." />
@@ -72,12 +75,12 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
         <div className="space-y-5">
           {Object.entries(byDate).map(([date, dateOrders]) => {
             const recipes = dateOrders.reduce<Record<string, number>>((items, order) => {
-              items[order.recipeName] = (items[order.recipeName] ?? 0) + order.quantity;
+              if (order.status !== 'done') for (const item of orderItems(order)) items[item.recipeName] = (items[item.recipeName] ?? 0) + item.quantity;
               return items;
             }, {});
             return <section key={date}>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="font-semibold text-gray-900 dark:text-white">{date === today ? 'Hoje' : formatDate(date)}</h2>
+                <h2 className="font-semibold text-gray-900 dark:text-white">{!date ? 'Sem data' : date === today ? 'Hoje' : formatDate(date)}</h2>
                 <span className="text-xs text-gray-500">{dateOrders.length} encomenda{dateOrders.length === 1 ? '' : 's'}</span>
               </div>
               <div className="rounded-xl border border-primary-100 dark:border-primary-900/50 bg-primary-50/50 dark:bg-primary-900/10 p-3 mb-3">
@@ -89,7 +92,7 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
               <div className="space-y-2">
                 {dateOrders.map(order => <article key={order.id} className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex flex-col sm:flex-row gap-3 sm:items-center">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 dark:text-white">{order.quantity}× {order.recipeName}</p>
+                    {orderItems(order).map((item, index) => <p key={index} className="font-medium text-gray-900 dark:text-white">{item.quantity}× {item.recipeName}</p>)}
                     <p className="text-xs text-gray-500 mt-0.5">{order.clientName}{order.deliveryTime ? ` · ${order.deliveryTime}` : ''}{order.notes ? ` · ${order.notes}` : ''}</p>
                   </div>
                   <select value={order.status} disabled={updating === order.id} onChange={event => updateStatus(order, event.target.value as ProductionStatus)} className={inputClass + ' !w-auto text-xs py-1.5'}>

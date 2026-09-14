@@ -744,13 +744,14 @@ export const HomeScreen: React.FC = () => {
             { icon: 'bar-chart-outline' as const, bg: colors.pinkBg2, ic: PINK, title: 'Relatórios', sub: 'Gráficos e análises', route: 'Reports' },
             { icon: 'people-outline' as const, bg: colors.blueBg, ic: colors.blue, title: 'Clientes', sub: 'Contatos e aniversários', route: 'Clients' },
             { icon: 'clipboard-outline' as const, bg: colors.greenBg, ic: GREEN, title: 'Encomendas', sub: 'Entregas e pagamento', route: 'Orders' },
+            { icon: 'restaurant-outline' as const, bg: colors.pinkBg, ic: colors.primary, title: 'Produção inteligente', sub: 'Receitas e lista de compras', route: 'Production', free: true },
             { icon: 'pricetag-outline' as const, bg: colors.amberBg, ic: colors.amberDark, title: 'Épocas', sub: 'Ajuste sazonal de preços', route: 'Seasons' },
             { icon: 'cash-outline' as const, bg: colors.purpleBg, ic: colors.purple, title: 'Financeiro', sub: 'Resultado e DRE', route: 'Finance', master: true },
             { icon: 'cube-outline' as const, bg: '#E9F6FF', ic: colors.blue, title: 'Estoque', sub: 'Baixa automática', route: 'Stock', master: true },
             { icon: 'bulb-outline' as const, bg: '#FFF6D6', ic: '#D99A00', title: 'Dicas de vendas', sub: 'Precificação inteligente e modelos de story para Instagram', route: 'SalesTips', master: true },
           ] as const).map(item => {
             const isMasterItem = 'master' in item && item.master;
-            const locked = isMasterItem ? !isMaster : !isPremium;
+            const locked = 'free' in item && item.free ? false : isMasterItem ? !isMaster : !isPremium;
             return (
               <TouchableOpacity
                 key={item.title}

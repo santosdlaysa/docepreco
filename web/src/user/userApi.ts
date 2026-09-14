@@ -2,6 +2,7 @@
 // igual ao app mobile — mesmo backend, mesmas contas. Espelha os endpoints
 // usados em mobile/src/data/api/*.
 
+import { ProductionPlan } from './productionPlan';
 const BASE = import.meta.env.VITE_API_URL ?? 'https://docepreco.onrender.com/api';
 
 // Timeout das requisições — evita a tela girar pra sempre quando o servidor
@@ -295,6 +296,7 @@ export interface OrderPayment {
   date: string;
 }
 export interface Order {
+  items?: { recipeId?: string | null; recipeName: string; quantity: number; unitPrice: number }[];
   id: string;
   clientName: string;
   clientPhone?: string | null;
@@ -693,6 +695,7 @@ export const userApi = {
 
   // Receitas
   listRecipes: () => req<Recipe[]>('/recipes'),
+  productionPlan: (start: string, end: string) => req<ProductionPlan>(`/orders/production-plan?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}`),
   getRecipe: (id: string) => req<Recipe>(`/recipes/${id}`),
   createRecipe: (data: CreateRecipeDTO) =>
     req<Recipe>('/recipes', { method: 'POST', body: JSON.stringify(data) }),

@@ -37,6 +37,7 @@ export type RootStackParamList = {
   Expenses: undefined;
   CreateExpense: Record<string, never>;
   Stock: undefined;
+  Production: undefined;
   SalesTips: undefined;
   PdfSettings: undefined;
   CurrencySettings: undefined;
