@@ -112,6 +112,9 @@ export const CreateOrderScreen: React.FC = () => {
   const [newPaymentMethod, setNewPaymentMethod] = useState<PaymentMethodType>('pix');
   const [showAddPayment, setShowAddPayment] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [calendarMonth, setCalendarMonth] = useState(() => new Date());
   const [deliveryModalMethod, setDeliveryModalMethod] = useState<PaymentMethodType>('pix');
   const [deliveryModalAmount, setDeliveryModalAmount] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -320,6 +323,29 @@ export const CreateOrderScreen: React.FC = () => {
     return nums;
   };
 
+  const openDatePicker = () => {
+    if (isLocked) return;
+    const parts = deliveryDate.split('-').map(Number);
+    setCalendarMonth(parts.length === 3 && parts[2] > 1900 ? new Date(parts[2], parts[1] - 1, 1) : new Date());
+    setShowDatePicker(true);
+  };
+
+  const selectCalendarDate = (day: number) => {
+    const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
+    setDeliveryDate(`${String(day).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`);
+    setErrors(prev => ({ ...prev, date: '' }));
+    setShowDatePicker(false);
+  };
+
+  const calendarDays = () => {
+    const first = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
+    const count = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
+    return [...Array(first).fill(null), ...Array.from({ length: count }, (_, i) => i + 1)];
+  };
+
+  const monthLabel = calendarMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  const timeOptions = Array.from({ length: 27 }, (_, i) => `${String(7 + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
+
   return (
     <SafeAreaView style={st.safe}>
       {/* ── Header ── */}
@@ -462,20 +488,20 @@ export const CreateOrderScreen: React.FC = () => {
           <View style={st.two}>
             <View style={[st.field, { flex: 1 }]}>
               <Text style={st.label}>Data</Text>
-              <View style={[st.input, errors.date ? st.inputErr : null]}>
-                <TextInput style={st.inputText} value={deliveryDate} placeholder="15-01-2026" placeholderTextColor={INK3}
-                  keyboardType="number-pad" maxLength={10} editable={!isLocked}
-                  onChangeText={(t) => setDeliveryDate(maskDate(t))} />
-              </View>
+              <TouchableOpacity activeOpacity={0.75} disabled={isLocked} onPress={openDatePicker} style={[st.input, errors.date ? st.inputErr : null]}>
+                <Ionicons name="calendar-outline" size={18} color={INK3} />
+                <Text style={[st.inputText, !deliveryDate && { color: INK3 }]}>{deliveryDate || '15-01-2026'}</Text>
+                <Ionicons name="chevron-down" size={16} color={INK3} />
+              </TouchableOpacity>
               {errors.date && <Text style={st.err}>{errors.date}</Text>}
             </View>
             <View style={[st.field, { flex: 1 }]}>
               <Text style={st.label}>Horário</Text>
-              <View style={st.input}>
-                <TextInput style={st.inputText} value={deliveryTime} placeholder="16:00" placeholderTextColor={INK3}
-                  keyboardType="number-pad" maxLength={5} editable={!isLocked}
-                  onChangeText={(t) => setDeliveryTime(maskTime(t))} />
-              </View>
+              <TouchableOpacity activeOpacity={0.75} disabled={isLocked} onPress={() => setShowTimePicker(true)} style={st.input}>
+                <Ionicons name="time-outline" size={18} color={INK3} />
+                <Text style={[st.inputText, !deliveryTime && { color: INK3 }]}>{deliveryTime || '16:00'}</Text>
+                <Ionicons name="chevron-down" size={16} color={INK3} />
+              </TouchableOpacity>
             </View>
           </View>
 
@@ -715,6 +741,26 @@ export const CreateOrderScreen: React.FC = () => {
         </View>
       </Modal>
 
+      {/* ── Calendar picker ── */}
+      <Modal visible={showDatePicker} transparent animationType="slide" onRequestClose={() => setShowDatePicker(false)}>
+        <View style={st.pickerOverlay}><View style={st.pickerCard}>
+          <View style={st.modalHead}><Text style={st.modalTitle}>Escolher data de entrega</Text><TouchableOpacity onPress={() => setShowDatePicker(false)}><Ionicons name="close" size={23} color={INK} /></TouchableOpacity></View>
+          <View style={st.calendarNav}><TouchableOpacity style={st.navBtn} onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}><Ionicons name="chevron-back" size={19} color={PINK} /></TouchableOpacity><Text style={st.calendarMonth}>{monthLabel}</Text><TouchableOpacity style={st.navBtn} onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}><Ionicons name="chevron-forward" size={19} color={PINK} /></TouchableOpacity></View>
+          <View style={st.weekRow}>{['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => <Text key={`${day}-${index}`} style={st.weekDay}>{day}</Text>)}</View>
+          <View style={st.calendarGrid}>{calendarDays().map((day, index) => day === null ? <View key={`empty-${index}`} style={st.dayCell} /> : <TouchableOpacity key={day} onPress={() => selectCalendarDate(day)} style={[st.dayCell, deliveryDate === `${String(day).padStart(2, '0')}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-${calendarMonth.getFullYear()}` && st.daySelected]}><Text style={[st.dayText, deliveryDate === `${String(day).padStart(2, '0')}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-${calendarMonth.getFullYear()}` && st.dayTextSelected]}>{day}</Text></TouchableOpacity>)}</View>
+          <TouchableOpacity style={st.todayBtn} onPress={() => { const today = new Date(); setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setDeliveryDate(`${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`); setErrors(prev => ({ ...prev, date: '' })); setShowDatePicker(false); }}><Text style={st.todayText}>Hoje</Text></TouchableOpacity>
+        </View></View>
+      </Modal>
+
+      {/* ── Time picker ── */}
+      <Modal visible={showTimePicker} transparent animationType="slide" onRequestClose={() => setShowTimePicker(false)}>
+        <View style={st.pickerOverlay}><View style={[st.pickerCard, { maxHeight: '75%' }]}>
+          <View style={st.modalHead}><Text style={st.modalTitle}>Escolher horário de entrega</Text><TouchableOpacity onPress={() => setShowTimePicker(false)}><Ionicons name="close" size={23} color={INK} /></TouchableOpacity></View>
+          <Text style={st.pickerHint}>Selecione um horário entre 07:00 e 20:00</Text>
+          <FlatList data={timeOptions} numColumns={3} keyExtractor={item => item} columnWrapperStyle={st.timeRow} contentContainerStyle={{ paddingBottom: 10 }} renderItem={({ item }) => <TouchableOpacity onPress={() => { setDeliveryTime(item); setShowTimePicker(false); }} style={[st.timeOption, deliveryTime === item && st.timeOptionSelected]}><Ionicons name="time-outline" size={16} color={deliveryTime === item ? '#fff' : PINK} /><Text style={[st.timeText, deliveryTime === item && st.timeTextSelected]}>{item}</Text></TouchableOpacity>} />
+        </View></View>
+      </Modal>
+
       {/* ── Recipe picker ── */}
       <Modal visible={pickingItemIdx !== null} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }}>
@@ -828,6 +874,26 @@ const st = StyleSheet.create({
 
   modalHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 18, borderBottomWidth: 1, borderBottomColor: LINE, backgroundColor: '#fff' },
   modalTitle: { fontSize: 20, fontWeight: '700', color: INK },
+  pickerOverlay: { flex: 1, backgroundColor: 'rgba(61,34,51,0.5)', justifyContent: 'flex-end' },
+  pickerCard: { backgroundColor: CREAM, borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingBottom: 24, ...SHADOW },
+  calendarNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
+  navBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
+  calendarMonth: { textTransform: 'capitalize', fontSize: 17, fontWeight: '800', color: INK },
+  weekRow: { flexDirection: 'row', paddingHorizontal: 18, marginBottom: 4 },
+  weekDay: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: INK3 },
+  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18 },
+  dayCell: { width: `${100 / 7}%`, height: 43, alignItems: 'center', justifyContent: 'center' },
+  daySelected: { backgroundColor: PINK, borderRadius: 13 },
+  dayText: { fontSize: 14, color: INK, fontWeight: '600' },
+  dayTextSelected: { color: '#fff', fontWeight: '800' },
+  todayBtn: { alignSelf: 'center', marginTop: 8, paddingHorizontal: 18, paddingVertical: 9, borderRadius: 12, backgroundColor: colors.pinkBg2 },
+  todayText: { color: PINK, fontWeight: '800', fontSize: 13 },
+  pickerHint: { color: INK2, fontSize: 13, paddingHorizontal: 18, paddingBottom: 12 },
+  timeRow: { gap: 9, paddingHorizontal: 18, marginBottom: 9 },
+  timeOption: { flex: 1, minHeight: 45, borderRadius: 12, backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, ...SHADOW },
+  timeOptionSelected: { backgroundColor: PINK },
+  timeText: { color: INK, fontWeight: '700', fontSize: 14 },
+  timeTextSelected: { color: '#fff' },
   pickerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 18, padding: 13, paddingHorizontal: 15, marginBottom: 8, ...SHADOW },
   pickerThumb: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   pickerThumbText: { color: '#fff', fontSize: 14, fontWeight: '800' },
