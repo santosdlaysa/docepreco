@@ -155,19 +155,28 @@ function RevenueChart({ timeseries }: { timeseries: any[] }) {
   );
 }
 
-function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExport: () => void }) {
+function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExport: (events: SubscriptionEvent[]) => void }) {
   const [page, setPage] = useState(1);
   const [filterPlatform, setFilterPlatform] = useState<string | null>(null);
   const [filterMonth, setFilterMonth] = useState('');
+  const [filterDay, setFilterDay] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired'>('all');
   const [filterEventType, setFilterEventType] = useState<'all' | 'INITIAL_PURCHASE' | 'RENEWAL'>('all');
   const [pageSize, setPageSize] = useState(10);
 
-  const eventMonth = (dateValue: string) => {
+  const eventDay = (dateValue: string) => {
     if (!dateValue) return '';
     const date = new Date(dateValue);
-    return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 7);
+    return Number.isNaN(date.getTime()) ? '' : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   };
+  const eventMonth = (dateValue: string) => eventDay(dateValue).slice(0, 7);
+  const selectMonth = (month: string) => {
+    setFilterMonth(month);
+    setFilterDay('');
+  };
+  const dateMatches = (event: SubscriptionEvent) =>
+    (!filterMonth || eventMonth(event.createdAt) === filterMonth) &&
+    (!filterDay || eventDay(event.createdAt) === filterDay);
 
   const platforms = useMemo(() => {
     const set = new Set<string>();
@@ -206,11 +215,10 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const filtered = useMemo(() => {
     return events.filter(event => {
       const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
-      const monthMatches = filterMonth ? eventMonth(event.createdAt) === filterMonth : true;
       const typeMatches = filterEventType === 'all' || event.eventType === filterEventType;
-      return platformMatches && monthMatches && typeMatches && statusMatches(event);
+      return platformMatches && dateMatches(event) && typeMatches && statusMatches(event);
     });
-  }, [events, filterPlatform, filterMonth, filterStatus, filterEventType]);
+  }, [events, filterPlatform, filterMonth, filterDay, filterStatus, filterEventType]);
 
   const monthlyTotals = useMemo(() => {
     return months.map(month => {
@@ -229,14 +237,11 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   }, [events, filterPlatform, filterStatus, filterEventType, months]);
 
   const filteredTotalBRL = filtered.reduce((sum, event) => sum + event.amountBRL, 0);
-  const selectedMonthTotal = filterMonth
-    ? monthlyTotals.find(item => item.month === filterMonth)
-    : null;
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterStatus, filterEventType, pageSize]);
+  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterDay, filterStatus, filterEventType, pageSize]);
 
   return (
     <div className={`${card}`}>
@@ -248,7 +253,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
         <div className="flex items-center gap-3">
           <PageSizeSelect value={pageSize} onChange={setPageSize} />
           <button
-            onClick={onExport}
+            onClick={() => onExport(filtered)}
             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors"
           >
             <Download size={14} />
@@ -305,7 +310,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
               <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mês</span>
               <select
                 value={filterMonth}
-                onChange={e => setFilterMonth(e.target.value)}
+                onChange={e => selectMonth(e.target.value)}
                 className="h-8 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-xs font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400"
               >
                 <option value="">Todos os meses</option>
@@ -318,6 +323,25 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
             </div>
           )}
 
+          <div className="flex flex-wrap items-center gap-2">
+            <label htmlFor="subscription-day" className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Dia do registro</label>
+            <input
+              id="subscription-day"
+              type="date"
+              value={filterDay}
+              onChange={e => {
+                setFilterDay(e.target.value);
+                if (e.target.value) setFilterMonth(e.target.value.slice(0, 7));
+              }}
+              className="h-8 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-xs font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400"
+            />
+            {filterDay && (
+              <button type="button" onClick={() => setFilterDay('')} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700">
+                <X size={12} /> Limpar dia
+              </button>
+            )}
+          </div>
+
           {platforms.length > 0 && (
             <div className="flex flex-wrap gap-2">
               <button
@@ -328,7 +352,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                 }`}
               >
-                Todas ({events.filter(e => (filterMonth ? eventMonth(e.createdAt) === filterMonth : true) && statusMatches(e)).length})
+                Todas ({events.filter(e => dateMatches(e) && statusMatches(e) && (filterEventType === 'all' || e.eventType === filterEventType)).length})
               </button>
               {platforms.map(p => (
                 <button
@@ -340,7 +364,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                       : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
                   }`}
                 >
-                  {p} ({events.filter(e => e.platform === p && (filterMonth ? eventMonth(e.createdAt) === filterMonth : true) && statusMatches(e)).length})
+                  {p} ({events.filter(e => e.platform === p && dateMatches(e) && statusMatches(e) && (filterEventType === 'all' || e.eventType === filterEventType)).length})
                 </button>
               ))}
             </div>
@@ -350,14 +374,14 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
             <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] gap-3">
               <div className="rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50/70 dark:bg-gray-900/30 p-3">
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  {filterMonth ? `Total de ${monthLabel(filterMonth)}` : 'Total dos registros filtrados'}
+                  {filterDay ? `Total do dia ${filterDay.split('-').reverse().join('/')}` : filterMonth ? `Total de ${monthLabel(filterMonth)}` : 'Total dos registros filtrados'}
                 </p>
                 <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
                   <p className="text-xl font-bold text-gray-900 dark:text-white">
-                    {fmt(filterMonth ? selectedMonthTotal?.totalBRL ?? 0 : filteredTotalBRL)}
+                    {fmt(filteredTotalBRL)}
                   </p>
                   <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {filterMonth ? selectedMonthTotal?.count ?? 0 : filtered.length} registros
+                    {filtered.length} registros
                   </p>
                 </div>
               </div>
@@ -371,7 +395,7 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                     <button
                       key={item.month}
                       type="button"
-                      onClick={() => setFilterMonth(item.month)}
+                      onClick={() => selectMonth(item.month)}
                       className={`w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors ${
                         filterMonth === item.month
                           ? 'bg-primary-50 dark:bg-primary-900/20'
@@ -775,11 +799,11 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
     load().finally(() => setRefreshing(false));
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = (events: SubscriptionEvent[]) => {
     if (!data) return;
 
     const headers = ['Empresa', 'Email', 'Plataforma', 'Loja', 'Tipo', 'Valor (R$)', 'Data', 'Expiração'];
-    const rows = data.recentEvents.map(e => [
+    const rows = events.map(e => [
       e.companyName,
       e.email,
       e.platform || '—',
