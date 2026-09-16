@@ -163,6 +163,24 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'expired'>('all');
   const [filterEventType, setFilterEventType] = useState<'all' | 'INITIAL_PURCHASE' | 'RENEWAL'>('all');
   const [pageSize, setPageSize] = useState(10);
+  const [filterPlan, setFilterPlan] = useState('');
+  const [filterCycle, setFilterCycle] = useState('');
+  const [minAmount, setMinAmount] = useState('');
+  const [maxAmount, setMaxAmount] = useState('');
+  const filterInput = 'w-full min-w-0 h-8 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-2 text-xs font-normal normal-case tracking-normal text-gray-700 dark:text-gray-200 outline-none focus:ring-2 focus:ring-primary-400/30 focus:border-primary-400';
+  const hasFilters = Boolean(filterPlatform || filterMonth || filterDay || filterPlan || filterCycle || minAmount || maxAmount || filterStatus !== 'all' || filterEventType !== 'all');
+  const clearFilters = () => {
+    setFilterPlatform(null);
+    setFilterMonth('');
+    setFilterDay('');
+    setFilterPlan('');
+    setFilterCycle('');
+    setMinAmount('');
+    setMaxAmount('');
+    setFilterStatus('all');
+    setFilterEventType('all');
+    setPage(1);
+  };
 
   const eventDay = (dateValue: string) => {
     if (!dateValue) return '';
@@ -216,36 +234,25 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
     return events.filter(event => {
       const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
       const typeMatches = filterEventType === 'all' || event.eventType === filterEventType;
-      return platformMatches && dateMatches(event) && typeMatches && statusMatches(event);
+      return platformMatches && dateMatches(event) && typeMatches && statusMatches(event)
+        && (!filterPlan || eventPlan(event) === filterPlan)
+        && (!filterCycle || eventCycle(event) === filterCycle)
+        && (minAmount === '' || event.amountBRL >= Number(minAmount))
+        && (maxAmount === '' || event.amountBRL <= Number(maxAmount));
     });
-  }, [events, filterPlatform, filterMonth, filterDay, filterStatus, filterEventType]);
-
-  const monthlyTotals = useMemo(() => {
-    return months.map(month => {
-      const monthEvents = events.filter(event => {
-        const platformMatches = filterPlatform ? event.platform === filterPlatform : true;
-        const typeMatches = filterEventType === 'all' || event.eventType === filterEventType;
-        return platformMatches && typeMatches && eventMonth(event.createdAt) === month && statusMatches(event);
-      });
-
-      return {
-        month,
-        count: monthEvents.length,
-        totalBRL: monthEvents.reduce((sum, event) => sum + event.amountBRL, 0),
-      };
-    });
-  }, [events, filterPlatform, filterStatus, filterEventType, months]);
+  }, [events, filterPlatform, filterMonth, filterDay, filterStatus, filterEventType, filterPlan, filterCycle, minAmount, maxAmount]);
 
   const filteredTotalBRL = filtered.reduce((sum, event) => sum + event.amountBRL, 0);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const currentPage = Math.min(page, totalPages);
+  const paged = filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterDay, filterStatus, filterEventType, pageSize]);
+  useEffect(() => setPage(1), [filterPlatform, filterMonth, filterDay, filterStatus, filterEventType, filterPlan, filterCycle, minAmount, maxAmount, pageSize]);
 
   return (
     <div className={`${card}`}>
-      <div className="px-5 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
+      <div className="px-5 py-4 flex flex-wrap gap-3 items-center justify-between border-b border-gray-100 dark:border-gray-700/50">
         <div className="flex items-center gap-4">
           <h3 className="text-sm font-bold text-gray-900 dark:text-white">Eventos Recentes</h3>
           <span className="text-xs font-semibold text-gray-500 bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded-md">{filtered.length}</span>
@@ -262,164 +269,18 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
         </div>
       </div>
 
-      {(platforms.length > 0 || months.length > 0) && (
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700/50 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {[
-              { value: 'all' as const, label: 'Todos' },
-              { value: 'active' as const, label: 'Ativos' },
-              { value: 'expired' as const, label: 'Expirados' },
-            ].map(status => (
-              <button
-                key={status.value}
-                onClick={() => setFilterStatus(status.value)}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                  filterStatus === status.value
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                }`}
-              >
-                {status.label} ({events.filter(e => status.value === 'all' || eventStatus(e) === status.value).length})
-              </button>
-            ))}
-          </div>
+      <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-3 bg-gray-50/70 dark:bg-gray-900/20 border-b border-gray-100 dark:border-gray-700/50">
+        <p className="text-xs text-gray-500 dark:text-gray-400">
+          <span className="font-semibold text-gray-900 dark:text-white">{filtered.length}</span> de {events.length} registros
+          <span className="mx-2">·</span>Total <span className="font-semibold text-gray-900 dark:text-white">{fmt(filteredTotalBRL)}</span>
+        </p>
+        {hasFilters ? (
+          <button type="button" onClick={clearFilters} className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary-600 dark:text-primary-400 hover:underline">
+            <X size={14} /> Limpar filtros
+          </button>
+        ) : <span className="text-xs text-gray-400">Filtre pelos campos abaixo de cada coluna</span>}
+      </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Tipo</span>
-            {[
-              { value: 'all' as const, label: 'Todos' },
-              { value: 'INITIAL_PURCHASE' as const, label: 'Novas assinaturas' },
-              { value: 'RENEWAL' as const, label: 'Renovações' },
-            ].map(type => (
-              <button
-                key={type.value}
-                onClick={() => setFilterEventType(type.value)}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                  filterEventType === type.value
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                }`}
-              >
-                {type.label} ({events.filter(e => type.value === 'all' || e.eventType === type.value).length})
-              </button>
-            ))}
-          </div>
-
-          {months.length > 0 && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Mês</span>
-              <select
-                value={filterMonth}
-                onChange={e => selectMonth(e.target.value)}
-                className="h-8 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-xs font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400"
-              >
-                <option value="">Todos os meses</option>
-                {months.map(month => (
-                  <option key={month} value={month}>
-                    {monthLabel(month)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          <div className="flex flex-wrap items-center gap-2">
-            <label htmlFor="subscription-day" className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Dia do registro</label>
-            <input
-              id="subscription-day"
-              type="date"
-              value={filterDay}
-              onChange={e => {
-                setFilterDay(e.target.value);
-                if (e.target.value) setFilterMonth(e.target.value.slice(0, 7));
-              }}
-              className="h-8 rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-xs font-medium text-gray-700 dark:text-gray-200 outline-none focus:border-primary-400"
-            />
-            {filterDay && (
-              <button type="button" onClick={() => setFilterDay('')} className="inline-flex items-center gap-1 px-3 py-1 text-xs font-medium rounded-lg text-gray-600 dark:text-gray-300 bg-gray-100 dark:bg-gray-700">
-                <X size={12} /> Limpar dia
-              </button>
-            )}
-          </div>
-
-          {platforms.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setFilterPlatform(null)}
-                className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                  filterPlatform === null
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                }`}
-              >
-                Todas ({events.filter(e => dateMatches(e) && statusMatches(e) && (filterEventType === 'all' || e.eventType === filterEventType)).length})
-              </button>
-              {platforms.map(p => (
-                <button
-                  key={p}
-                  onClick={() => setFilterPlatform(p)}
-                  className={`px-3 py-1 text-xs font-medium rounded-lg transition-colors ${
-                    filterPlatform === p
-                      ? 'bg-primary-500 text-white'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200'
-                  }`}
-                >
-                  {p} ({events.filter(e => e.platform === p && dateMatches(e) && statusMatches(e) && (filterEventType === 'all' || e.eventType === filterEventType)).length})
-                </button>
-              ))}
-            </div>
-          )}
-
-          {monthlyTotals.length > 0 && (
-            <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,360px)] gap-3">
-              <div className="rounded-xl border border-gray-100 dark:border-gray-700/50 bg-gray-50/70 dark:bg-gray-900/30 p-3">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  {filterDay ? `Total do dia ${filterDay.split('-').reverse().join('/')}` : filterMonth ? `Total de ${monthLabel(filterMonth)}` : 'Total dos registros filtrados'}
-                </p>
-                <div className="mt-2 flex flex-wrap items-end gap-x-4 gap-y-1">
-                  <p className="text-xl font-bold text-gray-900 dark:text-white">
-                    {fmt(filteredTotalBRL)}
-                  </p>
-                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">
-                    {filtered.length} registros
-                  </p>
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-gray-100 dark:border-gray-700/50 bg-white dark:bg-gray-800 overflow-hidden">
-                <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-700/50">
-                  <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Soma por mÃªs</p>
-                </div>
-                <div className="max-h-36 overflow-y-auto divide-y divide-gray-100 dark:divide-gray-700/50">
-                  {monthlyTotals.map(item => (
-                    <button
-                      key={item.month}
-                      type="button"
-                      onClick={() => selectMonth(item.month)}
-                      className={`w-full px-3 py-2 flex items-center justify-between gap-3 text-left transition-colors ${
-                        filterMonth === item.month
-                          ? 'bg-primary-50 dark:bg-primary-900/20'
-                          : 'hover:bg-gray-50 dark:hover:bg-gray-700/30'
-                      }`}
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-xs font-semibold text-gray-700 dark:text-gray-200 truncate">{monthLabel(item.month)}</span>
-                        <span className="block text-[11px] text-gray-400">{item.count} registros</span>
-                      </span>
-                      <span className="text-xs font-bold text-gray-900 dark:text-white flex-shrink-0">{fmt(item.totalBRL)}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {paged.length === 0 ? (
-        <p className="text-center text-gray-400 py-8 text-sm">Nenhum evento encontrado</p>
-      ) : (
-        <>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -433,8 +294,56 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
                   <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Data</th>
                   <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Expiração</th>
                 </tr>
+                <tr className="border-b border-gray-100 dark:border-gray-700/50 bg-gray-50/40 dark:bg-gray-900/10 [&>th]:px-3 [&>th]:pb-3 [&>th]:pt-1 [&>th]:align-top">
+                  <th />
+                  <th>
+                    <select aria-label="Filtrar por plano" value={filterPlan} onChange={e => setFilterPlan(e.target.value)} className={`${filterInput} min-w-[100px]`}>
+                      <option value="">Todos</option><option>Premium</option><option>Master</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select aria-label="Filtrar por ciclo" value={filterCycle} onChange={e => setFilterCycle(e.target.value)} className={`${filterInput} min-w-[95px]`}>
+                      <option value="">Todos</option><option>Mensal</option><option>Anual</option>
+                    </select>
+                  </th>
+                  <th>
+                    <select aria-label="Filtrar por plataforma" value={filterPlatform || ''} onChange={e => setFilterPlatform(e.target.value || null)} className={`${filterInput} min-w-[115px]`}>
+                      <option value="">Todas</option>
+                      {platforms.map(platform => <option key={platform} value={platform}>{platform}</option>)}
+                    </select>
+                  </th>
+                  <th>
+                    <select aria-label="Filtrar por tipo de evento" value={filterEventType} onChange={e => setFilterEventType(e.target.value as typeof filterEventType)} className={`${filterInput} min-w-[145px]`}>
+                      <option value="all">Todos</option><option value="INITIAL_PURCHASE">Novas assinaturas</option><option value="RENEWAL">Renovações</option>
+                    </select>
+                  </th>
+                  <th>
+                    <div className="flex gap-1 min-w-[170px]">
+                      <input aria-label="Valor mínimo em reais" type="number" min="0" step="0.01" placeholder="Mín. R$" value={minAmount} onChange={e => setMinAmount(e.target.value)} className={filterInput} />
+                      <input aria-label="Valor máximo em reais" type="number" min="0" step="0.01" placeholder="Máx. R$" value={maxAmount} onChange={e => setMaxAmount(e.target.value)} className={filterInput} />
+                    </div>
+                  </th>
+                  <th>
+                    <div className="space-y-1.5 min-w-[150px]">
+                      <input aria-label="Filtrar pelo dia do registro" type="date" value={filterDay} onChange={e => {
+                        setFilterDay(e.target.value);
+                        if (e.target.value) setFilterMonth(e.target.value.slice(0, 7));
+                      }} className={filterInput} />
+                      <select aria-label="Filtrar pelo mês do registro" value={filterMonth} onChange={e => selectMonth(e.target.value)} className={filterInput}>
+                        <option value="">Todos os meses</option>
+                        {months.map(month => <option key={month} value={month}>{monthLabel(month)}</option>)}
+                      </select>
+                    </div>
+                  </th>
+                  <th>
+                    <select aria-label="Filtrar por status de expiração" value={filterStatus} onChange={e => setFilterStatus(e.target.value as typeof filterStatus)} className={`${filterInput} min-w-[105px]`}>
+                      <option value="all">Todos</option><option value="active">Ativos</option><option value="expired">Expirados</option>
+                    </select>
+                  </th>
+                </tr>
               </thead>
               <tbody>
+                {paged.length === 0 && <tr><td colSpan={8} className="px-5 py-10 text-center text-sm text-gray-400">Nenhum evento encontrado para os filtros selecionados.</td></tr>}
                 {paged.map(event => (
                   <tr key={event.id} className="border-b border-gray-50 dark:border-gray-700/30 hover:bg-gray-50/50 dark:hover:bg-gray-700/20 transition-colors">
                     <td className="px-5 py-3 max-w-[220px]">
@@ -473,18 +382,18 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
           </div>
           {totalPages > 1 && (
             <div className="px-5 py-3 border-t border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
-              <span className="text-xs text-gray-400">Página {page} de {totalPages}</span>
+              <span className="text-xs text-gray-400">Página {currentPage} de {totalPages}</span>
               <div className="flex gap-1">
                 <button
-                  onClick={() => setPage(p => Math.max(1, p - 1))}
-                  disabled={page === 1}
+                  onClick={() => setPage(Math.max(1, currentPage - 1))}
+                  disabled={currentPage === 1}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
                 >
                   <ChevronLeft size={14} />
                 </button>
                 <button
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
+                  onClick={() => setPage(Math.min(totalPages, currentPage + 1))}
+                  disabled={currentPage === totalPages}
                   className="w-7 h-7 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-30 transition-colors"
                 >
                   <ChevronRight size={14} />
@@ -492,8 +401,6 @@ function EventsTable({ events, onExport }: { events: SubscriptionEvent[]; onExpo
               </div>
             </div>
           )}
-        </>
-      )}
     </div>
   );
 }
