@@ -289,12 +289,12 @@ async function bootstrap() {
       cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
     }
 
-    // Diagnóstico da API a cada 1h → Telegram (banco + HTTP + uptime).
+    // Diagnóstico da API a cada 3h → Telegram (banco + HTTP + uptime).
     // Primeiro disparo ~15s após o boot (confirma que subiu ok e que o Telegram
     // está funcionando). Para virar modo silencioso (só avisa em falha), troque
     // por sendHealthReport({ alertOnly: true }).
     setTimeout(() => { void sendHealthReport(); }, 15000);
-    cron.schedule('0 * * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
+    cron.schedule('0 */3 * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
 
     // Varredura de segurança: analisa o request_logs em busca de acesso suspeito
     // (brute force, fuçada em rotas admin, rate limit estourado) e avisa no
