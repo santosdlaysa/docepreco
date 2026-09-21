@@ -1,7 +1,15 @@
+import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Crown } from 'lucide-react';
 
 export function SubscribeAppPage() {
+  useEffect(() => {
+    // Navegadores internos podem exigir um toque; o botão permanece como alternativa.
+    if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+      window.location.assign('docepreco://assinar');
+    }
+  }, []);
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-primary-500 via-pink-500 to-rose-600 flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-white rounded-3xl shadow-xl p-8 text-center">
