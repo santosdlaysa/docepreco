@@ -8,12 +8,14 @@ import { LojasPage } from './pages/LojasPage';
 import { MeusPedidosPage } from './pages/MeusPedidosPage';
 import { ExplorarPage } from './pages/ExplorarPage';
 import { PerfilPage } from './pages/PerfilPage';
+import { SubscribeAppPage } from './pages/SubscribeAppPage';
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LandingPage />} />
       <Route path="/download" element={<DownloadPage />} />
+      <Route path="/assinar" element={<SubscribeAppPage />} />
       <Route path="/app" element={<UserApp />} />
       <Route path="/app/:slug" element={<UserApp />} />
       <Route path="/admin" element={<AdminApp />} />

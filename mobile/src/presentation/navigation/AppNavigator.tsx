@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NavigationContainer, NavigationContainerRef, useNavigationState } from '@react-navigation/native';
@@ -243,7 +243,23 @@ export function AppNavigator() {
   const [whatsNewVisible, setWhatsNewVisible] = useState<boolean | null>(null);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
+  const pendingSubscriptionLink = useRef(false);
   const { reset: resetPremium, refresh: refreshPremium } = usePremium();
+
+  // Guarda o destino enquanto a pessoa faz login ou conclui o onboarding.
+  useEffect(() => {
+    const openSubscription = (url: string | null) => {
+      if (!url || !/^docepreco:\/\/assinar\/?(?:[?#].*)?$/i.test(url)) return;
+      if (navigationRef.current?.isReady()) {
+        navigationRef.current.navigate('Paywall', { trigger: { kind: 'master' } });
+      } else {
+        pendingSubscriptionLink.current = true;
+      }
+    };
+    const listener = Linking.addEventListener('url', ({ url }) => openSubscription(url));
+    void Linking.getInitialURL().then(openSubscription).catch(() => {});
+    return () => listener.remove();
+  }, []);
 
   useEffect(() => {
     initializeMobileAds();
@@ -580,6 +596,12 @@ export function AppNavigator() {
         key={sessionKey}
         ref={navigationRef}
         onReady={() => {
+          if (pendingSubscriptionLink.current) {
+            pendingSubscriptionLink.current = false;
+            pendingPaywall.current = false;
+            navigationRef.current?.navigate('Paywall', { trigger: { kind: 'master' } });
+            return;
+          }
           if (pendingPaywall.current) {
             pendingPaywall.current = false;
             navigationRef.current?.navigate('Paywall');
