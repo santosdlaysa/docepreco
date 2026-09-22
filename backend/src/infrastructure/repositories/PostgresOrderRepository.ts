@@ -29,6 +29,8 @@ export interface Order {
   quantity: number;
   unitPrice: number;
   totalPrice: number;
+  serviceFeeCents?: number;
+  deliveryFeeCents?: number | null;
   /** Nulo em rascunhos ainda sem data de entrega definida. */
   deliveryDate: string | null;
   deliveryTime?: string | null;
@@ -165,6 +167,8 @@ export class PostgresOrderRepository {
       quantity: parseFloat(row.quantity as string),
       unitPrice: parseFloat(row.unit_price as string),
       totalPrice: parseFloat(row.total_price as string),
+      serviceFeeCents: Number(row.service_fee_cents ?? 0),
+      deliveryFeeCents: row.delivery_fee_cents == null ? null : Number(row.delivery_fee_cents),
       deliveryDate: dd == null ? null : dd instanceof Date ? dd.toISOString().split('T')[0] : String(dd).split('T')[0],
       deliveryTime: (row.delivery_time as string) ?? null,
       status: row.status as OrderStatus,

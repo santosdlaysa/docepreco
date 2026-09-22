@@ -1,3 +1,4 @@
+import { StoreReceiving } from './StoreReceiving';
 import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store, Plus, Pencil, Trash2, ImagePlus, PlusCircle } from 'lucide-react';
 import { ToastFn, TableSkeleton, ModalOverlay, ConfirmModal } from '../../components';
@@ -196,6 +197,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
         <EmptyState icon={Store} text="Loja online não configurada para esta conta." />
       ) : (
         <div className="space-y-4">
+          <StoreReceiving />
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5">
             <div className="flex items-start justify-between gap-3 flex-wrap">
               <div className="min-w-0">

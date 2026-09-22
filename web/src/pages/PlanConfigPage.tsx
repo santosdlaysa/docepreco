@@ -1,3 +1,4 @@
+import { StorePaymentAdmin } from './StorePaymentAdmin';
 import { useEffect, useState } from 'react';
 import { api, PlanConfig, PixPlanConfig } from '../lib/api';
 import { ToastFn } from '../components';
@@ -128,6 +129,7 @@ export function PlanConfigPage({ toast }: Props) {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h2 className="text-xl font-bold text-gray-900 dark:text-white">Configuração de Planos</h2>
+        <StorePaymentAdmin />
         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Defina limites, preços e funcionalidades dos planos Free, Premium e Master.</p>
       </div>
 

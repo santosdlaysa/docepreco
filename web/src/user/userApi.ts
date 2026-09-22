@@ -804,3 +804,5 @@ export const userApi = {
 };
 
 export { ApiError };
+
+export { req as userRequest };

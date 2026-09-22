@@ -1,3 +1,4 @@
+import { StoreReceiving } from '../components/StoreReceiving';
 import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
@@ -273,6 +274,7 @@ export const StoreSettingsScreen: React.FC = () => {
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={st.body}>
+          <StoreReceiving />
 
           {/* ── Imagem de capa ── */}
           <Text style={st.label}>Imagem de capa</Text>

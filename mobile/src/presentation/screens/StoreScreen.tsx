@@ -1,3 +1,4 @@
+import { StoreReceiving } from '../components/StoreReceiving';
 import { colors } from '../theme/colors';
 import React, { useState, useCallback, useEffect } from 'react';
 import {
@@ -782,6 +783,7 @@ export const StoreScreen: React.FC = () => {
         {tab === 'settings' && (
           <>
             <Text style={[st.secTitle, { marginBottom: 12 }]}>Configuração da loja</Text>
+            <StoreReceiving />
             <View style={st.settingsCard}>
               <SettingsRow icon="pricetag-outline" label="Nome" value={settings?.storeName || '—'} />
               <SettingsRow

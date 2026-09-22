@@ -319,6 +319,8 @@ describe('Rotas de pedidos', () => {
 
       mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
         if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+        // Pedido sem pagamento online: a checagem de store_order_payments não encontra nada
+        if (sql.includes('store_order_payments')) return Promise.resolve({ rows: [], rowCount: 0 });
         expect(sql).toContain('WHERE id = $1 AND user_id = $2');
         expect(params?.[0]).toBe(ORDER_ID);
         expect(params?.[1]).toBe(USER_ID);
@@ -341,6 +343,7 @@ describe('Rotas de pedidos', () => {
     it('permite gravar explicitamente paid=false e paidAmount=0', async () => {
       mockQuery.mockImplementation((sql: string, params?: unknown[]) => {
         if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+        if (sql.includes('store_order_payments')) return Promise.resolve({ rows: [], rowCount: 0 });
         expect(params?.[12]).toBe(false);
         expect(params?.[13]).toBe(0);
         return Promise.resolve({ rows: [orderRow], rowCount: 1 });
@@ -354,6 +357,41 @@ describe('Rotas de pedidos', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.data.paid).toBe(false);
+    });
+
+    it('retorna 409 ao alterar valores de pedido com pagamento online', async () => {
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+        if (sql.includes('store_order_payments')) return Promise.resolve({ rows: [{ status: 'approved' }], rowCount: 1 });
+        return Promise.resolve({ rows: [orderRow], rowCount: 1 });
+      });
+
+      const res = await authorized('put', `/orders/${ORDER_ID}`).send({ paid: true, paidAmount: 100 });
+      expect(res.status).toBe(409);
+      expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('UPDATE orders'))).toBe(false);
+    });
+
+    it('permite mudar apenas o status de pedido com pagamento online aprovado', async () => {
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+        if (sql.includes('store_order_payments')) return Promise.resolve({ rows: [{ status: 'approved' }], rowCount: 1 });
+        return Promise.resolve({ rows: [{ ...orderRow, status: 'in_progress' }], rowCount: 1 });
+      });
+
+      const res = await authorized('put', `/orders/${ORDER_ID}`).send({ status: 'in_progress' });
+      expect(res.status).toBe(200);
+      expect(res.body.data.status).toBe('in_progress');
+    });
+
+    it('retorna 409 ao cancelar pedido com pagamento online (cancelamento é pelo fluxo de recebimentos)', async () => {
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+        if (sql.includes('store_order_payments')) return Promise.resolve({ rows: [{ status: 'approved' }], rowCount: 1 });
+        return Promise.resolve({ rows: [orderRow], rowCount: 1 });
+      });
+
+      const res = await authorized('put', `/orders/${ORDER_ID}`).send({ status: 'cancelled' });
+      expect(res.status).toBe(409);
     });
 
     it('retorna 404 quando o pedido não existe', async () => {
@@ -396,6 +434,18 @@ describe('Rotas de pedidos', () => {
     it('retorna 404 quando nada é excluído', async () => {
       const res = await authorized('delete', `/orders/${ORDER_ID}`);
       expect(res.status).toBe(404);
+    });
+
+    it('retorna 409 e preserva pedido com pagamento online', async () => {
+      mockQuery.mockImplementation((sql: string) => {
+        if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+        if (sql.includes('store_order_payments')) return Promise.resolve({ rows: [{ '?column?': 1 }], rowCount: 1 });
+        return Promise.resolve({ rows: [], rowCount: 1 });
+      });
+
+      const res = await authorized('delete', `/orders/${ORDER_ID}`);
+      expect(res.status).toBe(409);
+      expect(mockQuery.mock.calls.some(([sql]) => String(sql).includes('DELETE FROM orders'))).toBe(false);
     });
 
     it('retorna 500 quando a exclusão falha', async () => {

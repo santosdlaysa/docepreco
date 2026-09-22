@@ -1,3 +1,4 @@
+import { pool } from '../../infrastructure/database/connection';
 import { Request, Response } from 'express';
 import { PostgresOrderRepository, Order } from '../../infrastructure/repositories/PostgresOrderRepository';
 import { registerSalesForDeliveredOrder, removeSalesForOrder } from '../../application/services/OrderSaleAutomation';
@@ -123,6 +124,16 @@ export class OrderController {
           b.deliveryDate = deliveryDate;
         }
       }
+      const onlinePayment = await pool.query('SELECT status FROM store_order_payments WHERE order_id=$1 AND user_id=$2', [req.params.id, userId]);
+      if (onlinePayment.rows[0]) {
+        const current = await repo.findById(req.params.id, userId);
+        // Existing editors send the whole order. Keep provider-owned amounts immutable.
+        const changed = ['totalPrice','paid','paidAmount','payments','items','quantity','unitPrice','paymentMethod'].some(key =>
+          b[key] !== undefined && JSON.stringify(b[key]) !== JSON.stringify((current as any)?.[key]));
+        if (changed || b.status === 'cancelled' || (b.status && b.status !== current?.status && onlinePayment.rows[0].status !== 'approved')) {
+          res.status(409).json({ success: false, message: 'Pagamento gerenciado pelo Mercado Pago. Para cancelar ou estornar, use Recebimentos na loja.' }); return;
+        }
+      }
       const order = await repo.update(req.params.id, userId, b);
       if (!order) {
         res.status(404).json({ success: false, message: 'Encomenda não encontrada' });
@@ -139,6 +150,8 @@ export class OrderController {
   async delete(req: Request, res: Response): Promise<void> {
     try {
       const userId = (req as any).userId as string;
+      const payment = await pool.query('SELECT 1 FROM store_order_payments WHERE order_id=$1 AND user_id=$2', [req.params.id, userId]);
+      if (payment.rows[0]) { res.status(409).json({ success: false, message: 'Pedidos com pagamento online devem ser preservados. Use Recebimentos para estornar.' }); return; }
       const deleted = await repo.delete(req.params.id, userId);
       if (!deleted) {
         res.status(404).json({ success: false, message: 'Encomenda não encontrada' });

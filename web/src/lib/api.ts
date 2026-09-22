@@ -1179,3 +1179,5 @@ export interface OnboardingStep {
   isActive: boolean;
   createdAt: string;
 }
+
+export { req as adminRequest };

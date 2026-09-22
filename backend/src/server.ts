@@ -1,3 +1,4 @@
+import storePaymentRoutes from './presentation/routes/storePaymentRoutes';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -237,6 +238,7 @@ app.use('/api/admin/changelog', changelogRoutes);
 app.use('/api/admin/onboarding', onboardingRoutes);
 app.use('/api/admin/telegram-alerts', telegramAlertRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api', storePaymentRoutes);
 app.use('/api/store', authMiddleware, storeRoutes);
 
 setupSwagger(app);

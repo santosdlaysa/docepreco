@@ -1,3 +1,4 @@
+import { publicReceiving, createStoreCheckout, sellerToken } from '../../infrastructure/services/storePaymentService';
 import { Router, Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
@@ -281,6 +282,7 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     res.json({
       success: true,
       data: {
+        onlinePayment: await publicReceiving(s.user_id),
         storeName: s.store_name,
         slug: s.slug,
         active: s.active,
@@ -367,10 +369,23 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
 
     // Forma de pagamento escolhida pelo cliente (opcional para compatibilidade com páginas antigas em cache)
     const paymentMethod: string | null = b.paymentMethod ? String(b.paymentMethod) : null;
-    if (paymentMethod && !acceptedMethods.includes(paymentMethod)) {
+    if (paymentMethod && paymentMethod !== 'mercadopago' && !acceptedMethods.includes(paymentMethod)) {
       res.status(400).json({ success: false, error: 'Forma de pagamento não aceita pela loja' });
       return;
     }
+    const online = paymentMethod === 'mercadopago';
+    if (online && (typeof b.checkoutRequestId !== 'string' || !/^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(b.checkoutRequestId))) {
+      res.status(400).json({ success: false, error: 'Atualize a página antes de pagar online.' }); return;
+    }
+    const receiving = online ? await publicReceiving(userId) : null;
+    if (online && !receiving?.available) {
+      res.status(409).json({ success: false, error: 'A loja ainda não configurou os recebimentos online. Escolha outra forma de pagamento.' }); return;
+    }
+    const serviceFeeCents = online ? receiving!.feeCents : 0;
+    if (online && b.serviceFeeCents !== serviceFeeCents) {
+      res.status(409).json({ success: false, error: 'A taxa de serviço mudou. Atualize a página e confira o total antes de confirmar.' }); return;
+    }
+    if (online) await sellerToken(userId); // validate/refresh before reserving inventory
     const changeForNum = Number(b.changeFor);
     const changeFor = paymentMethod === 'cash' && Number.isFinite(changeForNum) && changeForNum > 0 ? changeForNum : null;
 
@@ -396,7 +411,8 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
     for (const item of b.items) {
       const product = productMap.get(item.productId);
       if (!product) continue;
-      const qty = Math.max(1, Number(item.quantity) || 1);
+      const qty = Number(item.quantity);
+      if (!Number.isInteger(qty) || qty < 1 || qty > 10000) { res.status(400).json({ success: false, error: 'Quantidade inválida' }); return; }
       const addonIds: string[] = Array.isArray(item.addonIds) ? item.addonIds : [];
       const addons = addonIds
         .map(id => addonMap.get(id))
@@ -422,7 +438,7 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
     // Aplicar taxa de entrega quando o tipo for 'delivery'
     const isDelivery = b.deliveryType === 'delivery';
     const appliedDeliveryFee = isDelivery && deliveryFee > 0 ? deliveryFee : 0;
-    const totalWithFee = totalPrice + appliedDeliveryFee;
+    const totalWithFee = Math.round((totalPrice + appliedDeliveryFee) * 100) / 100 + serviceFeeCents / 100;
 
     // Criar pedido (delivery_date = hoje, pois não há data específica no pedido online)
     const deliveryDate = new Date().toISOString().split('T')[0];
@@ -442,6 +458,19 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
     let outOfStock: { name: string; productId: string } | null = null;
     try {
       await client.query('BEGIN');
+      if (online) {
+        await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [b.checkoutRequestId]);
+        const existing = await client.query(`SELECT p.*,o.order_number FROM store_order_payments p JOIN orders o ON o.id=p.order_id
+          WHERE p.request_key=$1 AND p.user_id=$2`, [b.checkoutRequestId,userId]);
+        if (existing.rows[0]) {
+          const p = existing.rows[0];
+          await client.query('ROLLBACK');
+          res.status(200).json({ success: true, data: { orderId: p.order_id, orderNumber: p.order_number,
+            onlinePayment: true, serviceFeeCents: p.fee_cents, totalPrice: p.amount_cents / 100,
+            checkoutUrl: p.status === 'pending' && new Date(p.expires_at).getTime() > Date.now() ? p.checkout_url : null } });
+          return;
+        }
+      }
       for (const pid of [...qtyByProduct.keys()].sort()) {
         const product = productMap.get(pid);
         if (!product || product.stock == null) continue; // ilimitado
@@ -480,6 +509,13 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
             changeFor,
           ]
         );
+        await client.query('UPDATE orders SET service_fee_cents=$2,delivery_fee_cents=$3 WHERE id=$1',
+          [result.rows[0].id, serviceFeeCents, Math.round(appliedDeliveryFee * 100)]);
+        if (online) {
+          await client.query(`INSERT INTO store_order_payments (order_id,user_id,collector_id,amount_cents,fee_cents,request_key)
+            SELECT $1,$2,collector_id,$3,$4,$5 FROM store_payment_accounts WHERE user_id=$2`,
+            [result.rows[0].id,userId,Math.round(totalWithFee*100),serviceFeeCents,b.checkoutRequestId]);
+        }
         await client.query('COMMIT');
         orderId = result.rows[0].id;
         orderNumber = result.rows[0].order_number != null ? Number(result.rows[0].order_number) : null;
@@ -556,7 +592,11 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
         })
       : null;
 
-    res.status(201).json({ success: true, data: { orderId, orderNumber, pix, loyalty } });
+    let checkoutUrl: string | null = null;
+    if (online) {
+      try { checkoutUrl = await createStoreCheckout(orderId); } catch { /* Order retained; customer can retry checkout without another order. */ }
+    }
+    res.status(201).json({ success: true, data: { orderId, orderNumber, pix, loyalty, checkoutUrl, onlinePayment: online, serviceFeeCents, totalPrice: totalWithFee } });
   } catch (error) {
     console.error('[Public Store] order error:', error);
     res.status(500).json({ success: false, error: 'Erro ao criar pedido' });
@@ -577,7 +617,7 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
     const store = storeResult.rows[0];
     const userId = store.user_id;
     const orderResult = await pool.query(
-      `SELECT id, client_name, status, total_price, items, delivery_address, source, payment_method, change_for, order_number, paid, created_at
+      `SELECT id, client_name, status, total_price, items, delivery_address, source, payment_method, change_for, order_number, paid, created_at, service_fee_cents, delivery_fee_cents
        FROM orders WHERE id = $1 AND user_id = $2`,
       [orderId, userId]
     );
@@ -586,8 +626,10 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
       return;
     }
     const o = orderResult.rows[0];
+    const payment = await pool.query('SELECT status,checkout_url,expires_at FROM store_order_payments WHERE order_id=$1', [o.id]);
+    const onlinePayment = payment.rows[0];
     // Reexibe o PIX para o cliente enquanto o pedido não estiver pago nem cancelado.
-    const pix = o.payment_method === 'pix' && !o.paid && o.status !== 'cancelled'
+    const pix = !onlinePayment && o.payment_method === 'pix' && !o.paid && o.status !== 'cancelled'
       ? await buildOrderPix({
           pixKey: store.pix_key ?? null,
           pixReceiverName: store.pix_receiver_name ?? null,
@@ -601,6 +643,12 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
     res.json({
       success: true,
       data: {
+        onlinePayment: Boolean(onlinePayment),
+        paymentStatus: onlinePayment?.status ?? null,
+        checkoutUrl: onlinePayment?.status === 'pending' && new Date(onlinePayment.expires_at).getTime() > Date.now() ? onlinePayment.checkout_url : null,
+        paymentExpired: onlinePayment?.status === 'pending' && new Date(onlinePayment.expires_at).getTime() <= Date.now(),
+        serviceFeeCents: Number(o.service_fee_cents ?? 0),
+        deliveryFeeCents: o.delivery_fee_cents == null ? null : Number(o.delivery_fee_cents),
         id: o.id,
         clientName: o.client_name,
         status: o.status,
@@ -619,6 +667,14 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
     console.error('[Public Store] order status error:', error);
     res.status(500).json({ success: false, error: 'Erro interno' });
   }
+});
+
+router.post('/store/:slug/orders/:orderId/checkout', publicOrderLimiter, async (req, res) => {
+  try {
+    const found = await pool.query(`SELECT o.id FROM orders o JOIN store_settings s ON s.user_id=o.user_id WHERE o.id=$1 AND s.slug=$2`, [req.params.orderId, req.params.slug]);
+    if (!found.rows[0]) { res.sendStatus(404); return; }
+    res.json({ success: true, data: { checkoutUrl: await createStoreCheckout(req.params.orderId) } });
+  } catch { res.status(409).json({ success: false, error: 'Pagamento indisponível. Consulte a loja antes de fazer outro pedido.' }); }
 });
 
 export default router;

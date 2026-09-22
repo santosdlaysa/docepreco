@@ -54,6 +54,7 @@ function groupByCategory(
 }
 
 interface StoreData {
+  onlinePayment?: { available: boolean; feeCents: number };
   storeName: string;
   slug: string;
   active?: boolean;
@@ -111,12 +112,13 @@ interface AdminStorePreviewData {
 }
 
 const PAYMENT_METHODS: Array<{ key: string; label: string; emoji: string }> = [
+  { key: 'mercadopago', label: 'Pagar online', emoji: '🔒' },
   { key: 'pix', label: 'Pix', emoji: '💠' },
   { key: 'cash', label: 'Dinheiro', emoji: '💵' },
   { key: 'credit', label: 'Crédito', emoji: '💳' },
   { key: 'debit', label: 'Débito', emoji: '💳' },
 ];
-const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };
+const PAYMENT_LABEL: Record<string, string> = { mercadopago: 'Mercado Pago (online)', pix: 'Pix', cash: 'Dinheiro', credit: 'Crédito', debit: 'Débito' };
 
 function ProductInitial({ name }: { name: string }) {
   const colors = [
@@ -210,6 +212,7 @@ function ProductRow({
 }
 
 interface SavedOrder {
+  serviceFeeCents?: number;
   orderId: string;
   orderNumber?: number | null;
   items: Array<{ name: string; qty: number; price: number; addons?: Array<{ name: string; price: number }> }>;
@@ -242,6 +245,16 @@ export function LojaPage() {
   const [orderStatus, setOrderStatus] = useState<string>('pending');
   const [pix, setPix] = useState<{ payload: string; qrBase64: string; amount: number; receiverName: string } | null>(null);
   const [pixCopied, setPixCopied] = useState(false);
+  const checkoutRequestId = useRef<string | null>(null);
+  const [onlineOrder, setOnlineOrder] = useState(false);
+  const [checkoutUrl, setCheckoutUrl] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState('pending');
+  const [paymentExpired, setPaymentExpired] = useState(false);
+  const [orderServiceFeeCents, setOrderServiceFeeCents] = useState(0);
+  useEffect(() => {
+    const id = new URLSearchParams(location.search).get('paymentOrder');
+    if (id && /^[a-f0-9-]{36}$/i.test(id)) { setOrderId(id); setStep('success'); }
+  }, [location.search]);
   // Validade do código Pix: 5 minutos a partir da geração. Expira só na UI (o código
   // estático continua válido no banco) — pressiona o cliente a pagar logo.
   const [pixDeadline, setPixDeadline] = useState<number | null>(null);
@@ -292,7 +305,7 @@ export function LojaPage() {
       setStore(data);
       const defaultType = data.acceptsDelivery ? 'delivery' : 'pickup';
       const methods: string[] = data.paymentMethods ?? [];
-      const defaultPayment = methods.length === 1 ? methods[0] : '';
+      const defaultPayment = data.onlinePayment?.available ? 'mercadopago' : methods.length === 1 ? methods[0] : '';
       try {
         const saved = localStorage.getItem(CUSTOMER_KEY(slug!));
         const customer = saved ? JSON.parse(saved) : null;
@@ -395,7 +408,8 @@ export function LojaPage() {
   const subtotal = cart.reduce((acc, l) => acc + lineUnitPrice(l) * l.qty, 0);
   const appliedFee =
     form.deliveryType === 'delivery' && store?.deliveryFee ? store.deliveryFee : 0;
-  const totalPrice = subtotal + appliedFee;
+  const serviceFeeCents = form.paymentMethod === 'mercadopago' ? store?.onlinePayment?.feeCents ?? 0 : 0;
+  const totalPrice = subtotal + appliedFee + serviceFeeCents / 100;
 
   // Título da aba com o nome da loja
   useEffect(() => {
@@ -443,6 +457,32 @@ export function LojaPage() {
     } catch {}
   }, [store, slug]);
 
+  // Sincroniza um pedido salvo no localStorage com os dados vindos da API.
+  // Também reconstrói o pedido quando o cliente volta do Checkout Pro pelo
+  // link ?paymentOrder= sem ter o pedido salvo neste navegador.
+  const upsertSavedOrder = (id: string, data: any) => {
+    setSavedOrders(prev => {
+      const current = prev.find(o => o.orderId === id);
+      const fetched: SavedOrder = {
+        ...current, orderId: id, orderNumber: data.orderNumber,
+        total: data.totalPrice, serviceFeeCents: data.serviceFeeCents ?? 0,
+        deliveryFee: data.deliveryFeeCents != null ? data.deliveryFeeCents / 100 : current?.deliveryFee ?? 0,
+        paymentMethod: data.onlinePayment ? 'mercadopago' : data.paymentMethod ?? current?.paymentMethod,
+        changeFor: current?.changeFor ?? (data.changeFor != null ? Number(data.changeFor) : null),
+        items: (data.items ?? []).map((i: any) => ({ name: i.recipeName, qty: i.quantity,
+          price: i.unitPrice - (i.quantity ? (i.discount ?? 0) / i.quantity : 0),
+          addons: (i.addons ?? []).map((a: any) => ({ name: a.name, price: a.price })) })),
+        createdAt: data.createdAt,
+      };
+      if (current && JSON.stringify(current) === JSON.stringify(fetched)) return prev;
+      const updated = current
+        ? prev.map(o => (o.orderId === id ? fetched : o))
+        : [fetched, ...prev].slice(0, 20);
+      try { localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
   // Buscar status de todos os pedidos ao abrir histórico, com atualização automática
   useEffect(() => {
     if (step !== 'history' || !slug || savedOrders.length === 0) return;
@@ -453,14 +493,7 @@ export function LojaPage() {
           const j = await r.json();
           if (j.success) {
             setHistoryStatuses(prev => (prev[o.orderId] === j.data.status ? prev : { ...prev, [o.orderId]: j.data.status }));
-            // Pedidos salvos antes do número existir ganham o número vindo da API
-            if (j.data.orderNumber != null && o.orderNumber !== j.data.orderNumber) {
-              setSavedOrders(prev => {
-                const updated = prev.map(s => (s.orderId === o.orderId ? { ...s, orderNumber: j.data.orderNumber } : s));
-                try { localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated)); } catch {}
-                return updated;
-              });
-            }
+            upsertSavedOrder(o.orderId, j.data);
           }
         } catch {}
       });
@@ -483,16 +516,14 @@ export function LojaPage() {
           // Backend devolve pix:null quando o pedido é pago/cancelado → some o card de pagamento.
           setPix(j.data.pix ?? null);
           if (!j.data.pix) setPixDeadline(null);
-          // Pedidos salvos antes do número existir ganham o número vindo da API
-          if (j.data.orderNumber != null) {
-            setSavedOrders(prev => {
-              const cur = prev.find(o => o.orderId === orderId);
-              if (!cur || cur.orderNumber === j.data.orderNumber) return prev;
-              const updated = prev.map(o => (o.orderId === orderId ? { ...o, orderNumber: j.data.orderNumber } : o));
-              try { localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated)); } catch {}
-              return updated;
-            });
+          setOnlineOrder(Boolean(j.data.onlinePayment));
+          if (j.data.onlinePayment) {
+            setPaymentStatus(j.data.paymentStatus ?? 'pending');
+            setPaymentExpired(Boolean(j.data.paymentExpired));
+            setCheckoutUrl(j.data.checkoutUrl ?? null);
+            setOrderServiceFeeCents(j.data.serviceFeeCents ?? 0);
           }
+          upsertSavedOrder(orderId, j.data);
         }
       } catch {}
     };
@@ -588,6 +619,7 @@ export function LojaPage() {
       : NaN;
     const changeFor = Number.isFinite(changeForNum) && changeForNum > 0 ? changeForNum : undefined;
     try {
+      if (!checkoutRequestId.current) checkoutRequestId.current = crypto.randomUUID();
       const items = cart.map(l => ({ productId: l.productId, quantity: l.qty, addonIds: l.addonIds }));
       const res = await fetch(`${API_BASE}/public/store/${slug}/orders`, {
         method: 'POST',
@@ -601,6 +633,8 @@ export function LojaPage() {
           notes: form.notes.trim() || undefined,
           paymentMethod: form.paymentMethod || undefined,
           changeFor,
+          serviceFeeCents,
+          checkoutRequestId: checkoutRequestId.current,
         }),
       });
       const json = await res.json();
@@ -617,6 +651,10 @@ export function LojaPage() {
       }
       setOrderId(json.data.orderId);
       setOrderStatus('pending');
+      setOnlineOrder(Boolean(json.data.onlinePayment));
+      setCheckoutUrl(json.data.checkoutUrl ?? null);
+      setPaymentStatus('pending'); setPaymentExpired(false);
+      setOrderServiceFeeCents(json.data.serviceFeeCents ?? 0);
       setPix(json.data.pix ?? null);
       if (json.data.loyalty) setStore(prev => prev ? { ...prev, loyalty: { ...prev.loyalty, ...json.data.loyalty } } : prev);
       setPixDeadline(json.data.pix ? Date.now() + PIX_TTL_MS : null);
@@ -636,7 +674,8 @@ export function LojaPage() {
               addons: lineAddons(l).map(a => ({ name: a.name, price: a.price })),
             };
           }),
-          total: totalPrice,
+          total: json.data.totalPrice ?? totalPrice,
+          serviceFeeCents: json.data.serviceFeeCents ?? 0,
           deliveryFee: appliedFee,
           paymentMethod: form.paymentMethod || undefined,
           changeFor: changeFor ?? null,
@@ -647,7 +686,9 @@ export function LojaPage() {
         localStorage.setItem(ORDERS_KEY(slug!), JSON.stringify(updated));
         setSavedOrders(updated);
       } catch {}
+      checkoutRequestId.current = null;
       setStep('success');
+      if (json.data.checkoutUrl) window.location.assign(json.data.checkoutUrl);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -1340,6 +1381,7 @@ export function LojaPage() {
                 <span className="text-sm text-gray-500">Taxa de entrega</span>
                 <span className="text-sm text-gray-700">{fmt(appliedFee)}</span>
               </div>
+              {form.paymentMethod === 'mercadopago' && <div className="py-3 text-sm"><div className="flex justify-between"><span>Taxa de serviço DocePreço</span><span>{fmt(serviceFeeCents / 100)}</span></div><p className="text-xs text-gray-500 mt-1">Valor destinado à plataforma pelo serviço do checkout online.</p></div>}
               <div className="flex justify-between items-center py-3">
                 <span className="text-sm font-bold text-gray-700">Total</span>
                 <span className="text-[#EA4B92] font-bold text-lg">{fmt(totalPrice)}</span>
@@ -1399,11 +1441,11 @@ export function LojaPage() {
                 📍 Retirada em: <span className="font-semibold">{store.address}</span>
               </p>
             )}
-            {(store.paymentMethods?.length ?? 0) > 0 && (
+            {((store.paymentMethods?.length ?? 0) > 0 || store.onlinePayment?.available) && (
               <>
                 <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mt-2">Forma de pagamento</p>
                 <div className="grid grid-cols-2 gap-2">
-                  {PAYMENT_METHODS.filter(m => store.paymentMethods.includes(m.key)).map(m => (
+                  {PAYMENT_METHODS.filter(m => m.key === 'mercadopago' ? store.onlinePayment?.available : store.paymentMethods.includes(m.key)).map(m => (
                     <button
                       key={m.key}
                       onClick={() => setForm(f => ({ ...f, paymentMethod: m.key }))}
@@ -1535,6 +1577,7 @@ export function LojaPage() {
       summary,
       '',
       `Taxa de entrega: ${fmt(summaryFee)}`,
+      ...(orderServiceFeeCents ? [`Taxa de serviço DocePreço: ${fmt(orderServiceFeeCents / 100)}`] : []),
       `*Total: ${fmt(summaryTotal)}*`,
       '',
       `Nome: ${form.clientName}`,
@@ -1578,6 +1621,21 @@ export function LojaPage() {
       <div className="max-w-lg mx-auto px-4 -mt-4 pb-10 flex flex-col gap-4">
 
         {/* Pagamento via Pix (loja com chave cadastrada e pedido ainda não pago) */}
+        {onlineOrder && <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
+          <h2 className="font-bold">Pagamento online</h2>
+          <p>{paymentStatus === 'approved' ? 'Pagamento aprovado pelo Mercado Pago.' : paymentStatus === 'refunded' ? 'Pagamento estornado.' : paymentStatus === 'charged_back' ? 'Pagamento contestado. Entre em contato com a loja.' : paymentExpired ? 'Prazo do checkout encerrado. Consulte a loja antes de fazer outro pedido.' : 'Aguardando confirmação do Mercado Pago. O retorno do checkout não confirma o pagamento.'}</p>
+          <p className="text-sm">Taxa de serviço DocePreço: {fmt(orderServiceFeeCents / 100)}</p>
+          {paymentStatus === 'pending' && !paymentExpired && !cancelledStatus && <button disabled={submitting} className="bg-blue-700 text-white rounded-xl px-4 py-3" onClick={async () => {
+            if (checkoutUrl) { window.location.assign(checkoutUrl); return; }
+            setSubmitting(true);
+            try {
+              const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}/checkout`, { method: 'POST' });
+              const j = await r.json(); if (!r.ok) throw new Error(j.error);
+              window.location.assign(j.data.checkoutUrl);
+            } catch (e) { setError((e as Error).message); } finally { setSubmitting(false); }
+          }}>Continuar pagamento no Mercado Pago</button>}
+          {error && <p role="alert" className="text-red-700">{error}</p>}
+        </div>}
         {pix && !cancelledStatus && orderStatus !== 'delivered' && (() => {
           const expired = pixDeadline != null && pixSecondsLeft <= 0;
           const mm = Math.floor(pixSecondsLeft / 60);
