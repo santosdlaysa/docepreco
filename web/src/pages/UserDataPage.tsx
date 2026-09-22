@@ -236,14 +236,17 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                 const expanded = expandedRecipe === r.id;
                 return (
                   <div key={r.id}>
+                    <div className="flex items-center gap-3 px-4 py-3">
                     <button
+                      type="button"
+                      aria-expanded={expanded}
                       onClick={() => setExpandedRecipe(expanded ? null : r.id)}
-                      className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                      className="flex-1 min-w-0 flex items-center justify-between gap-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left rounded"
                     >
                       <div className="min-w-0">
                         <p className="font-medium text-gray-900 dark:text-white truncate">{r.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
-                          {r.ingredientCount} ingredientes · Rend. {r.yield} un · Atualizada em {fmtDate(r.updatedAt)}
+                          {r.ingredients.length} ingredientes{r.subRecipes?.length ? ` · ${r.subRecipes.length} receitas adicionadas` : ''} · Rend. {r.yield} un · Atualizada em {fmtDate(r.updatedAt)}
                         </p>
                       </div>
                       <div className="flex items-center gap-3 ml-3 shrink-0">
@@ -252,6 +255,9 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                             {fmtCurrency(sellingPrice)}/un
                           </span>
                         )}
+                        {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+                      </div>
+                    </button>
                         <button
                           type="button"
                           onClick={e => {
@@ -263,9 +269,7 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                         >
                           <Pencil size={16} />
                         </button>
-                        {expanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                      </div>
-                    </button>
+                    </div>
                     {expanded && (
                       <div className="px-4 pb-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-100 dark:border-gray-700">
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 py-3">
@@ -290,14 +294,59 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                           <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
                             <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Ingredientes</p>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
-                              {r.ingredients.map((ing, idx) => (
-                                <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded px-3 py-1.5 text-sm">
-                                  <span className="text-gray-700 dark:text-gray-200">{ing.name}</span>
-                                  <span className="text-gray-500 dark:text-gray-400 font-medium ml-2 shrink-0">
-                                    {ing.quantityUsed} {ing.unit}
-                                  </span>
-                                </div>
-                              ))}
+                              {r.ingredients.map((ing, idx) => {
+                                const purchase = ingredients.find(item => item.id === ing.ingredientId);
+                                const usageUnit = ing.unit === 'unit'
+                                  ? (purchase?.purchaseUnitWeight && purchase.unit !== 'unit' ? purchase.purchaseUnitLabel || 'embalagem' : 'un')
+                                  : ing.unit;
+                                const cost = purchase && compatibleUnits(purchase).includes(ing.unit)
+                                  ? getIngredientUsageCost(purchase, ing.quantityUsed, ing.unit)
+                                  : null;
+                                return (
+                                  <div key={idx} className="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm">
+                                    <div className="min-w-0">
+                                      <span className="text-gray-700 dark:text-gray-200">{ing.name}</span>
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {ing.quantityUsed.toLocaleString('pt-BR')} {usageUnit}
+                                        {ing.unit === 'unit' && purchase?.purchaseUnitWeight && purchase.unit !== 'unit'
+                                          ? ` (${(ing.quantityUsed * purchase.purchaseUnitWeight).toLocaleString('pt-BR')} ${purchase.unit})` : ''}
+                                      </p>
+                                    </div>
+                                    <span className="text-gray-700 dark:text-gray-200 font-medium shrink-0">
+                                      {cost === null ? 'Custo indisponível' : fmtCurrency(cost)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        {r.subRecipes && r.subRecipes.length > 0 && (
+                          <div className="mt-3 border-t border-gray-200 dark:border-gray-700 pt-3">
+                            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2">Receitas adicionadas / recheios</p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                              {r.subRecipes.map((sub, idx) => {
+                                const linkedRecipe = recipes.find(item => item.id === sub.subRecipeId);
+                                const calculation = calculateAdminRecipePreview([], ingredients, [], [sub], recipes, '1', '0');
+                                return (
+                                  <div key={idx} className="flex items-center justify-between gap-3 bg-white dark:bg-gray-800 rounded px-3 py-2 text-sm">
+                                    <div className="min-w-0">
+                                      {linkedRecipe ? (
+                                        <button type="button" className="text-primary-600 dark:text-primary-400 text-left hover:underline"
+                                          onClick={() => setExpandedRecipe(linkedRecipe.id)}>
+                                          {sub.subRecipeName || linkedRecipe.name}
+                                        </button>
+                                      ) : <span className="text-gray-700 dark:text-gray-200">{sub.subRecipeName || 'Receita indisponível'}</span>}
+                                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                                        {sub.quantityUsed.toLocaleString('pt-BR')} {sub.unit === 'unit' ? 'un' : sub.unit}
+                                      </p>
+                                    </div>
+                                    <span className="text-gray-700 dark:text-gray-200 font-medium shrink-0" title={'error' in calculation ? calculation.error : undefined}>
+                                      {'error' in calculation ? 'Custo indisponível' : fmtCurrency(calculation.subRecipesCost)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
