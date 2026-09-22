@@ -115,9 +115,6 @@ export const PaywallScreen: React.FC = () => {
   const [premiumPrice, setPremiumPrice] = useState(19.99);
   // Equivalente mensal do plano anual (anual ÷ 12), calculado da config do painel
   const [annualPerMonthLabel, setAnnualPerMonthLabel] = useState('R$ 10,00');
-  // Trial days para cada tier
-  const [premiumTrialDays, setPremiumTrialDays] = useState<number | null>(null);
-  const [masterTrialDays, setMasterTrialDays] = useState<number | null>(null);
 
   // Upgrade Premium → Master pela diferença (só quem comprou o Premium hoje é elegível)
   const [upgradeInfo, setUpgradeInfo] = useState<UpgradePreview | null>(null);
@@ -223,12 +220,6 @@ export const PaywallScreen: React.FC = () => {
       const pp = await planConfigApi.getPremiumPrice();
       if (pp) setPremiumPrice(pp);
 
-      // Carrega trial days
-      const trial = await planConfigApi.getTrialConfig();
-      if (trial) {
-        setPremiumTrialDays(trial.premiumFreeDays);
-        setMasterTrialDays(trial.masterFreeDays);
-      }
     })();
   }, []);
 
@@ -242,13 +233,17 @@ export const PaywallScreen: React.FC = () => {
   const [cardAnnualMain, cardAnnualCents] = splitPrice(pixAnnualLabel);
 
   // O Master é só mensal — exclui qualquer pacote/PIX anual do Master.
-  const isAnnualId = (id: string) => {
-    const s = id.toLowerCase();
-    return s.includes('anual') || s.includes('annual') || s.includes('year');
-  };
   const showAnnual = !isMasterTier;
   // Pacotes da loja filtrados pelo nível (e sem o anual quando for Master)
-  const tierPackages = (packages ?? []).filter(p => p.tier === tier && (showAnnual || !isAnnualId(p.identifier)));
+  const tierPackages = (packages ?? []).filter(p => p.tier === tier && (showAnnual || p.period !== 'annual'));
+  const storeName = Platform.OS === 'ios' ? 'App Store' : 'Google Play';
+  const tierPriceLabel = (planTier: 'premium' | 'master') => {
+    if (Platform.OS === 'web') return `${fmtBRL(planTier === 'master' ? masterPrice : premiumPrice)}/mês`;
+    if (loading) return 'Consultando preço na loja…';
+    const monthly = (packages ?? []).find(p => p.tier === planTier && p.period === 'monthly');
+    return monthly ? `${monthly.priceLabel}/mês · ${storeName}` : 'Consulte os planos abaixo';
+  };
+  const trialPackage = tierPackages.find(p => p.isTrialEligible && p.hasFreeTrial);
   // Lista de benefícios mostrada conforme o nível (extras do Master primeiro)
   const feats = isMasterTier ? [...MASTER_EXTRA, ...FEATS] : FEATS;
   const accent = isMasterTier ? PURPLE : PINK;
@@ -363,9 +358,9 @@ export const PaywallScreen: React.FC = () => {
               : 'Desbloqueie 9 recursos PRO e leve seu negócio de doces a sério.'}
           </Text>
           {/* Trial no hero: só mostra se algum pacote da loja tem trial e o usuário é elegível */}
-          {tierPackages.some(p => p.isTrialEligible && p.hasFreeTrial) && (
+          {trialPackage && (
             <Text style={st.heroTrial}>
-              ✨ {isMasterTier ? masterTrialDays : premiumTrialDays} dias grátis · depois só pague
+              ✨ {trialPackage.trialDays} dias grátis · depois só pague
             </Text>
           )}
         </LinearGradient>
@@ -376,12 +371,12 @@ export const PaywallScreen: React.FC = () => {
           <View style={st.tierTabs}>
             <TouchableOpacity style={[st.tierTab, !isMasterTier && st.tierTabOn]} onPress={() => switchTier('premium')} activeOpacity={0.85}>
               <Text style={[st.tierTabName, !isMasterTier && { color: PINK }]}>Premium</Text>
-              <Text style={st.tierTabPrice}>{fmtBRL(premiumPrice)}/mês</Text>
+              <Text style={st.tierTabPrice}>{tierPriceLabel('premium')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.tierTab, isMasterTier && st.tierTabOnMaster]} onPress={() => switchTier('master')} activeOpacity={0.85}>
               <View style={st.tierTabBadge}><Text style={st.tierTabBadgeText}>COMPLETO</Text></View>
               <Text style={[st.tierTabName, isMasterTier && { color: PURPLE }]}>Master</Text>
-              <Text style={st.tierTabPrice}>R$ {masterPrice.toFixed(2).replace('.', ',')}/mês</Text>
+              <Text style={st.tierTabPrice}>{tierPriceLabel('master')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -550,7 +545,7 @@ export const PaywallScreen: React.FC = () => {
 
                   <Text style={st.foot}>Cancele quando quiser · sem compromisso</Text>
                 </>
-              ) : null}
+              ) : <Text style={st.foot}>Não foi possível carregar os preços da {storeName}. Tente novamente mais tarde.</Text>}
 
               {/* ── Restore ── */}
               {configured && (

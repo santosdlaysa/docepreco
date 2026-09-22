@@ -26,6 +26,7 @@ export type PremiumPackage = {
   title: string;
   subtitle?: string;
   priceLabel: string;
+  period: 'monthly' | 'annual' | null;
   badge?: string;
   /** Which subscription tier this package unlocks. */
   tier: 'premium' | 'master';
@@ -128,7 +129,7 @@ function mapPackage(pkg: any): PremiumPackage {
   const product = pkg?.product ?? {};
   const identifier: string = pkg?.identifier ?? product?.identifier ?? 'unknown';
   const priceLabel: string =
-    product?.priceString ?? product?.price_string ?? `${product?.price ?? ''}`;
+    product?.priceString ?? '';
 
   // Detecta tier/período olhando tanto o identificador do pacote quanto o do
   // produto. No Android (modelo novo de assinatura) o produto chega como
@@ -137,10 +138,17 @@ function mapPackage(pkg: any): PremiumPackage {
   // Master products are `premium_master` / `premium_master_anual` — they contain
   // "premium" too, so we MUST test "master" first.
   const isMaster = id.includes('master');
-  const isAnnual = id.includes('annual') || id.includes('year') || id.includes('anual');
+  const storePeriod: string | null = product?.subscriptionPeriod ?? null;
+  const period = storePeriod
+    ? (storePeriod === 'P1Y' || storePeriod === 'P12M' ? 'annual' : storePeriod === 'P1M' ? 'monthly' : null)
+    : pkg?.packageType === 'ANNUAL' ? 'annual'
+    : pkg?.packageType === 'MONTHLY' ? 'monthly'
+    : id.includes('annual') || id.includes('year') || id.includes('anual') ? 'annual'
+    : id.includes('month') || id.includes('mensal') || isMaster ? 'monthly' : null;
+  const isAnnual = period === 'annual';
   // `premium_master` (monthly master) has no "month" token — anything master that
   // isn't annual is treated as monthly.
-  const isMonthly = id.includes('month') || id.includes('mensal') || (isMaster && !isAnnual);
+  const isMonthly = period === 'monthly';
 
   const title = isMaster
     ? (isAnnual ? 'Master Anual' : 'Master Mensal')
@@ -163,7 +171,7 @@ function mapPackage(pkg: any): PremiumPackage {
   const hasFreeTrial = trialDays !== null && trialDays > 0;
 
   return {
-    identifier, title, subtitle, priceLabel, badge, tier: isMaster ? 'master' : 'premium',
+    identifier, title, subtitle, priceLabel, period, badge, tier: isMaster ? 'master' : 'premium',
     nativePackage: pkg, hasFreeTrial, trialDays, isTrialEligible: false,
   };
 }
@@ -195,7 +203,8 @@ export async function fetchOfferings(): Promise<PremiumPackage[]> {
     const current = offerings?.current;
     if (!current) return [];
     const packages = current.availablePackages ?? [];
-    const mapped: PremiumPackage[] = packages.map(mapPackage);
+    const mapped: PremiumPackage[] = packages.map(mapPackage)
+      .filter((pkg: PremiumPackage) => pkg.priceLabel.trim().length > 0);
 
     // Check trial eligibility for packages that have a free trial
     const trialProductIds = mapped
@@ -212,9 +221,9 @@ export async function fetchOfferings(): Promise<PremiumPackage[]> {
     // Sort: annual first, then monthly, then everything else
     return mapped.sort((a, b) => {
       const rank = (p: PremiumPackage) =>
-        p.identifier.toLowerCase().includes('annual') || p.identifier.toLowerCase().includes('year')
+        p.period === 'annual'
           ? 0
-          : p.identifier.toLowerCase().includes('month')
+          : p.period === 'monthly'
           ? 1
           : 2;
       return rank(a) - rank(b);
