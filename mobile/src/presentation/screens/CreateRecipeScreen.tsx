@@ -366,7 +366,7 @@ export const CreateRecipeScreen: React.FC = () => {
             : ['fl_oz', 'cup', 'tbsp', 'tsp'].includes(ingredient.unit)
               ? ['fl_oz', 'cup', 'tbsp', 'tsp']
               : [ingredient.unit];
-    return ingredient.purchaseUnitWeight ? ['unit', ...baseUnits] : baseUnits;
+    return ingredient.purchaseUnitWeight && ingredient.unit !== 'unit' ? ['unit', ...baseUnits] : baseUnits;
   };
 
   const getDefaultUnit = (ingredient: Pick<Ingredient, 'unit' | 'purchaseUnitWeight'>): string => {
@@ -433,7 +433,7 @@ export const CreateRecipeScreen: React.FC = () => {
     // Quantidade efetiva na unidade base (ex: 1 lata de 330g = 330g)
     const effectivePurchaseQty = getEffectivePurchaseQuantity(selectedIngredient);
     const qtyInPurchaseUnit =
-      unit === 'unit' && selectedIngredient.purchaseUnitWeight
+      unit === 'unit' && selectedIngredient.purchaseUnitWeight && selectedIngredient.unit !== 'unit'
         ? qty * selectedIngredient.purchaseUnitWeight
         : convertToSameUnit(qty, unit, selectedIngredient.unit);
     const ratio = qtyInPurchaseUnit / effectivePurchaseQty;
@@ -757,7 +757,7 @@ export const CreateRecipeScreen: React.FC = () => {
       const eff = getEffectivePurchaseQuantity(ing);
       if (eff <= 0) continue;
       const qtyInIngredientUnit =
-        ri.unit === 'unit' && ing.purchaseUnitWeight
+        ri.unit === 'unit' && ing.purchaseUnitWeight && ing.unit !== 'unit'
           ? ri.quantityUsed * ing.purchaseUnitWeight
           : convertToSameUnit(ri.quantityUsed, ri.unit, ing.unit);
       ingredientsCost += (ing.purchasePrice / eff) * qtyInIngredientUnit;
@@ -805,7 +805,7 @@ export const CreateRecipeScreen: React.FC = () => {
       if (effectivePurchaseQty <= 0) continue;
 
       const qtyInPurchaseUnit =
-        recipeIngredient.unit === 'unit' && ingredient.purchaseUnitWeight
+        recipeIngredient.unit === 'unit' && ingredient.purchaseUnitWeight && ingredient.unit !== 'unit'
           ? recipeIngredient.quantityUsed * ingredient.purchaseUnitWeight
           : convertToSameUnit(recipeIngredient.quantityUsed, recipeIngredient.unit, ingredient.unit);
 

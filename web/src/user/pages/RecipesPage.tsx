@@ -14,6 +14,7 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatBRLUnit } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
+import { getEffectivePurchaseQuantity, getIngredientUsageCost } from '../ingredientPricing';
 import { useAuth } from '../UserAuthContext';
 import { printRecipeQuote } from '../quotePdf';
 import {
@@ -379,7 +380,7 @@ function getCompatibleUnits(ingredient: Pick<Ingredient, 'unit' | 'purchaseUnitW
       : ingredient.unit === 'ml' || ingredient.unit === 'l'
         ? ['ml', 'l']
         : [ingredient.unit];
-  return ingredient.purchaseUnitWeight ? ['unit', ...baseUnits] : baseUnits;
+  return ingredient.purchaseUnitWeight && ingredient.unit !== 'unit' ? ['unit', ...baseUnits] : baseUnits;
 }
 
 function RecipeForm({
@@ -772,8 +773,9 @@ function RecipeForm({
             const ing = ingredients.find(i => i.id === row.ingredientId);
             if (ing) {
               const qtyUsed = parseLocaleNumber(row.quantityUsed);
-              const pricePerUnit = ing.purchasePrice / ing.purchaseQuantity;
-              ingredientsCost += pricePerUnit * qtyUsed;
+              if (getCompatibleUnits(ing).includes(row.unit)) {
+                ingredientsCost += getIngredientUsageCost(ing, qtyUsed, row.unit);
+              }
             }
           });
 
@@ -867,7 +869,9 @@ function RecipeForm({
                     </select>
                     {ing && (
                       <p className="text-[11px] text-gray-400">
-                        Comprado: {ing.purchaseQuantity} {ing.unit} · {formatBRL(ing.purchasePrice)}
+                        Comprado: {ing.purchaseUnitLabel
+                          ? `${ing.purchaseQuantity} ${ing.purchaseUnitLabel} (${getEffectivePurchaseQuantity(ing)} ${ing.unit === 'unit' ? 'un' : ing.unit})`
+                          : `${getEffectivePurchaseQuantity(ing)} ${ing.unit === 'unit' ? 'un' : ing.unit}`} · {formatBRL(ing.purchasePrice)}
                       </p>
                     )}
                     <div className="flex items-center gap-2">
@@ -886,7 +890,7 @@ function RecipeForm({
                       >
                         {units.map(u => (
                           <option key={u} value={u}>
-                            {u === 'unit' ? 'un' : u}
+                            {u === 'unit' ? (ing?.purchaseUnitWeight && ing.unit !== 'unit' ? ing.purchaseUnitLabel || 'embalagem' : 'un') : u}
                           </option>
                         ))}
                       </select>

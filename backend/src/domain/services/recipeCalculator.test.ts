@@ -474,3 +474,17 @@ describe('calculateRecipe', () => {
     });
   });
 });
+
+describe('regressão: conteúdo da embalagem e quantidade usada', () => {
+  it.each([
+    ['unit', 10, 60, 1, 'unit', 6],
+    ['g', 2000, 150, 130, 'g', 9.75],
+    ['g', 2000, 150, 0.13, 'kg', 9.75],
+  ] as const)('compra em %s, conteúdo %s, preço %s, uso %s %s', (unit, purchaseUnitWeight, purchasePrice, quantityUsed, usedUnit, expected) => {
+    const result = calculateRecipe({
+      yield: 1, profitMargin: 0, additionalCosts: [],
+      ingredients: [{ ingredientId: 'pacote', quantityUsed, unit: usedUnit }],
+    }, makeIngredientMap([{ id: 'pacote', purchaseQuantity: 1, purchaseUnitWeight, purchasePrice, unit }]));
+    expect(result.ingredientsCost).toBeCloseTo(expected, 8);
+  });
+});
