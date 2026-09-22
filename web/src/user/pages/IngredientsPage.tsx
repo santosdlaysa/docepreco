@@ -26,6 +26,9 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [historyItem, setHistoryItem] = useState<Ingredient | null>(null);
   const [search, setSearch] = useState('');
+  const [unitFilter, setUnitFilter] = useState('');
+  const [packageFilter, setPackageFilter] = useState('');
+  const [sort, setSort] = useState('name-asc');
   const [page, setPage] = useState(1);
 
   const load = useCallback(async () => {
@@ -55,9 +58,21 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
     }
   };
 
-  const filtered = search.trim()
-    ? items.filter(i => i.name.toLowerCase().includes(search.toLowerCase()))
-    : items;
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const packageOptions = [...new Set(items.map(i => i.purchaseUnitLabel).filter((label): label is string => !!label))]
+    .sort((a, b) => a.localeCompare(b, 'pt-BR'));
+  const unitOptions = [...new Set(items.map(i => i.unit))]
+    .map(unit => ({ value: unit, label: UNIT_OPTIONS.find(option => option.value === unit)?.label ?? unit }));
+  const hasFilters = !!(search || unitFilter || packageFilter);
+  const filtered = items.filter(i =>
+    normalize(i.name).includes(normalize(search))
+    && (!unitFilter || i.unit === unitFilter)
+    && (!packageFilter || (packageFilter === '__none__' ? !i.purchaseUnitLabel : i.purchaseUnitLabel === packageFilter))
+  ).sort((a, b) => {
+    if (sort === 'price-asc') return a.purchasePrice - b.purchasePrice;
+    if (sort === 'price-desc') return b.purchasePrice - a.purchasePrice;
+    return (sort === 'name-desc' ? -1 : 1) * a.name.localeCompare(b.name, 'pt-BR');
+  });
   const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const currentPage = Math.min(page, totalPages);
   const pageItems = filtered.slice((currentPage - 1) * PER_PAGE, currentPage * PER_PAGE);
@@ -71,17 +86,56 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
       />
 
       {!loading && items.length > 0 && (
-        <div className="relative mb-3">
-          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <input
-            value={search}
-            onChange={e => {
-              setSearch(e.target.value);
-              setPage(1);
-            }}
-            placeholder="Buscar ingrediente..."
-            className={inputClass + ' pl-9'}
-          />
+        <div className="mb-3 space-y-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
+              Nome do ingrediente
+              <div className="relative mt-1">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  value={search}
+                  onChange={e => { setSearch(e.target.value); setPage(1); }}
+                  placeholder="Buscar ingrediente..."
+                  className={inputClass + ' pl-9'}
+                />
+              </div>
+            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
+              Unidade de medida
+              <select value={unitFilter} onChange={e => { setUnitFilter(e.target.value); setPage(1); }} className={inputClass + ' mt-1'}>
+                <option value="">Todas as unidades</option>
+                {unitOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
+              Embalagem
+              <select value={packageFilter} onChange={e => { setPackageFilter(e.target.value); setPage(1); }} className={inputClass + ' mt-1'}>
+                <option value="">Todas as embalagens</option>
+                <option value="__none__">Sem embalagem</option>
+                {packageOptions.map(label => <option key={label} value={label}>{label}</option>)}
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
+              Ordenar por
+              <select value={sort} onChange={e => { setSort(e.target.value); setPage(1); }} className={inputClass + ' mt-1'}>
+                <option value="name-asc">Nome: A a Z</option>
+                <option value="name-desc">Nome: Z a A</option>
+                <option value="price-asc">Menor preço de compra</option>
+                <option value="price-desc">Maior preço de compra</option>
+              </select>
+            </label>
+          </div>
+          <div className="flex items-center justify-between gap-3 text-xs">
+            <span className="text-gray-500 dark:text-gray-400" role="status">
+              {filtered.length} de {items.length} ingredientes
+            </span>
+            {(hasFilters || sort !== 'name-asc') && (
+              <button type="button" onClick={() => { setSearch(''); setUnitFilter(''); setPackageFilter(''); setSort('name-asc'); setPage(1); }}
+                className="font-medium text-primary-600 dark:text-primary-400 hover:underline">
+                Limpar filtros
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -92,7 +146,7 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
       ) : items.length === 0 ? (
         <EmptyState icon={Package} text="Nenhum ingrediente ainda. Adicione o primeiro." />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} text="Nenhum ingrediente encontrado para essa busca." />
+        <EmptyState icon={Search} text="Nenhum ingrediente encontrado com esses filtros." />
       ) : (
         <>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">

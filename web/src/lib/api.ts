@@ -236,6 +236,7 @@ export interface UserRecipe {
   updatedAt: string;
   ingredientCount: number;
   totalCost: number;
+  baseQuantityProduced?: number;
   ingredients: RecipeIngredient[];
   additionalCosts: RecipeAdditionalCost[];
   subRecipes: UserSubRecipe[];

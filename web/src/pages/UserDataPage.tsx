@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import { getIngredientUsageCost, getEffectivePurchaseQuantity } from '../user/ingredientPricing';
+import { formatBRL, formatBRLUnit } from '../user/format';
+import { calculateAdminRecipePreview } from '../user/adminRecipePricing';
 import {
   api,
   RecipeAdditionalCost,
@@ -62,6 +65,9 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
   const [expandedRecipe, setExpandedRecipe] = useState<string | null>(null);
   const [editingIngredient, setEditingIngredient] = useState<UserIngredient | null>(null);
   const [editingRecipe, setEditingRecipe] = useState<UserRecipe | null>(null);
+  const [ingredientSearch, setIngredientSearch] = useState('');
+  const [ingredientUnit, setIngredientUnit] = useState('');
+  const [ingredientUsage, setIngredientUsage] = useState('');
 
   const loadData = () => {
     setError(null);
@@ -130,6 +136,12 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
   }
 
   const { user, recipes, ingredients, sales, store, storeProducts } = data;
+  const normalize = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+  const filteredIngredients = ingredients.filter(i =>
+    normalize(i.name).includes(normalize(ingredientSearch))
+    && (!ingredientUnit || i.unit === ingredientUnit)
+    && (!ingredientUsage || (ingredientUsage === 'used' ? i.usedInRecipes > 0 : i.usedInRecipes === 0))
+  );
   const totalRevenue = sales.reduce((sum, s) => sum + Number(s.totalRevenue || 0), 0);
 
   const tabs: Array<{ id: Tab; label: string; count: number; icon: typeof CakeSlice }> = [
@@ -319,6 +331,24 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
             <p className="text-center py-12 text-gray-400">Nenhum ingrediente cadastrado</p>
           ) : (
             <div className="overflow-x-auto">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 p-4">
+                <label className="text-xs text-gray-500">Nome
+                  <input value={ingredientSearch} onChange={e => setIngredientSearch(e.target.value)} placeholder="Buscar ingrediente..." className={inputClass + ' mt-1'} />
+                </label>
+                <label className="text-xs text-gray-500">Unidade de medida
+                  <select value={ingredientUnit} onChange={e => setIngredientUnit(e.target.value)} className={inputClass + ' mt-1'}>
+                    <option value="">Todas as unidades</option>
+                    {[...new Set(ingredients.map(i => i.unit))].map(unit => <option key={unit} value={unit}>{unit === 'unit' ? 'un' : unit}</option>)}
+                  </select>
+                </label>
+                <label className="text-xs text-gray-500">Uso em receitas
+                  <select value={ingredientUsage} onChange={e => setIngredientUsage(e.target.value)} className={inputClass + ' mt-1'}>
+                    <option value="">Todos</option><option value="used">Usados em receitas</option><option value="unused">Sem uso em receitas</option>
+                  </select>
+                </label>
+                <span className="text-xs text-gray-500" role="status">{filteredIngredients.length} de {ingredients.length} ingredientes</span>
+                {(ingredientSearch || ingredientUnit || ingredientUsage) && <button type="button" className="text-xs text-primary-600 text-left" onClick={() => { setIngredientSearch(''); setIngredientUnit(''); setIngredientUsage(''); }}>Limpar filtros</button>}
+              </div>
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700">
                   <tr>
@@ -331,7 +361,8 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                  {ingredients.map(i => (
+                  {filteredIngredients.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-gray-500">Nenhum ingrediente encontrado com esses filtros.</td></tr>}
+                  {filteredIngredients.map(i => (
                     <tr key={i.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                       <td className="px-4 py-3 font-medium text-gray-900 dark:text-white">{i.name}</td>
                       <td className="px-4 py-3 text-right text-gray-700 dark:text-gray-200">{fmtCurrency(i.price)}</td>
@@ -559,7 +590,7 @@ function compatibleUnits(ingredient: Pick<UserIngredient, 'unit' | 'purchaseUnit
       : ingredient.unit === 'ml' || ingredient.unit === 'l'
         ? ['ml', 'l']
         : [ingredient.unit];
-  return ingredient.purchaseUnitWeight ? ['unit', ...baseUnits] : baseUnits;
+  return ingredient.purchaseUnitWeight && ingredient.unit !== 'unit' ? ['unit', ...baseUnits] : baseUnits;
 }
 
 function EditRecipeModal({
@@ -593,6 +624,7 @@ function EditRecipeModal({
   const [saving, setSaving] = useState(false);
 
   const availableSubRecipes = recipes.filter(r => r.id !== recipe.id);
+  const preview = calculateAdminRecipePreview(rows, ingredients, costs, subRows, recipes, yieldValue, margin);
 
   const addIngredient = () => {
     const first = ingredients[0];
@@ -659,6 +691,27 @@ function EditRecipeModal({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-5">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">Editar receita do usuário</h3>
+        <section className="rounded-xl border border-primary-200 dark:border-primary-800 bg-primary-50 dark:bg-primary-900/20 p-4" aria-label="Resumo de cálculos">
+          <h4 className="font-semibold text-primary-700 dark:text-primary-300 mb-3">Resumo de cálculos</h4>
+          {'error' in preview ? <p role="status" className="text-sm text-amber-700 dark:text-amber-300">{preview.error}</p> : (
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                ['Ingredientes', formatBRL(preview.ingredientsCost)],
+                ['Receitas adicionadas', formatBRL(preview.subRecipesCost)],
+                ['Custos adicionais', formatBRL(preview.additionalCost)],
+                ['Custo total', formatBRL(preview.totalCost)],
+                ['Custo por unidade', formatBRLUnit(preview.costPerUnit)],
+                ['Preço sugerido por unidade', formatBRL(preview.suggestedPrice)],
+                ['Lucro estimado da receita', formatBRL(preview.profit)],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg bg-white dark:bg-gray-800 p-3">
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{label}</p>
+                  <p className="font-bold text-gray-900 dark:text-white">{value}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
 
         <label className="block">
           <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Nome</span>
@@ -705,6 +758,12 @@ function EditRecipeModal({
                     >
                       {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
                     </select>
+                    {ingredient && <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Comprado: {ingredient.purchaseQuantity} {ingredient.purchaseUnitLabel || ingredient.unit}
+                      {ingredient.purchaseUnitWeight ? ` (${getEffectivePurchaseQuantity(ingredient)} ${ingredient.unit === 'unit' ? 'un' : ingredient.unit})` : ''}
+                      {' · '}{formatBRL(ingredient.purchasePrice)}
+                      {compatibleUnits(ingredient).includes(row.unit) && <> · Custo usado: <strong>{formatBRL(getIngredientUsageCost(ingredient, Number(row.quantityUsed) || 0, row.unit))}</strong></>}
+                    </p>}
                     <div className="flex items-center gap-2">
                       <input
                         type="number"

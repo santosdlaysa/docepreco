@@ -1016,6 +1016,7 @@ export class AdminController {
       const recipesWithIngredients = recipesRes.rows.map((r: any) => ({
         ...r,
         totalCost: getRecipeTotal(r.id),
+        baseQuantityProduced: recipeBaseQuantityProducedMap[r.id] ?? 0,
         ingredients: recipeIngredientsMap[r.id] ?? [],
         additionalCosts: recipeAdditionalCostsMap[r.id] ?? [],
         subRecipes: recipeSubRecipesMap[r.id] ?? [],

@@ -1,7 +1,7 @@
 export interface IngredientPurchase {
   purchaseQuantity: number;
   purchasePrice: number;
-  purchaseUnitWeight?: number;
+  purchaseUnitWeight?: number | null;
   unit: string;
 }
 

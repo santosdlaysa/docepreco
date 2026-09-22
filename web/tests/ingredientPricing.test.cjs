@@ -35,3 +35,34 @@ for (const [name, purchaseQuantity, purchaseUnitWeight, unit, purchasePrice, use
 test('recusa converter peso em volume sem equivalência', () => {
   assert.throws(() => getIngredientUsageCost({ purchaseQuantity: 1000, purchasePrice: 10, unit: 'g' }, 100, 'ml'), /incompatível/);
 });
+
+const previewSource = fs.readFileSync(path.join(__dirname, '../src/user/adminRecipePricing.ts'), 'utf8');
+const previewModule = { exports: {}, require: () => context.exports };
+vm.runInNewContext(ts.transpileModule(previewSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, previewModule);
+const { calculateAdminRecipePreview } = previewModule.exports;
+const packageIngredient = { id: 'box', purchaseQuantity: 1, purchaseUnitWeight: 10, purchasePrice: 60, unit: 'unit' };
+test('edição administrativa atualiza totais, rendimento e margem', () => {
+  const preview = calculateAdminRecipePreview(
+    [{ ingredientId: 'box', quantityUsed: 2, unit: 'unit' }],
+    [packageIngredient], [{ name: 'Mão de obra', value: 8 }], [], [], '2', '30');
+  assert.equal(preview.ingredientsCost, 12);
+  assert.equal(preview.totalCost, 20);
+  assert.equal(preview.costPerUnit, 10);
+  assert.equal(preview.suggestedPrice, 13);
+  assert.equal(preview.profit, 6);
+});
+test('edição administrativa soma receitas adicionadas em unidades e peso', () => {
+  const sub = { id: 'filling', totalCost: 20, yield: 4, baseQuantityProduced: 1000 };
+  const preview = calculateAdminRecipePreview([], [], [], [
+    { subRecipeId: 'filling', quantityUsed: 2, unit: 'un' },
+    { subRecipeId: 'filling', quantityUsed: 0.25, unit: 'kg' },
+  ], [sub], '1', '0');
+  assert.equal(preview.subRecipesCost, 15);
+  assert.equal(preview.totalCost, 15);
+});
+test('edição administrativa avisa quando o rendimento é inválido', () => {
+  assert.ok(calculateAdminRecipePreview([], [], [], [], [], '0', '30').error);
+});
+test('edição administrativa avisa quando a unidade é incompatível', () => {
+  assert.ok(calculateAdminRecipePreview([{ ingredientId: 'box', quantityUsed: 1, unit: 'g' }], [packageIngredient], [], [], [], '1', '0').error);
+});
