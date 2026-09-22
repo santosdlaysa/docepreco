@@ -39,7 +39,11 @@ async function mp(path: string, token?: string, body?: unknown, idempotencyKey?:
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(20000),
   });
-  if (!response.ok) throw new Error(`Mercado Pago indisponível para esta operação (${response.status}). Confira a conexão e tente novamente.`);
+  if (!response.ok) {
+    let detail = '';
+    try { detail = String((await response.json() as any)?.message ?? '').slice(0, 200); } catch { /* corpo não-JSON */ }
+    throw new Error(`Mercado Pago recusou a operação (${response.status})${detail ? `: ${detail}` : '. Confira a conexão e tente novamente.'}`);
+  }
   return response.json();
 }
 export async function paymentConfig() {
@@ -50,8 +54,11 @@ export async function receivingStatus(userId: string) {
   const [config, account] = await Promise.all([paymentConfig(), pool.query(
     'SELECT collector_id, enabled, consent_at, terms_version FROM store_payment_accounts WHERE user_id = $1', [userId])]);
   const row = account.rows[0];
+  // A conta da própria plataforma vendendo na loja: o MP recusa application_fee
+  // "de si para si" (código 2059), e a taxa seria dinheiro trocando de bolso.
+  const selfStore = Boolean(row?.collector_id) && row.collector_id === process.env.MP_PLATFORM_COLLECTOR_ID;
   return { configured: config.ready, platformEnabled: config.enabled, connected: Boolean(row),
-    enabled: row?.enabled === true, accountId: row?.collector_id ?? null, feeCents: config.feeCents,
+    enabled: row?.enabled === true, accountId: row?.collector_id ?? null, feeCents: selfStore ? 0 : config.feeCents,
     consentAt: row?.consent_at ?? null, termsVersion: RECEIVING_TERMS_VERSION };
 }
 export async function publicReceiving(userId: string) {
@@ -137,7 +144,7 @@ export async function createStoreCheckout(orderId: string): Promise<string> {
     const preference = await mp('/checkout/preferences', token, {
       items: [{ id: orderId, title: 'Pedido na loja', quantity: 1, currency_id: 'BRL', unit_price: (p.amount_cents - p.fee_cents) / 100 },
         ...(p.fee_cents ? [{ id: 'service-fee', title: 'Taxa de serviço DocePreço', quantity: 1, currency_id: 'BRL', unit_price: p.fee_cents / 100 }] : [])],
-      marketplace_fee: p.fee_cents / 100, external_reference: orderId,
+      ...(p.fee_cents ? { marketplace_fee: p.fee_cents / 100 } : {}), external_reference: orderId,
       notification_url: env('MP_MARKETPLACE_WEBHOOK_URL'), back_urls: { success: back, pending: back, failure: back },
       auto_return: 'approved', expires: true, expiration_date_to: new Date(p.expires_at).toISOString(),
       payment_methods: { excluded_payment_types: [{ id: 'ticket' }, { id: 'atm' }] },

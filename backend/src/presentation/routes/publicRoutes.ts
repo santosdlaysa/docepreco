@@ -691,7 +691,10 @@ router.post('/store/:slug/orders/:orderId/checkout', publicOrderLimiter, async (
     const found = await pool.query(`SELECT o.id FROM orders o JOIN store_settings s ON s.user_id=o.user_id WHERE o.id=$1 AND s.slug=$2`, [req.params.orderId, req.params.slug]);
     if (!found.rows[0]) { res.sendStatus(404); return; }
     res.json({ success: true, data: { checkoutUrl: await createStoreCheckout(req.params.orderId) } });
-  } catch { res.status(409).json({ success: false, error: 'Pagamento indisponível. Consulte a loja antes de fazer outro pedido.' }); }
+  } catch (error) {
+    console.error('[Public Store] checkout error:', error instanceof Error ? error.message : error);
+    res.status(409).json({ success: false, error: 'Pagamento indisponível. Consulte a loja antes de fazer outro pedido.' });
+  }
 });
 
 // PIX transparente: gera (ou reexibe) o PIX do pedido online dentro da própria loja.
@@ -702,7 +705,10 @@ router.post('/store/:slug/orders/:orderId/pix', publicOrderLimiter, async (req, 
     const pixPayment = await createStorePixPayment(req.params.orderId);
     res.json({ success: true, data: { payload: pixPayment.payload, qrBase64: await generatePixQrBase64(pixPayment.payload),
       amount: pixPayment.amountCents / 100, receiverName: found.rows[0].store_name, expiresAt: pixPayment.expiresAt } });
-  } catch { res.status(409).json({ success: false, error: 'PIX indisponível para este pedido. Atualize a página ou pague com cartão.' }); }
+  } catch (error) {
+    console.error('[Public Store] pix error:', error instanceof Error ? error.message : error);
+    res.status(409).json({ success: false, error: 'PIX indisponível para este pedido. Atualize a página ou pague com cartão.' });
+  }
 });
 
 export default router;
