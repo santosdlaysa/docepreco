@@ -21,8 +21,8 @@ function getStripe() {
 
 // Preços em centavos (BRL) por plano/tier (para fallback apenas)
 const PRICES: Record<string, Record<string, number>> = {
-  premium: { monthly: 1490, annual: 12000 },
-  master:  { monthly: 3000, annual: 30000 },
+  premium: { monthly: 1999, annual: 12000 },
+  master:  { monthly: 3999, annual: 30000 },
 };
 
 const PLAN_DAYS: Record<string, number> = { monthly: 30, annual: 365 };
@@ -35,11 +35,11 @@ const PLAN_NAMES: Record<string, Record<string, string>> = {
 // Stripe Price IDs for subscriptions (recurring billing)
 const STRIPE_PRICE_IDS: Record<string, Record<string, string>> = {
   premium: {
-    monthly: 'price_1SnNyT3CuHnNAoVB5EJMM9Ma',
+    monthly: 'price_1UIZ3O3CuHnNAoVB2p6yrUJW',
     annual: 'price_1Th8Vn3CuHnNAoVBMOJUX7cK',
   },
   master: {
-    monthly: 'price_1Th8W13CuHnNAoVBYV0YGwX9',
+    monthly: 'price_1UIZ413CuHnNAoVB2xoEAAYx',
     annual: 'price_1Th8WI3CuHnNAoVBWXYBleVj',
   },
 };

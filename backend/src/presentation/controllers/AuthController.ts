@@ -26,10 +26,10 @@ const WELCOME_MESSAGE = `🍰 Assine o Doce Preço! 💜
 
 Tenha tudo o que precisa para calcular seus custos, precificar seus doces, controlar suas vendas e organizar melhor sua confeitaria. ✨
 
-💜 Plano Premium – R$ 14,90/mês
+💜 Plano Premium – R$ 19,99/mês
 Ideal para quem quer organizar o negócio, controlar custos e precificar seus produtos com mais segurança.
 
-🚀 Plano Master – R$ 25,00/mês
+🚀 Plano Master – R$ 39,99/mês
 Para quem quer mais recursos e uma gestão completa, incluindo o Catálogo da Loja para divulgar seus produtos e facilitar seus pedidos. 🛍️📲
 
 ✨ Escolha o plano que mais combina com sua confeitaria e deixe o Doce Preço facilitar a parte mais difícil da gestão!

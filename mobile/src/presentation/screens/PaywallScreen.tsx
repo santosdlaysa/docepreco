@@ -105,14 +105,14 @@ export const PaywallScreen: React.FC = () => {
   // Assinante legado: já pagou o mensal de R$ 10,00 — mantém esse preço na renovação
   const [legacyMonthly, setLegacyMonthly] = useState(false);
   // Rótulos de preço PIX gerenciados pelo painel web (fallback nos valores fixos)
-  const [pixMonthlyLabel, setPixMonthlyLabel] = useState('R$ 14,90');
+  const [pixMonthlyLabel, setPixMonthlyLabel] = useState('R$ 19,99');
   const [pixAnnualLabel, setPixAnnualLabel] = useState('R$ 120,00');
-  const [pixMasterMonthlyLabel, setPixMasterMonthlyLabel] = useState('R$ 30,00');
+  const [pixMasterMonthlyLabel, setPixMasterMonthlyLabel] = useState('R$ 39,99');
   const [pixMasterAnnualLabel, setPixMasterAnnualLabel] = useState('R$ 300,00');
   // PIX Master mensal já vem embutido no app → sempre disponível, sem depender do backend.
   const masterPixAvailable = true;
-  const [masterPrice, setMasterPrice] = useState(30);
-  const [premiumPrice, setPremiumPrice] = useState(14.9);
+  const [masterPrice, setMasterPrice] = useState(39.99);
+  const [premiumPrice, setPremiumPrice] = useState(19.99);
   // Equivalente mensal do plano anual (anual ÷ 12), calculado da config do painel
   const [annualPerMonthLabel, setAnnualPerMonthLabel] = useState('R$ 10,00');
   // Trial days para cada tier

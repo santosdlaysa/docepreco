@@ -25,8 +25,8 @@ async function getMonthlyPrices(): Promise<{ premium: number; master: number }> 
   const result = await pool.query(
     `SELECT key, value FROM app_settings WHERE key IN ('plan_pix_monthly', 'plan_pix_monthly_master')`
   );
-  let premium = 1490;
-  let master = 3000;
+  let premium = 1999;
+  let master = 3999;
   for (const row of result.rows) {
     try {
       const parsed = JSON.parse(row.value);

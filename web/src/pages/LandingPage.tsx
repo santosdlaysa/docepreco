@@ -53,12 +53,12 @@ const PLANS = [
     highlighted: false,
   },
   {
-    name: 'Premium', price: 'R$ 14,90', priceAnnual: 'R$ 120,00', period: '/mes', desc: 'Para quem quer crescer',
+    name: 'Premium', price: 'R$ 19,99', priceAnnual: 'R$ 120,00', period: '/mes', desc: 'Para quem quer crescer',
     features: ['Receitas e ingredientes ilimitados', 'Seu logo personalizado no PDF', 'Relatórios avançados com gráficos', 'Gestão de clientes e aniversários', 'Sistema de encomendas e entregas', 'Precificação sazonal avançada', 'Histórico de preços de ingredientes', 'Suporte prioritário'],
     highlighted: true,
   },
   {
-    name: 'Master', price: 'R$ 30,00', priceAnnual: 'R$ 200,00', period: '/mes', desc: 'Solucao completa para seu negocio',
+    name: 'Master', price: 'R$ 39,99', priceAnnual: 'R$ 200,00', period: '/mes', desc: 'Solucao completa para seu negocio',
     features: ['Tudo do Premium', 'Loja online com link compartilhável', 'Pedidos com notificação em tempo real', 'Controle de estoque com baixa automática', 'Gestão financeira completa (DRE)', 'Dicas de vendas e precificação', 'Suporte premium'],
     highlighted: false,
   },

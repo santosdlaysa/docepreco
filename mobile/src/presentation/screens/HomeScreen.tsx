@@ -87,8 +87,8 @@ export const HomeScreen: React.FC = () => {
   const [carouselBanners, setCarouselBanners] = useState<CarouselBanner[]>([]);
   const [planBanners, setPlanBanners] = useState<PlanBanner[]>([]);
   const [planBannerIndex, setPlanBannerIndex] = useState(0);
-  const [premiumPriceLabel, setPremiumPriceLabel] = useState('R$ 14,90');
-  const [masterPriceLabel, setMasterPriceLabel] = useState('R$ 30,00');
+  const [premiumPriceLabel, setPremiumPriceLabel] = useState('R$ 19,99');
+  const [masterPriceLabel, setMasterPriceLabel] = useState('R$ 39,99');
   const [annualPriceLabel, setAnnualPriceLabel] = useState('R$ 120,00');
   const [showCityModal, setShowCityModal] = useState(false);
   const [showExpiringModal, setShowExpiringModal] = useState(false);

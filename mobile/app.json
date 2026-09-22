@@ -3,7 +3,7 @@
     "name": "DocePreço",
     "slug": "sweet-pricing",
     "owner": "doce-preco",
-    "version": "2.13.0",
+    "version": "2.14.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -36,7 +36,7 @@
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.orgenyx",
-      "versionCode": 94,
+      "versionCode": 95,
       "googleServicesFile": "./google-services.json"
     },
     "web": {

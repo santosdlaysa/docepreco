@@ -68,11 +68,11 @@ export const DEFAULT_PIX: PixConfig = {
 const DEFAULTS: PlanConfig = {
   freeRecipeLimit: 3,
   freeSaleLimit: 20,
-  premiumPrice: 14.90,
+  premiumPrice: 19.99,
   premiumFeatures: ['Receitas ilimitadas', 'Ficha técnica em PDF', 'Relatórios avançados'],
   freeFeatures: ['Até 3 receitas', 'Cálculo de custos', 'Registro de vendas'],
   premiumFreeDays: 2,
-  masterPrice: 30,
+  masterPrice: 39.99,
   masterFeatures: ['Tudo do Premium', 'Gestão financeira (DRE)', 'Controle de estoque', 'Dicas de vendas'],
   masterFreeDays: 3,
   newUserTrialTier: 'master',
