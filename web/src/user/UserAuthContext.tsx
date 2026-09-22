@@ -5,7 +5,7 @@ interface AuthState {
   user: AuthUser | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (companyName: string, email: string, password: string, phone?: string) => Promise<void>;
+  register: (companyName: string, email: string, password: string, phone?: string, instagramHandle?: string) => Promise<void>;
   logout: () => void;
   refresh: () => Promise<void>;
   setUser: (u: AuthUser) => void;
@@ -77,8 +77,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(
-    async (companyName: string, email: string, password: string, phone?: string) => {
-      const { user, token } = await userApi.register(companyName, email, password, phone);
+    async (companyName: string, email: string, password: string, phone?: string, instagramHandle?: string) => {
+      const { user, token } = await userApi.register(companyName, email, password, phone, instagramHandle);
       saveToken(token);
       setUser(user);
     },

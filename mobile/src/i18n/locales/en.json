@@ -63,6 +63,7 @@
     "socialLoginError": "Error signing in with the social account"
   },
   "register": {
+    "instagramLabel": "Instagram (optional)",
     "title": "Create account",
     "subtitle": "Start pricing your sweets the right way",
     "companyName": "Company / bakery name *",

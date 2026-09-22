@@ -38,9 +38,9 @@ const normalizeUser = (raw: any): AuthUser => ({
 });
 
 export const authApi = {
-  register: async (companyName: string, email: string, password: string, phone?: string, referralCode?: string): Promise<AuthUser> => {
+  register: async (companyName: string, email: string, password: string, phone?: string, referralCode?: string, instagramHandle?: string): Promise<AuthUser> => {
     const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : undefined;
-    const response = await apiClient.post('/auth/register', { companyName, email, password, phone, referralCode, platform });
+    const response = await apiClient.post('/auth/register', { companyName, email, password, phone, referralCode, platform, instagramHandle });
     const { user, token } = response.data.data;
     const normalized = normalizeUser(user);
     await tokenStorage.saveToken(token);

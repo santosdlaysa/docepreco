@@ -36,9 +36,9 @@ export class PostgresUserRepository {
     // O cadastro exige aceite do termo LGPD (checkbox obrigatório), então já
     // registramos o consentimento no ato da criação da conta.
     const result = await pool.query(
-      `INSERT INTO users (company_name, email, password_hash, phone, signup_platform, lgpd_accepted_at, lgpd_version)
-       VALUES ($1, $2, $3, $4, $5, NOW(), $6) RETURNING *`,
-      [data.companyName, data.email.toLowerCase(), passwordHash, phone, data.platform || null, LGPD_VERSION]
+      `INSERT INTO users (company_name, email, password_hash, phone, signup_platform, lgpd_accepted_at, lgpd_version, instagram_handle)
+       VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7) RETURNING *`,
+      [data.companyName, data.email.toLowerCase(), passwordHash, phone, data.platform || null, LGPD_VERSION, data.instagramHandle || null]
     );
     return this.mapRow(result.rows[0]);
   }

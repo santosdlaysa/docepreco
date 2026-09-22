@@ -96,6 +96,35 @@ describe('Todas as rotas de autenticação', () => {
     })).status).toBe(200);
   });
 
+  it.each([undefined, null, '', '   ', '@doces.da_maria', ' doces.da_maria '])(
+    'aceita Instagram opcional no cadastro: %s',
+    async (instagramHandle) => {
+      userRepo.findByEmail.mockResolvedValue(null);
+      userRepo.create.mockResolvedValue(user);
+      userRepo.countAll.mockResolvedValue({ total: 1 });
+      const response = await request(createApp()).post('/auth/register').send({
+        companyName: 'Doces', email: user.email, password: 'senha123',
+        phone: '92999999999', instagramHandle,
+      });
+      expect(response.status).toBe(201);
+      expect(userRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        instagramHandle: instagramHandle?.trim() ? 'doces.da_maria' : null,
+      }));
+    },
+  );
+
+  it.each(['nome invalido', 'a'.repeat(31), 123, {}])(
+    'rejeita Instagram inválido antes de criar a conta: %s',
+    async (instagramHandle) => {
+      const response = await request(createApp()).post('/auth/register').send({
+        companyName: 'Doces', email: user.email, password: 'senha123',
+        phone: '92999999999', instagramHandle,
+      });
+      expect(response.status).toBe(400);
+      expect(userRepo.create).not.toHaveBeenCalled();
+    },
+  );
+
   it('autentica com provedor social e mantém o mesmo formato de sessão JWT', async () => {
     mockVerifySocialToken.mockResolvedValue({
       provider: 'google', subject: 'google-user-1', email: user.email, displayName: 'Doces',

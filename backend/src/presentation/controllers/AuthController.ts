@@ -65,7 +65,7 @@ export class AuthController {
 
   async register(req: Request, res: Response): Promise<void> {
     try {
-      const { companyName, email, password, phone, referralCode, platform } = req.body;
+      const { companyName, email, password, phone, referralCode, platform, instagramHandle } = req.body;
       if (!companyName || !email || !password) {
         res.status(400).json({ success: false, error: 'Nome da empresa, email e senha são obrigatórios' });
         return;
@@ -100,12 +100,21 @@ export class AuthController {
           return;
         }
       }
+      if (instagramHandle != null && typeof instagramHandle !== 'string') {
+        res.status(400).json({ success: false, error: 'Instagram inválido' });
+        return;
+      }
+      const handle = instagramHandle?.trim().replace(/^@/, '') || null;
+      if (handle && !/^[a-zA-Z0-9._]{1,30}$/.test(handle)) {
+        res.status(400).json({ success: false, error: 'Instagram inválido (até 30 caracteres: letras, números, . e _)' });
+        return;
+      }
       const existing = await userRepo.findByEmail(email);
       if (existing) {
         res.status(409).json({ success: false, error: 'Email já cadastrado' });
         return;
       }
-      const user = await userRepo.create({ companyName, email, password, phone, platform });
+      const user = await userRepo.create({ companyName, email, password, phone, platform, instagramHandle: handle });
       // Mensagem de boas-vindas no chat de suporte (best-effort; nunca quebra o cadastro).
       supportRepo.create({ userId: user.id, senderType: 'admin', message: WELCOME_MESSAGE })
         .catch(e => console.error('[Support] Falha ao enviar mensagem de boas-vindas:', e));

@@ -63,6 +63,7 @@
     "socialLoginError": "Erro ao entrar com a conta social"
   },
   "register": {
+    "instagramLabel": "Instagram (opcional)",
     "title": "Criar conta",
     "subtitle": "Comece a precificar seus doces do jeito certo",
     "companyName": "Nome da empresa / confeitaria *",

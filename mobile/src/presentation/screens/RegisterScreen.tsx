@@ -33,6 +33,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [instagramHandle, setInstagramHandle] = useState('');
   const [countryCode, setCountryCode] = useState('+55');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -93,7 +94,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
     try {
       const fullPhone = phone.trim() ? `${countryCode.replace('+', '')}${phone.replace(/\D/g, '')}` : undefined;
       const refCode = referralCode.trim() ? referralCode.trim().toUpperCase() : undefined;
-      const user = await authApi.register(companyName.trim(), email.trim(), password, fullPhone, refCode);
+      const user = await authApi.register(companyName.trim(), email.trim(), password, fullPhone, refCode, instagramHandle.trim() || undefined);
       await identifyRevenueCatUser(user.id);
       void setRevenueCatLocationAttributes();
       onRegister();
@@ -170,6 +171,16 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               maxLength={15}
               error={errors.phone}
               leftElement={<CountryCodePicker value={countryCode} onChange={setCountryCode} />}
+            />
+            <Input
+              containerStyle={{ marginBottom: L.fieldGap }}
+              label={t('register.instagramLabel')}
+              placeholder="@suaconfeitaria"
+              value={instagramHandle}
+              onChangeText={setInstagramHandle}
+              autoCapitalize="none"
+              autoCorrect={false}
+              maxLength={31}
             />
             <Input
               containerStyle={{ marginBottom: L.fieldGap }}

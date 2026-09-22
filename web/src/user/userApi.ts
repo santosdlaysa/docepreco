@@ -640,10 +640,10 @@ export const userApi = {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     }),
-  register: (companyName: string, email: string, password: string, phone?: string) =>
+  register: (companyName: string, email: string, password: string, phone?: string, instagramHandle?: string) =>
     req<{ user: AuthUser; token: string }>('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ companyName, email, password, phone, platform: 'web' }),
+      body: JSON.stringify({ companyName, email, password, phone, instagramHandle, platform: 'web' }),
     }),
   me: () => req<AuthUser>('/auth/me'),
   // SSO vindo do app mobile: troca um código de transferência de curta duração

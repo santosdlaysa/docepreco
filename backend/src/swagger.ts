@@ -345,7 +345,7 @@ const spec = {
     '/auth/register': {
       post: {
         tags: ['Auth'], summary: 'Registrar usuário',
-        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['companyName', 'email', 'password'], properties: { companyName: { type: 'string' }, email: { type: 'string' }, password: { type: 'string' }, phone: { type: 'string', description: 'Celular (opcional, 10-13 dígitos)' } } } } } },
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', required: ['companyName', 'email', 'password'], properties: { companyName: { type: 'string' }, email: { type: 'string' }, password: { type: 'string' }, phone: { type: 'string', description: 'Celular (opcional, 10-13 dígitos)' }, instagramHandle: { type: 'string', nullable: true, maxLength: 31, description: 'Instagram opcional, com ou sem @ (até 30 caracteres no nome)' } } } } } },
         responses: { 201: { description: 'Usuário criado + token JWT' }, 400: { description: 'Dados inválidos ou email já existe' } },
       },
     },

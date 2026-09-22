@@ -13,6 +13,7 @@ export function UserLoginPage() {
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [instagramHandle, setInstagramHandle] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedLgpd, setAcceptedLgpd] = useState(false);
@@ -47,7 +48,7 @@ export function UserLoginPage() {
           setLoading(false);
           return;
         }
-        await register(companyName.trim(), email.trim(), password, phone.trim());
+        await register(companyName.trim(), email.trim(), password, phone.trim(), instagramHandle.trim() || undefined);
       } else {
         await userApi.forgotPassword(email.trim());
         setInfo('Se o e-mail existir, enviamos instruções de recuperação.');
@@ -105,6 +106,21 @@ export function UserLoginPage() {
                 value={phone}
                 onChange={e => setPhone(e.target.value)}
                 placeholder="(00) 00000-0000"
+                className={inputClass}
+              />
+            </Field>
+          )}
+
+          {mode === 'register' && (
+            <Field label="Instagram (opcional)">
+              <input
+                value={instagramHandle}
+                onChange={e => setInstagramHandle(e.target.value)}
+                placeholder="@suaconfeitaria"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                maxLength={31}
                 className={inputClass}
               />
             </Field>

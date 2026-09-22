@@ -35,6 +35,7 @@ export interface RegisterDTO {
   email: string;
   password: string;
   phone?: string;
+  instagramHandle?: string | null;
   platform?: 'ios' | 'android' | 'web';
 }
 
