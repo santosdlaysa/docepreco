@@ -43,5 +43,6 @@ export async function migrateStorePayments(client: PoolClient): Promise<void> {
     );
     ALTER TABLE store_order_payments ADD COLUMN IF NOT EXISTS request_key UUID UNIQUE;
     ALTER TABLE store_order_payments ADD COLUMN IF NOT EXISTS stock_released BOOLEAN NOT NULL DEFAULT FALSE;
+    ALTER TABLE store_order_payments ADD COLUMN IF NOT EXISTS pix_copia_cola TEXT;
   `);
 }

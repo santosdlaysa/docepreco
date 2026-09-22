@@ -12,7 +12,10 @@ automaticamente via `marketplace_fee` (modelo marketplace do Mercado Pago).
    da loja*, aceita as condições (onde recebe, tarifas do MP, taxa DocePreço, estornos) e ativa o
    checkout. O consentimento fica registrado (`consent_at` + `terms_version`).
 3. **Cliente final** escolhe "Pagar online" na loja pública; a taxa de serviço aparece no resumo
-   antes da confirmação e é somada ao total. O pedido abre o Checkout Pro (validade de 30 min).
+   antes da confirmação e é somada ao total. O PIX é transparente: o QR + copia-e-cola do MP
+   aparecem na própria página do pedido (`/v1/payments` com `application_fee`, criado com o token
+   da loja). Cartão fica no botão "Pagar com cartão", que abre o Checkout Pro (`marketplace_fee`).
+   Ambos valem pela janela de 30 min do pedido.
 4. **Confirmação** chega pelo webhook (`POST /api/store-payments/webhook`, assinatura HMAC
    validada); há reconciliação manual e busca por `external_reference` para notificações perdidas.
 5. **Estorno/cancelamento** é feito pela loja na tela de Recebimentos (nunca editando o pedido —

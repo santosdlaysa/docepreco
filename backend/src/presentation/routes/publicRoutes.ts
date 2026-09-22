@@ -1,4 +1,4 @@
-import { publicReceiving, createStoreCheckout, sellerToken } from '../../infrastructure/services/storePaymentService';
+import { publicReceiving, createStoreCheckout, createStorePixPayment, sellerToken } from '../../infrastructure/services/storePaymentService';
 import { Router, Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
@@ -465,9 +465,12 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
         if (existing.rows[0]) {
           const p = existing.rows[0];
           await client.query('ROLLBACK');
+          const active = p.status === 'pending' && new Date(p.expires_at).getTime() > Date.now();
           res.status(200).json({ success: true, data: { orderId: p.order_id, orderNumber: p.order_number,
             onlinePayment: true, serviceFeeCents: p.fee_cents, totalPrice: p.amount_cents / 100,
-            checkoutUrl: p.status === 'pending' && new Date(p.expires_at).getTime() > Date.now() ? p.checkout_url : null } });
+            pix: active && p.pix_copia_cola ? { payload: p.pix_copia_cola, qrBase64: await generatePixQrBase64(p.pix_copia_cola),
+              amount: p.amount_cents / 100, receiverName: storeName } : null,
+            checkoutUrl: active ? p.checkout_url : null } });
           return;
         }
       }
@@ -592,11 +595,18 @@ router.post('/store/:slug/orders', publicOrderLimiter, async (req: Request, res:
         })
       : null;
 
-    let checkoutUrl: string | null = null;
+    // PIX transparente é o caminho principal do pagamento online: o QR aparece na
+    // própria loja. O cartão fica no botão que chama /orders/:id/checkout.
+    // Falha aqui não perde o pedido — o cliente gera o PIX de novo na tela seguinte.
+    let onlinePix: { payload: string; qrBase64: string; amount: number; receiverName: string } | null = null;
     if (online) {
-      try { checkoutUrl = await createStoreCheckout(orderId); } catch { /* Order retained; customer can retry checkout without another order. */ }
+      try {
+        const pixPayment = await createStorePixPayment(orderId);
+        onlinePix = { payload: pixPayment.payload, qrBase64: await generatePixQrBase64(pixPayment.payload),
+          amount: pixPayment.amountCents / 100, receiverName: storeName };
+      } catch { /* Order retained; customer can retry PIX or pay by card without another order. */ }
     }
-    res.status(201).json({ success: true, data: { orderId, orderNumber, pix, loyalty, checkoutUrl, onlinePayment: online, serviceFeeCents, totalPrice: totalWithFee } });
+    res.status(201).json({ success: true, data: { orderId, orderNumber, pix: pix ?? onlinePix, loyalty, checkoutUrl: null, onlinePayment: online, serviceFeeCents, totalPrice: totalWithFee } });
   } catch (error) {
     console.error('[Public Store] order error:', error);
     res.status(500).json({ success: false, error: 'Erro ao criar pedido' });
@@ -626,10 +636,17 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
       return;
     }
     const o = orderResult.rows[0];
-    const payment = await pool.query('SELECT status,checkout_url,expires_at FROM store_order_payments WHERE order_id=$1', [o.id]);
+    const payment = await pool.query('SELECT status,checkout_url,expires_at,pix_copia_cola FROM store_order_payments WHERE order_id=$1', [o.id]);
     const onlinePayment = payment.rows[0];
+    const onlineActive = onlinePayment?.status === 'pending' && new Date(onlinePayment.expires_at).getTime() > Date.now();
     // Reexibe o PIX para o cliente enquanto o pedido não estiver pago nem cancelado.
-    const pix = !onlinePayment && o.payment_method === 'pix' && !o.paid && o.status !== 'cancelled'
+    // Pedido online: PIX transparente do Mercado Pago; senão, PIX estático da chave da loja.
+    const pix = onlinePayment
+      ? (onlineActive && onlinePayment.pix_copia_cola && o.status !== 'cancelled'
+          ? { payload: onlinePayment.pix_copia_cola, qrBase64: await generatePixQrBase64(onlinePayment.pix_copia_cola),
+              amount: Number(o.total_price), receiverName: store.store_name }
+          : null)
+      : o.payment_method === 'pix' && !o.paid && o.status !== 'cancelled'
       ? await buildOrderPix({
           pixKey: store.pix_key ?? null,
           pixReceiverName: store.pix_receiver_name ?? null,
@@ -645,8 +662,8 @@ router.get('/store/:slug/orders/:orderId', async (req: Request, res: Response) =
       data: {
         onlinePayment: Boolean(onlinePayment),
         paymentStatus: onlinePayment?.status ?? null,
-        checkoutUrl: onlinePayment?.status === 'pending' && new Date(onlinePayment.expires_at).getTime() > Date.now() ? onlinePayment.checkout_url : null,
-        paymentExpired: onlinePayment?.status === 'pending' && new Date(onlinePayment.expires_at).getTime() <= Date.now(),
+        checkoutUrl: onlineActive ? onlinePayment.checkout_url : null,
+        paymentExpired: onlinePayment?.status === 'pending' && !onlineActive,
         serviceFeeCents: Number(o.service_fee_cents ?? 0),
         deliveryFeeCents: o.delivery_fee_cents == null ? null : Number(o.delivery_fee_cents),
         id: o.id,
@@ -675,6 +692,17 @@ router.post('/store/:slug/orders/:orderId/checkout', publicOrderLimiter, async (
     if (!found.rows[0]) { res.sendStatus(404); return; }
     res.json({ success: true, data: { checkoutUrl: await createStoreCheckout(req.params.orderId) } });
   } catch { res.status(409).json({ success: false, error: 'Pagamento indisponível. Consulte a loja antes de fazer outro pedido.' }); }
+});
+
+// PIX transparente: gera (ou reexibe) o PIX do pedido online dentro da própria loja.
+router.post('/store/:slug/orders/:orderId/pix', publicOrderLimiter, async (req, res) => {
+  try {
+    const found = await pool.query(`SELECT o.id, s.store_name FROM orders o JOIN store_settings s ON s.user_id=o.user_id WHERE o.id=$1 AND s.slug=$2`, [req.params.orderId, req.params.slug]);
+    if (!found.rows[0]) { res.sendStatus(404); return; }
+    const pixPayment = await createStorePixPayment(req.params.orderId);
+    res.json({ success: true, data: { payload: pixPayment.payload, qrBase64: await generatePixQrBase64(pixPayment.payload),
+      amount: pixPayment.amountCents / 100, receiverName: found.rows[0].store_name, expiresAt: pixPayment.expiresAt } });
+  } catch { res.status(409).json({ success: false, error: 'PIX indisponível para este pedido. Atualize a página ou pague com cartão.' }); }
 });
 
 export default router;

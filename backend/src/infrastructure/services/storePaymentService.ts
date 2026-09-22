@@ -150,6 +150,46 @@ export async function createStoreCheckout(orderId: string): Promise<string> {
   } catch (e) { await client.query('ROLLBACK'); throw e; }
   finally { client.release(); }
 }
+/**
+ * PIX transparente: cria o pagamento na conta da loja com a comissão da plataforma
+ * (application_fee) e devolve o copia-e-cola para exibir dentro da própria loja.
+ * Reutiliza o mesmo PIX enquanto a janela do checkout não expira.
+ */
+export async function createStorePixPayment(orderId: string): Promise<{ payload: string; amountCents: number; expiresAt: string }> {
+  const payment = await pool.query('SELECT user_id FROM store_order_payments WHERE order_id=$1', [orderId]);
+  if (!payment.rows[0]) throw new Error('Pagamento não encontrado');
+  const token = await sellerToken(payment.rows[0].user_id);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const { rows } = await client.query(`SELECT p.*,o.status AS order_status,o.client_name FROM store_order_payments p
+      JOIN orders o ON o.id=p.order_id WHERE p.order_id=$1 FOR UPDATE OF p,o`, [orderId]);
+    const p = rows[0];
+    if (p.status !== 'pending' || p.order_status === 'cancelled' || new Date(p.expires_at).getTime() <= Date.now()) throw new Error('Este pagamento não está mais disponível.');
+    if (p.pix_copia_cola) {
+      await client.query('COMMIT');
+      return { payload: p.pix_copia_cola, amountCents: p.amount_cents, expiresAt: new Date(p.expires_at).toISOString() };
+    }
+    const created = await mp('/v1/payments', token, {
+      transaction_amount: p.amount_cents / 100,
+      ...(p.fee_cents ? { application_fee: p.fee_cents / 100 } : {}),
+      payment_method_id: 'pix',
+      description: 'Pedido na loja',
+      external_reference: orderId,
+      notification_url: env('MP_MARKETPLACE_WEBHOOK_URL'),
+      date_of_expiration: new Date(p.expires_at).toISOString().replace('Z', '+00:00'),
+      payer: { email: 'cliente@docepreco.site', first_name: String(p.client_name ?? 'Cliente').slice(0, 50) },
+    }, `pix-${orderId}`);
+    const payload = created?.point_of_interaction?.transaction_data?.qr_code;
+    if (!created?.id || typeof payload !== 'string' || !payload) throw new Error('Não foi possível gerar o PIX agora. Tente novamente.');
+    await client.query('UPDATE store_order_payments SET payment_id=$2,pix_copia_cola=$3,updated_at=NOW() WHERE order_id=$1',
+      [orderId, String(created.id), payload]);
+    await client.query('COMMIT');
+    return { payload, amountCents: p.amount_cents, expiresAt: new Date(p.expires_at).toISOString() };
+  } catch (e) { await client.query('ROLLBACK'); throw e; }
+  finally { client.release(); }
+}
+
 export async function syncStorePayment(paymentId: string, collectorId: string): Promise<void> {
   const account = await pool.query('SELECT user_id FROM store_payment_accounts WHERE collector_id=$1', [collectorId]);
   if (!account.rows[0]) return;
@@ -163,7 +203,10 @@ export async function syncStorePayment(paymentId: string, collectorId: string): 
     const p = rows[0];
     if (!p) { await client.query('COMMIT'); return; }
     assertPaymentMatches(payment, p);
-    const duplicate = p.payment_id && p.payment_id !== String(payment.id);
+    // O PIX transparente grava payment_id ainda pendente; só é duplicidade
+    // quando o pedido já teve dinheiro capturado em OUTRO pagamento.
+    const duplicate = p.payment_id && p.payment_id !== String(payment.id) &&
+      ['approved', 'refunded', 'charged_back'].includes(p.status);
     if (duplicate || (p.order_status === 'cancelled' && payment.status === 'approved')) {
       await client.query('ROLLBACK');
       // A late approval or second payment must never fund a cancelled/paid order twice.

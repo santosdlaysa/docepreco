@@ -260,6 +260,7 @@ export function LojaPage() {
   const [pixDeadline, setPixDeadline] = useState<number | null>(null);
   const [pixSecondsLeft, setPixSecondsLeft] = useState(0);
   const PIX_TTL_MS = 5 * 60 * 1000;
+  const ONLINE_PIX_TTL_MS = 30 * 60 * 1000;
   const [savedOrders, setSavedOrders] = useState<SavedOrder[]>([]);
   const [historyStatuses, setHistoryStatuses] = useState<Record<string, string>>({});
   const [form, setForm] = useState({
@@ -657,7 +658,8 @@ export function LojaPage() {
       setOrderServiceFeeCents(json.data.serviceFeeCents ?? 0);
       setPix(json.data.pix ?? null);
       if (json.data.loyalty) setStore(prev => prev ? { ...prev, loyalty: { ...prev.loyalty, ...json.data.loyalty } } : prev);
-      setPixDeadline(json.data.pix ? Date.now() + PIX_TTL_MS : null);
+      // PIX online vale pela janela de 30 min do checkout; o estático usa o TTL da UI.
+      setPixDeadline(json.data.pix ? Date.now() + (json.data.onlinePayment ? ONLINE_PIX_TTL_MS : PIX_TTL_MS) : null);
       // Salvar cliente e pedido no localStorage
       try {
         localStorage.setItem(CUSTOMER_KEY(slug!), JSON.stringify({ name: form.clientName.trim(), phone: form.clientPhone.trim(), address: form.deliveryAddress.trim() }));
@@ -688,12 +690,26 @@ export function LojaPage() {
       } catch {}
       checkoutRequestId.current = null;
       setStep('success');
-      if (json.data.checkoutUrl) window.location.assign(json.data.checkoutUrl);
     } catch (e: any) {
       setError(e.message);
     } finally {
       setSubmitting(false);
     }
+  };
+
+  // PIX transparente do pedido online: gera (ou reexibe) o QR dentro da loja.
+  const fetchOnlinePix = async () => {
+    if (!slug || !orderId) return;
+    setSubmitting(true);
+    try {
+      const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}/pix`, { method: 'POST' });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error ?? 'PIX indisponível para este pedido.');
+      setPix(j.data);
+      setPixDeadline(j.data.expiresAt ? new Date(j.data.expiresAt).getTime() : Date.now() + ONLINE_PIX_TTL_MS);
+      setPixCopied(false);
+      setError(null);
+    } catch (e) { setError((e as Error).message); } finally { setSubmitting(false); }
   };
 
   // ── Loading ──
@@ -1623,17 +1639,20 @@ export function LojaPage() {
         {/* Pagamento via Pix (loja com chave cadastrada e pedido ainda não pago) */}
         {onlineOrder && <div className="bg-blue-50 border border-blue-100 rounded-2xl p-5 space-y-3">
           <h2 className="font-bold">Pagamento online</h2>
-          <p>{paymentStatus === 'approved' ? 'Pagamento aprovado pelo Mercado Pago.' : paymentStatus === 'refunded' ? 'Pagamento estornado.' : paymentStatus === 'charged_back' ? 'Pagamento contestado. Entre em contato com a loja.' : paymentExpired ? 'Prazo do checkout encerrado. Consulte a loja antes de fazer outro pedido.' : 'Aguardando confirmação do Mercado Pago. O retorno do checkout não confirma o pagamento.'}</p>
-          <p className="text-sm">Taxa de serviço DocePreço: {fmt(orderServiceFeeCents / 100)}</p>
-          {paymentStatus === 'pending' && !paymentExpired && !cancelledStatus && <button disabled={submitting} className="bg-blue-700 text-white rounded-xl px-4 py-3" onClick={async () => {
-            if (checkoutUrl) { window.location.assign(checkoutUrl); return; }
-            setSubmitting(true);
-            try {
-              const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}/checkout`, { method: 'POST' });
-              const j = await r.json(); if (!r.ok) throw new Error(j.error);
-              window.location.assign(j.data.checkoutUrl);
-            } catch (e) { setError((e as Error).message); } finally { setSubmitting(false); }
-          }}>Continuar pagamento no Mercado Pago</button>}
+          <p>{paymentStatus === 'approved' ? 'Pagamento aprovado pelo Mercado Pago. ✅' : paymentStatus === 'refunded' ? 'Pagamento estornado.' : paymentStatus === 'charged_back' ? 'Pagamento contestado. Entre em contato com a loja.' : paymentExpired ? 'Prazo do pagamento encerrado. Consulte a loja antes de fazer outro pedido.' : pix ? 'Pague com o PIX abaixo — a confirmação aparece aqui sozinha em segundos. Se preferir cartão, use o botão.' : 'Gere o PIX ou pague com cartão. A confirmação aparece aqui automaticamente.'}</p>
+          <p className="text-sm">Taxa de serviço DocePreço: {fmt(orderServiceFeeCents / 100)} (já incluída no total)</p>
+          {paymentStatus === 'pending' && !paymentExpired && !cancelledStatus && <div className="flex flex-wrap gap-3">
+            {!pix && <button disabled={submitting} className="bg-blue-700 text-white rounded-xl px-4 py-3" onClick={() => void fetchOnlinePix()}>Gerar PIX</button>}
+            <button disabled={submitting} className={pix ? 'border border-blue-700 text-blue-700 rounded-xl px-4 py-3 bg-white' : 'bg-blue-700 text-white rounded-xl px-4 py-3'} onClick={async () => {
+              if (checkoutUrl) { window.location.assign(checkoutUrl); return; }
+              setSubmitting(true);
+              try {
+                const r = await fetch(`${API_BASE}/public/store/${slug}/orders/${orderId}/checkout`, { method: 'POST' });
+                const j = await r.json(); if (!r.ok) throw new Error(j.error);
+                window.location.assign(j.data.checkoutUrl);
+              } catch (e) { setError((e as Error).message); } finally { setSubmitting(false); }
+            }}>💳 Pagar com cartão (Mercado Pago)</button>
+          </div>}
           {error && <p role="alert" className="text-red-700">{error}</p>}
         </div>}
         {pix && !cancelledStatus && orderStatus !== 'delivered' && (() => {
@@ -1652,7 +1671,7 @@ export function LojaPage() {
                 <p className="text-sm font-semibold text-gray-700 mb-1">Código Pix expirado</p>
                 <p className="text-xs text-gray-500 mb-4">O tempo para pagamento acabou. Gere um novo código para continuar.</p>
                 <button
-                  onClick={() => { setPixDeadline(Date.now() + PIX_TTL_MS); setPixCopied(false); }}
+                  onClick={() => { if (onlineOrder) { void fetchOnlinePix(); } else { setPixDeadline(Date.now() + PIX_TTL_MS); setPixCopied(false); } }}
                   className="w-full py-3 rounded-xl bg-[#EA4B92] text-white font-bold text-sm hover:bg-[#d43f82] transition-colors"
                 >
                   Gerar novo código Pix
