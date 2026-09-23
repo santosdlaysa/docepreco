@@ -36,9 +36,9 @@ export function calculateAdminRecipePreview(
         if (baseQuantity <= 0) throw new Error('A receita adicionada precisa de rendimento em g/ml para usar essa medida.');
         return sum + sub.totalCost / baseQuantity * quantity * (['kg', 'l'].includes(row.unit) ? 1000 : 1);
       }, 0);
-      const additionalCost = costs.reduce((sum, cost) => sum + (cost.name.trim() && cost.value > 0 ? Number(cost.value) : 0), 0);
-      const totalCost = ingredientsCost + subRecipesCost + additionalCost;
       const yieldNumber = Number(yieldValue.replace(',', '.'));
+      const additionalCost = costs.reduce((sum, cost) => sum + (cost.name.trim() && cost.value > 0 ? Number(cost.value) * (cost.costType === 'unit' ? yieldNumber : 1) : 0), 0);
+      const totalCost = ingredientsCost + subRecipesCost + additionalCost;
       if (!(yieldNumber > 0)) throw new Error('Informe um rendimento maior que zero para calcular os valores.');
       const costPerUnit = totalCost / yieldNumber;
       const suggestedPrice = costPerUnit * (1 + (Number(margin.replace(',', '.')) || 0) / 100);

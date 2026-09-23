@@ -133,7 +133,7 @@ function calcIngredientCost(recipe: Recipe): number {
 
 function calcRecipe(recipe: Recipe): CalculationResult {
   const ingredientsCost = calcIngredientCost(recipe);
-  const additionalCostTotal = recipe.additionalCosts.reduce((s, c) => s + c.value, 0);
+  const additionalCostTotal = recipe.additionalCosts.reduce((s, c) => s + c.value * (c.costType === 'unit' ? recipe.yield : 1), 0);
   const totalCost = ingredientsCost + additionalCostTotal;
   const costPerUnit = totalCost / recipe.yield;
   const suggestedPrice = costPerUnit * (1 + recipe.profitMargin / 100);

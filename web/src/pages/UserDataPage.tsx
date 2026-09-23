@@ -358,7 +358,7 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                                 <div key={idx} className="flex items-center justify-between bg-white dark:bg-gray-800 rounded px-3 py-1.5 text-sm">
                                   <span className="text-gray-700 dark:text-gray-200">{ac.name}</span>
                                   <span className="text-gray-500 dark:text-gray-400 font-medium ml-2 shrink-0">
-                                    {fmtCurrency(ac.value)}
+                                    {fmtCurrency(ac.value)} {ac.costType === 'unit' ? '/ unidade' : '/ receita'}
                                   </span>
                                 </div>
                               ))}
@@ -715,7 +715,7 @@ function EditRecipeModal({
         quantityUsed: Number(row.quantityUsed) || 0,
       })),
       additionalCosts: costs
-        .map(c => ({ name: c.name.trim(), value: Number(c.value) || 0 }))
+        .map(c => ({ ...c, name: c.name.trim(), value: Number(c.value) || 0 }))
         .filter(c => c.name && c.value > 0),
       subRecipes: subRows.map(row => ({
         ...row,
@@ -849,7 +849,7 @@ function EditRecipeModal({
           </div>
           <div className="space-y-2">
             {costs.map((cost, idx) => (
-              <div key={idx} className="flex items-center gap-2">
+              <div key={idx} className="flex flex-wrap items-center gap-2">
                 <input
                   value={cost.name}
                   onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, name: e.target.value } : c))}
@@ -864,6 +864,9 @@ function EditRecipeModal({
                   placeholder="R$"
                   className={inputClass + ' !w-28 shrink-0'}
                 />
+                <select aria-label={`Base do custo ${cost.name}`} value={cost.costType ?? 'recipe'} onChange={e => setCosts(prev => prev.map((c, i) => i === idx ? { ...c, costType: e.target.value as 'recipe' | 'unit' } : c))} className={inputClass + ' !w-auto'}>
+                  <option value="recipe">Por receita</option><option value="unit">Por unidade</option>
+                </select>
                 <button type="button" onClick={() => setCosts(prev => prev.filter((_, i) => i !== idx))} className="p-2 rounded-lg text-gray-400 hover:text-red-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
                   <X size={15} />
                 </button>

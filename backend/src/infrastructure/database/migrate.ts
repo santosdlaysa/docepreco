@@ -566,6 +566,7 @@ export async function runMigrations() {
   try {
     await client.query('BEGIN');
     await client.query(migrations);
+    await client.query(`ALTER TABLE recipe_additional_costs ADD COLUMN IF NOT EXISTS cost_type VARCHAR(10) NOT NULL DEFAULT 'recipe' CHECK (cost_type IN ('recipe', 'unit'))`);
 
     // Add user_id to pre-existing tables that didn't have it
     await addUserIdColumn(client, 'ingredients');

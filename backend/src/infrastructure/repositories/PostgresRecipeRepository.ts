@@ -50,7 +50,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
     const costsByRecipe = new Map<string, AdditionalCost[]>();
     for (const r of costsResult.rows) {
       const list = costsByRecipe.get(r.recipe_id) ?? [];
-      list.push({ name: r.name, value: parseFloat(r.value) });
+      list.push({ name: r.name, value: parseFloat(r.value), costType: r.cost_type ?? 'recipe' });
       costsByRecipe.set(r.recipe_id, list);
     }
 
@@ -126,8 +126,8 @@ export class PostgresRecipeRepository implements IRecipeRepository {
 
       for (const cost of data.additionalCosts) {
         await client.query(
-          `INSERT INTO recipe_additional_costs (recipe_id, name, value) VALUES ($1, $2, $3)`,
-          [recipe.id, cost.name, cost.value]
+          `INSERT INTO recipe_additional_costs (recipe_id, name, value, cost_type) VALUES ($1, $2, $3, $4)`,
+          [recipe.id, cost.name, cost.value, cost.costType ?? 'recipe']
         );
       }
 
@@ -193,8 +193,8 @@ export class PostgresRecipeRepository implements IRecipeRepository {
         await client.query('DELETE FROM recipe_additional_costs WHERE recipe_id = $1', [id]);
         for (const cost of data.additionalCosts) {
           await client.query(
-            `INSERT INTO recipe_additional_costs (recipe_id, name, value) VALUES ($1, $2, $3)`,
-            [id, cost.name, cost.value]
+            `INSERT INTO recipe_additional_costs (recipe_id, name, value, cost_type) VALUES ($1, $2, $3, $4)`,
+            [id, cost.name, cost.value, cost.costType ?? 'recipe']
           );
         }
       }
@@ -274,6 +274,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
     const additionalCosts: AdditionalCost[] = costsResult.rows.map(r => ({
       name: r.name,
       value: parseFloat(r.value),
+      costType: r.cost_type ?? 'recipe',
     }));
 
     const subRecipes: SubRecipe[] = subRecipesResult.rows.map(r => ({

@@ -902,6 +902,7 @@ export class AdminController {
 
       // Fetch ingredients and additional costs for each recipe
       const recipeIds = recipesRes.rows.map((r: any) => r.id);
+      const recipeYields = new Map<string, number>(recipesRes.rows.map((r: any) => [r.id, Number(r.yield)]));
       let recipeIngredientsMap: Record<string, any[]> = {};
       let recipeAdditionalCostsMap: Record<string, any[]> = {};
       let recipeSubRecipesMap: Record<string, any[]> = {};
@@ -924,7 +925,7 @@ export class AdminController {
             [recipeIds]
           ),
           pool.query(
-            `SELECT recipe_id AS "recipeId", name, value::float
+            `SELECT recipe_id AS "recipeId", name, value::float, cost_type AS "costType"
              FROM recipe_additional_costs
              WHERE recipe_id = ANY($1)
              ORDER BY name ASC`,
@@ -968,8 +969,9 @@ export class AdminController {
         }
         for (const row of acRes.rows) {
           if (!recipeAdditionalCostsMap[row.recipeId]) recipeAdditionalCostsMap[row.recipeId] = [];
-          recipeAdditionalCostsMap[row.recipeId].push({ name: row.name, value: row.value });
-          recipeAdditionalCostsTotalMap[row.recipeId] = (recipeAdditionalCostsTotalMap[row.recipeId] ?? 0) + (Number(row.value) || 0);
+          recipeAdditionalCostsMap[row.recipeId].push({ name: row.name, value: row.value, costType: row.costType ?? 'recipe' });
+          const quantity = row.costType === 'unit' ? (recipeYields.get(row.recipeId) ?? 0) : 1;
+          recipeAdditionalCostsTotalMap[row.recipeId] = (recipeAdditionalCostsTotalMap[row.recipeId] ?? 0) + (Number(row.value) || 0) * quantity;
         }
         for (const row of srRes.rows) {
           if (!recipeSubRecipesMap[row.recipeId]) recipeSubRecipesMap[row.recipeId] = [];

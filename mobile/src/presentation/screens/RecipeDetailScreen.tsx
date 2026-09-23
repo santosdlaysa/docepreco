@@ -420,7 +420,7 @@ export const RecipeDetailScreen: React.FC = () => {
                     <View style={s.ledgerInfo}>
                       <Text style={s.ledgerName}>{cost.name}</Text>
                     </View>
-                    <Text style={s.ledgerVal}>{formatCurrency(cost.value)}</Text>
+                    <Text style={s.ledgerVal}>{formatCurrency(cost.value)} {cost.costType === 'unit' ? '/ un' : '/ receita'}</Text>
                   </View>
                 );
               })}

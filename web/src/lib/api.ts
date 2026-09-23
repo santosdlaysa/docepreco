@@ -233,6 +233,7 @@ export interface RecipeIngredient {
 export interface RecipeAdditionalCost {
   name: string;
   value: number;
+  costType?: 'recipe' | 'unit';
 }
 
 export interface UserRecipe {

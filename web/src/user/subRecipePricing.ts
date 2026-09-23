@@ -4,7 +4,7 @@ import { getIngredientUsageCost } from './ingredientPricing';
 /** Mirrors CalculateRecipeUseCase: direct ingredients and additional costs of each sub-recipe. */
 export function getSubRecipeUsageCost(recipe: Recipe, ingredients: Ingredient[], quantity: number, unit: string): number {
   if (quantity === 0) return 0;
-  let totalCost = recipe.additionalCosts.reduce((sum, cost) => sum + cost.value, 0);
+  let totalCost = recipe.additionalCosts.reduce((sum, cost) => sum + cost.value * (cost.costType === 'unit' ? recipe.yield : 1), 0);
   let baseQuantity = 0;
   for (const row of recipe.ingredients) {
     const ingredient = ingredients.find(item => item.id === row.ingredientId);

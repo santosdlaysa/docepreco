@@ -531,12 +531,12 @@ export const CreateRecipeScreen: React.FC = () => {
 
     const numValue = parseLocaleNumber(sanitized);
     if (numValue <= 0) {
-      setAdditionalCosts(prev => prev.filter(c => c.name !== name));
+      setAdditionalCosts(prev => prev.map(c => getCostInputName(c.name) === name ? { ...c, value: 0 } : c));
     } else {
       setAdditionalCosts(prev => {
-        const existing = prev.find(c => c.name === name);
+        const existing = prev.find(c => getCostInputName(c.name) === name);
         if (existing) {
-          return prev.map(c => c.name === name ? { ...c, value: numValue } : c);
+          return prev.map(c => c === existing ? { ...c, value: numValue } : c);
         }
         return [...prev, { name, value: numValue }];
       });
@@ -672,9 +672,10 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const getFinalCostsFromInputs = () => {
     const standardNames = new Set(localizedAdditionalCosts.map(cost => normalizeCostName(cost.name)));
-    const finalCosts = localizedAdditionalCosts
+    const finalCosts: AdditionalCost[] = localizedAdditionalCosts
       .map(cost => ({
         name: cost.name,
+        costType: additionalCosts.find(c => getCostInputName(c.name) === cost.name)?.costType ?? 'recipe',
         value: parseLocaleNumber(additionalCostInputs[cost.name] ?? ''),
       }))
       .filter(cost => cost.value > 0);
@@ -686,7 +687,7 @@ export const CreateRecipeScreen: React.FC = () => {
     }
 
     if (effectiveLaborCost > 0) {
-      finalCosts.push({ name: 'Mão de obra (profissional)', value: effectiveLaborCost });
+      finalCosts.push({ name: 'Mão de obra (profissional)', value: effectiveLaborCost, costType: additionalCosts.find(c => isProfessionalLaborCost(c.name))?.costType ?? 'recipe' });
     }
 
     return finalCosts;
@@ -766,7 +767,7 @@ export const CreateRecipeScreen: React.FC = () => {
       ingredientsCost += (ing.purchasePrice / eff) * qtyInIngredientUnit;
       baseQuantityProduced += toBaseMeasure(qtyInIngredientUnit, ing.unit) ?? 0;
     }
-    const additionalTotal = (recipe.additionalCosts ?? []).reduce((sum, c) => sum + c.value, 0);
+    const additionalTotal = (recipe.additionalCosts ?? []).reduce((sum, c) => sum + c.value * (c.costType === 'unit' ? recipe.yield : 1), 0);
     const totalCost = ingredientsCost + additionalTotal;
     const yieldNum = recipe.yield || 1;
     return { totalCost, costPerUnit: totalCost / yieldNum, baseQuantityProduced };
@@ -823,7 +824,7 @@ export const CreateRecipeScreen: React.FC = () => {
       subRecipesCost += integratedSubRecipeCost(subRecipe, sub.quantityUsed, sub.unit);
     }
 
-    const additionalCostTotal = getFinalCostsFromInputs().reduce((sum, cost) => sum + cost.value, 0);
+    const additionalCostTotal = getFinalCostsFromInputs().reduce((sum, cost) => sum + cost.value * (cost.costType === 'unit' ? yieldNum : 1), 0);
     const totalCost = ingredientsCost + additionalCostTotal + subRecipesCost;
     const costPerUnit = totalCost / yieldNum;
     const margin = parseLocaleNumber(profitMargin) || 0;
@@ -1238,6 +1239,17 @@ export const CreateRecipeScreen: React.FC = () => {
                     placeholderTextColor={INK3}
                     keyboardType="decimal-pad"
                   />
+                </View>
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                  {(['recipe', 'unit'] as const).map(mode => {
+                    const selected = (additionalCosts.find(c => getCostInputName(c.name) === cost.name)?.costType ?? 'recipe') === mode;
+                    return <TouchableOpacity key={mode} accessibilityRole="radio" accessibilityState={{ checked: selected }} onPress={() => setAdditionalCosts(prev => {
+                      const existing = prev.find(c => getCostInputName(c.name) === cost.name);
+                      return existing ? prev.map(c => c === existing ? { ...c, costType: mode } : c) : [...prev, { name: cost.name, value: 0, costType: mode }];
+                    })} style={{ padding: 8, borderRadius: 8, backgroundColor: selected ? '#FCE7F3' : '#F3F4F6' }}>
+                      <Text style={{ color: INK, fontSize: 12 }}>{t(mode === 'unit' ? 'createRecipe.perUnit' : 'createRecipe.perRecipe')}</Text>
+                    </TouchableOpacity>;
+                  })}
                 </View>
                 <Text style={{ fontSize: 11.5, color: INK3, marginTop: 4, lineHeight: 16 }}>{cost.hint}</Text>
               </View>
@@ -1687,7 +1699,7 @@ export const CreateRecipeScreen: React.FC = () => {
                   <View key={idx} style={styles.confirmRow}>
                     <Text style={styles.confirmLabel}>{c.name}</Text>
                     <Text style={styles.confirmValueHighlight}>
-                      {formatCurrency(c.value)}
+                      {formatCurrency(c.value)} {t(c.costType === 'unit' ? 'createRecipe.perUnit' : 'createRecipe.perRecipe')}
                     </Text>
                   </View>
                 ))}

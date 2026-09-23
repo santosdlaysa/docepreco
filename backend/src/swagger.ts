@@ -85,7 +85,7 @@ const spec = {
       },
       AdditionalCost: {
         type: 'object',
-        properties: { name: { type: 'string' }, value: { type: 'number' } },
+        properties: { name: { type: 'string' }, value: { type: 'number' }, costType: { type: 'string', enum: ['recipe', 'unit'], default: 'recipe' } },
       },
       // ── Ingredients ──
       Ingredient: {

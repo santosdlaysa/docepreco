@@ -63,6 +63,14 @@ test('edição administrativa soma receitas adicionadas em unidades e peso', () 
 test('edição administrativa avisa quando o rendimento é inválido', () => {
   assert.ok(calculateAdminRecipePreview([], [], [], [], [], '0', '30').error);
 });
+
+test('embalagem por unidade acompanha o rendimento na prévia administrativa', () => {
+  const costs = [{ name: 'Embalagem', value: 3.1, costType: 'unit' }, { name: 'Outros custos do lote', value: 51.22 }];
+  const preview = calculateAdminRecipePreview([], [], costs, [], [], '7', '70');
+  assert.ok(Math.abs(preview.totalCost - 72.92) < 1e-9);
+  assert.equal(preview.suggestedPrice.toFixed(2), '17.71');
+  assert.ok(Math.abs(calculateAdminRecipePreview([], [], costs, [], [], '14', '70').totalCost - 94.62) < 1e-9);
+});
 test('edição administrativa avisa quando a unidade é incompatível', () => {
   assert.ok(calculateAdminRecipePreview([{ ingredientId: 'box', quantityUsed: 1, unit: 'g' }], [packageIngredient], [], [], [], '1', '0').error);
 });
@@ -77,6 +85,11 @@ test('prévia de sub-receitas inclui custos adicionais e converte unidades e pes
   assert.equal(getSubRecipeUsageCost(filling, [fillingIngredient], 2, 'un'), 10);
   assert.equal(getSubRecipeUsageCost(filling, [fillingIngredient], 0.25, 'kg'), 5);
   assert.equal(getSubRecipeUsageCost(filling, [fillingIngredient], 250, 'g'), 5);
+});
+
+test('prévia de sub-receitas inclui custo por unidade no custo total', () => {
+  const packaged = { ...filling, additionalCosts: [...filling.additionalCosts, { name: 'Embalagem', value: 3.1, costType: 'unit' }] };
+  assert.ok(Math.abs(getSubRecipeUsageCost(packaged, [fillingIngredient], 2, 'un') - 16.2) < 1e-9);
 });
 test('prévia não ignora sub-receita com ingrediente ausente ou sem rendimento', () => {
   assert.throws(() => getSubRecipeUsageCost(filling, [], 1, 'un'), /não encontrado/);

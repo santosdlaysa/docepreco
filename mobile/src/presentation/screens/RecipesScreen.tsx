@@ -190,6 +190,7 @@ export const RecipesScreen: React.FC = () => {
         additionalCosts: recipe.additionalCosts.map(c => ({
           name: c.name,
           value: c.value,
+          costType: c.costType,
         })),
         subRecipes: (recipe.subRecipes || []).map(s => ({
           subRecipeId: s.subRecipeId,

@@ -32,7 +32,7 @@ export function printRecipeQuote(recipe: Recipe, calc: CalculationResult, compan
   const additionalRows = (recipe.additionalCosts ?? [])
     .map(
       c => `<tr><td colspan="2">${esc(c.name)}</td>
-        <td style="text-align:right;color:${BRAND};font-weight:600">${fmt(c.value)}</td></tr>`
+        <td style="text-align:right;color:${BRAND};font-weight:600">${fmt(c.value)} ${c.costType === 'unit' ? '/ un' : '/ receita'}</td></tr>`
     )
     .join('');
 

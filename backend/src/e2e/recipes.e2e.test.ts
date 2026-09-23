@@ -56,6 +56,7 @@ describe('GET /recipes (E2E)', () => {
       if (sql.includes('recipe_additional_costs')) {
         return Promise.resolve({ rows: [
           { recipe_id: 'r1', name: 'Gás', value: '5.00' },
+          { recipe_id: 'r1', name: 'Embalagem', value: '3.10', cost_type: 'unit' },
         ] });
       }
       if (sql.includes('recipe_sub_recipes')) {
@@ -79,7 +80,10 @@ describe('GET /recipes (E2E)', () => {
 
     expect(bolo.ingredients).toHaveLength(2);
     expect(bolo.ingredients[0]).toMatchObject({ ingredientId: 'i1', ingredientName: 'Farinha', quantityUsed: 2, unit: 'kg' });
-    expect(bolo.additionalCosts).toEqual([{ name: 'Gás', value: 5 }]);
+    expect(bolo.additionalCosts).toEqual([
+      { name: 'Gás', value: 5, costType: 'recipe' },
+      { name: 'Embalagem', value: 3.1, costType: 'unit' },
+    ]);
     expect(bolo.subRecipes).toHaveLength(0);
 
     expect(torta.ingredients).toHaveLength(1);

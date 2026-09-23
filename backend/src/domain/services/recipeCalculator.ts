@@ -100,7 +100,7 @@ export function calculateRecipe(
   }
 
   const additionalCostTotal = recipe.additionalCosts.reduce(
-    (sum, c) => sum + c.value,
+    (sum, c) => sum + c.value * (c.costType === 'unit' ? recipe.yield : 1),
     0
   );
   const totalCost = ingredientsCost + additionalCostTotal + subRecipesCost;

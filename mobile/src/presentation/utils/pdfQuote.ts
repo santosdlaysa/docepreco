@@ -46,7 +46,7 @@ const buildHtml = ({ recipe, calculation, companyName, currency = 'BRL' }: Quote
       c => `
         <tr>
           <td>${escapeHtml(c.name)}</td>
-          <td class="right">${formatCurrency(c.value)}</td>
+          <td class="right">${formatCurrency(c.value)} ${c.costType === 'unit' ? '/ un' : '/ receita'}</td>
         </tr>`
     )
     .join('');

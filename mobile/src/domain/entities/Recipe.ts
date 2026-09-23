@@ -8,6 +8,7 @@ export interface RecipeIngredient {
 export interface AdditionalCost {
   name: string;
   value: number;
+  costType?: 'recipe' | 'unit';
 }
 
 export interface SubRecipe {

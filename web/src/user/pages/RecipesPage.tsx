@@ -106,7 +106,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
           quantityUsed: i.quantityUsed,
           unit: i.unit,
         })),
-        additionalCosts: r.additionalCosts.map(c => ({ name: c.name, value: c.value })),
+        additionalCosts: r.additionalCosts.map(c => ({ ...c })),
         subRecipes: (r.subRecipes ?? []).map(s => ({
           subRecipeId: s.subRecipeId,
           quantityUsed: s.quantityUsed,
@@ -420,6 +420,7 @@ function RecipeForm({
   // Separa os custos existentes em presets x personalizados (mão de obra
   // profissional é recalculada pela calculadora, igual ao app)
   const presetInit: Record<string, string> = {};
+  const [costTypes, setCostTypes] = useState<Record<string, 'recipe' | 'unit'>>(() => Object.fromEntries((initial?.additionalCosts ?? []).map(c => [c.name, c.costType ?? 'recipe'])));
   const customInit: AdditionalCostForm[] = [];
   (initial?.additionalCosts ?? []).forEach(c => {
     if (COST_PRESETS.includes(c.name)) presetInit[c.name] = String(c.value);
@@ -545,13 +546,13 @@ function RecipeForm({
     const additionalCosts: AdditionalCost[] = [];
     COST_PRESETS.forEach(n => {
       const v = parseLocaleNumber(presetCosts[n] ?? '');
-      if (v > 0) additionalCosts.push({ name: n, value: v });
+      if (v > 0) additionalCosts.push({ name: n, value: v, costType: costTypes[n] ?? 'recipe' });
     });
     customCosts.forEach(c => {
       const v = parseLocaleNumber(c.value);
-      if (c.name.trim() && v > 0) additionalCosts.push({ name: c.name.trim(), value: v });
+      if (c.name.trim() && v > 0) additionalCosts.push({ ...c, name: c.name.trim(), value: v });
     });
-    if (laborCostValue > 0) additionalCosts.push({ name: LABOR_PRO_NAME, value: laborCostValue });
+    if (laborCostValue > 0) additionalCosts.push({ name: LABOR_PRO_NAME, value: laborCostValue, costType: costTypes[LABOR_PRO_NAME] ?? 'recipe' });
 
     setSaving(true);
     const data: CreateRecipeDTO = {
@@ -804,13 +805,13 @@ function RecipeForm({
 
           // Calcula custos adicionais
           let additionalCostTotal = 0;
-          Object.values(presetCosts).forEach(v => {
-            additionalCostTotal += Math.max(0, parseLocaleNumber(v));
+          Object.entries(presetCosts).forEach(([n, v]) => {
+            additionalCostTotal += Math.max(0, parseLocaleNumber(v)) * (costTypes[n] === 'unit' ? yieldNum : 1);
           });
           customCosts.forEach(c => {
-            if (c.name.trim()) additionalCostTotal += Math.max(0, parseLocaleNumber(c.value));
+            if (c.name.trim()) additionalCostTotal += Math.max(0, parseLocaleNumber(c.value)) * (c.costType === 'unit' ? yieldNum : 1);
           });
-          additionalCostTotal += laborCostValue;
+          additionalCostTotal += laborCostValue * (costTypes[LABOR_PRO_NAME] === 'unit' ? yieldNum : 1);
 
           let subRecipesCost = 0;
           try {
@@ -1010,10 +1011,14 @@ function RecipeForm({
           <label className="block text-sm font-semibold text-gray-700 dark:text-gray-200 mb-1.5">
             Custos adicionais
           </label>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">Custos por unidade são multiplicados pelo rendimento. Custos por receita entram uma vez no total.</p>
           <div className="bg-gray-50 dark:bg-gray-700/40 rounded-lg divide-y divide-gray-100 dark:divide-gray-700">
             {COST_PRESETS.map(n => (
-              <div key={n} className="flex items-center gap-3 px-3 py-2">
+              <div key={n} className="flex flex-wrap items-center gap-3 px-3 py-2">
                 <span className="flex-1 text-sm text-gray-700 dark:text-gray-200">{n}</span>
+                <select aria-label={`Base do custo ${n}`} value={costTypes[n] ?? 'recipe'} onChange={e => setCostTypes(p => ({ ...p, [n]: e.target.value as 'recipe' | 'unit' }))} className={inputClass + ' !w-auto'}>
+                  <option value="recipe">Por receita</option><option value="unit">Por unidade</option>
+                </select>
                 <div className="relative w-28">
                   <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400">R$</span>
                   <input
@@ -1033,7 +1038,7 @@ function RecipeForm({
           {customCosts.length > 0 && (
             <div className="space-y-2 mt-2">
               {customCosts.map((c, idx) => (
-                <div key={idx} className="flex items-center gap-2">
+                <div key={idx} className="flex flex-wrap items-center gap-2">
                   <input
                     value={c.name}
                     onChange={e => updateCustomCost(idx, { name: e.target.value })}
@@ -1048,6 +1053,9 @@ function RecipeForm({
                     placeholder="R$"
                     className={inputClass + ' !w-24 shrink-0'}
                   />
+                  <select aria-label={`Base do custo ${c.name || 'adicional'}`} value={c.costType ?? 'recipe'} onChange={e => updateCustomCost(idx, { costType: e.target.value as 'recipe' | 'unit' })} className={inputClass + ' !w-auto'}>
+                    <option value="recipe">Por receita</option><option value="unit">Por unidade</option>
+                  </select>
                   <button type="button" onClick={() => removeCustomCost(idx)} className={iconBtnDanger}>
                     <X size={15} />
                   </button>

@@ -7,6 +7,27 @@ const makeIngredientMap = (list: TestIngredient[]) =>
   new Map(list.map(i => [i.id, i] as const));
 
 describe('calculateRecipe', () => {
+  it('multiplica embalagem por unidade pelo rendimento e mantém custos do lote', () => {
+    const recipe: RecipeCalculationInput = {
+      yield: 7, profitMargin: 70,
+      ingredients: [{ ingredientId: 'ingredientes', quantityUsed: 1, unit: 'unit' }],
+      additionalCosts: [
+        { name: 'Embalagem', value: 3.1, costType: 'unit' },
+        { name: 'Energia', value: 4, costType: 'recipe' },
+        { name: 'Gás', value: 5 },
+        { name: 'Mão de obra', value: 12 },
+      ],
+    };
+    const ingredients = makeIngredientMap([{ id: 'ingredientes', purchasePrice: 30.22, purchaseQuantity: 1, unit: 'unit' }]);
+    const result = calculateRecipe(recipe, ingredients);
+    expect(result.additionalCostTotal).toBeCloseTo(42.7);
+    expect(result.totalCost).toBeCloseTo(72.92);
+    expect(result.suggestedPrice.toFixed(2)).toBe('17.71');
+    expect(calculateRecipe({ ...recipe, yield: 14 }, ingredients).additionalCostTotal).toBeCloseTo(64.4);
+    const legacy = calculateRecipe({ ...recipe, additionalCosts: recipe.additionalCosts.map(({ costType, ...cost }) => cost) }, ingredients);
+    expect(legacy.totalCost).toBeCloseTo(54.32);
+    expect(legacy.suggestedPrice.toFixed(2)).toBe('13.19');
+  });
   it('usa acréscimo sobre custo, preserva precisão e arredonda apenas na apresentação', () => {
     const result = calculateRecipe({ yield: 20, profitMargin: 100, ingredients: [], additionalCosts: [{ name: 'Custo', value: 17.14 }] }, new Map());
     expect(result.costPerUnit).toBeCloseTo(0.857, 10);
