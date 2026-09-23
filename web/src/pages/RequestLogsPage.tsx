@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
-import { api, RequestLog } from '../lib/api';
+import { api, RequestLog, RouteSummary } from '../lib/api';
 import { Skeleton } from '../components';
-import { RefreshCw, Activity, AlertOctagon, Clock, BarChart3, Search, ChevronDown } from 'lucide-react';
+import { RefreshCw, Activity, AlertOctagon, Clock, BarChart3, Search, ChevronDown, List, LayoutList } from 'lucide-react';
 
 const METHOD_COLOR: Record<string, string> = {
   GET:    'bg-blue-100 text-blue-700 border-blue-200',
@@ -68,6 +68,10 @@ export function RequestLogsPage() {
   const [autoRefresh, setAutoRefresh] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [view, setView] = useState<'feed' | 'routes'>('feed');
+  const [routes, setRoutes] = useState<RouteSummary[]>([]);
+  const [routesHours, setRoutesHours] = useState(24);
+  const [routesLoading, setRoutesLoading] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const load = async () => {
@@ -86,7 +90,24 @@ export function RequestLogsPage() {
     }
   };
 
+  const loadRoutes = async () => {
+    setRoutesLoading(true);
+    try {
+      const data = await api.getRouteSummary(routesHours);
+      setRoutes(data.routes);
+      setLastUpdate(new Date());
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRoutesLoading(false);
+    }
+  };
+
   useEffect(() => { load(); }, [methodFilter, statusFilter]);
+
+  useEffect(() => {
+    if (view === 'routes') loadRoutes();
+  }, [view, routesHours]);
 
   useEffect(() => {
     if (autoRefresh) {
@@ -131,17 +152,47 @@ export function RequestLogsPage() {
           )}
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none">
-            <div
-              onClick={() => setAutoRefresh(v => !v)}
-              className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${autoRefresh ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}
+          <div className="flex rounded-lg border border-gray-300 dark:border-gray-600 overflow-hidden">
+            <button
+              onClick={() => setView('feed')}
+              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 transition-colors ${view === 'feed' ? 'bg-primary-500 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-primary-600'}`}
             >
-              <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoRefresh ? 'translate-x-5' : 'translate-x-0.5'}`} />
-            </div>
-            Auto-refresh (10s)
-          </label>
+              <List size={14} />
+              Feed
+            </button>
+            <button
+              onClick={() => setView('routes')}
+              className={`flex items-center gap-1.5 text-sm px-3 py-1.5 transition-colors ${view === 'routes' ? 'bg-primary-500 text-white' : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:text-primary-600'}`}
+            >
+              <LayoutList size={14} />
+              Por rota
+            </button>
+          </div>
+          {view === 'feed' && (
+            <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+              <div
+                onClick={() => setAutoRefresh(v => !v)}
+                className={`w-10 h-5 rounded-full transition-colors relative cursor-pointer ${autoRefresh ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-600'}`}
+              >
+                <span className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${autoRefresh ? 'translate-x-5' : 'translate-x-0.5'}`} />
+              </div>
+              Auto-refresh (10s)
+            </label>
+          )}
+          {view === 'routes' && (
+            <select
+              value={routesHours}
+              onChange={e => setRoutesHours(parseInt(e.target.value))}
+              className="text-sm border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 bg-white dark:bg-gray-700 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+            >
+              <option value={24}>Últimas 24h</option>
+              <option value={72}>Últimos 3 dias</option>
+              <option value={168}>Últimos 7 dias</option>
+              <option value={720}>Últimos 30 dias</option>
+            </select>
+          )}
           <button
-            onClick={load}
+            onClick={view === 'feed' ? load : loadRoutes}
             className="flex items-center gap-1.5 text-sm bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:border-primary-400 text-gray-600 dark:text-gray-300 hover:text-primary-600 px-3 py-1.5 rounded-lg transition-colors"
           >
             <RefreshCw size={14} />
@@ -150,6 +201,7 @@ export function RequestLogsPage() {
         </div>
       </div>
 
+      {view === 'feed' && (<>
       {/* Resumo */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <div className="rounded-xl border px-4 py-3 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
@@ -316,6 +368,64 @@ export function RequestLogsPage() {
           </div>
         )}
       </div>
+      </>)}
+
+      {view === 'routes' && (
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div className="px-5 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+            <p className="font-semibold text-gray-900 dark:text-white text-sm">Todas as rotas acessadas no período</p>
+            <span className="text-xs text-gray-400">{routes.length} rotas</span>
+          </div>
+          {routesLoading ? (
+            <div className="p-4 space-y-2">
+              {Array.from({ length: 8 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3">
+                  <Skeleton className="h-5 w-12 rounded" />
+                  <Skeleton className="h-4 flex-1" />
+                  <Skeleton className="h-4 w-10" />
+                </div>
+              ))}
+            </div>
+          ) : routes.length === 0 ? (
+            <p className="text-center text-gray-400 py-10">Nenhuma rota acessada no período</p>
+          ) : (
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-gray-50 dark:bg-gray-900 text-xs text-gray-500 dark:text-gray-400">
+                  <tr>
+                    <th className="text-left px-5 py-2 font-medium">Método</th>
+                    <th className="text-left px-3 py-2 font-medium">Rota</th>
+                    <th className="text-right px-3 py-2 font-medium">Acessos</th>
+                    <th className="text-right px-3 py-2 font-medium">4xx</th>
+                    <th className="text-right px-3 py-2 font-medium">5xx</th>
+                    <th className="text-right px-3 py-2 font-medium">Tempo médio</th>
+                    <th className="text-right px-3 py-2 font-medium hidden lg:table-cell">IPs</th>
+                    <th className="text-right px-5 py-2 font-medium">Último acesso</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50 dark:divide-gray-700">
+                  {routes.map((r, i) => (
+                    <tr key={i} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                      <td className="px-5 py-2">
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded border ${METHOD_COLOR[r.method] ?? 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'}`}>
+                          {r.method}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 font-mono text-gray-700 dark:text-gray-200">{r.route}</td>
+                      <td className="px-3 py-2 text-right font-bold text-gray-800 dark:text-gray-100">{r.count}</td>
+                      <td className={`px-3 py-2 text-right ${r.err4xx > 0 ? 'text-yellow-600 font-bold' : 'text-gray-300 dark:text-gray-600'}`}>{r.err4xx || '—'}</td>
+                      <td className={`px-3 py-2 text-right ${r.err5xx > 0 ? 'text-red-600 font-bold' : 'text-gray-300 dark:text-gray-600'}`}>{r.err5xx || '—'}</td>
+                      <td className="px-3 py-2 text-right text-gray-500 dark:text-gray-400">{r.avgDurationMs}ms</td>
+                      <td className="px-3 py-2 text-right text-gray-500 dark:text-gray-400 hidden lg:table-cell">{r.distinctIps}</td>
+                      <td className="px-5 py-2 text-right text-xs text-gray-400" title={fmtTs(r.lastAccess)}>{timeAgo(r.lastAccess)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

@@ -623,6 +623,39 @@ export class AdminController {
     }
   }
 
+  // Agrega o request_logs por rota (método + caminho com IDs normalizados para :id),
+  // para que TODAS as rotas acessadas no período apareçam no admin — e não apenas as
+  // presentes nas últimas N requisições do feed.
+  async getRouteSummary(req: Request, res: Response): Promise<void> {
+    const hours = Math.min(720, Math.max(1, parseInt((req.query.hours as string) || '24')));
+    // Constante derivada de inteiro validado (1..720) — sem risco de injeção.
+    const win = `${hours} hours`;
+    try {
+      const result = await pool.query(
+        `SELECT method,
+                regexp_replace(
+                  regexp_replace(path, '[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}', ':id', 'g'),
+                  '/[0-9]+(?=/|$)', '/:id', 'g'
+                ) AS route,
+                COUNT(*)::int AS count,
+                COUNT(*) FILTER (WHERE status_code BETWEEN 400 AND 499)::int AS "err4xx",
+                COUNT(*) FILTER (WHERE status_code >= 500)::int AS "err5xx",
+                ROUND(AVG(duration_ms))::int AS "avgDurationMs",
+                COUNT(DISTINCT ip)::int AS "distinctIps",
+                MAX(ts) AS "lastAccess"
+         FROM request_logs
+         WHERE ts >= NOW() - INTERVAL '${win}'
+         GROUP BY method, route
+         ORDER BY count DESC`
+      );
+      res.json({ success: true, data: { hours, routes: result.rows } });
+    } catch (error) {
+      console.error('[Admin] getRouteSummary error:', error);
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ error: 'Internal error' });
+    }
+  }
+
   async getSecurityOverview(req: Request, res: Response): Promise<void> {
     const hours = Math.min(168, Math.max(1, parseInt((req.query.hours as string) || '24')));
     // Constante derivada de inteiro validado (1..168) — sem risco de injeção.

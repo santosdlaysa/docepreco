@@ -30,6 +30,7 @@ router.get('/stores', (req, res) => controller.listStores(req, res));
 router.get('/users/:id', (req, res) => controller.getUser(req, res));
 router.get('/logs', (req, res) => controller.getLogs(req, res));
 router.get('/request-logs', (req, res) => controller.getRequestLogs(req, res));
+router.get('/request-logs/routes', (req, res) => controller.getRouteSummary(req, res));
 router.get('/security', (req, res) => controller.getSecurityOverview(req, res));
 router.post('/users/:id/premium', (req, res) => controller.setPremium(req, res));
 router.patch('/users/:id/signup-platform', (req, res) => controller.setSignupPlatform(req, res));

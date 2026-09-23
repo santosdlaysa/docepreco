@@ -577,6 +577,8 @@ export const api = {
     return req<RequestLog[]>(`/admin/request-logs?${q}`);
   },
 
+  getRouteSummary: (hours = 24) => req<RouteSummaryData>(`/admin/request-logs/routes?hours=${hours}`),
+
   getSecurityOverview: (hours = 24) => req<SecurityOverview>(`/admin/security?hours=${hours}`),
 
   // ── Banners ──
@@ -819,6 +821,22 @@ export interface RequestLog {
   requestBody: string | null;
   responseBody: string | null;
   ts: string;
+}
+
+export interface RouteSummary {
+  method: string;
+  route: string;
+  count: number;
+  err4xx: number;
+  err5xx: number;
+  avgDurationMs: number;
+  distinctIps: number;
+  lastAccess: string;
+}
+
+export interface RouteSummaryData {
+  hours: number;
+  routes: RouteSummary[];
 }
 
 export interface IpGeo {
