@@ -1,3 +1,4 @@
+import { ConversionOpportunities } from './ConversionOpportunities';
 import { useCallback, useEffect, useState } from 'react';
 import { Activity, BookOpen, MessageSquare, RefreshCw, Search, ShoppingCart, Users } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -25,6 +26,7 @@ export function ActivityUsersPage() {
   const [chatUser, setChatUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [opportunityRefresh, setOpportunityRefresh] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -58,7 +60,7 @@ export function ActivityUsersPage() {
           <h1 className="text-xl font-bold text-gray-900 dark:text-white">Atividade dos cadastros</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">Usuários com acesso nos últimos 30 dias e seus indicadores de uso.</p>
         </div>
-        <button onClick={() => void load()} className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
+        <button onClick={() => { void load(); setOpportunityRefresh(value => value + 1); }} className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-xl border border-gray-200 dark:border-gray-700 text-sm font-medium text-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} /> Atualizar
         </button>
       </div>
@@ -102,6 +104,8 @@ export function ActivityUsersPage() {
           </div>
         </div>
       )}
+
+      <ConversionOpportunities refreshKey={opportunityRefresh} />
 
       <div className={`${card} overflow-hidden`}>
         <div className="p-4 border-b border-gray-100 dark:border-gray-700/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

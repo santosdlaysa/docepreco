@@ -57,16 +57,18 @@ export interface TrialConfig {
 }
 
 let cachedLimit: number | null = null;
+let cachedLimitAt = 0;
 
 export const planConfigApi = {
   async getFreeRecipeLimit(): Promise<number> {
-    if (cachedLimit !== null) return cachedLimit;
+    if (cachedLimit !== null && Date.now() - cachedLimitAt < 60000) return cachedLimit;
     try {
       const { data } = await axios.get<{ success: boolean; data: PlanConfig }>(
         `${BASE_URL}/admin/settings/plans`,
         { timeout: 10000 },
       );
-      cachedLimit = data.data.freeRecipeLimit;
+      cachedLimit = Number.isInteger(data.data.freeRecipeLimit) && data.data.freeRecipeLimit > 0 ? data.data.freeRecipeLimit : 3;
+      cachedLimitAt = Date.now();
       return cachedLimit;
     } catch {
       return 3; // fallback

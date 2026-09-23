@@ -1,3 +1,6 @@
+import { createPortal } from 'react-dom';
+import { SubscribeModal } from '../SubscribeModal';
+import { effectiveTier } from '../userApi';
 import { useEffect, useState, useCallback } from 'react';
 import { Pencil, Trash2, ChefHat, X, Plus, Info, Layers, ChevronDown, Calculator, Copy, FileText } from 'lucide-react';
 import {
@@ -38,6 +41,13 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [scaleRecipe, setScaleRecipe] = useState<Recipe | null>(null);
   const { user } = useAuth();
+  const [freeLimit, setFreeLimit] = useState<number | null>(null);
+  const [offerSource, setOfferSource] = useState<string | null>(null);
+  useEffect(() => { void userApi.getPlanConfig().then(c => setFreeLimit(c.freeRecipeLimit ?? 3)).catch(() => {}); }, []);
+  const openOffer = (source: string) => {
+    userApi.trackConversion('offer_clicked', source, 'premium');
+    setOfferSource(source);
+  };
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -105,6 +115,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
       toast.success('Receita duplicada.');
       load();
     } catch (e) {
+      if ((e as { code?: string }).code === 'RECIPE_LIMIT') { setOfferSource('recipe_limit'); return; }
       toast.error((e as Error).message);
     }
   };
@@ -118,6 +129,13 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
         addLabel="Nova receita"
       />
 
+      {effectiveTier(user) === 'free' && freeLimit !== null && recipes.length >= freeLimit - 1 && (
+        <div className="mb-4 p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 text-gray-800 dark:text-gray-100">
+          <p>{recipes.length} de {freeLimit} receitas gratuitas. {recipes.length >= freeLimit ? 'Cadastre sua próxima receita com o Premium.' : 'Falta 1 receita para atingir o limite gratuito.'}</p>
+          <button onClick={() => openOffer('recipe_near_limit')} className="mt-2 font-semibold text-primary-600">Conhecer Premium</button>
+        </div>
+      )}
+      {offerSource && <SubscribeModal initialTier="premium" source={offerSource} onClose={() => setOfferSource(null)} toast={toast} />}
       {loading ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <TableSkeleton rows={5} cols={3} />
@@ -435,6 +453,7 @@ function RecipeForm({
   const [hoursPerDay, setHoursPerDay] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showRecipeOffer, setShowRecipeOffer] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showYieldInfo, setShowYieldInfo] = useState(false);
 
@@ -557,6 +576,7 @@ function RecipeForm({
       }
       onSaved();
     } catch (err) {
+      if ((err as { code?: string }).code === 'RECIPE_LIMIT') { setShowRecipeOffer(true); return; }
       toast.error((err as Error).message);
     } finally {
       setSaving(false);
@@ -565,6 +585,7 @@ function RecipeForm({
 
   return (
     <ModalOverlay onClose={onClose}>
+      {showRecipeOffer && createPortal(<SubscribeModal initialTier="premium" source="recipe_limit" onClose={() => setShowRecipeOffer(false)} toast={toast} />, document.body)}
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-5">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
           {initial ? 'Editar receita' : 'Nova receita'}

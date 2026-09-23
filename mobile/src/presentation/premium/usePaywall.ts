@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { conversionSource, trackConversion } from '../../data/api/conversionApi';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList, PaywallTrigger } from '../navigation/types';
@@ -26,6 +26,9 @@ export function usePaywall() {
   const { isPremium, isMaster } = usePremium();
 
   const openPaywall = (trigger?: PaywallTrigger) => {
+    if (trigger?.kind === 'feature' || trigger?.kind === 'master' || (trigger?.kind === 'limit' && trigger.blocked)) {
+      trackConversion('blocked', conversionSource(trigger), trigger.kind === 'master' ? 'master' : 'premium');
+    }
     navigation.navigate('Paywall', { trigger });
   };
 
@@ -34,11 +37,11 @@ export function usePaywall() {
    * If the limit is hit, opens the paywall and returns false.
    * Returns true if it's OK to proceed.
    */
-  const checkLimit = (feature: LimitedFeature, currentCount: number): boolean => {
+  const checkLimit = (feature: LimitedFeature, currentCount: number, limitOverride?: number): boolean => {
     if (!PREMIUM_ENABLED) return true;
     if (isPremium) return true;
-    if (currentCount < FREE_LIMITS[feature]) return true;
-    openPaywall({ kind: 'limit', feature, current: currentCount });
+    if (currentCount < (limitOverride ?? FREE_LIMITS[feature])) return true;
+    openPaywall({ kind: 'limit', feature, current: currentCount, limit: limitOverride ?? FREE_LIMITS[feature], blocked: true });
     return false;
   };
 
@@ -63,6 +66,7 @@ export function usePaywall() {
   const guardScreen = (feature: PremiumFeature): boolean => {
     if (!PREMIUM_ENABLED) return true;
     if (isPremium) return true;
+    trackConversion('blocked', conversionSource({ kind: 'feature', feature }), 'premium');
     navigation.replace('Paywall', { trigger: { kind: 'feature', feature } });
     return false;
   };
@@ -85,6 +89,7 @@ export function usePaywall() {
   const guardMaster = (feature?: string): boolean => {
     if (!PREMIUM_ENABLED) return true;
     if (isMaster) return true;
+    trackConversion('blocked', conversionSource({ kind: 'master', feature }), 'master');
     navigation.replace('Paywall', { trigger: { kind: 'master', feature } });
     return false;
   };

@@ -50,6 +50,14 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
+export interface ConversionOpportunitiesData {
+  limit: number;
+  nearLimit: number; atLimit: number; blocked: number; masterInterest: number; checkoutInterest: number; formerPayers: number;
+  distribution: { count: number; users: number }[];
+  users: { id: string; companyName: string; email: string; recipes: number; blocked: boolean; master: boolean; interested: boolean; formerPayer: boolean; lastSeenAt: string }[];
+  funnel: { source: string; blocked: number; viewed: number; clicked: number; checkout: number; eligible: number; converted: number }[];
+}
+
 export interface TopRevenueUser {
   id: string;
   companyName: string;
@@ -446,6 +454,7 @@ export const api = {
     }).then(r => r.ok).catch(() => false).finally(() => clearTimeout(timer));
   },
 
+  getConversionOpportunities: () => req<ConversionOpportunitiesData>('/admin/conversion-opportunities'),
   getStats: () => req<Stats>('/admin/stats'),
 
   getSubscriptionDashboard: () => req<SubscriptionDashboard>('/admin/subscriptions'),

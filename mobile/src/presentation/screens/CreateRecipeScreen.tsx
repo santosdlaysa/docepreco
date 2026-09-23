@@ -1,3 +1,4 @@
+import { planConfigApi } from '../../data/api/planConfigApi';
 import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import {
@@ -655,9 +656,9 @@ export const CreateRecipeScreen: React.FC = () => {
     setLaborExpanded(!laborExpanded);
   };
 
-  const handleShowConfirmation = () => {
+  const handleShowConfirmation = async () => {
     if (!validate()) return;
-    if (!isEditing && !checkLimit('recipes', recipeCount)) return;
+    if (!isEditing && !checkLimit('recipes', recipeCount, await planConfigApi.getFreeRecipeLimit())) return;
     setShowConfirmModal(true);
   };
 
@@ -723,12 +724,14 @@ export const CreateRecipeScreen: React.FC = () => {
         navigation.replace('RecipeDetail', { recipeId: recipe.id });
       }
     } catch (error) {
-      const err = error as Error & { code?: string; current?: number };
+      const err = error as Error & { code?: string; current?: number; limit?: number };
       if (err.code === 'RECIPE_LIMIT') {
         openPaywall({
           kind: 'limit',
           feature: 'recipes',
           current: err.current ?? recipeCount,
+          limit: err.limit,
+          blocked: true,
         });
         return;
       }

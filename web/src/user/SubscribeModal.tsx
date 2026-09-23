@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Sparkles, Copy, Check, Clock, Loader2, ArrowUpCircle } from 'lucide-react';
 import { ModalOverlay, ToastFn } from '../components';
 import { userApi, PixConfig, PixPlanConfig, PixRequestStatus, PlanTier, effectiveTier } from './userApi';
@@ -49,15 +49,24 @@ type Cycle = 'monthly' | 'annual';
 
 export function SubscribeModal({
   initialTier,
+  source = 'manual',
   onClose,
   toast,
 }: {
   initialTier: PlanTier;
+  source?: string;
   onClose: () => void;
   toast: ToastFn;
 }) {
   const { user } = useAuth();
   const currentTier = effectiveTier(user);
+  const tracked = useRef(false);
+  useEffect(() => {
+    if (tracked.current) return;
+    tracked.current = true;
+    const target = initialTier === 'master' ? 'master' : 'premium';
+    userApi.trackConversion('offer_viewed', source, target);
+  }, [source, initialTier]);
 
   const [config, setConfig] = useState<PixConfig | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,7 +121,13 @@ export function SubscribeModal({
   const canUpgrade = tier === 'master' && currentTier === 'premium' && upgradeDiff != null;
   const fmtCents = (c: number) => `R$ ${(c / 100).toFixed(2).replace('.', ',')}`;
 
+  const trackCheckout = () => {
+    userApi.trackConversion('offer_clicked', source, tier);
+    userApi.trackConversion('checkout_started', source, tier);
+  };
+
   const copy = async (text: string) => {
+    trackCheckout();
     try {
       await navigator.clipboard.writeText(text);
       setCopied(true);
@@ -123,6 +138,7 @@ export function SubscribeModal({
   };
 
   const confirmPaid = async () => {
+    trackCheckout();
     setSubmitting(true);
     try {
       const cycleLabel = effectiveCycle === 'monthly' ? 'mensal' : 'anual';
@@ -138,6 +154,7 @@ export function SubscribeModal({
   };
 
   const startUpgrade = async () => {
+    trackCheckout();
     setSubmitting(true);
     try {
       const res = await userApi.upgradeToMaster();

@@ -16,6 +16,7 @@ import goalRoutes from './presentation/routes/goalRoutes';
 import seasonRoutes from './presentation/routes/seasonRoutes';
 import orderRoutes from './presentation/routes/orderRoutes';
 import priceHistoryRoutes from './presentation/routes/priceHistoryRoutes';
+import conversionRoutes from './presentation/routes/conversionRoutes';
 import { authMiddleware } from './presentation/middleware/authMiddleware';
 import telegramRoutes from './presentation/routes/telegramRoutes';
 import bannerRoutes from './presentation/routes/bannerRoutes';
@@ -191,6 +192,7 @@ app.use((req, res, next) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/conversion-events', authMiddleware, conversionRoutes);
 app.use('/api/recipes', authMiddleware, recipeRoutes);
 app.use('/api/ingredients', authMiddleware, ingredientRoutes);
 app.use('/api/sales', authMiddleware, saleRoutes);

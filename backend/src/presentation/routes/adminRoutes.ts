@@ -2,11 +2,26 @@ import { Router } from 'express';
 import { AdminController } from '../controllers/AdminController';
 import { adminMiddleware } from '../middleware/adminMiddleware';
 
+import { pool } from '../../infrastructure/database/connection';
+import { getFreeRecipeLimit } from '../../domain/services/premium';
+import { opportunitiesSql, conversionFunnelSql } from '../../infrastructure/services/conversionService';
+
 const router = Router();
 const controller = new AdminController();
 
 router.use(adminMiddleware);
 
+router.get('/conversion-opportunities', async (_req, res) => {
+  try {
+    const limit = await getFreeRecipeLimit();
+    const [opportunities, funnel] = await Promise.all([
+      pool.query(opportunitiesSql, [limit]), pool.query(conversionFunnelSql),
+    ]);
+    res.json({ success: true, data: { limit, ...opportunities.rows[0].data, funnel: funnel.rows } });
+  } catch {
+    res.status(500).json({ success: false, error: 'Não foi possível carregar as oportunidades.' });
+  }
+});
 router.get('/stats', (req, res) => controller.getStats(req, res));
 router.get('/subscriptions', (req, res) => controller.getSubscriptionDashboard(req, res));
 router.get('/business-metrics', (req, res) => controller.getBusinessMetrics(req, res));

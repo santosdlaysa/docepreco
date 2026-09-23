@@ -1,3 +1,4 @@
+import { conversionSource, trackConversion } from '../../data/api/conversionApi';
 import { colors } from '../theme/colors';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -101,7 +102,7 @@ export const PaywallScreen: React.FC = () => {
   const premiumRef = useRef(isPremium);
   const [pixPlan, setPixPlan] = useState<'monthly' | 'annual' | null>(null);
   // Nível escolhido pelo usuário no paywall (Premium ou Master)
-  const [tier, setTier] = useState<'premium' | 'master'>('premium');
+  const [tier, setTier] = useState<'premium' | 'master'>(route.params?.trigger?.kind === 'master' ? 'master' : 'premium');
   // Assinante legado: já pagou o mensal de R$ 10,00 — mantém esse preço na renovação
   const [legacyMonthly, setLegacyMonthly] = useState(false);
   // Rótulos de preço PIX gerenciados pelo painel web (fallback nos valores fixos)
@@ -128,6 +129,17 @@ export const PaywallScreen: React.FC = () => {
   };
 
   const trigger = route.params?.trigger;
+  const source = conversionSource(trigger);
+  const viewed = useRef(false);
+  useEffect(() => {
+    if (viewed.current) return;
+    viewed.current = true;
+    trackConversion('offer_viewed', source, trigger?.kind === 'master' ? 'master' : 'premium');
+  }, [source, trigger]);
+  const trackCheckout = () => {
+    trackConversion('offer_clicked', source, tier);
+    trackConversion('checkout_started', source, tier);
+  };
 
   // Recurso exclusivo do Master → já abre o paywall no nível Master.
   useEffect(() => {
@@ -252,6 +264,7 @@ export const PaywallScreen: React.FC = () => {
 
   // Cria a cobrança da diferença e leva para a tela de PIX já com o QR do upgrade.
   const handleUpgrade = async () => {
+    trackCheckout();
     setUpgrading(true);
     try {
       const result = await pixApi.upgradeToMaster();
@@ -269,6 +282,7 @@ export const PaywallScreen: React.FC = () => {
   };
 
   const handleCardPayment = async (plan: 'monthly' | 'annual') => {
+    trackCheckout();
     setCardLoading(true);
     try {
       const url = await stripeApi.createCheckout(plan, tier);
@@ -299,6 +313,7 @@ export const PaywallScreen: React.FC = () => {
 
   const handlePurchase = async () => {
     if (!selected || !selectedPkg) return;
+    trackCheckout();
     setPurchasing(selectedPkg.identifier);
     try {
       const result = await purchasePackage(selectedPkg);
@@ -351,11 +366,13 @@ export const PaywallScreen: React.FC = () => {
             <Ionicons name="trophy" size={26} color="#FFE08A" />
           </View>
 
-          <Text style={st.heroTitle}>Tudo ilimitado para{'\n'}sua confeitaria</Text>
+          <Text style={st.heroTitle}>{isMasterTier ? 'Venda e gerencie seu negócio' : trigger?.kind === 'limit' && trigger.feature === 'recipes' ? 'Cadastre sua próxima receita' : 'Organize sua confeitaria'}</Text>
           <Text style={st.heroSub}>
             {isMasterTier
-              ? 'Tudo do Premium + financeiro, estoque e dicas de vendas.'
-              : 'Desbloqueie 9 recursos PRO e leve seu negócio de doces a sério.'}
+              ? 'Sua loja online, controle de estoque e gestão financeira, além de tudo do Premium.'
+              : trigger?.kind === 'limit' && trigger.feature === 'recipes'
+                ? `Suas receitas continuam salvas. ${trigger.limit ? `O Free permite ${trigger.limit} receitas. ` : ''}Com o Premium, cadastre receitas sem limite.`
+                : 'Receitas ilimitadas, gestão de clientes e encomendas em um só lugar.'}
           </Text>
           {/* Trial no hero: só mostra se algum pacote da loja tem trial e o usuário é elegível */}
           {trialPackage && (
@@ -443,7 +460,7 @@ export const PaywallScreen: React.FC = () => {
                 )}
               </View>
 
-              <TouchableOpacity onPress={() => pixPlan && navigation.navigate('PixPayment', { plan: pixPlan, tier })} disabled={!pixPlan} activeOpacity={0.85}>
+              <TouchableOpacity onPress={() => { if (pixPlan) { trackCheckout(); navigation.navigate('PixPayment', { plan: pixPlan, tier }); } }} disabled={!pixPlan} activeOpacity={0.85}>
                 <View style={[st.pixCta, !pixPlan && { opacity: 0.5 }]}>
                   <Ionicons name="qr-code-outline" size={20} color="#fff" />
                   <Text style={st.ctaText}>{pixPlan ? 'Pagar com Pix' : 'Escolha um plano acima'}</Text>

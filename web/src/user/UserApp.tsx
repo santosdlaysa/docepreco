@@ -240,7 +240,7 @@ function Shell() {
               const req = PAGE_REQUIREMENT[page];
               if (req && !tierSatisfies(tier, req)) {
                 const nav = NAV.find(n => n.id === page);
-                return <Paywall required={req} featureLabel={nav?.label ?? ''} featureIcon={nav?.icon} toast={toast} />;
+                return <Paywall featureKey={page} required={req} featureLabel={nav?.label ?? ''} featureIcon={nav?.icon} toast={toast} />;
               }
               return (
                 <>

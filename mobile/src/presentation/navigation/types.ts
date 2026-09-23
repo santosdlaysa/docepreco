@@ -2,7 +2,7 @@ import { PremiumFeature, LimitedFeature } from '../premium/limits';
 import { Sale } from '../../domain/entities/Sale';
 
 export type PaywallTrigger =
-  | { kind: 'limit'; feature: LimitedFeature; current: number }
+  | { kind: 'limit'; feature: LimitedFeature; current: number; limit?: number; blocked?: boolean }
   | { kind: 'feature'; feature: PremiumFeature }
   | { kind: 'master'; feature?: string }
   | { kind: 'manual' };

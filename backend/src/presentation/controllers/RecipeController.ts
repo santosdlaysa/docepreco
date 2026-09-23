@@ -12,6 +12,8 @@ import { AuthRequest } from '../middleware/authMiddleware';
 import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES, getFreeRecipeLimit } from '../../domain/services/premium';
 import { processReferralActivation } from '../../infrastructure/services/referralService';
 
+import { recordConversion } from '../../infrastructure/services/conversionService';
+
 const recipeRepo = new PostgresRecipeRepository();
 const ingredientRepo = new PostgresIngredientRepository();
 const userRepo = new PostgresUserRepository();
@@ -52,6 +54,7 @@ export class RecipeController {
       const count = await userRepo.countRecipes(req.userId!);
       const freeRecipeLimit = await getFreeRecipeLimit();
       if (!canCreateMore(user, 'recipes', count, freeRecipeLimit)) {
+        void recordConversion(req.userId!, 'blocked', 'recipe_limit', 'premium');
         res.status(403).json({
           success: false,
           error: `Você atingiu o limite de ${freeRecipeLimit} receitas do plano gratuito. Assine o Premium para criar mais.`,

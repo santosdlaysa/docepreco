@@ -1,3 +1,4 @@
+import { migrateConversions } from './conversionMigration';
 import { migrateStorePayments } from './storePaymentsMigration';
 import { pool } from './connection';
 import dotenv from 'dotenv';
@@ -1412,6 +1413,7 @@ export async function runMigrations() {
       )
     `);
 
+    await migrateConversions(client);
     await migrateStorePayments(client);
     await client.query('COMMIT');
     console.log('\n✨ Migrations applied successfully');

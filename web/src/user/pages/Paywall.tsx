@@ -1,24 +1,34 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Lock, Sparkles, Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ToastFn } from '../../components';
-import { PlanTier } from '../userApi';
+import { PlanTier, userApi } from '../userApi';
 import { TIER_META } from '../plan';
 import { SubscribeModal } from '../SubscribeModal';
 
 export function Paywall({
   required,
+  featureKey,
   featureLabel,
   featureIcon: Icon,
   toast,
 }: {
   required: Exclude<PlanTier, 'free'>;
+  featureKey: string;
   featureLabel: string;
   featureIcon?: LucideIcon;
   toast: ToastFn;
 }) {
   const [open, setOpen] = useState(false);
   const meta = TIER_META[required];
+  const source = ({ clients: 'clientsManagement', orders: 'ordersManagement', store: 'store', stock: 'stock', finance: 'finance', tips: 'salesTips' } as Record<string, string>)[featureKey] ?? 'other';
+  const trackedSource = useRef('');
+  useEffect(() => {
+    if (trackedSource.current === source) return;
+    trackedSource.current = source;
+    userApi.trackConversion('blocked', source, required);
+    userApi.trackConversion('offer_viewed', source, required);
+  }, [source, required]);
   const gradient =
     required === 'master'
       ? 'from-purple-500 via-purple-600 to-purple-800'
@@ -36,7 +46,7 @@ export function Paywall({
           Este recurso faz parte do plano {meta.label}. Assine para desbloquear e turbinar a gestão da sua confeitaria.
         </p>
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => { userApi.trackConversion('offer_clicked', source, required); setOpen(true); }}
           className="mt-5 inline-flex items-center gap-2 bg-white text-gray-900 font-semibold rounded-xl px-5 py-2.5 hover:bg-white/90 transition-colors"
         >
           <Sparkles size={16} className={meta.color} />
@@ -58,7 +68,7 @@ export function Paywall({
         </ul>
       </div>
 
-      {open && <SubscribeModal initialTier={required} onClose={() => setOpen(false)} toast={toast} />}
+      {open && <SubscribeModal source={source} initialTier={required} onClose={() => setOpen(false)} toast={toast} />}
     </div>
   );
 }

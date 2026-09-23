@@ -326,12 +326,19 @@ export const RecipesScreen: React.FC = () => {
               ]}
             />
           </View>
-          <TouchableOpacity onPress={() => openPaywall({ kind: 'limit', feature: 'recipes', current: recipes.length })}>
-            <Text style={styles.goProText}>Virar PRO</Text>
+          <TouchableOpacity onPress={() => openPaywall({ kind: 'limit', feature: 'recipes', current: recipes.length, limit: freeRecipeLimit })}>
+            <Text style={styles.goProText}>Conhecer Premium</Text>
           </TouchableOpacity>
         </View>
       )}
 
+      {!isPremium && recipes.length >= freeRecipeLimit - 1 && (
+        <Text style={{ color: colors.textSecondary, paddingHorizontal: 20, paddingBottom: 12 }}>
+          {recipes.length >= freeRecipeLimit
+            ? 'Você usou suas receitas gratuitas. Cadastre sua próxima receita com o Premium.'
+            : 'Falta 1 receita para atingir o limite gratuito. Conheça o Premium para continuar sem esse limite.'}
+        </Text>
+      )}
       <AdBanner />
     </View>
   );
