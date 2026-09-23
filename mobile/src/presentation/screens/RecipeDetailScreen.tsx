@@ -436,7 +436,7 @@ export const RecipeDetailScreen: React.FC = () => {
           {/* ═══════ MARGIN ═══════ */}
           <View style={s.marginCard}>
             <View style={s.marginTop}>
-              <Text style={s.marginLabel}>Margem de lucro</Text>
+              <Text style={s.marginLabel}>Acréscimo sobre o custo</Text>
               <Text style={s.marginValue}>{recipe.profitMargin}%</Text>
             </View>
           </View>
@@ -493,9 +493,14 @@ export const RecipeDetailScreen: React.FC = () => {
                 </View>
                 <View style={s.resultGridItem}>
                   <Text style={s.resultGridVal}>{formatCurrency(calculation.estimatedProfit)}</Text>
-                  <Text style={s.resultGridLbl}>lucro estimado</Text>
+                  <Text style={s.resultGridLbl}>lucro da receita</Text>
                 </View>
               </View>
+              <Text style={{ color: '#fff', marginTop: 12 }}>
+                Lucro estimado / un: {formatCurrency(calculation.suggestedPrice - calculation.costPerUnit)}
+                {'\n'}Margem sobre a venda: {calculation.suggestedPrice > 0 ? `${((calculation.suggestedPrice - calculation.costPerUnit) / calculation.suggestedPrice * 100).toFixed(1)}%` : '—'}
+                {'\n'}Estimativas antes do arredondamento do preço.
+              </Text>
             </LinearGradient>
           )}
 

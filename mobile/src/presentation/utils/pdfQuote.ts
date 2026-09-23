@@ -280,7 +280,7 @@ const buildHtml = ({ recipe, calculation, companyName, currency = 'BRL' }: Quote
       <div class="meta-value">${recipe.yield}</div>
     </div>
     <div class="meta-card">
-      <div class="meta-label">Margem</div>
+      <div class="meta-label">Acréscimo</div>
       <div class="meta-value">${recipe.profitMargin}%</div>
     </div>
     <div class="meta-card">

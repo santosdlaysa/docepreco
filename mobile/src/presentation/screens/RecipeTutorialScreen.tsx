@@ -214,9 +214,9 @@ export const RecipeTutorialScreen: React.FC = () => {
                 <Text style={s.priceStepNumText}>B</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.priceStepLabel}>Escolha uma Margem</Text>
+                <Text style={s.priceStepLabel}>Escolha um acréscimo</Text>
                 <Text style={s.priceStepDesc}>
-                  Presets recomendados: 30% (básico), 50% (padrão), 70% (recomendado)
+                  Exemplos de acréscimo sobre o custo: 30%, 50% e 70%
                 </Text>
               </View>
             </View>
@@ -236,7 +236,7 @@ export const RecipeTutorialScreen: React.FC = () => {
             <View style={[s.infoBanner, { backgroundColor: '#FFF0F8', borderLeftColor: PINK }]}>
               <Ionicons name="star" size={16} color={PINK} />
               <Text style={[s.bannerText, { color: INK }]}>
-                <Text style={{ fontWeight: '700' }}>Dica de negócio:</Text> 70% de margem é ideal para a maioria dos doces artesanais
+                <Text style={{ fontWeight: '700' }}>Dica de negócio:</Text> 100% de acréscimo dobra o custo; isso equivale a 50% de margem sobre a venda.
               </Text>
             </View>
           </View>
@@ -263,7 +263,7 @@ export const RecipeTutorialScreen: React.FC = () => {
             <View style={s.errorItem}>
               <Text style={s.errorIcon}>❌</Text>
               <View style={{ flex: 1 }}>
-                <Text style={s.errorTitle}>Margem muito baixa</Text>
+                <Text style={s.errorTitle}>Acréscimo muito baixo</Text>
                 <Text style={s.errorDesc}>
                   Menos de 30% não cobre imprevistos e não gera lucro real
                 </Text>
@@ -322,7 +322,7 @@ export const RecipeTutorialScreen: React.FC = () => {
               </View>
 
               <View style={s.exampleRow}>
-                <Text style={s.exampleLabel}>Margem (70%):</Text>
+                <Text style={s.exampleLabel}>Acréscimo (70%):</Text>
                 <Text style={s.exampleValue}>+R$ 30,45</Text>
               </View>
 

@@ -708,7 +708,7 @@ export const CreateRecipeScreen: React.FC = () => {
         yieldTotalUnit: yieldMode === 'estimated' ? totalReadyUnit : null,
         yieldUnitWeight: yieldMode === 'estimated' ? parseLocaleNumber(weightPerUnit) : null,
         yieldUnitWeightUnit: yieldMode === 'estimated' ? weightPerUnitUnit : null,
-        profitMargin: parseLocaleNumber(profitMargin) || 30,
+        profitMargin: parseLocaleNumber(profitMargin),
         ingredients,
         additionalCosts: getFinalCostsFromInputs(),
         subRecipes,
@@ -1136,9 +1136,10 @@ export const CreateRecipeScreen: React.FC = () => {
             {errors.yield && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.yield}</Text>}
           </View>
 
-          {/* ── Margem de lucro (3-col grid) ── */}
+          {/* ── Acréscimo sobre o custo (3-col grid) ── */}
           <View style={{ gap: 7 }}>
-            <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Margem de lucro</Text>
+            <Text style={{ fontSize: 13, fontWeight: '700', color: INK, marginLeft: 2 }}>Acréscimo sobre o custo</Text>
+            <Text style={{ fontSize: 12, color: INK2 }}>100% dobra o custo. Isso equivale a 50% de margem sobre a venda.</Text>
             <View style={{ flexDirection: 'row', gap: 9 }}>
               {MARGIN_PRESETS.slice(0, 3).map(preset => {
                 const selected = String(preset.value) === profitMargin || Number(profitMargin) === preset.value;
@@ -1399,9 +1400,12 @@ export const CreateRecipeScreen: React.FC = () => {
                   </Text>
                 </View>
                 <View style={{ flex: 1, backgroundColor: CREAM2, borderRadius: 12, padding: 10 }}>
-                  <Text style={{ fontSize: 11, color: INK2, fontWeight: '600' }}>Lucro estimado</Text>
+                  <Text style={{ fontSize: 11, color: INK2, fontWeight: '600' }}>Lucro estimado da receita</Text>
                   <Text style={{ fontSize: 14, color: '#2BA060', fontWeight: '800', marginTop: 2 }}>
                     {formatCurrency(pricingPreview.estimatedProfit)}
+                  </Text>
+                  <Text style={{ fontSize: 11, color: INK2, marginTop: 4 }}>
+                    {formatCurrency(pricingPreview.suggestedPrice - pricingPreview.costPerUnit)} / un
                   </Text>
                 </View>
               </View>

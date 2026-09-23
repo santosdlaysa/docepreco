@@ -282,7 +282,7 @@ export function UserDataPage({ userId, onBack, toast }: Props) {
                             <p className="font-semibold text-gray-900 dark:text-white">{fmtUnitCurrency(r.yield > 0 ? r.totalCost / r.yield : 0)}</p>
                           </div>
                           <div>
-                            <p className="text-xs text-gray-400">Margem</p>
+                            <p className="text-xs text-gray-400">Acréscimo</p>
                             <p className="font-semibold text-gray-900 dark:text-white">{r.profitMargin}%</p>
                           </div>
                           <div>
@@ -773,7 +773,7 @@ function EditRecipeModal({
             <input type="number" step="any" value={yieldValue} onChange={e => setYieldValue(e.target.value)} className={inputClass} />
           </label>
           <label className="block">
-            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Margem de lucro (%)</span>
+            <span className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Acréscimo sobre o custo (%)</span>
             <input type="number" step="any" value={margin} onChange={e => setMargin(e.target.value)} className={inputClass} />
           </label>
         </div>

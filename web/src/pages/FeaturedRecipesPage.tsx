@@ -140,7 +140,7 @@ export function FeaturedRecipesPage({ toast }: Props) {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900 dark:text-white">{item.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {item.ingredients.length} ingredientes · {item.yield} un · {item.profitMargin}% margem
+                      {item.ingredients.length} ingredientes · {item.yield} un · {item.profitMargin}% de acréscimo
                     </p>
                   </div>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded shrink-0 ${item.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400'}`}>
@@ -218,7 +218,7 @@ export function FeaturedRecipesPage({ toast }: Props) {
                     value={form.yield} onChange={e => setForm({ ...form, yield: parseInt(e.target.value) || 1 })} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Margem de lucro (%)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Acréscimo sobre o custo (%)</label>
                   <input type="number" min="0" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 focus:border-primary-400 outline-none"
                     value={form.profitMargin} onChange={e => setForm({ ...form, profitMargin: parseFloat(e.target.value) || 0 })} />
                 </div>

@@ -66,3 +66,20 @@ test('edição administrativa avisa quando o rendimento é inválido', () => {
 test('edição administrativa avisa quando a unidade é incompatível', () => {
   assert.ok(calculateAdminRecipePreview([{ ingredientId: 'box', quantityUsed: 1, unit: 'g' }], [packageIngredient], [], [], [], '1', '0').error);
 });
+
+const subSource = fs.readFileSync(path.join(__dirname, '../src/user/subRecipePricing.ts'), 'utf8');
+const subModule = { exports: {}, require: () => context.exports };
+vm.runInNewContext(ts.transpileModule(subSource, { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText, subModule);
+const { getSubRecipeUsageCost } = subModule.exports;
+const fillingIngredient = { id: 'milk', purchaseQuantity: 1, purchaseUnitWeight: 1000, purchasePrice: 16, unit: 'g' };
+const filling = { yield: 4, ingredients: [{ ingredientId: 'milk', quantityUsed: 1000, unit: 'g' }], additionalCosts: [{ name: 'Energia', value: 4 }] };
+test('prévia de sub-receitas inclui custos adicionais e converte unidades e peso', () => {
+  assert.equal(getSubRecipeUsageCost(filling, [fillingIngredient], 2, 'un'), 10);
+  assert.equal(getSubRecipeUsageCost(filling, [fillingIngredient], 0.25, 'kg'), 5);
+  assert.equal(getSubRecipeUsageCost(filling, [fillingIngredient], 250, 'g'), 5);
+});
+test('prévia não ignora sub-receita com ingrediente ausente ou sem rendimento', () => {
+  assert.throws(() => getSubRecipeUsageCost(filling, [], 1, 'un'), /não encontrado/);
+  assert.throws(() => getSubRecipeUsageCost({ ...filling, yield: 0 }, [fillingIngredient], 1, 'un'), /rendimento/);
+  assert.throws(() => getSubRecipeUsageCost({ yield: 1, ingredients: [], additionalCosts: [] }, [], 1, 'g'), /rendimento/);
+});

@@ -77,7 +77,7 @@ export function printRecipeQuote(recipe: Recipe, calc: CalculationResult, compan
 
     <div class="meta">
       <div class="card"><div class="lbl">Rendimento</div><div class="val">${recipe.yield}</div></div>
-      <div class="card"><div class="lbl">Margem</div><div class="val">${recipe.profitMargin}%</div></div>
+      <div class="card"><div class="lbl">Acréscimo</div><div class="val">${recipe.profitMargin}%</div></div>
       <div class="card"><div class="lbl">Ingredientes</div><div class="val">${recipe.ingredients?.length ?? 0}</div></div>
     </div>
 

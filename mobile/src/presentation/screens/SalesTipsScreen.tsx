@@ -267,7 +267,7 @@ async function buildPricingTips(
       id: 'best-margin',
       icon: 'rocket-outline',
       type: 'positive',
-      message: `"${bestMargin.name}" tem a maior margem (${bestMargin.margin.toFixed(0)}%). Divulgue mais esse produto para lucrar mais com o mesmo esforço.`,
+      message: `"${bestMargin.name}" tem o maior acréscimo sobre o custo (${bestMargin.margin.toFixed(0)}%). Confira também o lucro por unidade e a procura por esse produto.`,
     });
   }
 

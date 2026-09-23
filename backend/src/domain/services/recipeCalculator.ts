@@ -11,6 +11,7 @@ export interface SubRecipeCostInfo {
 
 export interface RecipeCalculationInput {
   yield: number;
+  /** Legacy field name: percentage markup on cost, not margin on selling price. */
   profitMargin: number;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];

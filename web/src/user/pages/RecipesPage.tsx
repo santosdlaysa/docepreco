@@ -1,4 +1,5 @@
 import { createPortal } from 'react-dom';
+import { getSubRecipeUsageCost } from '../subRecipePricing';
 import { SubscribeModal } from '../SubscribeModal';
 import { effectiveTier } from '../userApi';
 import { useEffect, useState, useCallback } from 'react';
@@ -158,7 +159,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                     <button onClick={toggle} className="flex-1 min-w-0 text-left">
                       <p className="font-semibold text-gray-900 dark:text-white truncate">{r.name}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        Rende {r.yield} · margem {r.profitMargin}% · {r.ingredients.length} ingrediente
+                        Rende {r.yield} · acréscimo {r.profitMargin}% · {r.ingredients.length} ingrediente
                         {r.ingredients.length !== 1 ? 's' : ''}
                       </p>
                     </button>
@@ -561,7 +562,7 @@ function RecipeForm({
       yieldTotalUnit: yieldMode === 'estimated' ? totalReadyUnit : null,
       yieldUnitWeight: yieldMode === 'estimated' ? parseLocaleNumber(weightPerUnit) : null,
       yieldUnitWeightUnit: yieldMode === 'estimated' ? weightPerUnitUnit : null,
-      profitMargin: parseLocaleNumber(margin) || 30,
+      profitMargin: parseLocaleNumber(margin),
       ingredients: rows.map(r => ({ ...r, quantityUsed: parseLocaleNumber(r.quantityUsed) })),
       additionalCosts,
       subRecipes: subRows.map(s => ({ ...s, quantityUsed: parseLocaleNumber(s.quantityUsed) })),
@@ -723,11 +724,12 @@ function RecipeForm({
           )}
         </div>
 
-        {/* Margem de lucro — presets */}
+        {/* Acréscimo sobre o custo — presets */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-            Margem de lucro
+            Acréscimo sobre o custo
           </label>
+          <p className="text-xs text-gray-500 mb-2">100% dobra o custo. Isso equivale a 50% de margem sobre a venda.</p>
           <div className="grid grid-cols-3 gap-2">
             {MARGIN_PRESETS.map(p => {
               const selected = !customMargin && parseLocaleNumber(margin) === p.value;
@@ -777,7 +779,7 @@ function RecipeForm({
               inputMode="decimal"
               value={margin}
               onChange={e => setMargin(e.target.value)}
-              placeholder="Margem em %"
+              placeholder="Acréscimo em %"
               className={inputClass + ' mt-2'}
             />
           )}
@@ -803,14 +805,26 @@ function RecipeForm({
           // Calcula custos adicionais
           let additionalCostTotal = 0;
           Object.values(presetCosts).forEach(v => {
-            additionalCostTotal += parseLocaleNumber(v);
+            additionalCostTotal += Math.max(0, parseLocaleNumber(v));
           });
           customCosts.forEach(c => {
-            additionalCostTotal += parseLocaleNumber(c.value);
+            if (c.name.trim()) additionalCostTotal += Math.max(0, parseLocaleNumber(c.value));
           });
           additionalCostTotal += laborCostValue;
 
-          const totalCost = ingredientsCost + additionalCostTotal;
+          let subRecipesCost = 0;
+          try {
+            for (const row of subRows) {
+              const quantity = parseLocaleNumber(row.quantityUsed);
+              if (quantity === 0) continue;
+              const sub = allRecipes.find(recipe => recipe.id === row.subRecipeId);
+              if (!sub) throw new Error('Sub-receita não encontrada.');
+              subRecipesCost += getSubRecipeUsageCost(sub, ingredients, quantity, row.unit);
+            }
+          } catch (error) {
+            return <p role="alert" className="text-sm text-red-600">{(error as Error).message}</p>;
+          }
+          const totalCost = ingredientsCost + additionalCostTotal + subRecipesCost;
           const costPerUnit = yieldNum > 0 ? totalCost / yieldNum : 0;
           const suggestedPrice = costPerUnit * (1 + marginNum / 100);
           const estimatedProfit = (suggestedPrice - costPerUnit) * yieldNum;
@@ -831,6 +845,10 @@ function RecipeForm({
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRL(additionalCostTotal)}</p>
               </div>
 
+              {subRows.length > 0 && <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Sub-receitas</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRL(subRecipesCost)}</p>
+              </div>}
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-primary-300 dark:border-primary-700">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Custo Total</p>
                 <p className="text-lg font-bold text-primary-600 dark:text-primary-400">{formatBRL(totalCost)}</p>
@@ -842,13 +860,15 @@ function RecipeForm({
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2 border-2 border-emerald-300 dark:border-emerald-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Preço Sugerido ({marginNum}%)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Preço sugerido (acréscimo de {marginNum}%)</p>
                 <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(suggestedPrice)}</p>
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Lucro Estimado</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Lucro estimado da receita</p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatBRL(estimatedProfit)}</p>
+                <p className="text-sm text-gray-600 dark:text-gray-300">Lucro / un: {formatBRL(suggestedPrice - costPerUnit)} · Margem sobre a venda: {suggestedPrice > 0 ? `${((suggestedPrice - costPerUnit) / suggestedPrice * 100).toFixed(1)}%` : '—'}</p>
+                <p className="text-xs text-gray-500">Estimativas antes do arredondamento do preço.</p>
               </div>
             </div>
           ) : null;

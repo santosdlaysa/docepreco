@@ -7,6 +7,16 @@ const makeIngredientMap = (list: TestIngredient[]) =>
   new Map(list.map(i => [i.id, i] as const));
 
 describe('calculateRecipe', () => {
+  it('usa acréscimo sobre custo, preserva precisão e arredonda apenas na apresentação', () => {
+    const result = calculateRecipe({ yield: 20, profitMargin: 100, ingredients: [], additionalCosts: [{ name: 'Custo', value: 17.14 }] }, new Map());
+    expect(result.costPerUnit).toBeCloseTo(0.857, 10);
+    expect(result.suggestedPrice).toBeCloseTo(1.714, 10);
+    expect(result.suggestedPrice.toFixed(2)).toBe('1.71');
+    expect((result.suggestedPrice - result.costPerUnit) / result.suggestedPrice).toBeCloseTo(0.5, 10);
+    const zero = calculateRecipe({ yield: 20, profitMargin: 0, ingredients: [], additionalCosts: [{ name: 'Custo', value: 17.14 }] }, new Map());
+    expect(zero.suggestedPrice).toBe(zero.costPerUnit);
+    expect(zero.estimatedProfit).toBe(0);
+  });
   describe('happy path', () => {
     it('calcula corretamente o preço de um bolo simples', () => {
       // Bolo usa 500g de farinha (pacote 1kg = R$10 → R$5) +
