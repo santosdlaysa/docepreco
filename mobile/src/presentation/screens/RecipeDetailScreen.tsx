@@ -163,7 +163,12 @@ export const RecipeDetailScreen: React.FC = () => {
       // request is running.
       setLoading(false);
       void handleCalculate(recipeId);
-    } catch {
+    } catch (error) {
+      if ((error as { code?: string }).code === 'RECIPE_INACTIVE') {
+        setRecipe(null);
+        navigation.replace('Paywall', { trigger: { kind: 'feature', feature: 'inactiveRecipes' } });
+        return;
+      }
       Alert.alert(t('common.error'), t('recipeDetail.loadError'));
     } finally {
       setLoading(false);
@@ -176,7 +181,13 @@ export const RecipeDetailScreen: React.FC = () => {
     try {
       const result = await api.calculate(id || recipeId);
       setCalculation(result);
-    } catch {
+    } catch (error) {
+      if ((error as { code?: string }).code === 'RECIPE_INACTIVE') {
+        setRecipe(null);
+        setCalculation(null);
+        navigation.replace('Paywall', { trigger: { kind: 'feature', feature: 'inactiveRecipes' } });
+        return;
+      }
       setCalculationError(true);
     } finally {
       setCalculating(false);

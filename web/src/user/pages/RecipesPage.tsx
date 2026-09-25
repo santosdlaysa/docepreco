@@ -58,7 +58,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
       setIngredients(i);
       // Calcula o preço de todas as receitas automaticamente, em paralelo
       const entries = await Promise.all(
-        r.map(async rec => {
+        r.filter(rec => rec.isActive !== false).map(async rec => {
           try {
             return [rec.id, await userApi.calculateRecipe(rec.id)] as const;
           } catch {
@@ -80,7 +80,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
 
   useEffect(() => {
     load();
-  }, [load]);
+  }, [load, user?.isPremium, user?.premiumUntil]);
 
   const handleDelete = async () => {
     if (!confirmId) return;
@@ -146,6 +146,16 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 items-start">
           {recipes.map(r => {
+            if (r.isActive === false) return (
+              <div key={r.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-start gap-2">
+                <button onClick={() => openOffer('recipe_inactive')} className="flex-1 min-w-0 text-left">
+                  <p className="font-semibold text-gray-500 truncate">{r.name}</p>
+                  <p className="text-sm text-gray-500 mt-1">Inativa no plano gratuito</p>
+                  <p className="text-sm font-semibold text-primary-600 mt-2">Assine para liberar</p>
+                </button>
+                <button onClick={() => setConfirmId(r.id)} className={iconBtnDanger} title="Excluir"><Trash2 size={16} /></button>
+              </div>
+            );
             const c = calcs[r.id];
             const open = expandedId === r.id;
             const toggle = () => setExpandedId(open ? null : r.id);
@@ -459,7 +469,7 @@ function RecipeForm({
   const [showTutorial, setShowTutorial] = useState(false);
   const [showYieldInfo, setShowYieldInfo] = useState(false);
 
-  const availableSubRecipes = allRecipes.filter(r => r.id !== initial?.id);
+  const availableSubRecipes = allRecipes.filter(r => r.isActive !== false && r.id !== initial?.id);
 
   // ── Ingredientes ──
   const addRow = () => {
@@ -578,7 +588,7 @@ function RecipeForm({
       }
       onSaved();
     } catch (err) {
-      if ((err as { code?: string }).code === 'RECIPE_LIMIT') { setShowRecipeOffer(true); return; }
+      if (['RECIPE_LIMIT', 'RECIPE_INACTIVE'].includes((err as { code?: string }).code ?? '')) { setShowRecipeOffer(true); return; }
       toast.error((err as Error).message);
     } finally {
       setSaving(false);

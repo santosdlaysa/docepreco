@@ -79,7 +79,7 @@ export const RecipesScreen: React.FC = () => {
       // Load calculations for all recipes
       const calcs: Record<string, CalculationResult> = {};
       await Promise.all(
-        data.map(async (recipe) => {
+        data.filter(recipe => recipe.isActive !== false).map(async (recipe) => {
           try {
             calcs[recipe.id] = await api.calculate(recipe.id);
           } catch {}
@@ -211,10 +211,12 @@ export const RecipesScreen: React.FC = () => {
 
     return (
       <TouchableOpacity
-        onPress={() => navigation.navigate('RecipeDetail', { recipeId: item.id })}
+        onPress={() => item.isActive === false
+          ? openPaywall({ kind: 'limit', feature: 'recipes', current: recipes.length, limit: freeRecipeLimit, blocked: true })
+          : navigation.navigate('RecipeDetail', { recipeId: item.id })}
         onLongPress={() => handleDelete(item)}
         activeOpacity={0.7}
-        style={styles.recipeCard}
+        style={[styles.recipeCard, item.isActive === false && { opacity: 0.65 }]}
       >
         {/* Thumbnail colorido */}
         <View style={[styles.thumbnail, { backgroundColor: cardColor }]}>
@@ -230,7 +232,9 @@ export const RecipesScreen: React.FC = () => {
             {item.yield} {item.yield === 1 ? 'unidade' : 'unidades'}
           </Text>
 
-          {calc ? (
+          {item.isActive === false ? (
+            <Text style={styles.recipeSubtitle}>🔒 Inativa · Assine para liberar</Text>
+          ) : calc ? (
             <View style={styles.priceRow}>
               <View style={styles.priceBlock}>
                 <Text style={styles.priceLabel}>CUSTO/UN</Text>

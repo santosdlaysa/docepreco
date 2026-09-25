@@ -274,7 +274,13 @@ export const CreateRecipeScreen: React.FC = () => {
           setInitialLaborCost(laborCost.value);
         }
       })
-      .catch(() => showToast(t('createRecipe.loadError'), 'error'))
+      .catch((error: { code?: string }) => {
+        if (error.code === 'RECIPE_INACTIVE') {
+          navigation.replace('Paywall', { trigger: { kind: 'feature', feature: 'inactiveRecipes' } });
+          return;
+        }
+        showToast(t('createRecipe.loadError'), 'error');
+      })
       .finally(() => setLoadingData(false));
   }, [recipeId]);
 
@@ -726,6 +732,10 @@ export const CreateRecipeScreen: React.FC = () => {
       }
     } catch (error) {
       const err = error as Error & { code?: string; current?: number; limit?: number };
+      if (err.code === 'RECIPE_INACTIVE') {
+        navigation.replace('Paywall', { trigger: { kind: 'feature', feature: 'inactiveRecipes' } });
+        return;
+      }
       if (err.code === 'RECIPE_LIMIT') {
         openPaywall({
           kind: 'limit',
@@ -1609,7 +1619,7 @@ export const CreateRecipeScreen: React.FC = () => {
             </View>
           ) : (
             <FlatList
-              data={availableRecipes.filter(r => r.id !== recipeId && !subRecipes.some(s => s.subRecipeId === r.id))}
+              data={availableRecipes.filter(r => r.isActive !== false && r.id !== recipeId && !subRecipes.some(s => s.subRecipeId === r.id))}
               keyExtractor={item => item.id}
               contentContainerStyle={{ padding: 20 }}
               renderItem={({ item }) => (

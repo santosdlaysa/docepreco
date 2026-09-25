@@ -79,6 +79,51 @@ beforeEach(() => {
 });
 
 describe('CRUD e cálculo de receitas', () => {
+  function expiredPlan() {
+    userRepo.findById.mockResolvedValue({ isPremium: true, premiumUntil: '2020-01-01' });
+    poolQuery.mockImplementation((sql: string) => Promise.resolve({ rows:
+      sql.includes('OFFSET $2') ? [{ id: 'r4' }] :
+      sql.includes('plan_free_recipe_limit') ? [{ value: '3' }] : []
+    }));
+  }
+
+  it('mantém excedentes visíveis, inativos e sem o conteúdo quando o plano vence', async () => {
+    expiredPlan();
+    recipeRepo.findAll.mockResolvedValue([recipe, { ...recipe, id: 'r4', ingredients: [{ ingredientId: 'i1' }] }]);
+    const res = await api('get', '/recipes');
+    expect(res.status).toBe(200);
+    expect(res.body.data[0].isActive).toBe(true);
+    expect(res.body.data[1]).toMatchObject({ id: 'r4', isActive: false, ingredients: [] });
+    expect(poolQuery).toHaveBeenCalledWith(expect.stringContaining('ORDER BY created_at ASC, id ASC OFFSET $2'), [USER_ID, 3]);
+  });
+
+  it.each(['get', 'put', 'post'] as const)('bloqueia acesso direto a receita inativa: %s', async method => {
+    expiredPlan();
+    const res = await api(method, method === 'post' ? '/recipes/r4/calculate' : '/recipes/r4').send(body);
+    expect(res.status).toBe(403);
+    expect(res.body.code).toBe('RECIPE_INACTIVE');
+    expect(recipeRepo.findById).not.toHaveBeenCalled();
+    expect(recipeRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('impede usar receita inativa como sub-receita', async () => {
+    expiredPlan();
+    const res = await api('put', '/recipes/r1').send({ ...body, subRecipes: [{ subRecipeId: 'r4' }] });
+    expect(res.status).toBe(403);
+    expect(recipeRepo.update).not.toHaveBeenCalled();
+  });
+
+  it('libera todas as receitas automaticamente após renovar', async () => {
+    expiredPlan();
+    userRepo.findById.mockResolvedValue({ isPremium: true, premiumUntil: '2099-01-01' });
+    recipeRepo.findAll.mockResolvedValue([{ ...recipe, id: 'r4' }]);
+    recipeRepo.findById.mockResolvedValue({ ...recipe, id: 'r4' });
+    const list = await api('get', '/recipes');
+    expect(list.body.data[0].isActive).toBe(true);
+    expect((await api('get', '/recipes/r4')).status).toBe(200);
+    expect(poolQuery.mock.calls.some(([sql]) => sql.includes('OFFSET $2'))).toBe(false);
+  });
+
   it('lista e busca receita', async () => {
     recipeRepo.findAll.mockResolvedValue([recipe]);
     expect((await api('get', '/recipes')).status).toBe(200);

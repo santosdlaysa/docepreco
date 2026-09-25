@@ -19,6 +19,7 @@ export interface SubRecipe {
 }
 
 export interface Recipe {
+  isActive?: boolean;
   id: string;
   name: string;
   yield: number;

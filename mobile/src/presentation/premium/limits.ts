@@ -13,6 +13,7 @@ export type LimitedFeature = keyof typeof FREE_LIMITS;
  * Premium-only features (no free quota — either you have premium or you don't).
  */
 export const PREMIUM_FEATURES = {
+  inactiveRecipes: 'inactiveRecipes',
   pdfCustomBranding: 'pdfCustomBranding',
   advancedReports: 'advancedReports',
   clientsManagement: 'clientsManagement',
@@ -28,6 +29,10 @@ export const PREMIUM_FEATURES = {
 export type PremiumFeature = keyof typeof PREMIUM_FEATURES;
 
 export const FEATURE_COPY: Record<PremiumFeature, { title: string; description: string }> = {
+  inactiveRecipes: {
+    title: 'Libere suas receitas',
+    description: 'Suas receitas continuam salvas. Assine o Premium para acessar as receitas acima do limite gratuito.',
+  },
   pdfCustomBranding: {
     title: 'PDF personalizado',
     description: 'Sua logo, suas cores e sem marca do DocePreço nos orçamentos.',

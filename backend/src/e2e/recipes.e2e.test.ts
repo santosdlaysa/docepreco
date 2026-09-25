@@ -45,6 +45,7 @@ describe('GET /recipes (E2E)', () => {
 
     mockQuery.mockImplementation((sql: string) => {
       if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+      if (sql.includes('OFFSET $2')) return Promise.resolve({ rows: [] });
       if (sql.includes('FROM recipes WHERE user_id')) return Promise.resolve({ rows: recipes });
       if (sql.includes('recipe_ingredients')) {
         return Promise.resolve({ rows: [
@@ -97,6 +98,7 @@ describe('GET /recipes (E2E)', () => {
     }));
 
     mockQuery.mockImplementation((sql: string) => {
+      if (sql.includes('OFFSET $2')) return Promise.resolve({ rows: [] });
       if (sql.includes('FROM recipes WHERE user_id')) return Promise.resolve({ rows: recipes });
       return Promise.resolve({ rows: [] });
     });

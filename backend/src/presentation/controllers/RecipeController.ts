@@ -13,17 +13,32 @@ import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES, getFreeRecipeLimit } f
 import { processReferralActivation } from '../../infrastructure/services/referralService';
 
 import { recordConversion } from '../../infrastructure/services/conversionService';
+import { getInactiveRecipeIds } from '../../domain/services/recipeAccess';
 
 const recipeRepo = new PostgresRecipeRepository();
 const ingredientRepo = new PostgresIngredientRepository();
 const userRepo = new PostgresUserRepository();
 
 export class RecipeController {
+  private async allowRecipes(userId: string, ids: string[], res: Response): Promise<boolean> {
+    const inactiveIds = await getInactiveRecipeIds(userId);
+    if (!ids.some(id => inactiveIds.has(id))) return true;
+    res.status(403).json({
+      success: false,
+      code: 'RECIPE_INACTIVE',
+      error: 'Receita inativa no plano gratuito. Assine o Premium para liberar o acesso.',
+    });
+    return false;
+  }
+
   async getAll(req: AuthRequest, res: Response): Promise<void> {
     try {
       const useCase = new GetRecipesUseCase(recipeRepo);
       const recipes = await useCase.execute(req.userId!);
-      res.json({ success: true, data: recipes });
+      const inactiveIds = await getInactiveRecipeIds(req.userId!);
+      res.json({ success: true, data: recipes.map(recipe => inactiveIds.has(recipe.id)
+        ? { ...recipe, isActive: false, ingredients: [], additionalCosts: [], subRecipes: [] }
+        : { ...recipe, isActive: true }) });
     } catch (error) {
       res.status(500).json({ success: false, error: 'Internal server error' });
     }
@@ -31,6 +46,7 @@ export class RecipeController {
 
   async getById(req: AuthRequest, res: Response): Promise<void> {
     try {
+      if (!await this.allowRecipes(req.userId!, [req.params.id], res)) return;
       const useCase = new GetRecipeByIdUseCase(recipeRepo);
       const recipe = await useCase.execute(req.params.id, req.userId!);
       if (!recipe) {
@@ -65,6 +81,8 @@ export class RecipeController {
         return;
       }
 
+      const subIds = (req.body.subRecipes ?? []).map((sub: { subRecipeId: string }) => sub.subRecipeId);
+      if (subIds.length && !await this.allowRecipes(req.userId!, subIds, res)) return;
       const useCase = new CreateRecipeUseCase(recipeRepo);
       const recipe = await useCase.execute(req.body, req.userId!);
       // Programa de indicação: a 1ª receita (count era 0 antes de criar) valida
@@ -86,6 +104,8 @@ export class RecipeController {
 
   async update(req: AuthRequest, res: Response): Promise<void> {
     try {
+      const subIds = (req.body.subRecipes ?? []).map((sub: { subRecipeId: string }) => sub.subRecipeId);
+      if (!await this.allowRecipes(req.userId!, [req.params.id, ...subIds], res)) return;
       const useCase = new UpdateRecipeUseCase(recipeRepo);
       const recipe = await useCase.execute(req.params.id, req.body, req.userId!);
       res.json({ success: true, data: recipe });
@@ -117,6 +137,7 @@ export class RecipeController {
 
   async calculate(req: AuthRequest, res: Response): Promise<void> {
     try {
+      if (!await this.allowRecipes(req.userId!, [req.params.id], res)) return;
       const useCase = new CalculateRecipeUseCase(recipeRepo, ingredientRepo);
       const result = await useCase.execute(req.params.id, req.userId!);
       res.json({ success: true, data: result });
