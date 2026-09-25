@@ -372,7 +372,7 @@ const spec = {
     '/auth/profile': {
       patch: {
         tags: ['Auth'], summary: 'Atualizar perfil', security: [{ BearerAuth: [] }],
-        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { instagramHandle: { type: 'string', nullable: true, description: 'Handle do Instagram (sem @)' }, phone: { type: 'string', nullable: true, description: 'Celular (10-13 dígitos). Enviar null ou "" para remover' } } } } } },
+        requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { companyName: { type: 'string', minLength: 1, maxLength: 255, description: 'Nome da loja' }, instagramHandle: { type: 'string', nullable: true, description: 'Handle do Instagram (sem @)' }, phone: { type: 'string', nullable: true, description: 'Celular (10-13 dígitos). Enviar null ou "" para remover' } } } } } },
         responses: { 200: { description: 'Perfil atualizado', content: { 'application/json': { schema: { $ref: '#/components/schemas/User' } } } }, 400: { description: 'Dados inválidos' } },
       },
     },

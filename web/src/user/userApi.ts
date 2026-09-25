@@ -665,7 +665,7 @@ export const userApi = {
       method: 'POST',
       body: JSON.stringify({ currentPassword, newPassword }),
     }),
-  updateProfile: (data: { instagramHandle?: string | null; phone?: string | null }) =>
+  updateProfile: (data: { companyName?: string; instagramHandle?: string | null; phone?: string | null }) =>
     req<AuthUser>('/auth/profile', { method: 'PATCH', body: JSON.stringify(data) }),
   acceptLgpd: () => req<{ user: AuthUser }>('/auth/accept-lgpd', { method: 'POST' }),
 

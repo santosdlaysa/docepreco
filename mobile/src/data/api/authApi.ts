@@ -104,7 +104,7 @@ export const authApi = {
     return response.data.message;
   },
 
-  updateProfile: async (data: { instagramHandle?: string | null; phone?: string | null }): Promise<AuthUser> => {
+  updateProfile: async (data: { companyName?: string; instagramHandle?: string | null; phone?: string | null }): Promise<AuthUser> => {
     const response = await apiClient.patch('/auth/profile', data);
     const normalized = normalizeUser(response.data.data);
     await tokenStorage.saveUser(normalized);

@@ -20,6 +20,7 @@ function remaining(iso: string): { big: string; bigUnit: string; expired: boolea
 
 export function ProfilePage({ toast }: { toast: ToastFn }) {
   const { user, setUser } = useAuth();
+  const [companyName, setCompanyName] = useState(user?.companyName ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
   const [instagram, setInstagram] = useState(user?.instagramHandle ?? '');
   const [savingProfile, setSavingProfile] = useState(false);
@@ -36,13 +37,16 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
 
   const saveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!companyName.trim()) return toast.error('Informe o nome da loja.');
     setSavingProfile(true);
     try {
       const updated = await userApi.updateProfile({
+        companyName: companyName.trim(),
         phone: phone.trim() || null,
         instagramHandle: instagram.trim() || null,
       });
       setUser(updated);
+      setCompanyName(updated.companyName);
       toast.success('Perfil atualizado.');
     } catch (err) {
       toast.error((err as Error).message);
@@ -151,12 +155,15 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
         </div>
       </div>
 
-      {/* Editar contato */}
+      {/* Editar perfil */}
       <form
         onSubmit={saveProfile}
         className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 mb-5 space-y-4"
       >
-        <p className="font-semibold text-gray-900 dark:text-white">Contato</p>
+        <p className="font-semibold text-gray-900 dark:text-white">Dados da loja</p>
+        <FormField label="Nome da loja">
+          <input value={companyName} onChange={e => setCompanyName(e.target.value)} maxLength={255} required disabled={savingProfile} className={inputClass} />
+        </FormField>
         <FormField label="Telefone">
           <div className="relative">
             <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />

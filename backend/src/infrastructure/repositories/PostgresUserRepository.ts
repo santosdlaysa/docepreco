@@ -66,6 +66,15 @@ export class PostgresUserRepository {
     return this.mapRow(result.rows[0]);
   }
 
+  async updateCompanyName(userId: string, companyName: string): Promise<(User & { passwordHash: string }) | null> {
+    const result = await pool.query(
+      `UPDATE users SET company_name = $2 WHERE id = $1 RETURNING *`,
+      [userId, companyName]
+    );
+    if (result.rows.length === 0) return null;
+    return this.mapRow(result.rows[0]);
+  }
+
   async updatePhone(userId: string, phone: string | null): Promise<(User & { passwordHash: string }) | null> {
     const result = await pool.query(
       `UPDATE users SET phone = $2 WHERE id = $1 RETURNING *`,

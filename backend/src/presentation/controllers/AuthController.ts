@@ -411,8 +411,13 @@ export class AuthController {
 
   async updateProfile(req: Request & { userId?: string }, res: Response): Promise<void> {
     try {
-      const { instagramHandle, phone } = req.body;
+      const { companyName, instagramHandle, phone } = req.body;
       let user: (User & { passwordHash: string }) | null = null;
+
+      if (companyName !== undefined && (typeof companyName !== 'string' || !companyName.trim() || companyName.trim().length > 255)) {
+        res.status(400).json({ success: false, error: 'Informe o nome da loja com até 255 caracteres' });
+        return;
+      }
 
       if (instagramHandle !== undefined && instagramHandle !== null) {
         const handle = String(instagramHandle).replace(/^@/, '').trim();
@@ -436,8 +441,12 @@ export class AuthController {
         user = await userRepo.updatePhone(req.userId!, cleanPhone);
       }
 
+      if (companyName !== undefined) {
+        user = await userRepo.updateCompanyName(req.userId!, companyName.trim());
+      }
+
       if (!user) {
-        if (instagramHandle === undefined && phone === undefined) {
+        if (companyName === undefined && instagramHandle === undefined && phone === undefined) {
           res.status(400).json({ success: false, error: 'Nenhum campo para atualizar' });
           return;
         }

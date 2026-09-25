@@ -5,7 +5,7 @@ import jwt from 'jsonwebtoken';
 const userRepo = {
   findByEmail: jest.fn(), findById: jest.fn(), findByIdFull: jest.fn(),
   create: jest.fn(), countAll: jest.fn(), verifyPassword: jest.fn(),
-  updateInstagramHandle: jest.fn(), updatePhone: jest.fn(), updatePassword: jest.fn(),
+  updateCompanyName: jest.fn(), updateInstagramHandle: jest.fn(), updatePhone: jest.fn(), updatePassword: jest.fn(),
   createPasswordResetCode: jest.fn(), verifyPasswordResetCode: jest.fn(),
   markResetCodeUsed: jest.fn(), delete: jest.fn(),
 };
@@ -81,6 +81,30 @@ beforeEach(() => {
 });
 
 describe('Todas as rotas de autenticação', () => {
+  it('altera o nome da loja do usuário autenticado e remove espaços nas extremidades', async () => {
+    userRepo.updateCompanyName.mockResolvedValue({ ...user, companyName: 'Doces da Maria' });
+    const response = await request(createApp()).patch('/auth/profile')
+      .set('Authorization', `Bearer ${token}`).send({ companyName: '  Doces da Maria  ' });
+    expect(response.status).toBe(200);
+    expect(userRepo.updateCompanyName).toHaveBeenCalledWith(USER_ID, 'Doces da Maria');
+    expect(response.body.data.companyName).toBe('Doces da Maria');
+    expect(response.body.data.passwordHash).toBeUndefined();
+  });
+
+  it.each(['', '   ', null, 123, {}, 'a'.repeat(256)])('rejeita nome de loja inválido: %s', async (companyName) => {
+    const response = await request(createApp()).patch('/auth/profile')
+      .set('Authorization', `Bearer ${token}`).send({ companyName, phone: '92999999999' });
+    expect(response.status).toBe(400);
+    expect(userRepo.updateCompanyName).not.toHaveBeenCalled();
+    expect(userRepo.updatePhone).not.toHaveBeenCalled();
+  });
+
+  it('exige autenticação para alterar o nome da loja', async () => {
+    const response = await request(createApp()).patch('/auth/profile').send({ companyName: 'Outra loja' });
+    expect(response.status).toBe(401);
+    expect(userRepo.updateCompanyName).not.toHaveBeenCalled();
+  });
+
   it('registra e autentica usuário', async () => {
     userRepo.findByEmail.mockResolvedValueOnce(null);
     userRepo.create.mockResolvedValue(user);

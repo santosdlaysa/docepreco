@@ -40,6 +40,8 @@ export const ProfileScreen: React.FC = () => {
   const { unitSystem } = useUnitSystem();
   const [user, setUser] = useState<{ companyName: string; email: string; phone?: string | null; instagramHandle?: string | null } | null>(null);
   const [notificationsOn, setNotificationsOn] = useState(true);
+  const [companyNameInput, setCompanyNameInput] = useState('');
+  const [savingCompanyName, setSavingCompanyName] = useState(false);
   const [instagramInput, setInstagramInput] = useState('');
   const [savingInstagram, setSavingInstagram] = useState(false);
   const [phoneInput, setPhoneInput] = useState('');
@@ -56,12 +58,12 @@ export const ProfileScreen: React.FC = () => {
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    try { const u = await tokenStorage.getUser(); setUser(u); setInstagramInput(u?.instagramHandle || ''); setPhoneInput(u?.phone || ''); await refresh(); }
+    try { const u = await tokenStorage.getUser(); setUser(u); setCompanyNameInput(u?.companyName || ''); setInstagramInput(u?.instagramHandle || ''); setPhoneInput(u?.phone || ''); await refresh(); }
     finally { setRefreshing(false); }
   };
 
   useEffect(() => {
-    tokenStorage.getUser().then((u) => { setUser(u); setInstagramInput(u?.instagramHandle || ''); setPhoneInput(u?.phone || ''); });
+    tokenStorage.getUser().then((u) => { setUser(u); setCompanyNameInput(u?.companyName || ''); setInstagramInput(u?.instagramHandle || ''); setPhoneInput(u?.phone || ''); });
     void refresh(); getNotificationsEnabled().then(setNotificationsOn);
   }, []);
 
@@ -75,6 +77,19 @@ export const ProfileScreen: React.FC = () => {
       ? `Expira hoje${premiumUntilLabel ? ` · ${premiumUntilLabel}` : ''}`
       : `Expira em ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}${premiumUntilLabel ? ` · ${premiumUntilLabel}` : ''}`;
   const expiringSoon = daysLeft != null && daysLeft <= 3;
+
+  const handleSaveCompanyName = async () => {
+    const name = companyNameInput.trim();
+    if (!name) { Alert.alert('Nome obrigatório', 'Informe o nome da loja.'); return; }
+    setSavingCompanyName(true);
+    try {
+      const updated = await authApi.updateProfile({ companyName: name });
+      setUser(updated);
+      setCompanyNameInput(updated.companyName);
+      Alert.alert('Salvo!', 'Nome da loja atualizado.');
+    } catch { Alert.alert('Erro', 'Não foi possível salvar o nome da loja. Tente novamente.'); }
+    finally { setSavingCompanyName(false); }
+  };
 
   const handleSaveInstagram = async () => {
     const handle = instagramInput.replace(/^@/, '').trim();
@@ -207,9 +222,21 @@ export const ProfileScreen: React.FC = () => {
         </View>
 
         <View style={st.body}>
-          {/* ── Phone + Instagram ── */}
+          {/* ── Dados da loja ── */}
           <View style={st.gcard}>
             <View style={st.grow}>
+              <View style={[st.gi, { backgroundColor: colors.pinkBg2 }]}><Ionicons name="storefront-outline" size={18} color={PINK} /></View>
+              <View style={{ flex: 1 }}>
+                <Text style={st.growB}>Nome da loja</Text>
+                <TextInput style={st.inlineInput} value={companyNameInput} onChangeText={setCompanyNameInput} placeholder="Nome da sua loja" placeholderTextColor={INK3} maxLength={255} editable={!!user && !savingCompanyName} accessibilityLabel="Nome da loja" />
+              </View>
+              {user && companyNameInput.trim() !== user.companyName && (
+                <TouchableOpacity onPress={handleSaveCompanyName} disabled={savingCompanyName} style={st.saveSmall} accessibilityRole="button" accessibilityLabel="Salvar nome da loja">
+                  {savingCompanyName ? <ActivityIndicator size="small" color="#fff" /> : <Ionicons name="checkmark" size={16} color="#fff" />}
+                </TouchableOpacity>
+              )}
+            </View>
+            <View style={[st.grow, { borderTopWidth: 1, borderTopColor: LINE }]}>
               <View style={[st.gi, { backgroundColor: colors.blueBg }]}><Ionicons name="call-outline" size={18} color={colors.blue} /></View>
               <View style={{ flex: 1 }}>
                 <Text style={st.growB}>Telefone</Text>
