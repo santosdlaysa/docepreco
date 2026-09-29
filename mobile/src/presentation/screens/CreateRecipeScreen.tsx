@@ -842,6 +842,7 @@ export const CreateRecipeScreen: React.FC = () => {
     const estimatedProfit = (suggestedPrice - costPerUnit) * yieldNum;
 
     return {
+      yieldNum,
       ingredientsCost,
       additionalCostTotal,
       totalCost,
@@ -1401,7 +1402,7 @@ export const CreateRecipeScreen: React.FC = () => {
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, color: INK2, fontWeight: '700', textTransform: 'uppercase' }}>
-                    Preço de venda sugerido
+                    Preço sugerido por unidade
                   </Text>
                   <Text style={{ fontSize: 30, color: PINK, fontWeight: '800', marginTop: 3 }}>
                     {formatCurrency(pricingPreview.suggestedPrice)}
@@ -1413,6 +1414,19 @@ export const CreateRecipeScreen: React.FC = () => {
                     {formatCurrencyUnit(pricingPreview.costPerUnit)}
                   </Text>
                 </View>
+              </View>
+              <Text style={{ fontSize: 12, color: INK2, lineHeight: 18 }}>
+                Valor de venda de 1 unidade, com {parseLocaleNumber(profitMargin) || 0}% de acréscimo sobre o custo.
+              </Text>
+              <View style={{ backgroundColor: CREAM2, borderRadius: 12, padding: 12 }}>
+                <Text style={{ fontSize: 12, color: INK2, fontWeight: '700' }}>Preço sugerido total da receita</Text>
+                <Text style={{ fontSize: 24, color: PINK, fontWeight: '800', marginTop: 3 }}>
+                  {formatCurrency(pricingPreview.suggestedPrice * pricingPreview.yieldNum)}
+                </Text>
+                <Text style={{ fontSize: 12, color: INK2, lineHeight: 18, marginTop: 4 }}>
+                  Venda de todas as {pricingPreview.yieldNum} unidades: {formatCurrency(pricingPreview.totalCost)} para cobrir os custos
+                  {' '}+ {formatCurrency(pricingPreview.estimatedProfit)} de lucro estimado.
+                </Text>
               </View>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 <View style={{ flex: 1, backgroundColor: CREAM2, borderRadius: 12, padding: 10 }}>
@@ -1431,6 +1445,9 @@ export const CreateRecipeScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
+              <Text style={{ fontSize: 11, color: INK2, lineHeight: 16 }}>
+                O total e o lucro usam o preço por unidade antes do arredondamento. Ao cobrar o valor exibido em centavos, pode haver uma pequena diferença.
+              </Text>
             </View>
           )}
 

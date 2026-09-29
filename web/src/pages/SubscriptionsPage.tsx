@@ -546,6 +546,8 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
       <p className="px-5 py-3 text-xs text-gray-400 border-b border-gray-100 dark:border-gray-700/50">
         Cada cliente recebe e-mail e push com a oferta. O desconto é aplicado automaticamente no PIX
         quando ela toca em "Assinar" no app — sem cupom. Ao aprovar o pagamento, a oferta vira "Resgatada".
+        {' '}Você pode reenviar a qualquer momento. Cada envio substitui a oferta anterior e renova a validade
+        para os ex-assinantes que ainda não voltaram.
       </p>
 
       {offers.length > 0 && (
@@ -642,6 +644,10 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
               Enviar oferta de <strong>{discountPercent}% de desconto</strong> (válida por {validDays} dias)
               para <strong>{eligible.length} ex-assinantes</strong> por e-mail e push
               {includeWhatsapp ? ' e WhatsApp' : ''}?
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+              Quem já recebeu uma oferta também receberá novamente. A oferta anterior será substituída
+              pelo desconto e pela validade acima.
             </p>
             <div className="flex justify-end gap-2">
               <button

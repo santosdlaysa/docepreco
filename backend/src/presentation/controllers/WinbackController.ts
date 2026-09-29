@@ -41,7 +41,7 @@ async function getMonthlyPrices(): Promise<{ premium: number; master: number }> 
   return { premium, master };
 }
 
-/** Ex-assinantes (premium expirado) sem oferta win-back ativa. */
+/** Ex-assinantes (premium expirado), inclusive quem já recebeu uma oferta. */
 async function findEligibleUsers(userIds?: string[]): Promise<EligibleUser[]> {
   const params: unknown[] = [];
   let idFilter = '';
@@ -58,10 +58,6 @@ async function findEligibleUsers(userIds?: string[]): Promise<EligibleUser[]> {
      WHERE u.is_premium = FALSE
        AND u.premium_until IS NOT NULL
        AND u.premium_until <= NOW()
-       AND NOT EXISTS (
-         SELECT 1 FROM winback_offers w
-         WHERE w.user_id = u.id AND w.status = 'active' AND w.expires_at > NOW()
-       )
        ${idFilter}
      ORDER BY u.premium_until DESC`,
     params
@@ -139,12 +135,38 @@ export class WinbackController {
       const users: Array<{ userId: string; companyName: string; push: boolean; email: boolean; whatsapp: boolean }> = [];
 
       for (const user of eligible) {
-        const offerResult = await pool.query(
-          `INSERT INTO winback_offers (user_id, discount_percent, expires_at)
-           VALUES ($1, $2, $3) RETURNING id`,
-          [user.id, discountPercent, expiresAt]
-        );
-        const offerId: string = offerResult.rows[0].id;
+        // Substitui a oferta anterior atomicamente e preserva o histórico de envios.
+        const client = await pool.connect();
+        let offerId: string;
+        try {
+          await client.query('BEGIN');
+          const currentUser = await client.query(
+            `SELECT id FROM users WHERE id = $1 AND is_premium = FALSE
+             AND premium_until <= NOW() FOR UPDATE`,
+            [user.id]
+          );
+          if (currentUser.rows.length === 0) {
+            await client.query('ROLLBACK');
+            continue;
+          }
+          await client.query(
+            `UPDATE winback_offers SET status = 'cancelled'
+             WHERE user_id = $1 AND status = 'active'`,
+            [user.id]
+          );
+          const offerResult = await client.query(
+            `INSERT INTO winback_offers (user_id, discount_percent, expires_at)
+             VALUES ($1, $2, $3) RETURNING id`,
+            [user.id, discountPercent, expiresAt]
+          );
+          offerId = offerResult.rows[0].id;
+          await client.query('COMMIT');
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        } finally {
+          client.release();
+        }
 
         const isMaster = (user.last_product ?? '').toLowerCase().includes('master');
         const fullCents = isMaster ? prices.master : prices.premium;
@@ -216,7 +238,7 @@ export class WinbackController {
 
       res.json({
         success: true,
-        data: { total: eligible.length, offersCreated: eligible.length, pushSent, emailSent, whatsappSent, users },
+        data: { total: eligible.length, offersCreated: users.length, pushSent, emailSent, whatsappSent, users },
       });
     } catch (error) {
       console.error('[Winback] Send campaign error:', error);

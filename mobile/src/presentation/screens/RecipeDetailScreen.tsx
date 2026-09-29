@@ -481,7 +481,7 @@ export const RecipeDetailScreen: React.FC = () => {
               end={{ x: 1, y: 1 }}
               style={s.resultCard}
             >
-              <Text style={s.resultLabel}>Preço de venda sugerido</Text>
+              <Text style={s.resultLabel}>Preço sugerido por unidade</Text>
               <Text style={s.resultPrice}>{formatCurrency(calculation.suggestedPrice)}</Text>
 
               {activeSeason && (
@@ -495,8 +495,8 @@ export const RecipeDetailScreen: React.FC = () => {
 
               <View style={s.resultGrid}>
                 <View style={s.resultGridItem}>
-                  <Text style={s.resultGridVal}>{formatCurrency(calculation.suggestedPrice)}</Text>
-                  <Text style={s.resultGridLbl}>por unidade</Text>
+                  <Text style={s.resultGridVal}>{formatCurrency(calculation.suggestedPrice * recipe.yield)}</Text>
+                  <Text style={s.resultGridLbl}>preço total da receita</Text>
                 </View>
                 <View style={s.resultGridItem}>
                   <Text style={s.resultGridVal}>{formatCurrencyUnit(calculation.costPerUnit)}</Text>
@@ -508,6 +508,9 @@ export const RecipeDetailScreen: React.FC = () => {
                 </View>
               </View>
               <Text style={{ color: '#fff', marginTop: 12 }}>
+                O preço inclui {recipe.profitMargin}% de acréscimo sobre o custo. O total considera a venda de todas as {recipe.yield} unidades.
+                {'\n'}Do total, {formatCurrency(calculation.totalCost)} cobrem os custos e {formatCurrency(calculation.estimatedProfit)} são o lucro estimado.
+                {'\n'}
                 Lucro estimado / un: {formatCurrency(calculation.suggestedPrice - calculation.costPerUnit)}
                 {'\n'}Margem sobre a venda: {calculation.suggestedPrice > 0 ? `${((calculation.suggestedPrice - calculation.costPerUnit) / calculation.suggestedPrice * 100).toFixed(1)}%` : '—'}
                 {'\n'}Estimativas antes do arredondamento do preço.

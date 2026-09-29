@@ -198,6 +198,9 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                       <span className="block text-lg font-bold text-primary-700 dark:text-primary-200 leading-tight">
                         {c ? formatBRL(c.suggestedPrice) : '—'}
                       </span>
+                      {c && <span className="block text-xs text-primary-700 dark:text-primary-200 mt-1">
+                        Total da receita ({fmtQty(r.yield)} un): {formatBRL(c.suggestedPrice * r.yield)}
+                      </span>}
                     </div>
                     <div className="text-right shrink-0">
                       <span className="block text-[11px] text-gray-500 dark:text-gray-400">Custo / un</span>
@@ -221,7 +224,9 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                         ['Sub-receitas', formatBRL(c.subRecipesCost)],
                         ['Custo total', formatBRL(c.totalCost)],
                         ['Custo por unidade', formatBRLUnit(c.costPerUnit)],
-                        ['Lucro estimado', formatBRL(c.estimatedProfit)],
+                        ['Preço sugerido por unidade', formatBRL(c.suggestedPrice)],
+                        [`Preço sugerido total (${fmtQty(r.yield)} un)`, formatBRL(c.suggestedPrice * r.yield)],
+                        ['Lucro estimado da receita', formatBRL(c.estimatedProfit)],
                       ] as [string, string][]
                     ).map(([label, value]) => (
                       <div key={label} className="flex justify-between py-2 text-sm">
@@ -229,6 +234,10 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                         <span className="font-medium text-gray-900 dark:text-white">{value}</span>
                       </div>
                     ))}
+                    <p className="pt-3 text-xs text-gray-500 dark:text-gray-400">
+                      O preço inclui o custo mais {r.profitMargin}% de acréscimo. O total considera a venda de todas as {fmtQty(r.yield)} unidades.
+                      {' '}Valores estimados antes do arredondamento do preço por unidade.
+                    </p>
                   </div>
                 )}
               </div>
@@ -866,20 +875,30 @@ function RecipeForm({
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Por Unidade</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Custo por unidade</p>
                 <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRLUnit(costPerUnit)}</p>
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2 border-2 border-emerald-300 dark:border-emerald-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Preço sugerido (acréscimo de {marginNum}%)</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Preço sugerido por unidade</p>
                 <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(suggestedPrice)}</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Valor de venda de 1 unidade, com {marginNum}% de acréscimo sobre o custo.</p>
+              </div>
+
+              <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2 border-2 border-emerald-300 dark:border-emerald-700">
+                <p className="text-xs text-gray-500 dark:text-gray-400">Preço sugerido total da receita</p>
+                <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(suggestedPrice * yieldNum)}</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                  Valor total da venda de todas as {fmtQty(yieldNum)} unidades: {formatBRL(totalCost)} para cobrir os custos
+                  {' '}+ {formatBRL(estimatedProfit)} de lucro estimado.
+                </p>
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Lucro estimado da receita</p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatBRL(estimatedProfit)}</p>
                 <p className="text-sm text-gray-600 dark:text-gray-300">Lucro / un: {formatBRL(suggestedPrice - costPerUnit)} · Margem sobre a venda: {suggestedPrice > 0 ? `${((suggestedPrice - costPerUnit) / suggestedPrice * 100).toFixed(1)}%` : '—'}</p>
-                <p className="text-xs text-gray-500">Estimativas antes do arredondamento do preço.</p>
+                <p className="text-xs text-gray-500">O total e o lucro usam o preço por unidade antes do arredondamento. Ao cobrar o valor exibido em centavos, pode haver uma pequena diferença.</p>
               </div>
             </div>
           ) : null;
