@@ -42,12 +42,12 @@ function nowInSaoPaulo(): { hour: number; minute: number } {
 
 /**
  * Envia um push individual com o resumo das vendas do dia para cada usuário
- * que registrou pelo menos uma venda hoje e possui token de push.
- * Usuários sem vendas no dia não recebem nada (evita spam de "R$ 0,00" —
- * o lembrete local das 19h já cobre quem não registrou vendas).
+ * ativo que possui token de push, mesmo sem vendas registradas hoje.
+ * Usuários sem vendas recebem um lembrete para registrar suas vendas.
  *
- * O título e o corpo vêm do template (editável no painel admin) e aceitam
- * os placeholders {nome}, {vendas} e {valor}.
+ * O título e o corpo do resumo vêm do template (editável no painel admin)
+ * e aceitam os placeholders {nome}, {vendas} e {valor}. Para quem não tem
+ * vendas, o corpo é substituído pelo lembrete.
  */
 export async function sendDailySalesSummary(template: {
   slug: string;
@@ -67,7 +67,7 @@ export async function sendDailySalesSummary(template: {
        FROM sales s
        WHERE s.user_id = u.id
          AND s.sale_date = (NOW() AT TIME ZONE '${TZ}')::date
-     ) t ON t.sale_count > 0
+     ) t ON TRUE
      JOIN push_tokens pt ON pt.user_id = u.id
      WHERE COALESCE(u.is_active, TRUE)
      GROUP BY u.id, u.company_name, t.revenue, t.sale_count`
@@ -83,7 +83,9 @@ export async function sendDailySalesSummary(template: {
     sentCount += await sendPushNotifications(
       row.tokens,
       fillPlaceholders(template.title, values),
-      fillPlaceholders(template.body, values),
+      row.saleCount === 0
+        ? `${values.nome}, você ainda não registrou vendas hoje. Vendeu alguma coisa? Abra o app e registre suas vendas para manter seu controle atualizado!`
+        : fillPlaceholders(template.body, values),
       { type: 'daily_sales_summary', slug: template.slug }
     );
   }
@@ -92,7 +94,7 @@ export async function sendDailySalesSummary(template: {
   const notifRepo = new PostgresNotificationRepository();
   const notif = await notifRepo.create({
     title: template.title,
-    body: `Resumo de vendas do dia enviado para ${result.rows.length} usuário(s) com vendas hoje.`,
+    body: `Resumo de vendas e lembrete de registro enviados para ${result.rows.length} usuário(s), incluindo quem está sem vendas registradas hoje.`,
     dataJson: JSON.stringify({ type: 'daily_sales_summary', slug: template.slug }),
     target: 'all',
     status: 'sent',
