@@ -751,6 +751,7 @@ function EditRecipeModal({
                 ['Custo total', formatBRL(preview.totalCost)],
                 ['Custo por unidade', formatBRLUnit(preview.costPerUnit)],
                 ['Preço sugerido por unidade', formatBRL(preview.suggestedPrice)],
+                ['Preço sugerido total da receita', formatBRL(preview.totalCost + preview.profit)],
                 ['Lucro estimado da receita', formatBRL(preview.profit)],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-lg bg-white dark:bg-gray-800 p-3">
@@ -758,6 +759,10 @@ function EditRecipeModal({
                   <p className="font-bold text-gray-900 dark:text-white">{value}</p>
                 </div>
               ))}
+              <p className="col-span-2 text-xs text-gray-600 dark:text-gray-300">
+                O preço por unidade é o valor de venda de 1 unidade. O preço total considera a venda de todas as {yieldValue} unidades,
+                {' '}incluindo os custos e o lucro estimado. Valores calculados antes do arredondamento do preço por unidade.
+              </p>
             </div>
           )}
         </section>

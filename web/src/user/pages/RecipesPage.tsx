@@ -617,7 +617,7 @@ function RecipeForm({
           <Info size={18} className="text-sky-500 shrink-0" />
           <div className="flex-1">
             <p className="text-xs text-sky-800 dark:text-sky-200">
-              O preço sugerido é calculado automaticamente a partir dos dados abaixo.
+              O resumo abaixo mostra o preço sugerido por unidade e o preço sugerido total da receita, calculados a partir dos custos e do rendimento.
             </p>
             <button
               type="button"
@@ -880,13 +880,13 @@ function RecipeForm({
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2 border-2 border-emerald-300 dark:border-emerald-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Preço sugerido por unidade</p>
+                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Preço sugerido por unidade</p>
                 <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(suggestedPrice)}</p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Valor de venda de 1 unidade, com {marginNum}% de acréscimo sobre o custo.</p>
               </div>
 
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2 border-2 border-emerald-300 dark:border-emerald-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">Preço sugerido total da receita</p>
+                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">Preço sugerido total da receita</p>
                 <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400">{formatBRL(suggestedPrice * yieldNum)}</p>
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Valor total da venda de todas as {fmtQty(yieldNum)} unidades: {formatBRL(totalCost)} para cobrir os custos
