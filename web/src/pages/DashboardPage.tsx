@@ -61,13 +61,14 @@ function StatCard({ label, value, sub, color, data }: {
 /* ─── Progress bar row ─── */
 function ProgressRow({ label, value, total, color }: { label: string; value: number; total: number; color: string }) {
   const pct = total > 0 ? (value / total) * 100 : 0;
+  const barPct = Math.min(100, Math.max(0, pct));
   return (
-    <div className="flex items-center gap-4">
-      <span className="text-sm text-gray-600 dark:text-gray-300 w-24 shrink-0">{label}</span>
-      <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-2">
-        <div className={`h-2 rounded-full ${color}`} style={{ width: `${pct}%` }} />
+    <div className="flex min-w-0 items-center gap-3">
+      <span className="text-sm text-gray-600 dark:text-gray-300 w-16 shrink-0">{label}</span>
+      <div className="min-w-0 flex-1 overflow-hidden bg-gray-100 dark:bg-gray-700 rounded-full h-2">
+        <div className={`h-2 rounded-full ${color}`} style={{ width: `${barPct}%` }} />
       </div>
-      <span className="text-sm font-semibold text-gray-900 dark:text-white w-10 text-right">{pct.toFixed(0)}%</span>
+      <span className="text-sm font-semibold text-gray-900 dark:text-white min-w-10 shrink-0 text-right">{pct.toFixed(0)}%</span>
     </div>
   );
 }
