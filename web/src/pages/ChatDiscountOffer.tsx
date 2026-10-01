@@ -8,6 +8,9 @@ export function ChatDiscountOffer({ userId, disabled, onSent }: {
   onSent: (message: SupportMessage) => void;
 }) {
   const [eligible, setEligible] = useState(false);
+  const [checking, setChecking] = useState(true);
+  const [eligibilityError, setEligibilityError] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [open, setOpen] = useState(false);
   const [discount, setDiscount] = useState(50);
   const [days, setDays] = useState(7);
@@ -19,18 +22,23 @@ export function ChatDiscountOffer({ userId, disabled, onSent }: {
     let active = true;
     mounted.current = true;
     setEligible(false);
+    setChecking(true);
+    setEligibilityError(false);
     setOpen(false);
     api.getUser(userId).then(user => {
       if (active) setEligible(!user.isPremium && !!user.premiumUntil && new Date(user.premiumUntil).getTime() <= Date.now());
-    }).catch(() => {});
+    }).catch(() => {
+      if (active) setEligibilityError(true);
+    }).finally(() => {
+      if (active) setChecking(false);
+    });
     return () => { active = false; mounted.current = false; };
-  }, [userId]);
+  }, [userId, retry]);
 
-  if (!eligible) return null;
   const valid = Number.isInteger(discount) && discount >= 1 && discount <= 90
     && Number.isInteger(days) && days >= 1 && days <= 60;
   const send = async () => {
-    if (!valid || sending || disabled) return;
+    if (!eligible || checking || !valid || sending || disabled) return;
     setSending(true);
     setError('');
     try {
@@ -46,10 +54,16 @@ export function ChatDiscountOffer({ userId, disabled, onSent }: {
   };
 
   return <div className="mb-2">
-    <button type="button" disabled={sending || disabled} onClick={() => setOpen(!open)}
+    <button type="button" disabled={checking || !eligible || sending || disabled} onClick={() => setOpen(!open)}
       className="inline-flex items-center gap-1.5 rounded-full border border-primary-200 px-3 py-1 text-xs font-semibold text-primary-600 dark:text-primary-300 disabled:opacity-50">
       <Tag size={13} /> Assinatura com desconto
     </button>
+    {checking && <p role="status" className="mt-1 text-xs text-gray-500 dark:text-gray-400">Verificando se é ex-assinante…</p>}
+    {!checking && eligibilityError && <p role="alert" className="mt-1 text-xs text-red-500">
+      Não foi possível verificar a assinatura.{' '}
+      <button type="button" onClick={() => setRetry(value => value + 1)} className="underline">Tentar novamente</button>
+    </p>}
+    {!checking && !eligibilityError && !eligible && <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">Desconto disponível apenas para ex-assinantes com plano expirado.</p>}
     {open && <div className="mt-2 space-y-2 rounded-xl bg-gray-50 dark:bg-gray-700 p-3 text-xs text-gray-700 dark:text-gray-200">
       <p>Oferta exclusiva para ex-assinante. O desconto será aplicado ao gerar o PIX.</p>
       <div className="flex flex-wrap gap-3">
