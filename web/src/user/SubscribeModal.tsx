@@ -70,12 +70,15 @@ export function SubscribeModal({
 
   const [config, setConfig] = useState<PixConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [tier, setTier] = useState<'premium' | 'master'>(initialTier === 'master' ? 'master' : 'premium');
   const [cycle, setCycle] = useState<Cycle>('monthly');
   const [status, setStatus] = useState<PixRequestStatus | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [legacyMonthly, setLegacyMonthly] = useState(false);
+  const [offer, setOffer] = useState<{ discountPercent: number; expiresAt: string } | null>(null);
+  const [offerQr, setOfferQr] = useState<PixRequestStatus | null>(null);
 
   // Upgrade Premium→Master (paga só a diferença)
   const [upgradeDiff, setUpgradeDiff] = useState<number | null>(null);
@@ -85,16 +88,21 @@ export function SubscribeModal({
     let active = true;
     (async () => {
       try {
-        const [cfg, st, up] = await Promise.all([
+        const [cfg, st, up, discountOffer] = await Promise.all([
           userApi.getPlanConfig().catch(() => null),
           userApi.getPixStatus().catch(() => null),
           currentTier === 'premium' ? userApi.previewUpgrade().catch(() => null) : Promise.resolve(null),
+          userApi.getDiscountOffer(),
         ]);
         if (!active) return;
         setConfig(cfg?.pix ?? null);
+        setOffer(discountOffer);
         if (st?.amount_cents === LEGACY_MONTHLY_CENTS && st?.plan_tier !== 'master') setLegacyMonthly(true);
-        if (st && st.status === 'pending') setStatus(st);
+        if (st && st.status === 'pending' && !discountOffer) setStatus(st);
         if (up?.eligible && up.diffCents && up.diffCents > 0) setUpgradeDiff(up.diffCents);
+      } catch {
+        if (active) setLoadError(true);
+        toast.error('Não foi possível carregar os planos e a oferta. Tente novamente.');
       } finally {
         if (active) setLoading(false);
       }
@@ -153,6 +161,20 @@ export function SubscribeModal({
     }
   };
 
+  const generateOfferPix = async () => {
+    trackCheckout();
+    setSubmitting(true);
+    try {
+      const result = await userApi.createPixRequest(`Plano ${TIER_META[tier].label} ${effectiveCycle === 'monthly' ? 'mensal' : 'anual'}`, selected.amountCents, tier);
+      if (!result.mp_qr_code) throw new Error('Não foi possível gerar o PIX com desconto. Tente novamente.');
+      setOfferQr(result);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const startUpgrade = async () => {
     trackCheckout();
     setSubmitting(true);
@@ -181,6 +203,8 @@ export function SubscribeModal({
           <div className="py-10 flex justify-center">
             <Loader2 size={24} className="animate-spin-slow text-primary-500" />
           </div>
+        ) : loadError ? (
+          <p role="alert" className="text-sm text-red-500">Não foi possível consultar os planos e descontos. Feche e tente novamente.</p>
         ) : status && status.status === 'pending' ? (
           <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl p-4 text-center">
             <Clock size={28} className="mx-auto text-amber-500 mb-2" />
@@ -200,7 +224,8 @@ export function SubscribeModal({
                   <button
                     key={t}
                     type="button"
-                    onClick={() => { setTier(t); setUpgradeQr(null); }}
+                    disabled={submitting}
+                    onClick={() => { setTier(t); setUpgradeQr(null); setOfferQr(null); }}
                     className={`rounded-xl border-2 p-3 text-center transition-colors ${
                       on ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'
                     }`}
@@ -271,7 +296,8 @@ export function SubscribeModal({
                         <button
                           key={c}
                           type="button"
-                          onClick={() => setCycle(c)}
+                          disabled={submitting}
+                          onClick={() => { setCycle(c); setOfferQr(null); }}
                           className={`rounded-xl border-2 p-3 text-center transition-colors ${
                             on ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'
                           }`}
@@ -286,7 +312,20 @@ export function SubscribeModal({
                   </div>
                 )}
 
-                {selected.copyPaste ? (
+                {offer ? (
+                  <div className="space-y-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 p-4">
+                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">Oferta de retorno: {offer.discountPercent}% de desconto no PIX</p>
+                    <p className="text-xs text-gray-500">Válida até {new Date(offer.expiresAt).toLocaleString('pt-BR')}. O valor final é confirmado ao gerar o PIX.</p>
+                    {offerQr?.mp_qr_code ? <PixPayBlock
+                      qrBase64={offerQr.mp_qr_code_base64} copyPaste={offerQr.mp_qr_code}
+                      priceLabel={fmtCents(offerQr.amount_cents!)} copied={copied}
+                      onCopy={() => copy(offerQr.mp_qr_code!)} hint="Pague este PIX e aguarde a confirmação do pagamento." />
+                      : <button onClick={generateOfferPix} disabled={submitting}
+                        className="w-full rounded-lg bg-primary-500 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                        {submitting ? 'Gerando PIX…' : 'Gerar PIX com desconto'}
+                      </button>}
+                  </div>
+                ) : selected.copyPaste ? (
                   <PixPayBlock
                     qrImage={selected.qrImage}
                     copyPaste={selected.copyPaste}
@@ -301,7 +340,7 @@ export function SubscribeModal({
                   </p>
                 )}
 
-                {selected.copyPaste && (
+                {!offer && selected.copyPaste && (
                   <button
                     onClick={confirmPaid}
                     disabled={submitting}

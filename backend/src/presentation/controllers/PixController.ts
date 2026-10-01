@@ -103,12 +103,14 @@ export class PixController {
         // regenera a cobrança com o valor final para o cupom valer de fato.
         const needsRegen = !row.mp_qr_code || row.amount_cents !== finalCents;
         if (!needsRegen) {
+          if (winbackOffer) await attachPixRequest(winbackOffer.id, row.id);
           res.json({
             success: true,
             data: {
               id: row.id,
               status: row.status,
               alreadyExists: true,
+              amount_cents: row.amount_cents,
               mp_qr_code: row.mp_qr_code,
               mp_qr_code_base64: row.mp_qr_code_base64,
             },
@@ -135,6 +137,7 @@ export class PixController {
              WHERE id = $7`,
             [finalLabel, finalCents, couponId, mp.paymentId, mpQrCode, mpQrCodeBase64, row.id]
           );
+          if (winbackOffer) await attachPixRequest(winbackOffer.id, row.id);
         } catch (mpErr) {
           console.error('[PIX] Erro ao regenerar QR para pedido existente:', mpErr);
         }
@@ -145,6 +148,7 @@ export class PixController {
             id: row.id,
             status: row.status,
             alreadyExists: true,
+            amount_cents: finalCents,
             mp_qr_code: mpQrCode,
             mp_qr_code_base64: mpQrCodeBase64,
           },
@@ -199,6 +203,7 @@ export class PixController {
         success: true,
         data: {
           ...result.rows[0],
+          amount_cents: finalCents,
           mp_qr_code: mpQrCode,
           mp_qr_code_base64: mpQrCodeBase64,
         },

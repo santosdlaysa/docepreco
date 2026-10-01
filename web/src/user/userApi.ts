@@ -356,6 +356,8 @@ export interface PlanConfigPublic {
   pix?: PixConfig;
 }
 export interface PixRequestStatus {
+  mp_qr_code?: string;
+  mp_qr_code_base64?: string;
   id: string;
   status: 'pending' | 'approved' | 'rejected';
   plan_label?: string;
@@ -675,6 +677,7 @@ export const userApi = {
   createPixRequest: (planLabel: string, amountCents: number, planTier: PlanTier = 'premium') =>
     req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents, planTier }) }),
   getPixStatus: () => req<PixRequestStatus | null>('/pix/status'),
+  getDiscountOffer: () => req<{ discountPercent: number; expiresAt: string } | null>('/support/discount-offer'),
   previewUpgrade: () => req<UpgradePreview>('/pix/upgrade/preview'),
   upgradeToMaster: () => req<UpgradeRequest>('/pix/upgrade', { method: 'POST' }),
 

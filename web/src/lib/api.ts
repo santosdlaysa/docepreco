@@ -706,6 +706,10 @@ export const api = {
   // ── Support Chat ──
   listSupportConversations: () => req<SupportConversation[]>('/support/admin/conversations'),
   getSupportMessages: (userId: string) => req<SupportMessage[]>(`/support/admin/conversations/${userId}`),
+  sendSupportDiscountOffer: (userId: string, discountPercent: number, validDays: number) =>
+    req<SupportMessage>(`/support/admin/conversations/${userId}/discount-offer`, {
+      method: 'POST', body: JSON.stringify({ discountPercent, validDays }),
+    }),
   sendSupportMessage: (userId: string, message: string, imageUrl?: string | null) =>
     req<SupportMessage>(`/support/admin/conversations/${userId}`, {
       method: 'POST',

@@ -5,6 +5,7 @@ import { PostgresPushTokenRepository } from '../../infrastructure/repositories/P
 import { pool } from '../../infrastructure/database/connection';
 import { notifySupportMessage } from '../../infrastructure/services/telegramService';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
+import { getActiveOffer } from '../../infrastructure/services/winbackService';
 
 const repo = new PostgresSupportRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -14,6 +15,66 @@ const adminTyping = new Map<string, number>();
 const TYPING_TIMEOUT_MS = 5000;
 
 export class SupportController {
+  async getDiscountOffer(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const offer = await getActiveOffer(req.userId!);
+      res.json({ success: true, data: offer ? { discountPercent: offer.discountPercent, expiresAt: offer.expiresAt } : null });
+    } catch {
+      res.status(500).json({ success: false, error: 'Erro ao consultar oferta.' });
+    }
+  }
+
+  async adminSendDiscountOffer(req: Request, res: Response): Promise<void> {
+    const { discountPercent, validDays } = req.body;
+    if (!Number.isInteger(discountPercent) || discountPercent < 1 || discountPercent > 90
+      || !Number.isInteger(validDays) || validDays < 1 || validDays > 60) {
+      res.status(400).json({ success: false, error: 'Informe desconto de 1 a 90% e validade de 1 a 60 dias.' });
+      return;
+    }
+    try {
+      const { userId } = req.params;
+      const client = await pool.connect();
+      let item;
+      try {
+        await client.query('BEGIN');
+        const user = await client.query(
+          `SELECT id FROM users WHERE id = $1 AND is_premium = FALSE
+           AND premium_until <= NOW() FOR UPDATE`, [userId]
+        );
+        if (!user.rows.length) {
+          await client.query('ROLLBACK');
+          res.status(400).json({ success: false, error: 'Oferta disponível apenas para ex-assinantes com plano expirado.' });
+          return;
+        }
+        await client.query(
+          `UPDATE winback_offers SET status = 'cancelled' WHERE user_id = $1 AND status = 'active'`, [userId]
+        );
+        const offer = await client.query(
+          `INSERT INTO winback_offers (user_id, discount_percent, expires_at)
+           VALUES ($1, $2, NOW() + $3 * INTERVAL '1 day') RETURNING expires_at`,
+          [userId, discountPercent, validDays]
+        );
+        const expires = new Date(offer.rows[0].expires_at).toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+        const message = `Oi! 💖 Volte para o DocePreço com ${discountPercent}% de desconto no pagamento via PIX! Oferta válida até ${expires} (horário de Brasília). Toque abaixo para assinar e gerar o PIX com desconto:\n[[assinar]]`;
+        item = await repo.create({ userId, senderType: 'admin', message }, client);
+        await client.query('COMMIT');
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally {
+        client.release();
+      }
+      pushTokenRepo.findByUserId(userId).then(tokens => {
+        if (tokens.length) return sendPushNotifications(tokens.map(t => t.token), 'Suporte DocePreço',
+          `Volte com ${discountPercent}% de desconto no PIX! Confira sua oferta no chat.`, { screen: 'SupportChat' });
+      }).catch(() => {});
+      res.status(201).json({ success: true, data: item });
+    } catch (error) {
+      console.error('[Support] discount offer error:', error);
+      res.status(500).json({ success: false, error: 'Erro ao enviar oferta com desconto.' });
+    }
+  }
+
   async getMessages(req: AuthRequest, res: Response): Promise<void> {
     try {
       const userId = req.userId!;

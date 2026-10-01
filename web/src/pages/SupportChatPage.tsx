@@ -11,6 +11,9 @@ const BROADCAST_TARGETS: { value: SupportBroadcastTarget; label: string; hint: s
   { value: 'expired', label: 'Expirados', hint: 'Ex-assinantes que venceram' },
 ];
 
+import { ChatDiscountOffer } from './ChatDiscountOffer';
+import { parseSubscribeCta } from './UserChatModal';
+
 const MAX_IMAGE_BYTES = 3 * 1024 * 1024;
 
 interface Props {
@@ -445,7 +448,13 @@ export function SupportChatPage({ toast }: Props) {
                               onClick={() => setExpandedImage(msg.imageUrl)}
                             />
                           )}
-                          {msg.message && <p className="text-sm whitespace-pre-wrap">{msg.message}</p>}
+                          {msg.message && (() => {
+                            const parsed = msg.senderType === 'admin' ? parseSubscribeCta(msg.message) : { text: msg.message, cta: null };
+                            return <>
+                              {parsed.text && <p className="text-sm whitespace-pre-wrap break-words">{parsed.text}</p>}
+                              {parsed.cta && <span className="mt-1.5 inline-block rounded-lg bg-white/20 px-2 py-1 text-xs font-semibold">Botão: Assinar {parsed.cta === 'master' ? 'Master' : 'agora'}</span>}
+                            </>;
+                          })()}
                           <p className={`text-[10px] mt-1 text-right ${
                             msg.senderType === 'admin' ? 'text-white/70' : 'text-gray-400'
                           }`}>
@@ -485,6 +494,8 @@ export function SupportChatPage({ toast }: Props) {
 
                 {/* Input */}
                 <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                  <ChatDiscountOffer key={selectedUserId} userId={selectedUserId} disabled={sending}
+                    onSent={message => { setMessages(prev => [...prev, message]); loadConversations(); }} />
                   {selectedImage && (
                     <div className="mb-2 flex items-center gap-2 rounded-xl bg-gray-50 dark:bg-gray-700 p-2">
                       <img src={selectedImage} alt="Pré-visualização" className="h-16 w-16 rounded-lg object-cover" />

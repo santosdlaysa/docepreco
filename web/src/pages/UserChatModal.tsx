@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, SupportMessage } from '../lib/api';
 import { ModalOverlay } from '../components';
+import { ChatDiscountOffer } from './ChatDiscountOffer';
 import { Crown, X, MessageSquare, ImagePlus, Send, Trash2, Bell, BellOff } from 'lucide-react';
 
 const MAX_CHAT_IMAGE_BYTES = 3 * 1024 * 1024;
@@ -257,6 +258,8 @@ export function UserChatModal({ userId, userName, userEmail, onClose, onError }:
         {/* Input */}
         <div className="p-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
           {/* Ações rápidas: insere o texto de assinatura (com o marcador [[assinar]]) para você editar antes de enviar. */}
+          <ChatDiscountOffer key={userId} userId={userId} disabled={sending}
+            onSent={message => setMessages(prev => [...prev, message])} />
           <div className="mb-2 flex flex-wrap items-center gap-2">
             <button
               type="button"

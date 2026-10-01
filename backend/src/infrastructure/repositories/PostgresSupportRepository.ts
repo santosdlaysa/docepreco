@@ -1,4 +1,5 @@
 import { pool } from '../database/connection';
+import type { PoolClient } from 'pg';
 
 export interface SupportMessage {
   id: string;
@@ -34,8 +35,8 @@ export class PostgresSupportRepository {
     return result.rows.map(this.mapRow);
   }
 
-  async create(data: { userId: string; senderType: 'user' | 'admin'; message: string; imageUrl?: string | null }): Promise<SupportMessage> {
-    const result = await pool.query(
+  async create(data: { userId: string; senderType: 'user' | 'admin'; message: string; imageUrl?: string | null }, client: Pick<PoolClient, 'query'> = pool): Promise<SupportMessage> {
+    const result = await client.query(
       `INSERT INTO support_messages (user_id, sender_type, message, image_url) VALUES ($1, $2, $3, $4) RETURNING *`,
       [data.userId, data.senderType, data.message, data.imageUrl ?? null]
     );
