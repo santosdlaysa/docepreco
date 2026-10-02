@@ -110,6 +110,11 @@ export class WinbackController {
       includeChat?: boolean;
     };
 
+    if (userIds !== undefined && (!Array.isArray(userIds) || userIds.length === 0
+      || userIds.some(id => typeof id !== 'string' || !id.trim()))) {
+      res.status(400).json({ success: false, error: 'userIds deve conter ao menos um usuário válido' });
+      return;
+    }
     if (typeof includeChat !== 'boolean') {
       res.status(400).json({ success: false, error: 'includeChat deve ser booleano' });
       return;

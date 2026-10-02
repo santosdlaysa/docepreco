@@ -418,6 +418,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [recipient, setRecipient] = useState<WinbackOffer | null>(null);
   const [discountPercent, setDiscountPercent] = useState(50);
   const [validDays, setValidDays] = useState(7);
   const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
@@ -447,11 +448,20 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   }, [load]);
 
   const handleSend = async () => {
+    if (sending) return;
     setSending(true);
     try {
-      const result = await api.sendWinbackCampaign({ discountPercent, validDays, includeWhatsapp, includeChat });
+      const result = await api.sendWinbackCampaign({ discountPercent, validDays, includeWhatsapp, includeChat,
+        ...(recipient ? { userIds: [recipient.userId] } : {}),
+      });
+      if (result.offersCreated === 0) {
+        toast(recipient ? 'Esta pessoa não está mais elegível para a oferta.' : 'Nenhum ex-assinante elegível para o envio.', 'error');
+        setConfirmOpen(false);
+        await load();
+        return;
+      }
       toast(
-        `Campanha enviada: ${result.offersCreated} ofertas (${result.emailSent} e-mails, ${result.pushSent} push${includeWhatsapp ? `, ${result.whatsappSent} WhatsApp` : ''}${includeChat ? `, ${result.chatSent} chats` : ''})`,
+        `${recipient ? `Oferta enviada para ${recipient.companyName}` : `Campanha enviada: ${result.offersCreated} ofertas`} (${result.emailSent} e-mails, ${result.pushSent} push${includeWhatsapp ? `, ${result.whatsappSent} WhatsApp` : ''}${includeChat ? `, ${result.chatSent} chats` : ''})`,
         'success'
       );
       setConfirmOpen(false);
@@ -464,6 +474,9 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   };
 
   const redeemedCount = offers.filter(o => o.status === 'redeemed').length;
+  const eligibleIds = new Set(eligible.map(user => user.userId));
+  const validOffer = Number.isInteger(discountPercent) && discountPercent >= 1 && discountPercent <= 90
+    && Number.isInteger(validDays) && validDays >= 1 && validDays <= 60;
 
   const totalPages = Math.max(1, Math.ceil(offers.length / pageSize));
   const pagedOffers = offers.slice((page - 1) * pageSize, page * pageSize);
@@ -540,8 +553,8 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
           <MessageSquare size={14} /> Enviar no chat
         </label>
         <button
-          onClick={() => setConfirmOpen(true)}
-          disabled={loading || sending || eligible.length === 0}
+          onClick={() => { setRecipient(null); setConfirmOpen(true); }}
+          disabled={loading || sending || eligible.length === 0 || !validOffer}
           className="inline-flex items-center gap-2 h-9 px-4 text-sm font-semibold text-white bg-pink-500 rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-40"
         >
           <Send size={14} />
@@ -573,6 +586,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
                 <th className="text-center px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Status</th>
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Válida até</th>
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Enviada em</th>
+                <th className="text-center px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody>
@@ -612,6 +626,15 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
                     </td>
                     <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{fmtDate(offer.expiresAt)}</td>
                     <td className="px-5 py-3 text-gray-500 dark:text-gray-400 text-xs whitespace-nowrap">{fmtDateTime(offer.createdAt)}</td>
+                    <td className="px-5 py-3 text-center whitespace-nowrap">
+                      <button type="button" onClick={() => { setRecipient(offer); setConfirmOpen(true); }}
+                        disabled={loading || sending || !eligibleIds.has(offer.userId) || !validOffer}
+                        title={eligibleIds.has(offer.userId) ? 'Enviar apenas para esta pessoa, com o desconto, validade e canais selecionados acima' : 'Pessoa não elegível para a campanha win-back'}
+                        aria-label={`Enviar oferta individual para ${offer.companyName}`}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-pink-50 px-3 py-1.5 text-xs font-semibold text-pink-600 hover:bg-pink-100 dark:bg-pink-900/20 dark:text-pink-300 disabled:opacity-40 disabled:cursor-not-allowed">
+                        <Send size={13} /> Enviar individual
+                      </button>
+                    </td>
                   </tr>
                 );
               })}
@@ -647,11 +670,11 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
       {confirmOpen && (
         <ModalOverlay onClose={() => { if (!sending) setConfirmOpen(false); }}>
           <div className="p-6 max-w-md">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Confirmar campanha win-back</h3>
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{recipient ? 'Confirmar envio individual' : 'Confirmar campanha win-back'}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Enviar oferta de <strong>{discountPercent}% de desconto</strong> (válida por {validDays} dias)
-              para <strong>{eligible.length} ex-assinantes</strong> por e-mail e push
-              {includeWhatsapp ? ', WhatsApp' : ''}{includeChat ? ' e no chat de cada um' : ''}?
+              {' '}para <strong>{recipient ? `${recipient.companyName} (${recipient.email})` : `${eligible.length} ex-assinantes`}</strong> por e-mail e push
+              {includeWhatsapp ? ', WhatsApp' : ''}{includeChat ? (recipient ? ' e no chat desta pessoa' : ' e no chat de cada um') : ''}?
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Quem já recebeu uma oferta também receberá novamente. A oferta anterior será substituída
@@ -667,7 +690,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
               </button>
               <button
                 onClick={handleSend}
-                disabled={sending}
+                disabled={sending || !validOffer}
                 className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-pink-500 rounded-lg hover:bg-pink-600 transition-colors disabled:opacity-50"
               >
                 {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}

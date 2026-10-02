@@ -38,6 +38,30 @@ beforeEach(() => {
   jest.mocked(sendWinbackEmail).mockResolvedValue(undefined);
 });
 
+it('filters the campaign to the selected recipient for an individual send', async () => {
+  const response = await request(app).post('/send').send({ userIds: [user.id], discountPercent: 35, validDays: 3, includeChat: true });
+  expect(response.status).toBe(200);
+  expect(pool.query).toHaveBeenCalledWith(expect.stringContaining('AND u.id = ANY($1::uuid[])'), [[user.id]]);
+  expect(response.body.data.users.map((entry: { userId: string }) => entry.userId)).toEqual([user.id]);
+  expect(sendWinbackEmail).toHaveBeenCalledTimes(1);
+  expect(sendWinbackEmail).toHaveBeenCalledWith(user.email, user.company_name, expect.objectContaining({ discountPercent: 35 }));
+});
+
+it.each([[], null, '', ['']])('rejects an invalid recipient selection %j instead of sending to everyone', async userIds => {
+  expect((await request(app).post('/send').send({ userIds })).status).toBe(400);
+  expect(pool.query).not.toHaveBeenCalled();
+  expect(sendWinbackEmail).not.toHaveBeenCalled();
+});
+
+it('does not fall back to the entire campaign if the selected recipient is no longer eligible', async () => {
+  jest.mocked(pool.query).mockResolvedValue({ rows: [] } as never);
+  const response = await request(app).post('/send').send({ userIds: [user.id] });
+  expect(response.status).toBe(200);
+  expect(response.body.data.offersCreated).toBe(0);
+  expect(pool.connect).not.toHaveBeenCalled();
+  expect(sendWinbackEmail).not.toHaveBeenCalled();
+});
+
 it('saves an individual chat offer with its subscription button before committing', async () => {
   const response = await request(app).post('/send').send({ discountPercent: 40, validDays: 7, includeChat: true });
   expect(response.status).toBe(200);
