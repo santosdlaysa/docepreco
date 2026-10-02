@@ -93,7 +93,7 @@ export class WinbackController {
   /**
    * Dispara a campanha win-back: cria ofertas e envia push + e-mail (+ WhatsApp opcional).
    * POST /api/admin/winback/send
-   * Body: { discountPercent?: number, validDays?: number, userIds?: string[], includeWhatsapp?: boolean }
+   * Body: { discountPercent?: number, validDays?: number, userIds?: string[], includeWhatsapp?: boolean, includeChat?: boolean }
    */
   async sendCampaign(req: Request, res: Response): Promise<void> {
     const {
@@ -101,13 +101,19 @@ export class WinbackController {
       validDays = 7,
       userIds,
       includeWhatsapp = false,
+      includeChat = false,
     } = req.body as {
       discountPercent?: number;
       validDays?: number;
       userIds?: string[];
       includeWhatsapp?: boolean;
+      includeChat?: boolean;
     };
 
+    if (typeof includeChat !== 'boolean') {
+      res.status(400).json({ success: false, error: 'includeChat deve ser booleano' });
+      return;
+    }
     if (!Number.isInteger(discountPercent) || discountPercent < 1 || discountPercent > 90) {
       res.status(400).json({ success: false, error: 'discountPercent deve ser um inteiro entre 1 e 90' });
       return;
@@ -120,7 +126,7 @@ export class WinbackController {
     try {
       const eligible = await findEligibleUsers(userIds);
       if (eligible.length === 0) {
-        res.json({ success: true, data: { total: 0, offersCreated: 0, pushSent: 0, emailSent: 0, whatsappSent: 0, users: [] } });
+        res.json({ success: true, data: { total: 0, offersCreated: 0, pushSent: 0, emailSent: 0, whatsappSent: 0, chatSent: 0, users: [] } });
         return;
       }
 
@@ -132,7 +138,8 @@ export class WinbackController {
       let pushSent = 0;
       let emailSent = 0;
       let whatsappSent = 0;
-      const users: Array<{ userId: string; companyName: string; push: boolean; email: boolean; whatsapp: boolean }> = [];
+      let chatSent = 0;
+      const users: Array<{ userId: string; companyName: string; push: boolean; email: boolean; whatsapp: boolean; chat: boolean }> = [];
 
       for (const user of eligible) {
         // Substitui a oferta anterior atomicamente e preserva o histórico de envios.
@@ -160,6 +167,15 @@ export class WinbackController {
             [user.id, discountPercent, expiresAt]
           );
           offerId = offerResult.rows[0].id;
+          if (includeChat) {
+            const tier = (user.last_product ?? '').toLowerCase().includes('master') ? 'master' : 'premium';
+            const message = `Oi, ${user.company_name}! 💖 Volte para o DocePreço com ${discountPercent}% de desconto no pagamento via PIX!\n\n` +
+              `Oferta válida até ${expiresAt.toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })} (horário de Brasília). Toque no botão abaixo e gere o PIX com desconto, sem cupom.\n[[assinar:${tier}]]`;
+            await client.query(
+              `INSERT INTO support_messages (user_id, sender_type, message) VALUES ($1, 'admin', $2)`,
+              [user.id, message]
+            );
+          }
           await client.query('COMMIT');
         } catch (error) {
           await client.query('ROLLBACK');
@@ -184,7 +200,7 @@ export class WinbackController {
               tokens.map(t => t.token),
               'Um presente para você voltar! 🎁',
               `${user.company_name}, volte com ${discountPercent}% de desconto no primeiro mês: de ${formatBRL(fullCents)} por ${formatBRL(discountedCents)}. Válido até ${validUntilLabel}!`,
-              { type: 'winback_offer', screen: 'Paywall' }
+              { type: 'winback_offer', screen: includeChat ? 'SupportChat' : 'Paywall' }
             );
             pushOk = count > 0;
           }
@@ -233,12 +249,13 @@ export class WinbackController {
         if (pushOk) pushSent++;
         if (emailOk) emailSent++;
         if (whatsOk) whatsappSent++;
-        users.push({ userId: user.id, companyName: user.company_name, push: pushOk, email: emailOk, whatsapp: whatsOk });
+        if (includeChat) chatSent++;
+        users.push({ userId: user.id, companyName: user.company_name, push: pushOk, email: emailOk, whatsapp: whatsOk, chat: includeChat });
       }
 
       res.json({
         success: true,
-        data: { total: eligible.length, offersCreated: users.length, pushSent, emailSent, whatsappSent, users },
+        data: { total: eligible.length, offersCreated: users.length, pushSent, emailSent, whatsappSent, chatSent, users },
       });
     } catch (error) {
       console.error('[Winback] Send campaign error:', error);

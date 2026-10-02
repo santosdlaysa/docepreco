@@ -3,6 +3,7 @@ import { api, AdminUser, AdminUserDetail, PremiumEvent, SupportMessage } from '.
 import { Skeleton, TableSkeleton, ModalOverlay, ToastFn, PageSizeSelect } from '../components';
 import { Crown, Search, ChevronLeft, ChevronRight, ChevronDown, Eye, Gift, AtSign, Filter, X, KeyRound, MessageCircle, MessageSquare, Send, History, UserX, UserCheck, RefreshCw, Store, ExternalLink } from 'lucide-react';
 import { UserChatModal } from './UserChatModal';
+import { WhatsAppDiscountOffer } from './WhatsAppDiscountOffer';
 
 interface Props {
   toast: ToastFn;
@@ -99,7 +100,7 @@ function UserModal({
   onClose: () => void;
   toast: ToastFn;
   onImpersonate?: (userId: string) => void;
-  onWhatsApp: (phone: string, name: string) => void;
+  onWhatsApp: (userId: string, phone: string, name: string) => void;
   onChat: (userId: string, name: string, email: string) => void;
   onUserUpdated?: (user: AdminUserDetail) => void;
 }) {
@@ -336,7 +337,7 @@ function UserModal({
               <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
               {user.phone && (
                 <button
-                  onClick={() => onWhatsApp(user.phone!, user.companyName)}
+                  onClick={() => onWhatsApp(user.id, user.phone!, user.companyName)}
                   className="text-sm text-green-600 hover:text-green-700 flex items-center gap-1 mt-0.5"
                 >
                   <MessageCircle size={13} />
@@ -731,15 +732,17 @@ function UserModal({
   );
 }
 
-function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; contactName: string; onClose: () => void; toast: ToastFn }) {
+function WhatsAppModal({ userId, phone, contactName, onClose, toast }: { userId: string; phone: string; contactName: string; onClose: () => void; toast: ToastFn }) {
   const [message, setMessage] = useState('');
+  const [recipientPhone, setRecipientPhone] = useState(phone);
+  const [offerPrepared, setOfferPrepared] = useState(false);
   const [sending, setSending] = useState(false);
 
   const handleSend = async () => {
-    if (!message.trim()) return;
+    if (!message.trim() || sending) return;
     setSending(true);
     try {
-      const result = await api.whatsappSend(phone, message.trim());
+      const result = await api.whatsappSend(recipientPhone, message.trim());
       if (result.status === 'ERROR') {
         throw new Error('O WhatsApp recusou o envio da mensagem. Tente reconectar a instância e enviar novamente.');
       }
@@ -778,7 +781,7 @@ function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; 
   };
 
   const handleOpenWhatsApp = () => {
-    const cleanPhone = phone.replace(/\D/g, '');
+    const cleanPhone = recipientPhone.replace(/\D/g, '');
     const encoded = encodeURIComponent(message);
     window.open(`https://wa.me/${cleanPhone}${message ? `?text=${encoded}` : ''}`, '_blank');
   };
@@ -799,6 +802,10 @@ function WhatsAppModal({ phone, contactName, onClose, toast }: { phone: string; 
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
         </div>
         <div className="p-4 space-y-3">
+          <WhatsAppDiscountOffer userId={userId} disabled={sending} onPrepared={(text, recipient) => {
+            setMessage(text); setRecipientPhone(recipient); setOfferPrepared(true);
+          }} />
+          {offerPrepared && <p role="status" className="text-xs text-green-600">Oferta ativa. Confira a mensagem e clique em Enviar ou abra o WhatsApp Web para concluir o envio.</p>}
           <textarea
             value={message}
             onChange={e => setMessage(e.target.value)}
@@ -854,7 +861,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
   const [sortBy, setSortBy] = useState<SortKey>('createdAt');
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [whatsApp, setWhatsApp] = useState<{ phone: string; name: string } | null>(null);
+  const [whatsApp, setWhatsApp] = useState<{ userId: string; phone: string; name: string } | null>(null);
   const [chatUser, setChatUser] = useState<{ id: string; name: string; email: string } | null>(null);
 
   const activeFilterCount = [
@@ -1242,7 +1249,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
                     {u.phone ? (
                       <button
                         className="text-green-600 hover:text-green-700 flex items-center gap-1"
-                        onClick={e => { e.stopPropagation(); setWhatsApp({ phone: u.phone!, name: u.companyName }); }}
+                        onClick={e => { e.stopPropagation(); setWhatsApp({ userId: u.id, phone: u.phone!, name: u.companyName }); }}
                       >
                         <MessageCircle size={14} />
                         {formatPhone(u.phone!)}
@@ -1328,7 +1335,7 @@ export function UsersPage({ toast, onImpersonate }: Props) {
           onClose={() => { setSelectedId(null); load(); }}
           toast={toast}
           onImpersonate={onImpersonate}
-          onWhatsApp={(phone, name) => setWhatsApp({ phone, name })}
+          onWhatsApp={(userId, phone, name) => setWhatsApp({ userId, phone, name })}
           onChat={(id, name, email) => setChatUser({ id, name, email })}
           onUserUpdated={updateUserInList}
         />
@@ -1336,6 +1343,8 @@ export function UsersPage({ toast, onImpersonate }: Props) {
 
       {whatsApp && (
         <WhatsAppModal
+          key={whatsApp.userId}
+          userId={whatsApp.userId}
           phone={whatsApp.phone}
           contactName={whatsApp.name}
           onClose={() => setWhatsApp(null)}

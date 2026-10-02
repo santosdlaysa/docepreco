@@ -413,6 +413,7 @@ export interface WinbackOffer {
 }
 
 export interface WinbackCampaignResult {
+  chatSent: number;
   total: number;
   offersCreated: number;
   pushSent: number;
@@ -465,7 +466,7 @@ export const api = {
 
   getWinbackEligible: () => req<WinbackEligibleUser[]>('/admin/winback/eligible'),
   getWinbackOffers: () => req<WinbackOffer[]>('/admin/winback'),
-  sendWinbackCampaign: (params: { discountPercent?: number; validDays?: number; userIds?: string[]; includeWhatsapp?: boolean } = {}) =>
+  sendWinbackCampaign: (params: { discountPercent?: number; validDays?: number; userIds?: string[]; includeWhatsapp?: boolean; includeChat?: boolean } = {}) =>
     req<WinbackCampaignResult>('/admin/winback/send', {
       method: 'POST',
       body: JSON.stringify(params),
@@ -759,6 +760,10 @@ export const api = {
     req<{ status?: string; key?: { id?: string } }>('/admin/whatsapp/send', {
       method: 'POST',
       body: JSON.stringify({ phone, message }),
+    }),
+  whatsappPrepareDiscountOffer: (userId: string, discountPercent: number, validDays: number) =>
+    req<{ offerId: string; phone: string; message: string; expiresAt: string }>(`/admin/whatsapp/discount-offer/${userId}`, {
+      method: 'POST', body: JSON.stringify({ discountPercent, validDays }),
     }),
   whatsappMessageStatus: (id: string) =>
     req<{ status: string; updatedAt: number } | null>(`/admin/whatsapp/message-status/${id}`),

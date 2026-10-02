@@ -38,6 +38,40 @@ beforeEach(() => {
   jest.mocked(sendWinbackEmail).mockResolvedValue(undefined);
 });
 
+it('saves an individual chat offer with its subscription button before committing', async () => {
+  const response = await request(app).post('/send').send({ discountPercent: 40, validDays: 7, includeChat: true });
+  expect(response.status).toBe(200);
+  expect(response.body.data).toMatchObject({ offersCreated: 1, chatSent: 1 });
+  expect(response.body.data.users[0].chat).toBe(true);
+  expect(client.query).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO support_messages'),
+    [user.id, expect.stringContaining('40% de desconto')]);
+  const calls = client.query.mock.calls;
+  const chatIndex = calls.findIndex(([sql]) => sql.includes('INSERT INTO support_messages'));
+  expect(calls[chatIndex][1][1]).toContain('[[assinar:premium]]');
+  expect(calls[chatIndex + 1][0]).toBe('COMMIT');
+});
+
+it('does not write to chat when the option is off', async () => {
+  const response = await request(app).post('/send').send({ includeChat: false });
+  expect(response.body.data.chatSent).toBe(0);
+  expect(client.query.mock.calls.some(([sql]) => sql.includes('INSERT INTO support_messages'))).toBe(false);
+});
+
+it('rolls back the offer when the requested chat delivery cannot be saved', async () => {
+  client.query.mockImplementation(async (sql: string) => {
+    if (sql.includes('INSERT INTO support_messages')) throw new Error('Chat failed');
+    return { rows: sql.includes('SELECT id FROM users') ? [{ id: user.id }]
+      : sql.includes('INSERT INTO winback_offers') ? [{ id: 'offer' }] : [] };
+  });
+  const log = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const response = await request(app).post('/send').send({ includeChat: true });
+  expect(response.status).toBe(500);
+  expect(client.query).toHaveBeenLastCalledWith('ROLLBACK');
+  expect(client.query).not.toHaveBeenCalledWith('COMMIT');
+  expect(sendWinbackEmail).not.toHaveBeenCalled();
+  log.mockRestore();
+});
+
 it('includes previous campaign recipients in the preview and allows immediate repeat sends', async () => {
   expect((await request(app).get('/eligible')).body.data).toHaveLength(1);
   for (const discountPercent of [50, 30]) {

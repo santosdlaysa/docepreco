@@ -421,6 +421,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   const [discountPercent, setDiscountPercent] = useState(50);
   const [validDays, setValidDays] = useState(7);
   const [includeWhatsapp, setIncludeWhatsapp] = useState(false);
+  const [includeChat, setIncludeChat] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [chatUser, setChatUser] = useState<{ id: string; name: string; email: string } | null>(null);
@@ -448,9 +449,9 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
   const handleSend = async () => {
     setSending(true);
     try {
-      const result = await api.sendWinbackCampaign({ discountPercent, validDays, includeWhatsapp });
+      const result = await api.sendWinbackCampaign({ discountPercent, validDays, includeWhatsapp, includeChat });
       toast(
-        `Campanha enviada: ${result.offersCreated} ofertas (${result.emailSent} e-mails, ${result.pushSent} push${includeWhatsapp ? `, ${result.whatsappSent} WhatsApp` : ''})`,
+        `Campanha enviada: ${result.offersCreated} ofertas (${result.emailSent} e-mails, ${result.pushSent} push${includeWhatsapp ? `, ${result.whatsappSent} WhatsApp` : ''}${includeChat ? `, ${result.chatSent} chats` : ''})`,
         'success'
       );
       setConfirmOpen(false);
@@ -533,6 +534,11 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
           <MessageCircle size={14} />
           Incluir WhatsApp
         </label>
+        <label className="flex items-center gap-2 h-9 text-sm text-gray-600 dark:text-gray-300 cursor-pointer select-none">
+          <input type="checkbox" checked={includeChat} disabled={sending}
+            onChange={e => setIncludeChat(e.target.checked)} className="w-4 h-4 accent-pink-500" />
+          <MessageSquare size={14} /> Enviar no chat
+        </label>
         <button
           onClick={() => setConfirmOpen(true)}
           disabled={loading || sending || eligible.length === 0}
@@ -544,7 +550,9 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
       </div>
 
       <p className="px-5 py-3 text-xs text-gray-400 border-b border-gray-100 dark:border-gray-700/50">
-        Cada cliente recebe e-mail e push com a oferta. O desconto é aplicado automaticamente no PIX
+        Cada cliente recebe e-mail e push com a oferta.
+        {includeChat && ' A oferta também aparece na conversa de cada cliente, com o botão de assinar.'}
+        {' '}O desconto é aplicado automaticamente no PIX
         quando ela toca em "Assinar" no app — sem cupom. Ao aprovar o pagamento, a oferta vira "Resgatada".
         {' '}Você pode reenviar a qualquer momento. Cada envio substitui a oferta anterior e renova a validade
         para os ex-assinantes que ainda não voltaram.
@@ -643,7 +651,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Enviar oferta de <strong>{discountPercent}% de desconto</strong> (válida por {validDays} dias)
               para <strong>{eligible.length} ex-assinantes</strong> por e-mail e push
-              {includeWhatsapp ? ' e WhatsApp' : ''}?
+              {includeWhatsapp ? ', WhatsApp' : ''}{includeChat ? ' e no chat de cada um' : ''}?
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Quem já recebeu uma oferta também receberá novamente. A oferta anterior será substituída

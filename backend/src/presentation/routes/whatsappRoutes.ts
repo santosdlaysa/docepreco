@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { adminMiddleware } from '../middleware/adminMiddleware';
+import { WhatsAppOfferController } from '../controllers/WhatsAppOfferController';
 import {
   createInstance,
   getQrCode,
@@ -12,6 +13,7 @@ import {
 const router = Router();
 
 router.use(adminMiddleware);
+router.post('/discount-offer/:userId', (req, res) => new WhatsAppOfferController().prepare(req, res));
 
 // Criar instância (só precisa uma vez)
 router.post('/instance', async (_req: Request, res: Response) => {
