@@ -669,7 +669,7 @@ function WinbackSection({ toast }: { toast: (msg: string, type?: 'success' | 'er
 
       {confirmOpen && (
         <ModalOverlay onClose={() => { if (!sending) setConfirmOpen(false); }}>
-          <div className="p-6 max-w-md">
+          <div className="w-full max-w-md mx-auto p-6 bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">{recipient ? 'Confirmar envio individual' : 'Confirmar campanha win-back'}</h3>
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
               Enviar oferta de <strong>{discountPercent}% de desconto</strong> (válida por {validDays} dias)
