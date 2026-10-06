@@ -36,6 +36,7 @@ import { usePaywall } from '../premium/usePaywall';
 import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { parseLocaleNumber } from '../utils/number';
+import { IFOOD_PLANS, ifoodPrice } from '../../domain/services/ifoodPricing';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
 import { useCurrency } from '../../context/CurrencyContext';
 
@@ -518,6 +519,28 @@ export const RecipeDetailScreen: React.FC = () => {
             </LinearGradient>
           )}
 
+          {/* ═══════ PREÇO PARA IFOOD (só em BRL) ═══════ */}
+          {calculation && currency === 'BRL' && calculation.suggestedPrice > 0 && (
+            <View style={s.ifoodCard}>
+              <Text style={s.ifoodTitle}>🛵 Preço para iFood</Text>
+              <View style={s.ifoodGrid}>
+                {IFOOD_PLANS.map(plan => {
+                  const unit = ifoodPrice(calculation.suggestedPrice, plan.rate);
+                  return (
+                    <View key={plan.key} style={s.ifoodItem}>
+                      <Text style={s.ifoodLbl}>{plan.label} ({(plan.rate * 100).toFixed(1).replace('.', ',')}%)</Text>
+                      <Text style={s.ifoodVal}>{formatCurrency(unit)}</Text>
+                      <Text style={s.ifoodLbl}>Total ({recipe.yield} un): {formatCurrency(unit * recipe.yield)}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+              <Text style={s.ifoodHint}>
+                Já repassa a comissão + taxa de pagamento online, para você receber o mesmo valor da venda direta. Não inclui a mensalidade do iFood.
+              </Text>
+            </View>
+          )}
+
           {/* ═══════ ACTIONS ═══════ */}
           {calculation && (
             <View style={s.actions}>
@@ -874,6 +897,21 @@ const s = StyleSheet.create({
   },
   resultGridVal: { fontSize: 17, fontWeight: '700', color: '#fff' },
   resultGridLbl: { fontSize: 11, color: 'rgba(255,255,255,0.92)', marginTop: 4, fontWeight: '500' },
+
+  /* ── iFood ── */
+  ifoodCard: {
+    backgroundColor: '#fff',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: '#FBCACA',
+    padding: 14,
+  },
+  ifoodTitle: { fontSize: 14, fontWeight: '700', color: '#EA1D2C' },
+  ifoodGrid: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  ifoodItem: { flex: 1, backgroundColor: '#FFF1F1', borderRadius: 12, padding: 10 },
+  ifoodVal: { fontSize: 18, fontWeight: '800', color: '#1F1F1F', marginVertical: 2 },
+  ifoodLbl: { fontSize: 11, color: '#6B6B6B' },
+  ifoodHint: { fontSize: 11, color: '#6B6B6B', marginTop: 8 },
 
   /* ── Actions ── */
   actions: { flexDirection: 'row', gap: 10 },

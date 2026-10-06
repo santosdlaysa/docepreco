@@ -18,6 +18,7 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatBRLUnit } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
+import { IFOOD_PLANS, ifoodPrice } from '../ifoodPricing';
 import { getEffectivePurchaseQuantity, getIngredientUsageCost } from '../ingredientPricing';
 import { useAuth } from '../UserAuthContext';
 import { printRecipeQuote } from '../quotePdf';
@@ -234,6 +235,9 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
                         <span className="font-medium text-gray-900 dark:text-white">{value}</span>
                       </div>
                     ))}
+                    <div className="py-3">
+                      <IfoodPrices price={c.suggestedPrice} yieldQty={r.yield} />
+                    </div>
                     <p className="pt-3 text-xs text-gray-500 dark:text-gray-400">
                       O preço inclui o custo mais {r.profitMargin}% de acréscimo. O total considera a venda de todas as {fmtQty(r.yield)} unidades.
                       {' '}Valores estimados antes do arredondamento do preço por unidade.
@@ -894,6 +898,10 @@ function RecipeForm({
                 </p>
               </div>
 
+              <div className="col-span-2">
+                <IfoodPrices price={suggestedPrice} yieldQty={yieldNum} />
+              </div>
+
               <div className="bg-white dark:bg-gray-800 rounded-lg p-3 col-span-2">
                 <p className="text-xs text-gray-500 dark:text-gray-400">Lucro estimado da receita</p>
                 <p className="text-lg font-bold text-green-600 dark:text-green-400">{formatBRL(estimatedProfit)}</p>
@@ -1273,5 +1281,32 @@ function RecipeForm({
         )}
       </form>
     </ModalOverlay>
+  );
+}
+
+/** Preço por unidade/total para vender no iFood, já repassando a taxa do plano. */
+function IfoodPrices({ price, yieldQty }: { price: number; yieldQty: number }) {
+  if (price <= 0) return null;
+  return (
+    <div className="rounded-lg border border-red-200 dark:border-red-900/50 bg-white dark:bg-gray-800 p-3">
+      <p className="text-sm font-semibold text-red-600 dark:text-red-400">🛵 Preço para iFood</p>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {IFOOD_PLANS.map(plan => {
+          const unit = ifoodPrice(price, plan.rate);
+          return (
+            <div key={plan.key} className="rounded-lg bg-red-50 dark:bg-red-900/20 p-2.5">
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                {plan.label} ({(plan.rate * 100).toFixed(1).replace('.', ',')}%)
+              </p>
+              <p className="text-lg font-bold text-gray-900 dark:text-white">{formatBRL(unit)}</p>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400">Total ({fmtQty(yieldQty)} un): {formatBRL(unit * yieldQty)}</p>
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[11px] text-gray-500 dark:text-gray-400">
+        Já repassa a comissão + taxa de pagamento online, para você receber o mesmo valor da venda direta. Não inclui a mensalidade do iFood.
+      </p>
+    </div>
   );
 }
