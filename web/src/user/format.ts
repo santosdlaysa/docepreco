@@ -1,14 +1,49 @@
+/** Moedas suportadas (mesma lista do app — mobile/src/presentation/utils/currency.ts). */
+export const CURRENCIES = {
+  BRL: { name: 'Real Brasileiro', locale: 'pt-BR' },
+  USD: { name: 'Dólar Americano', locale: 'en-US' },
+  EUR: { name: 'Euro', locale: 'de-DE' },
+  GBP: { name: 'Libra Esterlina', locale: 'en-GB' },
+  NZD: { name: 'Dólar Neozelandês', locale: 'en-NZ' },
+  ARS: { name: 'Peso Argentino', locale: 'es-AR' },
+  CLP: { name: 'Peso Chileno', locale: 'es-CL' },
+  COP: { name: 'Peso Colombiano', locale: 'es-CO' },
+  MXN: { name: 'Peso Mexicano', locale: 'es-MX' },
+} as const;
+export type Currency = keyof typeof CURRENCIES;
+
+const CURRENCY_KEY = 'docepreco_currency';
+
+function readCurrency(): Currency {
+  try {
+    const v = localStorage.getItem(CURRENCY_KEY);
+    if (v && v in CURRENCIES) return v as Currency;
+  } catch { /* storage indisponível */ }
+  return 'BRL';
+}
+
+/** Moeda escolhida pela confeiteira (fica no navegador, como no app fica no aparelho). */
+let currentCurrency: Currency = readCurrency();
+export const getCurrency = (): Currency => currentCurrency;
+export function setCurrency(c: Currency): void {
+  currentCurrency = c;
+  try { localStorage.setItem(CURRENCY_KEY, c); } catch { /* ignora */ }
+}
+
+/** Formata na moeda escolhida (o nome ficou por compatibilidade: padrão é BRL). */
 export function formatBRL(value: number): string {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
+  const c = currentCurrency;
+  return new Intl.NumberFormat(CURRENCIES[c].locale, { style: 'currency', currency: c }).format(value || 0);
 }
 
 export function formatBRLUnit(value: number): string {
   const numericValue = Number.isFinite(value) ? value : 0;
   const fractionDigits = numericValue > 0 && numericValue < 0.01 ? 4 : 2;
+  const c = currentCurrency;
 
-  return new Intl.NumberFormat('pt-BR', {
+  return new Intl.NumberFormat(CURRENCIES[c].locale, {
     style: 'currency',
-    currency: 'BRL',
+    currency: c,
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   }).format(numericValue);

@@ -5,6 +5,8 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
+import { deductStockForItems, reverseStockForItems } from '../stockDeduction';
+import { getCustomProducts, addCustomProduct, computeDiscountAmount, DiscountType } from '../customProducts';
 
 const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
 
@@ -145,9 +147,14 @@ export function SaleForm({
   toast: ToastFn;
 }) {
   const editing = !!sale;
-  // Venda sem receita vinculada (produto avulso ou encomenda): a identidade não
-  // é editável aqui, mostramos o nome e preservamos productName no envio.
-  const isCustom = editing && !sale!.recipeId;
+  // Venda nova: receita ou produto avulso (sem ficha técnica), igual ao app.
+  // Venda existente sem receita: a identidade não é editável, preservamos productName.
+  const [mode, setMode] = useState<'recipe' | 'custom'>(editing && !sale!.recipeId ? 'custom' : 'recipe');
+  const isCustom = mode === 'custom';
+  const [customName, setCustomName] = useState(editing && !sale!.recipeId ? sale!.recipeName : '');
+  const [savedProducts] = useState(getCustomProducts);
+  const [discountType, setDiscountType] = useState<DiscountType>('fixed');
+  const [discountValue, setDiscountValue] = useState(sale?.discount ? String(sale.discount).replace('.', ',') : '');
   const [recipeId, setRecipeId] = useState(sale?.recipeId || recipes[0]?.id || '');
   const [quantity, setQuantity] = useState(sale ? String(sale.quantitySold) : '1');
   const [price, setPrice] = useState(sale ? String(sale.salePrice) : '');
@@ -158,19 +165,27 @@ export function SaleForm({
   const [paymentMethod, setPaymentMethod] = useState<'dinheiro' | 'credito' | 'debito' | 'pix'>(initialPayment);
   const [saving, setSaving] = useState(false);
 
+  const warnLowStock = (names: string[]) => {
+    if (names.length > 0) toast.warning(`Estoque baixo: ${names.join(', ')}`);
+  };
+
+  const qtyNum = parseLocaleNumber(quantity) || 1;
+  const subtotal = qtyNum * parseLocaleNumber(price);
+  const discountAmount = computeDiscountAmount(subtotal, discountType, parseLocaleNumber(discountValue));
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isCustom && !recipeId) return toast.error('Selecione uma receita.');
+    if (isCustom && !customName.trim()) return toast.error('Informe o nome do produto.');
     setSaving(true);
     try {
       if (editing) {
         const data: UpdateSaleDTO = {
           recipeId: isCustom ? null : recipeId,
-          productName: isCustom ? sale!.recipeName : undefined,
-          quantitySold: parseLocaleNumber(quantity) || 1,
+          productName: isCustom ? customName.trim() : undefined,
+          quantitySold: qtyNum,
           salePrice: parseLocaleNumber(price),
-          // Preserva o desconto existente (o formulário web não edita desconto).
-          discount: sale!.discount,
+          discount: discountAmount,
           saleDate: date,
           clientName: clientName.trim() || undefined,
           notes: notes.trim() || undefined,
@@ -178,10 +193,18 @@ export function SaleForm({
         };
         await userApi.updateSale(sale!.id, data);
         toast.success('Venda atualizada.');
+        // Mudou receita ou quantidade: estorna a baixa antiga e aplica a nova (igual ao app).
+        const newQty = data.quantitySold ?? 1;
+        if (!isCustom && (sale!.recipeId !== recipeId || sale!.quantitySold !== newQty)) {
+          if (sale!.recipeId) await reverseStockForItems([{ recipeId: sale!.recipeId, quantity: sale!.quantitySold }]);
+          warnLowStock(await deductStockForItems([{ recipeId, quantity: newQty }]));
+        }
       } else {
         const data: CreateSaleDTO = {
-          recipeId,
-          quantitySold: parseLocaleNumber(quantity) || 1,
+          recipeId: isCustom ? null : recipeId,
+          productName: isCustom ? customName.trim() : undefined,
+          discount: discountAmount || undefined,
+          quantitySold: qtyNum,
           salePrice: parseLocaleNumber(price),
           saleDate: date,
           clientName: clientName.trim() || undefined,
@@ -190,6 +213,8 @@ export function SaleForm({
         };
         await userApi.createSale(data);
         toast.success('Venda registrada.');
+        if (isCustom) addCustomProduct(customName);
+        else warnLowStock(await deductStockForItems([{ recipeId, quantity: data.quantitySold }]));
       }
       onSaved();
     } catch (err) {
@@ -204,12 +229,45 @@ export function SaleForm({
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">{editing ? 'Editar venda' : 'Registrar venda'}</h3>
 
+        {!editing && (
+          <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 dark:bg-gray-700/50 p-1">
+            {([['recipe', 'Receita'], ['custom', 'Produto avulso']] as const).map(([m, label]) => (
+              <button
+                key={m}
+                type="button"
+                onClick={() => setMode(m)}
+                className={`rounded-lg py-2 text-sm font-semibold transition-colors ${
+                  mode === m ? 'bg-white dark:bg-gray-800 text-primary-600 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {isCustom ? (
           <FormField label="Produto">
-            <input value={sale!.recipeName} disabled className={`${inputClass} opacity-70`} />
+            {editing ? (
+              <input value={sale!.recipeName} disabled className={`${inputClass} opacity-70`} />
+            ) : (
+              <>
+                <input
+                  value={customName}
+                  onChange={e => setCustomName(e.target.value)}
+                  list="custom-products"
+                  placeholder="Ex.: Brigadeiro gourmet"
+                  className={inputClass}
+                  autoFocus
+                />
+                <datalist id="custom-products">
+                  {savedProducts.map(n => <option key={n} value={n} />)}
+                </datalist>
+              </>
+            )}
           </FormField>
         ) : recipes.length === 0 ? (
-          <p className="text-sm text-gray-500">Cadastre uma receita antes de registrar vendas.</p>
+          <p className="text-sm text-gray-500">Cadastre uma receita antes de registrar vendas, ou use “Produto avulso”.</p>
         ) : (
           <FormField label="Receita">
             <select value={recipeId} onChange={e => setRecipeId(e.target.value)} className={inputClass}>
@@ -243,6 +301,29 @@ export function SaleForm({
             />
           </FormField>
         </div>
+
+        <FormField label="Desconto (opcional)">
+          <div className="flex gap-2">
+            <select value={discountType} onChange={e => setDiscountType(e.target.value as DiscountType)} className={`${inputClass} w-24 shrink-0`}>
+              <option value="fixed">R$</option>
+              <option value="percent">%</option>
+            </select>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={discountValue}
+              onChange={e => setDiscountValue(e.target.value)}
+              placeholder="0"
+              className={inputClass}
+            />
+          </div>
+        </FormField>
+        {subtotal > 0 && (
+          <p className="text-sm text-gray-600 dark:text-gray-300 -mt-2">
+            Total: <span className="font-semibold text-gray-900 dark:text-white">{formatBRL(subtotal - discountAmount)}</span>
+            {discountAmount > 0 && <span className="text-xs text-gray-500"> (desconto de {formatBRL(discountAmount)})</span>}
+          </p>
+        )}
 
         <div className="grid grid-cols-2 gap-3">
           <FormField label="Data">

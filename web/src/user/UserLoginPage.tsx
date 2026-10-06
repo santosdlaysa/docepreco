@@ -3,18 +3,26 @@ import { Cake, Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useAuth } from './UserAuthContext';
 import { userApi, ApiError } from './userApi';
 import { LgpdModal } from './lgpd';
+import { GoogleSignInButton, googleSignInEnabled } from './GoogleSignInButton';
 
-type Mode = 'login' | 'register' | 'forgot';
+type Mode = 'login' | 'register' | 'forgot' | 'reset';
+
+// Link de indicação: /app?ref=CODIGO abre direto no cadastro com o código preenchido.
+const REF_FROM_URL = (() => {
+  try { return new URLSearchParams(window.location.search).get('ref')?.trim().toUpperCase() ?? ''; } catch { return ''; }
+})();
 
 export function UserLoginPage() {
   const { login, register } = useAuth();
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(REF_FROM_URL ? 'register' : 'login');
+  const [referralCode, setReferralCode] = useState(REF_FROM_URL);
 
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [instagramHandle, setInstagramHandle] = useState('');
   const [password, setPassword] = useState('');
+  const [resetCode, setResetCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [acceptedLgpd, setAcceptedLgpd] = useState(false);
   const [showLgpd, setShowLgpd] = useState(false);
@@ -48,10 +56,29 @@ export function UserLoginPage() {
           setLoading(false);
           return;
         }
-        await register(companyName.trim(), email.trim(), password, phone.trim(), instagramHandle.trim() || undefined);
-      } else {
+        await register(companyName.trim(), email.trim(), password, phone.trim(), instagramHandle.trim() || undefined, referralCode.trim() || undefined);
+      } else if (mode === 'forgot') {
         await userApi.forgotPassword(email.trim());
-        setInfo('Se o e-mail existir, enviamos instruções de recuperação.');
+        // O reset é por código: segue para a etapa de digitar o código e a nova senha.
+        setMode('reset');
+        setResetCode('');
+        setPassword('');
+        setInfo('Se o e-mail estiver cadastrado, enviamos um código. Confira também o spam.');
+      } else {
+        if (!resetCode.trim()) {
+          setError('Informe o código recebido por e-mail.');
+          setLoading(false);
+          return;
+        }
+        if (password.length < 6) {
+          setError('A nova senha deve ter pelo menos 6 caracteres.');
+          setLoading(false);
+          return;
+        }
+        await userApi.resetPassword(email.trim(), resetCode.trim(), password);
+        setMode('login');
+        setPassword('');
+        setInfo('Senha alterada! Entre com a nova senha.');
       }
     } catch (err) {
       const msg = err instanceof ApiError ? err.message : 'Erro de conexão. Tente novamente.';
@@ -62,7 +89,7 @@ export function UserLoginPage() {
   };
 
   const title =
-    mode === 'login' ? 'Entrar na sua conta' : mode === 'register' ? 'Criar conta' : 'Recuperar senha';
+    mode === 'login' ? 'Entrar na sua conta' : mode === 'register' ? 'Criar conta' : mode === 'reset' ? 'Criar nova senha' : 'Recuperar senha';
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
@@ -95,7 +122,7 @@ export function UserLoginPage() {
               onChange={e => setEmail(e.target.value)}
               placeholder="voce@email.com"
               className={inputClass}
-              autoFocus={mode !== 'register'}
+              autoFocus={mode !== 'register' && mode !== 'reset'}
             />
           </Field>
 
@@ -126,8 +153,35 @@ export function UserLoginPage() {
             </Field>
           )}
 
+          {mode === 'register' && (
+            <Field label="Código de indicação (opcional)">
+              <input
+                value={referralCode}
+                onChange={e => setReferralCode(e.target.value.toUpperCase())}
+                placeholder="Ex.: ANA123"
+                autoCapitalize="characters"
+                maxLength={20}
+                className={inputClass}
+              />
+            </Field>
+          )}
+
+          {mode === 'reset' && (
+            <Field label="Código recebido por e-mail">
+              <input
+                value={resetCode}
+                onChange={e => setResetCode(e.target.value)}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="000000"
+                className={inputClass}
+                autoFocus
+              />
+            </Field>
+          )}
+
           {mode !== 'forgot' && (
-            <Field label="Senha">
+            <Field label={mode === 'reset' ? 'Nova senha' : 'Senha'}>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -183,11 +237,22 @@ export function UserLoginPage() {
               'Entrar'
             ) : mode === 'register' ? (
               'Criar conta'
+            ) : mode === 'reset' ? (
+              'Salvar nova senha'
             ) : (
               'Enviar'
             )}
           </button>
         </form>
+
+        {googleSignInEnabled && (mode === 'login' || mode === 'register') && (
+          <div className="mt-4 space-y-3">
+            <div className="flex items-center gap-3 text-xs text-gray-400">
+              <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" /> ou <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+            </div>
+            <GoogleSignInButton onError={msg => setError(msg)} />
+          </div>
+        )}
 
         <div className="mt-5 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2">
           {mode === 'login' && (
@@ -204,6 +269,13 @@ export function UserLoginPage() {
                 </button>
               </p>
             </>
+          )}
+          {mode === 'reset' && (
+            <p>
+              <button onClick={() => switchMode('forgot')} className={linkClass}>
+                Reenviar código
+              </button>
+            </p>
           )}
           {mode !== 'login' && (
             <p>

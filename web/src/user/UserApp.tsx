@@ -23,6 +23,8 @@ import {
   Moon,
   Sun,
   Loader2,
+  Gift,
+  Megaphone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -52,11 +54,17 @@ import { StockPage } from './pages/StockPage';
 import { ClientsPage } from './pages/ClientsPage';
 import { SalesTipsPage } from './pages/SalesTipsPage';
 import { SupportPage } from './pages/SupportPage';
+import { ReferralPage } from './pages/ReferralPage';
+import { AnnounceBannerPage } from './pages/AnnounceBannerPage';
+import { NotificationsBell } from './NotificationsBell';
+import { BeginnerGuide, SponsoredCarousel } from './HomeExtras';
+import { SubscriptionExpiringModal, SatisfactionSurveyModal } from './EngagementModals';
+import { SubscribeModal } from './SubscribeModal';
 
 type Page =
   | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production'
   | 'cash' | 'seasons' | 'store' | 'profile' | 'finance' | 'purchases' | 'expenses' | 'stock'
-  | 'clients' | 'tips' | 'support';
+  | 'clients' | 'tips' | 'support' | 'referral' | 'announce';
 
 const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'cash', label: 'Caixa', icon: Wallet },
@@ -74,6 +82,8 @@ const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
   { id: 'store', label: 'Loja', icon: Store },
   { id: 'seasons', label: 'Temporadas', icon: CalendarRange },
   { id: 'tips', label: 'Dicas de vendas', icon: Lightbulb },
+  { id: 'referral', label: 'Indique e ganhe', icon: Gift },
+  { id: 'announce', label: 'Anunciar no app', icon: Megaphone },
   { id: 'support', label: 'Suporte', icon: Headset },
   { id: 'profile', label: 'Meu perfil', icon: User },
 ];
@@ -98,9 +108,46 @@ function Shell() {
   const { user, loading, logout, setUser } = useAuth();
   const [page, setPage] = useState<Page>('reports');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  // Renovação aberta pelo aviso de assinatura vencendo.
+  const [renewOpen, setRenewOpen] = useState(false);
+  const [expiringVisible, setExpiringVisible] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const { dark, toggle: toggleDark } = useDarkMode();
   const routerNavigate = useNavigate();
+
+  // Volta do checkout de cartão (Stripe): o webhook libera o plano em alguns
+  // segundos, então confere algumas vezes antes de desistir.
+  const hasUser = !!user;
+  useEffect(() => {
+    if (!hasUser) return;
+    const params = new URLSearchParams(window.location.search);
+    const checkout = params.get('checkout');
+    if (!checkout) return;
+    params.delete('checkout');
+    params.delete('session_id');
+    const qs = params.toString();
+    window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
+    if (checkout !== 'success') {
+      toast('Pagamento cancelado. Nenhuma cobrança foi feita.');
+      return;
+    }
+    let active = true;
+    (async () => {
+      toast('Confirmando seu pagamento…');
+      for (let i = 0; i < 8 && active; i++) {
+        try {
+          const me = await userApi.me();
+          if (effectiveTier(me) !== 'free') {
+            if (active) { setUser(me); toast.success('Pagamento confirmado! Seu plano já está ativo 🎉'); }
+            return;
+          }
+        } catch { /* tenta de novo */ }
+        await new Promise(r => setTimeout(r, 2500));
+      }
+      if (active) toast.warning('Pagamento recebido. A liberação pode levar alguns minutos — atualize a página em instantes.');
+    })();
+    return () => { active = false; };
+  }, [hasUser]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reflete o nome da confeitaria logada na URL (ex.: /app/doces-da-marina)
   useEffect(() => {
@@ -227,10 +274,12 @@ function Shell() {
             </div>
             <p className="font-bold text-gray-900 dark:text-white text-sm">DocePreço</p>
           </div>
+          <NotificationsBell tier={tier} onNavigate={navigate} />
           <ThemeToggle dark={dark} toggle={toggleDark} />
         </div>
 
-        <div className="hidden md:flex items-center justify-end px-6 pt-4">
+        <div className="hidden md:flex items-center justify-end gap-1 px-6 pt-4">
+          <NotificationsBell tier={tier} onNavigate={navigate} />
           <ThemeToggle dark={dark} toggle={toggleDark} />
         </div>
 
@@ -244,7 +293,13 @@ function Shell() {
               }
               return (
                 <>
-                  {page === 'reports' && <ReportsPage toast={toast} />}
+                  {page === 'reports' && (
+                    <>
+                      <BeginnerGuide onNavigate={navigate} />
+                      <SponsoredCarousel onAnnounce={() => navigate('announce')} />
+                      <ReportsPage toast={toast} />
+                    </>
+                  )}
                   {page === 'finance' && <FinancePage toast={toast} />}
                   {page === 'purchases' && <PurchasesPage toast={toast} />}
                   {page === 'expenses' && <ExpensesPage toast={toast} />}
@@ -261,6 +316,8 @@ function Shell() {
                   {page === 'tips' && <SalesTipsPage toast={toast} />}
                   {page === 'support' && <SupportPage toast={toast} />}
                   {page === 'profile' && <ProfilePage toast={toast} />}
+                  {page === 'referral' && <ReferralPage toast={toast} />}
+                  {page === 'announce' && <AnnounceBannerPage toast={toast} onDone={() => navigate('reports')} />}
                 </>
               );
             })()}
@@ -269,6 +326,18 @@ function Shell() {
       </main>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+
+      {/* Assinatura vencendo (≤ 3 dias, 1x/dia) e pesquisa de satisfação — iguais ao app. */}
+      <SubscriptionExpiringModal
+        enabled={!!user.lgpdAcceptedAt && tier !== 'free'}
+        premiumUntil={user.premiumUntil}
+        onRenew={() => setRenewOpen(true)}
+        onVisibleChange={setExpiringVisible}
+      />
+      <SatisfactionSurveyModal enabled={!!user.lgpdAcceptedAt && !expiringVisible && !renewOpen} />
+      {renewOpen && tier !== 'free' && (
+        <SubscribeModal initialTier={tier} source="expiring_modal" onClose={() => setRenewOpen(false)} toast={toast} />
+      )}
 
       {/* Aceite LGPD obrigatório para contas criadas antes do consentimento. */}
       {!user.lgpdAcceptedAt && (

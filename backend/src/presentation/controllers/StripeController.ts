@@ -32,6 +32,48 @@ const PLAN_NAMES: Record<string, Record<string, string>> = {
   master:  { monthly: 'DocePreço Master Mensal',  annual: 'DocePreço Master Anual' },
 };
 
+// Origens da web do confeiteiro para onde o checkout pode voltar. Sem isso o
+// Stripe volta para a página do backend feita para o app ("volte ao app").
+const WEB_RETURN_ORIGINS = (process.env.WEB_APP_ORIGINS ?? 'https://docepreco.site,https://www.docepreco.site')
+  .split(',')
+  .map(o => o.trim())
+  .filter(Boolean);
+
+/** Valida a URL de retorno enviada pela web (evita open redirect). */
+export function safeWebReturnUrl(raw: unknown): URL | null {
+  if (typeof raw !== 'string' || !raw) return null;
+  try {
+    const url = new URL(raw);
+    const isLocalDev = process.env.NODE_ENV !== 'production' && ['localhost', '127.0.0.1'].includes(url.hostname);
+    if (!WEB_RETURN_ORIGINS.includes(url.origin) && !isLocalDev) return null;
+    url.hash = '';
+    url.searchParams.delete('checkout');
+    url.searchParams.delete('session_id');
+    return url;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * URLs de retorno do checkout. Web: volta para a própria página com
+ * ?checkout=success|cancel (a web faz o polling do plano). App: páginas do backend.
+ */
+function checkoutReturnUrls(baseUrl: string, web: URL | null): { success_url: string; cancel_url: string } {
+  if (!web) {
+    return {
+      success_url: `${baseUrl}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${baseUrl}/api/stripe/cancel`,
+    };
+  }
+  const success = new URL(web.toString());
+  success.searchParams.set('checkout', 'success');
+  const cancel = new URL(web.toString());
+  cancel.searchParams.set('checkout', 'cancel');
+  // {CHECKOUT_SESSION_ID} precisa ir literal (sem encode) para o Stripe substituir.
+  return { success_url: `${success.toString()}&session_id={CHECKOUT_SESSION_ID}`, cancel_url: cancel.toString() };
+}
+
 // Stripe Price IDs for subscriptions (recurring billing)
 const STRIPE_PRICE_IDS: Record<string, Record<string, string>> = {
   premium: {
@@ -94,9 +136,10 @@ export class StripeController {
       return;
     }
 
-    const { plan, tier } = req.body as {
+    const { plan, tier, returnUrl } = req.body as {
       plan?: 'monthly' | 'annual';
       tier?: 'premium' | 'master';
+      returnUrl?: string;
     };
 
     if (!plan || !tier || !PRICES[tier]?.[plan]) {
@@ -160,8 +203,7 @@ export class StripeController {
           ...(trialDays > 0 && { trial_period_days: trialDays }),
         },
         metadata: { userId, plan, tier },
-        success_url: `${baseUrl}/api/stripe/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${baseUrl}/api/stripe/cancel`,
+        ...checkoutReturnUrls(baseUrl, safeWebReturnUrl(returnUrl)),
       });
 
       res.json({ success: true, data: { url: session.url } });
@@ -214,7 +256,8 @@ export class StripeController {
       const baseUrl = process.env.APP_BASE_URL ?? 'https://docepreco.onrender.com';
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        return_url: `${baseUrl}/api/stripe/success`,
+        // Web volta para a própria página; app usa a página do backend.
+        return_url: safeWebReturnUrl(req.body?.returnUrl)?.toString() ?? `${baseUrl}/api/stripe/success`,
       });
 
       res.json({ success: true, data: { url: session.url } });

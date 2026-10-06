@@ -36,7 +36,7 @@ export function setOnUnauthorized(fn: () => void) {
   onUnauthorized = fn;
 }
 
-async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = loadToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -76,7 +76,22 @@ async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 /* ── Tipos (espelham mobile/src/domain/entities) ───────────────────────── */
 
-export type PremiumPlatform = 'ios' | 'android' | 'manual';
+export type PremiumPlatform = 'ios' | 'android' | 'manual' | 'card' | 'pix';
+
+/** Assinatura PIX recorrente (Pix Automático via Mercado Pago). */
+export interface PixSubscription {
+  id: string;
+  status: 'pending' | 'authorized' | 'paused' | 'cancelled';
+  planLabel: string;
+  planTier: 'premium' | 'master';
+  amountCents: number;
+  frequencyMonths: number;
+  /** Link onde a pessoa autoriza a recorrência (só enquanto pendente) */
+  initPoint: string | null;
+  lastChargeAt?: string | null;
+  nextPaymentDate?: string | null;
+  alreadyExists?: boolean;
+}
 
 export type PlanTier = 'free' | 'premium' | 'master';
 
@@ -109,7 +124,7 @@ export function effectiveTier(
   return tier;
 }
 
-export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unit';
+export type Unit = 'g' | 'kg' | 'ml' | 'l' | 'unit' | 'oz' | 'lb' | 'fl_oz' | 'cup' | 'tbsp' | 'tsp';
 
 export interface Ingredient {
   id: string;
@@ -210,7 +225,11 @@ export interface Sale {
   createdAt: string;
 }
 export interface CreateSaleDTO {
-  recipeId: string;
+  /** null quando é produto avulso (venda sem receita) — então productName é obrigatório. */
+  recipeId: string | null;
+  productName?: string | null;
+  /** Desconto em R$ (já resolvido de %); o backend limita ao subtotal. */
+  discount?: number;
   quantitySold: number;
   salePrice: number;
   saleDate: string;
@@ -297,8 +316,18 @@ export interface OrderPayment {
   method: OrderPaymentMethod;
   date: string;
 }
+export interface OrderItem {
+  recipeId?: string | null;
+  recipeName: string;
+  quantity: number;
+  unitPrice: number;
+  /** Desconto do item já resolvido em R$ (não percentual). */
+  discount?: number;
+  /** Adicionais escolhidos na loja online (já inclusos no unitPrice). */
+  addons?: { name: string; price: number }[];
+}
 export interface Order {
-  items?: { recipeId?: string | null; recipeName: string; quantity: number; unitPrice: number }[];
+  items?: OrderItem[];
   id: string;
   clientName: string;
   clientPhone?: string | null;
@@ -316,6 +345,10 @@ export interface Order {
   notes?: string | null;
   paymentMethod?: OrderPaymentMethod | null;
   changeFor?: number | null;
+  /** Endereço informado pelo cliente na loja online (somente leitura). */
+  deliveryAddress?: string | null;
+  orderNumber?: number | null;
+  source?: 'manual' | 'online';
   createdAt: string;
   /** Transiente: retornado por create/update quando a venda foi registrada automaticamente. */
   saleRegistered?: boolean;
@@ -334,6 +367,9 @@ export interface CreateOrderDTO {
   paid?: boolean;
   paidAmount?: number;
   payments?: OrderPayment[];
+  items?: OrderItem[];
+  paymentMethod?: OrderPaymentMethod | null;
+  changeFor?: number | null;
   notes?: string;
 }
 
@@ -470,6 +506,14 @@ export interface MyStore {
   logoUrl?: string | null;
   address: string | null;
   city?: string | null;
+  /** Categoria da loja na vitrine (ex.: 'bolos', 'doces'). */
+  category?: string | null;
+  /** Formas de pagamento aceitas no checkout. */
+  paymentMethods?: StorePaymentMethod[];
+  /** Cartão fidelidade: a cada `loyaltyGoal` pedidos o cliente ganha `loyaltyReward`. */
+  loyaltyEnabled?: boolean;
+  loyaltyGoal?: number;
+  loyaltyReward?: string | null;
   pixKey?: string | null;
   pixKeyType?: PixKeyType | null;
   pixReceiverName?: string | null;
@@ -480,6 +524,7 @@ export interface MyStore {
 }
 
 export type PixKeyType = 'cpf' | 'cnpj' | 'email' | 'phone' | 'random';
+export type StorePaymentMethod = 'pix' | 'cash' | 'credit' | 'debit';
 
 export interface StoreSettingsDTO {
   storeName?: string;
@@ -495,6 +540,13 @@ export interface StoreSettingsDTO {
   pixReceiverName?: string | null;
   useBusinessHours?: boolean;
   businessHours?: StoreBusinessHours[];
+  coverImageUrl?: string | null;
+  logoUrl?: string | null;
+  category?: string | null;
+  paymentMethods?: StorePaymentMethod[];
+  loyaltyEnabled?: boolean;
+  loyaltyGoal?: number;
+  loyaltyReward?: string | null;
 }
 
 /* ── Despesas ──────────────────────────────────────────────────────────── */
@@ -663,6 +715,9 @@ export const userApi = {
     }),
   forgotPassword: (email: string) =>
     req<unknown>('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) }),
+  resetPassword: (email: string, code: string, newPassword: string) =>
+    req<unknown>('/auth/reset-password', { method: 'POST', body: JSON.stringify({ email, code, newPassword }) }),
+  deleteAccount: () => req<unknown>('/auth/account', { method: 'DELETE' }),
   changePassword: (currentPassword: string, newPassword: string) =>
     req<unknown>('/auth/change-password', {
       method: 'POST',
@@ -674,9 +729,27 @@ export const userApi = {
 
   // Premium / PIX
   getPlanConfig: () => req<PlanConfigPublic>('/admin/settings/plans'),
-  createPixRequest: (planLabel: string, amountCents: number, planTier: PlanTier = 'premium') =>
-    req<PixRequestStatus>('/pix/request', { method: 'POST', body: JSON.stringify({ planLabel, amountCents, planTier }) }),
+  createPixRequest: (planLabel: string, amountCents: number, planTier: PlanTier = 'premium', couponCode?: string) =>
+    req<PixRequestStatus>('/pix/request', {
+      method: 'POST',
+      body: JSON.stringify({ planLabel, amountCents, planTier, ...(couponCode ? { couponCode } : {}) }),
+    }),
+  /** Valida cupom de desconto; null se inválido/expirado. */
+  validateCoupon: (code: string) =>
+    req<{ discountPercent: number }>(`/admin/coupons/validate/${encodeURIComponent(code.trim().toUpperCase())}`)
+      .then(r => (typeof r?.discountPercent === 'number' ? r : null))
+      .catch(() => null),
+  getPixSubscription: () => req<PixSubscription | null>('/pix/subscription'),
+  subscribePix: (planLabel: string, amountCents: number, planTier: 'premium' | 'master', frequencyMonths = 1) =>
+    req<PixSubscription>('/pix/subscription', { method: 'POST', body: JSON.stringify({ planLabel, amountCents, planTier, frequencyMonths }) }),
+  cancelPixSubscription: () => req<unknown>('/pix/subscription', { method: 'DELETE' }),
+  /** Portal do Stripe: trocar cartão, ver faturas e cancelar. */
+  openStripePortal: (returnUrl: string) =>
+    req<{ url: string }>('/stripe/portal', { method: 'POST', body: JSON.stringify({ returnUrl }) }),
   getPixStatus: () => req<PixRequestStatus | null>('/pix/status'),
+  /** Checkout de cartão (Stripe). Volta para `returnUrl` com ?checkout=success|cancel. */
+  createCardCheckout: (plan: 'monthly' | 'annual', tier: 'premium' | 'master', returnUrl: string) =>
+    req<{ url: string }>('/stripe/create-checkout', { method: 'POST', body: JSON.stringify({ plan, tier, returnUrl }) }),
   getDiscountOffer: () => req<{ discountPercent: number; expiresAt: string } | null>('/support/discount-offer'),
   previewUpgrade: () => req<UpgradePreview>('/pix/upgrade/preview'),
   upgradeToMaster: () => req<UpgradeRequest>('/pix/upgrade', { method: 'POST' }),
@@ -747,6 +820,8 @@ export const userApi = {
 
   // Temporadas
   listSeasons: () => req<Season[]>('/seasons'),
+  /** Temporada vigente hoje (aplica o multiplicador no preço), ou null. */
+  getActiveSeason: () => req<Season | null>('/seasons/active').catch(() => null),
   createSeason: (data: Omit<Season, 'id'>) =>
     req<Season>('/seasons', { method: 'POST', body: JSON.stringify(data) }),
   updateSeason: (id: string, data: Partial<Omit<Season, 'id'>>) =>

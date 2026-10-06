@@ -1,4 +1,5 @@
 import { Recipe, CalculationResult } from './userApi';
+import { PdfSettings } from './localPrefs';
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
@@ -15,8 +16,17 @@ function esc(s: string): string {
  * Gera e imprime um orçamento em PDF da receita (via janela de impressão do
  * navegador). Porta o layout do app mobile (utils/pdfQuote.ts).
  */
-export function printRecipeQuote(recipe: Recipe, calc: CalculationResult, companyName?: string): boolean {
-  const BRAND = '#E91E63';
+export function printRecipeQuote(
+  recipe: Recipe,
+  calc: CalculationResult,
+  companyName?: string,
+  pdf?: PdfSettings,
+): boolean {
+  // Cor/logo/slogan/marca d'água vêm da personalização (Premium), igual ao app.
+  const BRAND = /^#[0-9a-fA-F]{6}$/.test(pdf?.brandColor ?? '') ? pdf!.brandColor : '#E91E63';
+  const logoHtml = pdf?.logoBase64?.startsWith('data:image/')
+    ? `<img src="${esc(pdf.logoBase64)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;margin-right:12px" />`
+    : '';
   const dateLabel = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const ingredientRows = (recipe.ingredients ?? [])
@@ -68,9 +78,15 @@ export function printRecipeQuote(recipe: Recipe, calc: CalculationResult, compan
     .footer { margin-top: 40px; font-size: 11px; color: #bbb; text-align: center; }
     @media print { body { padding: 12px; } }
   </style></head><body>
-    <div class="brand">DocePreço</div>
-    ${companyName ? `<div class="company">${esc(companyName)}</div>` : ''}
-    <div class="date">Gerado em ${dateLabel}</div>
+    <div style="display:flex;align-items:center">
+      ${logoHtml}
+      <div>
+        <div class="brand">DocePreço</div>
+        ${companyName ? `<div class="company">${esc(companyName)}</div>` : ''}
+        ${pdf?.companySlogan ? `<div class="company" style="font-style:italic">${esc(pdf.companySlogan)}</div>` : ''}
+        <div class="date">Gerado em ${dateLabel}</div>
+      </div>
+    </div>
 
     <h1>${esc(recipe.name)}</h1>
     <div class="sub">Orçamento detalhado de produção</div>
@@ -98,7 +114,7 @@ export function printRecipeQuote(recipe: Recipe, calc: CalculationResult, compan
       ${breakdownRow('Custo total', fmt(calc.totalCost), true)}
     </table>
 
-    <div class="footer">Orçamento gerado por DocePreço</div>
+    ${pdf?.hideWatermark ? '' : '<div class="footer">Orçamento gerado por DocePreço</div>'}
   </body></html>`;
 
   const w = window.open('', '_blank');

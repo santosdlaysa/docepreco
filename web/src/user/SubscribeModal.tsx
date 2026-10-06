@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { Sparkles, Copy, Check, Clock, Loader2, ArrowUpCircle } from 'lucide-react';
+import { Sparkles, Copy, Check, Clock, Loader2, ArrowUpCircle, CreditCard, QrCode } from 'lucide-react';
 import { ModalOverlay, ToastFn } from '../components';
-import { userApi, PixConfig, PixPlanConfig, PixRequestStatus, PlanTier, effectiveTier } from './userApi';
+import { userApi, PixConfig, PixPlanConfig, PixRequestStatus, PlanTier, effectiveTier, PixSubscription } from './userApi';
 import { useAuth } from './UserAuthContext';
 import { TIER_META } from './plan';
 import { inputClass } from './pages/IngredientsPage';
@@ -58,7 +58,7 @@ export function SubscribeModal({
   onClose: () => void;
   toast: ToastFn;
 }) {
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const currentTier = effectiveTier(user);
   const tracked = useRef(false);
   useEffect(() => {
@@ -79,6 +79,40 @@ export function SubscribeModal({
   const [legacyMonthly, setLegacyMonthly] = useState(false);
   const [offer, setOffer] = useState<{ discountPercent: number; expiresAt: string } | null>(null);
   const [offerQr, setOfferQr] = useState<PixRequestStatus | null>(null);
+  const [method, setMethod] = useState<'pix' | 'card'>('pix');
+  // PIX: 'once' = QR avulso (padrão atual); 'auto' = Pix Automático (renova sozinho, igual ao app)
+  const [pixMode, setPixMode] = useState<'once' | 'auto'>('once');
+  const [pixSub, setPixSub] = useState<PixSubscription | null>(null);
+  const [subWaiting, setSubWaiting] = useState(false);
+  // Cupom (só no PIX avulso). O servidor reaplica o desconto ao gerar o QR.
+  const [couponInput, setCouponInput] = useState('');
+  const [coupon, setCoupon] = useState<{ code: string; discountPercent: number } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponQr, setCouponQr] = useState<PixRequestStatus | null>(null);
+
+  useEffect(() => {
+    userApi.getPixSubscription()
+      .then(sub => { if (sub && (sub.status === 'authorized' || sub.status === 'pending')) setPixSub(sub); })
+      .catch(() => {});
+  }, []);
+
+  // Enquanto o link de autorização do Mercado Pago está aberto, confere a cada 5s.
+  useEffect(() => {
+    if (!subWaiting) return;
+    const id = setInterval(async () => {
+      try {
+        const sub = await userApi.getPixSubscription();
+        if (sub?.status === 'authorized') {
+          clearInterval(id);
+          setPixSub(sub);
+          setSubWaiting(false);
+          toast.success('Renovação automática ativada! 🎉');
+          await refresh();
+        }
+      } catch { /* tenta de novo */ }
+    }, 5000);
+    return () => clearInterval(id);
+  }, [subWaiting]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Upgrade Premium→Master (paga só a diferença)
   const [upgradeDiff, setUpgradeDiff] = useState<number | null>(null);
@@ -190,13 +224,86 @@ export function SubscribeModal({
     }
   };
 
+  const applyCoupon = async () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    setSubmitting(true);
+    setCouponError(null);
+    const result = await userApi.validateCoupon(code);
+    if (result) {
+      setCoupon({ code, discountPercent: result.discountPercent });
+      setCouponInput(code);
+    } else {
+      setCoupon(null);
+      setCouponError('Cupom inválido, expirado ou esgotado.');
+    }
+    setSubmitting(false);
+  };
+  const removeCoupon = () => { setCoupon(null); setCouponInput(''); setCouponError(null); setCouponQr(null); };
+
+  const generateCouponPix = async () => {
+    if (!coupon) return;
+    trackCheckout();
+    setSubmitting(true);
+    try {
+      const label = `Plano ${TIER_META[tier].label} ${effectiveCycle === 'monthly' ? 'mensal' : 'anual'}`;
+      const result = await userApi.createPixRequest(label, selected.amountCents, tier, coupon.code);
+      if (!result.mp_qr_code) throw new Error('Não foi possível gerar o PIX com desconto. Tente novamente.');
+      setCouponQr(result);
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Pix Automático: cria a assinatura e abre o Mercado Pago para autorizar uma única vez.
+  const subscribeAuto = async () => {
+    trackCheckout();
+    setSubmitting(true);
+    try {
+      const label = `Plano ${TIER_META[tier].label} ${effectiveCycle === 'monthly' ? 'mensal' : 'anual'}`;
+      const sub = await userApi.subscribePix(label, selected.amountCents, tier, effectiveCycle === 'annual' ? 12 : 1);
+      setPixSub(sub);
+      if (sub.status === 'authorized') {
+        toast.success('Sua renovação automática já está ativa!');
+        await refresh();
+      } else if (sub.initPoint) {
+        window.open(sub.initPoint, '_blank', 'noopener');
+        setSubWaiting(true);
+      } else {
+        toast.error('Não foi possível gerar o link de autorização. Tente novamente.');
+      }
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const couponCents = coupon ? Math.max(0, Math.round(selected.amountCents * (100 - coupon.discountPercent) / 100)) : null;
+
+  // Cartão: redireciona para o checkout do Stripe; na volta a UserApp acompanha a liberação.
+  const payWithCard = async () => {
+    trackCheckout();
+    setSubmitting(true);
+    try {
+      const returnUrl = window.location.origin + window.location.pathname;
+      const { url } = await userApi.createCardCheckout(effectiveCycle, tier, returnUrl);
+      window.location.href = url;
+    } catch (err) {
+      toast.error((err as Error).message || 'Não foi possível abrir o pagamento. Tente novamente.');
+      setSubmitting(false);
+    }
+  };
+
   const meta = TIER_META[tier];
 
   return (
     <ModalOverlay onClose={onClose}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4 w-full sm:max-w-md mx-auto">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-          <Sparkles size={18} className="text-primary-500" /> Assinar via PIX
+          <Sparkles size={18} className="text-primary-500" /> Assinar
         </h3>
 
         {loading ? (
@@ -288,6 +395,22 @@ export function SubscribeModal({
             {/* Assinatura normal */}
             {!upgradeQr && (
               <>
+                {/* Forma de pagamento */}
+                <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 dark:bg-gray-700/50 p-1">
+                  {([['pix', 'PIX', QrCode], ['card', 'Cartão de crédito', CreditCard]] as const).map(([m, label, Icon]) => (
+                    <button
+                      key={m}
+                      type="button"
+                      disabled={submitting}
+                      onClick={() => setMethod(m)}
+                      className={`flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold transition-colors ${
+                        method === m ? 'bg-white dark:bg-gray-800 text-primary-600 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+                      }`}
+                    >
+                      <Icon size={15} /> {label}
+                    </button>
+                  ))}
+                </div>
                 {showAnnual && (
                   <div className="grid grid-cols-2 gap-2">
                     {(['monthly', 'annual'] as const).map(c => {
@@ -312,7 +435,71 @@ export function SubscribeModal({
                   </div>
                 )}
 
-                {offer ? (
+                {method === 'pix' && !offer && (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2">
+                      {([['once', 'PIX avulso', 'Paga agora, renova manualmente'], ['auto', 'Pix Automático', 'Renova sozinho todo período']] as const).map(([m, title, sub]) => (
+                        <button
+                          key={m}
+                          type="button"
+                          disabled={submitting}
+                          onClick={() => { setPixMode(m); setCouponQr(null); }}
+                          className={`rounded-xl border-2 p-2.5 text-left transition-colors ${
+                            pixMode === m ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'
+                          }`}
+                        >
+                          <span className="block text-sm font-semibold text-gray-900 dark:text-white">{title}</span>
+                          <span className="block text-[11px] text-gray-500 dark:text-gray-400">{sub}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {pixMode === 'once' && !couponQr && (
+                      coupon ? (
+                        <div className="flex items-center justify-between gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 px-3 py-2 text-sm">
+                          <span className="text-green-700 dark:text-green-300 font-medium">
+                            Cupom {coupon.code} · {coupon.discountPercent}% OFF ·{' '}
+                            <s className="text-gray-400 font-normal">{selected.priceLabel}</s> {fmtCents(couponCents!)}
+                          </span>
+                          <button type="button" onClick={removeCoupon} className="text-xs text-gray-500 hover:underline">Remover</button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex gap-2">
+                            <input
+                              value={couponInput}
+                              onChange={e => { setCouponInput(e.target.value); setCouponError(null); }}
+                              placeholder="Tem um cupom de desconto?"
+                              className={inputClass}
+                            />
+                            <button type="button" onClick={applyCoupon} disabled={submitting || !couponInput.trim()}
+                              className="shrink-0 rounded-lg border border-primary-300 px-3 text-sm font-semibold text-primary-600 disabled:opacity-50">
+                              Aplicar
+                            </button>
+                          </div>
+                          {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
+                        </div>
+                      )
+                    )}
+                  </div>
+                )}
+
+                {method === 'card' ? (
+                  <div className="space-y-2">
+                    <button
+                      onClick={payWithCard}
+                      disabled={submitting}
+                      className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
+                    >
+                      {submitting ? <Loader2 size={16} className="animate-spin-slow" /> : <CreditCard size={16} />}
+                      Pagar {effectiveCycle === 'monthly' ? 'mensal' : 'anual'} com cartão
+                    </button>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center">
+                      Pagamento seguro via Stripe · Visa, Master, Amex. A assinatura renova automaticamente e pode ser cancelada quando quiser.
+                      {offer ? ' O desconto da oferta vale só no PIX.' : ''}
+                    </p>
+                  </div>
+                ) : offer ? (
                   <div className="space-y-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 p-4">
                     <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">Oferta de retorno: {offer.discountPercent}% de desconto no PIX</p>
                     <p className="text-xs text-gray-500">Válida até {new Date(offer.expiresAt).toLocaleString('pt-BR')}. O valor final é confirmado ao gerar o PIX.</p>
@@ -325,6 +512,55 @@ export function SubscribeModal({
                         {submitting ? 'Gerando PIX…' : 'Gerar PIX com desconto'}
                       </button>}
                   </div>
+                ) : pixMode === 'auto' ? (
+                  pixSub?.status === 'authorized' ? (
+                    <div className="rounded-xl bg-green-50 dark:bg-green-900/20 p-4 text-center">
+                      <Check size={22} className="mx-auto text-green-600 mb-1" />
+                      <p className="text-sm font-semibold text-green-700 dark:text-green-300">Renovação automática ativa</p>
+                      <p className="text-xs text-green-700/80 dark:text-green-300/80 mt-1">{pixSub.planLabel} · você pode cancelar em Meu perfil.</p>
+                    </div>
+                  ) : subWaiting || pixSub?.status === 'pending' ? (
+                    <div className="rounded-xl bg-amber-50 dark:bg-amber-900/30 p-4 text-center space-y-2">
+                      <Loader2 size={22} className="mx-auto text-amber-500 animate-spin-slow" />
+                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Aguardando autorização</p>
+                      <p className="text-xs text-amber-700/80 dark:text-amber-300/80">Conclua no Mercado Pago ou no app do seu banco. Esta tela atualiza sozinha.</p>
+                      {pixSub?.initPoint && (
+                        <a href={pixSub.initPoint} target="_blank" rel="noopener noreferrer" onClick={() => setSubWaiting(true)}
+                          className="inline-block text-sm font-semibold text-primary-600 hover:underline">
+                          Abrir página de autorização
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      <ol className="text-xs text-gray-600 dark:text-gray-300 space-y-1 list-decimal pl-4">
+                        <li>Autorize o Pix Automático na página do Mercado Pago (uma vez só).</li>
+                        <li>A cobrança de {selected.priceLabel} cai {effectiveCycle === 'monthly' ? 'todo mês' : 'todo ano'} sem você precisar fazer nada.</li>
+                        <li>O acesso é liberado assim que o pagamento é confirmado.</li>
+                      </ol>
+                      <button onClick={subscribeAuto} disabled={submitting}
+                        className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2">
+                        {submitting ? <Loader2 size={16} className="animate-spin-slow" /> : <Check size={16} />}
+                        Ativar Pix Automático
+                      </button>
+                    </div>
+                  )
+                ) : coupon ? (
+                  couponQr?.mp_qr_code ? (
+                    <PixPayBlock
+                      qrBase64={couponQr.mp_qr_code_base64}
+                      copyPaste={couponQr.mp_qr_code}
+                      priceLabel={fmtCents(couponQr.amount_cents ?? couponCents!)}
+                      copied={copied}
+                      onCopy={() => copy(couponQr.mp_qr_code!)}
+                      hint="Pague este PIX e aguarde: a confirmação é automática."
+                    />
+                  ) : (
+                    <button onClick={generateCouponPix} disabled={submitting}
+                      className="w-full rounded-lg bg-primary-500 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
+                      {submitting ? 'Gerando PIX…' : `Gerar PIX de ${fmtCents(couponCents!)}`}
+                    </button>
+                  )
                 ) : selected.copyPaste ? (
                   <PixPayBlock
                     qrImage={selected.qrImage}
@@ -340,7 +576,7 @@ export function SubscribeModal({
                   </p>
                 )}
 
-                {!offer && selected.copyPaste && (
+                {method === 'pix' && pixMode === 'once' && !coupon && !offer && selected.copyPaste && (
                   <button
                     onClick={confirmPaid}
                     disabled={submitting}
