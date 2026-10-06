@@ -30,6 +30,8 @@ export default defineConfig({
       workbox: {
         // Links de assinatura precisam da versão publicada, não do shell em cache.
         navigateFallbackDenylist: [/^\/assinar\/?$/],
+        // Recebe Web Push (notificações do confeiteiro) — handlers em public/push-sw.js.
+        importScripts: ['/push-sw.js'],
         // Network-first for the public catalog/list reads, so the vitrine and last-viewed
         // store still render on a flaky connection. Do NOT cache order-submission POSTs —
         // NetworkFirst with a short cache is fine for GET only; POST is never cached by

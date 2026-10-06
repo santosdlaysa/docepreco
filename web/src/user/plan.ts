@@ -1,4 +1,5 @@
 import { PlanTier } from './userApi';
+import i18n from '../i18n';
 
 /**
  * Requisito de plano por página do app do confeiteiro. Espelha os guards do
@@ -45,26 +46,14 @@ export const TIER_META: Record<Exclude<PlanTier, 'free'>, TierMeta> = {
     label: 'Premium',
     color: 'text-amber-600 dark:text-amber-400',
     bg: 'bg-amber-100 dark:bg-amber-900/40',
-    features: [
-      'Relatórios avançados do negócio',
-      'Gestão de clientes e aniversários',
-      'Encomendas com agenda e status',
-      'Precificação por temporada (Páscoa, Natal…)',
-      'Histórico de preços de ingredientes',
-      'Receitas ilimitadas e PDF com sua marca',
-    ],
+    // Getter: traduz no momento do uso (idioma pode mudar depois do carregamento).
+    get features() { return i18n.t('account:plan.premium.features', { returnObjects: true }) as string[]; },
   },
   master: {
     key: 'master',
     label: 'Master',
     color: 'text-purple-600 dark:text-purple-400',
     bg: 'bg-purple-100 dark:bg-purple-900/40',
-    features: [
-      'Tudo do Premium, e mais:',
-      'Loja online com link para clientes',
-      'Gestão financeira completa (DRE)',
-      'Controle de estoque com baixa automática',
-      'Dicas de vendas e precificação',
-    ],
+    get features() { return i18n.t('account:plan.master.features', { returnObjects: true }) as string[]; },
   },
 };

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getLang } from '../i18n';
 import { Sparkles, Copy, Check, Clock, Loader2, ArrowUpCircle, CreditCard, QrCode } from 'lucide-react';
 import { ModalOverlay, ToastFn } from '../components';
 import { userApi, PixConfig, PixPlanConfig, PixRequestStatus, PlanTier, effectiveTier, PixSubscription } from './userApi';
@@ -59,6 +61,7 @@ export function SubscribeModal({
   toast: ToastFn;
 }) {
   const { user, refresh } = useAuth();
+  const { t } = useTranslation('account');
   const currentTier = effectiveTier(user);
   const tracked = useRef(false);
   useEffect(() => {
@@ -106,7 +109,7 @@ export function SubscribeModal({
           clearInterval(id);
           setPixSub(sub);
           setSubWaiting(false);
-          toast.success('Renovação automática ativada! 🎉');
+          toast.success(t('subscribe.autoActivated'));
           await refresh();
         }
       } catch { /* tenta de novo */ }
@@ -136,7 +139,7 @@ export function SubscribeModal({
         if (up?.eligible && up.diffCents && up.diffCents > 0) setUpgradeDiff(up.diffCents);
       } catch {
         if (active) setLoadError(true);
-        toast.error('Não foi possível carregar os planos e a oferta. Tente novamente.');
+        toast.error(t('subscribe.loadError'));
       } finally {
         if (active) setLoading(false);
       }
@@ -175,7 +178,7 @@ export function SubscribeModal({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error('Não foi possível copiar.');
+      toast.error(t('subscribe.copyError'));
     }
   };
 
@@ -187,7 +190,7 @@ export function SubscribeModal({
       const label = `Plano ${TIER_META[tier].label} ${cycleLabel}`;
       const res = await userApi.createPixRequest(label, selected.amountCents, tier);
       setStatus(res);
-      toast.success('Solicitação enviada! Aguarde a confirmação do pagamento.');
+      toast.success(t('subscribe.requestSent'));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -200,7 +203,7 @@ export function SubscribeModal({
     setSubmitting(true);
     try {
       const result = await userApi.createPixRequest(`Plano ${TIER_META[tier].label} ${effectiveCycle === 'monthly' ? 'mensal' : 'anual'}`, selected.amountCents, tier);
-      if (!result.mp_qr_code) throw new Error('Não foi possível gerar o PIX com desconto. Tente novamente.');
+      if (!result.mp_qr_code) throw new Error(t('subscribe.discountPixError'));
       setOfferQr(result);
     } catch (err) {
       toast.error((err as Error).message);
@@ -216,7 +219,7 @@ export function SubscribeModal({
       const res = await userApi.upgradeToMaster();
       setUpgradeQr({ base64: res.mp_qr_code_base64, copyPaste: res.mp_qr_code });
       setStatus(res.status === 'pending' ? res : null);
-      toast.success('PIX da diferença gerado! Pague e aguarde a confirmação.');
+      toast.success(t('subscribe.upgradePixGenerated'));
     } catch (err) {
       toast.error((err as Error).message);
     } finally {
@@ -235,7 +238,7 @@ export function SubscribeModal({
       setCouponInput(code);
     } else {
       setCoupon(null);
-      setCouponError('Cupom inválido, expirado ou esgotado.');
+      setCouponError(t('subscribe.couponInvalid'));
     }
     setSubmitting(false);
   };
@@ -248,7 +251,7 @@ export function SubscribeModal({
     try {
       const label = `Plano ${TIER_META[tier].label} ${effectiveCycle === 'monthly' ? 'mensal' : 'anual'}`;
       const result = await userApi.createPixRequest(label, selected.amountCents, tier, coupon.code);
-      if (!result.mp_qr_code) throw new Error('Não foi possível gerar o PIX com desconto. Tente novamente.');
+      if (!result.mp_qr_code) throw new Error(t('subscribe.discountPixError'));
       setCouponQr(result);
     } catch (err) {
       toast.error((err as Error).message);
@@ -266,13 +269,13 @@ export function SubscribeModal({
       const sub = await userApi.subscribePix(label, selected.amountCents, tier, effectiveCycle === 'annual' ? 12 : 1);
       setPixSub(sub);
       if (sub.status === 'authorized') {
-        toast.success('Sua renovação automática já está ativa!');
+        toast.success(t('subscribe.autoAlreadyActive'));
         await refresh();
       } else if (sub.initPoint) {
         window.open(sub.initPoint, '_blank', 'noopener');
         setSubWaiting(true);
       } else {
-        toast.error('Não foi possível gerar o link de autorização. Tente novamente.');
+        toast.error(t('subscribe.authLinkError'));
       }
     } catch (err) {
       toast.error((err as Error).message);
@@ -292,7 +295,7 @@ export function SubscribeModal({
       const { url } = await userApi.createCardCheckout(effectiveCycle, tier, returnUrl);
       window.location.href = url;
     } catch (err) {
-      toast.error((err as Error).message || 'Não foi possível abrir o pagamento. Tente novamente.');
+      toast.error((err as Error).message || t('subscribe.cardError'));
       setSubmitting(false);
     }
   };
@@ -303,7 +306,7 @@ export function SubscribeModal({
     <ModalOverlay onClose={onClose}>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4 w-full sm:max-w-md mx-auto">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-          <Sparkles size={18} className="text-primary-500" /> Assinar
+          <Sparkles size={18} className="text-primary-500" /> {t('subscribe.title')}
         </h3>
 
         {loading ? (
@@ -311,35 +314,35 @@ export function SubscribeModal({
             <Loader2 size={24} className="animate-spin-slow text-primary-500" />
           </div>
         ) : loadError ? (
-          <p role="alert" className="text-sm text-red-500">Não foi possível consultar os planos e descontos. Feche e tente novamente.</p>
+          <p role="alert" className="text-sm text-red-500">{t('subscribe.loadErrorInline')}</p>
         ) : status && status.status === 'pending' ? (
           <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl p-4 text-center">
             <Clock size={28} className="mx-auto text-amber-500 mb-2" />
-            <p className="font-semibold text-amber-700 dark:text-amber-300">Pagamento em análise</p>
+            <p className="font-semibold text-amber-700 dark:text-amber-300">{t('subscribe.pendingTitle')}</p>
             <p className="text-sm text-amber-700/80 dark:text-amber-300/80 mt-1">
-              Recebemos sua solicitação. Assim que o PIX for confirmado, seu plano é liberado.
+              {t('subscribe.pendingText')}
             </p>
           </div>
         ) : (
           <>
             {/* Abas de tier */}
             <div className="grid grid-cols-2 gap-2">
-              {(['premium', 'master'] as const).map(t => {
-                const on = tier === t;
-                const m = TIER_META[t];
+              {(['premium', 'master'] as const).map(tk => {
+                const on = tier === tk;
+                const m = TIER_META[tk];
                 return (
                   <button
-                    key={t}
+                    key={tk}
                     type="button"
                     disabled={submitting}
-                    onClick={() => { setTier(t); setUpgradeQr(null); setOfferQr(null); }}
+                    onClick={() => { setTier(tk); setUpgradeQr(null); setOfferQr(null); }}
                     className={`rounded-xl border-2 p-3 text-center transition-colors ${
                       on ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'
                     }`}
                   >
                     <span className="block text-sm font-bold text-gray-900 dark:text-white">{m.label}</span>
                     <span className="block text-xs text-gray-500 dark:text-gray-400">
-                      {plans[t].monthly.priceLabel}/mês
+                      {t('subscribe.perMonth', { price: plans[tk].monthly.priceLabel })}
                     </span>
                   </button>
                 );
@@ -362,7 +365,7 @@ export function SubscribeModal({
                 <div className="flex items-start gap-2">
                   <ArrowUpCircle size={18} className="text-purple-600 dark:text-purple-300 shrink-0 mt-0.5" />
                   <p className="text-sm text-purple-800 dark:text-purple-200">
-                    Você já é Premium — migre para o Master pagando só a diferença de{' '}
+                    {t('subscribe.upgradeText')}{' '}
                     <span className="font-bold">{fmtCents(upgradeDiff!)}</span>.
                   </p>
                 </div>
@@ -374,7 +377,7 @@ export function SubscribeModal({
                     priceLabel={fmtCents(upgradeDiff!)}
                     copied={copied}
                     onCopy={() => copy(upgradeQr.copyPaste ?? '')}
-                    hint="Pague o PIX da diferença e aguarde a confirmação. Seu plano Master é liberado automaticamente."
+                    hint={t('subscribe.upgradeHint')}
                   />
                 ) : (
                   <button
@@ -383,11 +386,11 @@ export function SubscribeModal({
                     className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
                   >
                     {submitting ? <Loader2 size={16} className="animate-spin-slow" /> : <ArrowUpCircle size={16} />}
-                    Gerar PIX da diferença
+                    {t('subscribe.generateUpgradePix')}
                   </button>
                 )}
                 <p className="text-[11px] text-purple-700/70 dark:text-purple-300/70 text-center">
-                  Ou assine o Master cheio abaixo.
+                  {t('subscribe.orFullMaster')}
                 </p>
               </div>
             ) : null}
@@ -397,7 +400,7 @@ export function SubscribeModal({
               <>
                 {/* Forma de pagamento */}
                 <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 dark:bg-gray-700/50 p-1">
-                  {([['pix', 'PIX', QrCode], ['card', 'Cartão de crédito', CreditCard]] as const).map(([m, label, Icon]) => (
+                  {([['pix', t('subscribe.methodPix'), QrCode], ['card', t('subscribe.methodCard'), CreditCard]] as const).map(([m, label, Icon]) => (
                     <button
                       key={m}
                       type="button"
@@ -425,7 +428,7 @@ export function SubscribeModal({
                             on ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'
                           }`}
                         >
-                          <span className="block text-xs text-gray-500 dark:text-gray-400">{c === 'monthly' ? 'Mensal' : 'Anual'}</span>
+                          <span className="block text-xs text-gray-500 dark:text-gray-400">{c === 'monthly' ? t('subscribe.monthly') : t('subscribe.annual')}</span>
                           <span className="block text-base font-bold text-gray-900 dark:text-white">
                             {plans[tier][c].priceLabel}
                           </span>
@@ -438,7 +441,7 @@ export function SubscribeModal({
                 {method === 'pix' && !offer && (
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2">
-                      {([['once', 'PIX avulso', 'Paga agora, renova manualmente'], ['auto', 'Pix Automático', 'Renova sozinho todo período']] as const).map(([m, title, sub]) => (
+                      {([['once', t('subscribe.pixOnce'), t('subscribe.pixOnceHint')], ['auto', t('subscribe.pixAuto'), t('subscribe.pixAutoHint')]] as const).map(([m, title, sub]) => (
                         <button
                           key={m}
                           type="button"
@@ -458,10 +461,10 @@ export function SubscribeModal({
                       coupon ? (
                         <div className="flex items-center justify-between gap-2 rounded-lg bg-green-50 dark:bg-green-900/20 px-3 py-2 text-sm">
                           <span className="text-green-700 dark:text-green-300 font-medium">
-                            Cupom {coupon.code} · {coupon.discountPercent}% OFF ·{' '}
+                            {t('subscribe.couponApplied', { code: coupon.code, percent: coupon.discountPercent })}{' '}
                             <s className="text-gray-400 font-normal">{selected.priceLabel}</s> {fmtCents(couponCents!)}
                           </span>
-                          <button type="button" onClick={removeCoupon} className="text-xs text-gray-500 hover:underline">Remover</button>
+                          <button type="button" onClick={removeCoupon} className="text-xs text-gray-500 hover:underline">{t('subscribe.remove')}</button>
                         </div>
                       ) : (
                         <div>
@@ -469,12 +472,12 @@ export function SubscribeModal({
                             <input
                               value={couponInput}
                               onChange={e => { setCouponInput(e.target.value); setCouponError(null); }}
-                              placeholder="Tem um cupom de desconto?"
+                              placeholder={t('subscribe.couponPlaceholder')}
                               className={inputClass}
                             />
                             <button type="button" onClick={applyCoupon} disabled={submitting || !couponInput.trim()}
                               className="shrink-0 rounded-lg border border-primary-300 px-3 text-sm font-semibold text-primary-600 disabled:opacity-50">
-                              Aplicar
+                              {t('subscribe.apply')}
                             </button>
                           </div>
                           {couponError && <p className="text-xs text-red-500 mt-1">{couponError}</p>}
@@ -492,56 +495,56 @@ export function SubscribeModal({
                       className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
                     >
                       {submitting ? <Loader2 size={16} className="animate-spin-slow" /> : <CreditCard size={16} />}
-                      Pagar {effectiveCycle === 'monthly' ? 'mensal' : 'anual'} com cartão
+                      {effectiveCycle === 'monthly' ? t('subscribe.payCardMonthly') : t('subscribe.payCardAnnual')}
                     </button>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 text-center">
-                      Pagamento seguro via Stripe · Visa, Master, Amex. A assinatura renova automaticamente e pode ser cancelada quando quiser.
-                      {offer ? ' O desconto da oferta vale só no PIX.' : ''}
+                      {t('subscribe.cardHint')}
+                      {offer ? t('subscribe.offerPixOnly') : ''}
                     </p>
                   </div>
                 ) : offer ? (
                   <div className="space-y-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 p-4">
-                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">Oferta de retorno: {offer.discountPercent}% de desconto no PIX</p>
-                    <p className="text-xs text-gray-500">Válida até {new Date(offer.expiresAt).toLocaleString('pt-BR')}. O valor final é confirmado ao gerar o PIX.</p>
+                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">{t('subscribe.offerTitle', { percent: offer.discountPercent })}</p>
+                    <p className="text-xs text-gray-500">{t('subscribe.offerValid', { date: new Date(offer.expiresAt).toLocaleString(getLang() === 'en' ? 'en-US' : 'pt-BR') })}</p>
                     {offerQr?.mp_qr_code ? <PixPayBlock
                       qrBase64={offerQr.mp_qr_code_base64} copyPaste={offerQr.mp_qr_code}
                       priceLabel={fmtCents(offerQr.amount_cents!)} copied={copied}
-                      onCopy={() => copy(offerQr.mp_qr_code!)} hint="Pague este PIX e aguarde a confirmação do pagamento." />
+                      onCopy={() => copy(offerQr.mp_qr_code!)} hint={t('subscribe.payThisPix')} />
                       : <button onClick={generateOfferPix} disabled={submitting}
                         className="w-full rounded-lg bg-primary-500 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                        {submitting ? 'Gerando PIX…' : 'Gerar PIX com desconto'}
+                        {submitting ? t('subscribe.generatingPix') : t('subscribe.generateDiscountPix')}
                       </button>}
                   </div>
                 ) : pixMode === 'auto' ? (
                   pixSub?.status === 'authorized' ? (
                     <div className="rounded-xl bg-green-50 dark:bg-green-900/20 p-4 text-center">
                       <Check size={22} className="mx-auto text-green-600 mb-1" />
-                      <p className="text-sm font-semibold text-green-700 dark:text-green-300">Renovação automática ativa</p>
-                      <p className="text-xs text-green-700/80 dark:text-green-300/80 mt-1">{pixSub.planLabel} · você pode cancelar em Meu perfil.</p>
+                      <p className="text-sm font-semibold text-green-700 dark:text-green-300">{t('subscribe.autoActiveTitle')}</p>
+                      <p className="text-xs text-green-700/80 dark:text-green-300/80 mt-1">{t('subscribe.autoActiveHint', { plan: pixSub.planLabel })}</p>
                     </div>
                   ) : subWaiting || pixSub?.status === 'pending' ? (
                     <div className="rounded-xl bg-amber-50 dark:bg-amber-900/30 p-4 text-center space-y-2">
                       <Loader2 size={22} className="mx-auto text-amber-500 animate-spin-slow" />
-                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">Aguardando autorização</p>
-                      <p className="text-xs text-amber-700/80 dark:text-amber-300/80">Conclua no Mercado Pago ou no app do seu banco. Esta tela atualiza sozinha.</p>
+                      <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">{t('subscribe.waitingAuth')}</p>
+                      <p className="text-xs text-amber-700/80 dark:text-amber-300/80">{t('subscribe.waitingAuthHint')}</p>
                       {pixSub?.initPoint && (
                         <a href={pixSub.initPoint} target="_blank" rel="noopener noreferrer" onClick={() => setSubWaiting(true)}
                           className="inline-block text-sm font-semibold text-primary-600 hover:underline">
-                          Abrir página de autorização
+                          {t('subscribe.openAuth')}
                         </a>
                       )}
                     </div>
                   ) : (
                     <div className="space-y-2">
                       <ol className="text-xs text-gray-600 dark:text-gray-300 space-y-1 list-decimal pl-4">
-                        <li>Autorize o Pix Automático na página do Mercado Pago (uma vez só).</li>
-                        <li>A cobrança de {selected.priceLabel} cai {effectiveCycle === 'monthly' ? 'todo mês' : 'todo ano'} sem você precisar fazer nada.</li>
-                        <li>O acesso é liberado assim que o pagamento é confirmado.</li>
+                        <li>{t('subscribe.autoStep1')}</li>
+                        <li>{t(effectiveCycle === 'monthly' ? 'subscribe.autoStep2Monthly' : 'subscribe.autoStep2Annual', { price: selected.priceLabel })}</li>
+                        <li>{t('subscribe.autoStep3')}</li>
                       </ol>
                       <button onClick={subscribeAuto} disabled={submitting}
                         className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2">
                         {submitting ? <Loader2 size={16} className="animate-spin-slow" /> : <Check size={16} />}
-                        Ativar Pix Automático
+                        {t('subscribe.activateAuto')}
                       </button>
                     </div>
                   )
@@ -553,12 +556,12 @@ export function SubscribeModal({
                       priceLabel={fmtCents(couponQr.amount_cents ?? couponCents!)}
                       copied={copied}
                       onCopy={() => copy(couponQr.mp_qr_code!)}
-                      hint="Pague este PIX e aguarde: a confirmação é automática."
+                      hint={t('subscribe.payAutoConfirm')}
                     />
                   ) : (
                     <button onClick={generateCouponPix} disabled={submitting}
                       className="w-full rounded-lg bg-primary-500 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-                      {submitting ? 'Gerando PIX…' : `Gerar PIX de ${fmtCents(couponCents!)}`}
+                      {submitting ? t('subscribe.generatingPix') : t('subscribe.generatePixOf', { price: fmtCents(couponCents!) })}
                     </button>
                   )
                 ) : selected.copyPaste ? (
@@ -568,11 +571,11 @@ export function SubscribeModal({
                     priceLabel={selected.priceLabel}
                     copied={copied}
                     onCopy={() => copy(selected.copyPaste)}
-                    hint={`Pague o PIX (${selected.priceLabel}) e toque em "Já fiz o pagamento". Seu plano é liberado após a confirmação.`}
+                    hint={t('subscribe.staticHint', { price: selected.priceLabel })}
                   />
                 ) : (
                   <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
-                    Este plano ainda não tem PIX configurado. Fale com o suporte.
+                    {t('subscribe.noPix')}
                   </p>
                 )}
 
@@ -583,7 +586,7 @@ export function SubscribeModal({
                     className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 flex items-center justify-center gap-2"
                   >
                     {submitting ? <Loader2 size={16} className="animate-spin-slow" /> : <Check size={16} />}
-                    Já fiz o pagamento
+                    {t('subscribe.alreadyPaid')}
                   </button>
                 )}
               </>
@@ -592,7 +595,7 @@ export function SubscribeModal({
         )}
 
         <button onClick={onClose} className="w-full text-sm text-gray-500 dark:text-gray-400 hover:underline">
-          Fechar
+          {t('subscribe.close')}
         </button>
       </div>
     </ModalOverlay>
@@ -616,14 +619,15 @@ function PixPayBlock({
   onCopy: () => void;
   hint: string;
 }) {
+  const { t } = useTranslation('account');
   const imgSrc = qrBase64 ? `data:image/png;base64,${qrBase64}` : qrImage || '';
   return (
     <div className="space-y-3">
       {imgSrc ? (
-        <img src={imgSrc} alt="QR Code PIX" className="w-44 h-44 mx-auto rounded-lg border border-gray-200 dark:border-gray-700" />
+        <img src={imgSrc} alt={t('subscribe.qrAlt')} className="w-44 h-44 mx-auto rounded-lg border border-gray-200 dark:border-gray-700" />
       ) : null}
       <div>
-        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">PIX copia e cola ({priceLabel})</p>
+        <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">{t('subscribe.copyPaste', { price: priceLabel })}</p>
         <div className="flex items-center gap-2">
           <input readOnly value={copyPaste} className={inputClass + ' text-xs'} />
           <button
@@ -632,7 +636,7 @@ function PixPayBlock({
             className="shrink-0 flex items-center gap-1 text-sm font-medium bg-primary-500 hover:bg-primary-600 text-white rounded-lg px-3 py-2"
           >
             {copied ? <Check size={15} /> : <Copy size={15} />}
-            {copied ? 'Copiado' : 'Copiar'}
+            {copied ? t('subscribe.copied') : t('subscribe.copy')}
           </button>
         </div>
       </div>

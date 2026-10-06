@@ -10,18 +10,27 @@ import { ToastFn, TableSkeleton } from '../../components';
 import { formatBRL, formatDate, todayISO } from '../format';
 import { inputClass } from './IngredientsPage';
 import { SaleForm } from './SalesPage';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { getLang } from '../../i18n';
 
+/** Rótulos traduzidos na renderização (finance.json → rep.period*). */
 const PERIODS = [
-  { id: 'today', label: 'Hoje' },
-  { id: 'week', label: '7 dias' },
-  { id: 'month', label: 'Mês' },
-  { id: 'all', label: 'Tudo' },
+  { id: 'today', labelKey: 'rep.periodToday' },
+  { id: 'week', labelKey: 'rep.periodWeek' },
+  { id: 'month', labelKey: 'rep.periodMonth' },
+  { id: 'all', labelKey: 'rep.periodAll' },
 ] as const;
 type PeriodId = (typeof PERIODS)[number]['id'];
 
+const dateLocale = () => (getLang() === 'en' ? 'en-US' : 'pt-BR');
+
 const PINK = '#e91e8c';
 
-const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
+const PAYMENT_KEYS = ['pix', 'dinheiro', 'credito', 'debito', 'cartao'];
+/** Rótulo da forma de pagamento; `fallback` para valores desconhecidos (padrão: "Não informado"). */
+const paymentLabel = (t: TFunction, method: string, fallback?: string) =>
+  PAYMENT_KEYS.includes(method) ? t(`rep.payment.${method}`) : fallback ?? t('rep.payment.none');
 
 /** Aritmética de calendário sem deslocamento de fuso (entrada/saída YYYY-MM-DD). */
 function shiftDay(iso: string, n: number): string {
@@ -34,10 +43,11 @@ function shiftMonth(prefix: string, n: number): string {
 }
 function weekdayLabel(iso: string): string {
   const d = new Date(iso + 'T12:00:00');
-  return d.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '');
+  return d.toLocaleDateString(dateLocale(), { weekday: 'short' }).replace('.', '');
 }
 
 export function ReportsPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('finance');
   const [stats, setStats] = useState<AppStats | null>(null);
   const [sales, setSales] = useState<Sale[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -55,7 +65,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
     try {
       await userApi.sendFeedback('Pesquisa de satisfação da home', satisfactionRating);
       setSatisfactionSent(true);
-      toast.success('Obrigado por avaliar sua experiência!');
+      toast.success(t('rep.thanksToast'));
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -144,7 +154,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
     paymentMap.set(method, cur);
   });
   const paymentBreakdown = [...paymentMap.entries()]
-    .map(([method, d]) => ({ method, label: PAYMENT_LABEL[method] || 'Não informado', ...d }))
+    .map(([method, d]) => ({ method, label: paymentLabel(t, method), ...d }))
     .sort((a, b) => b.revenue - a.revenue);
   const paymentMax = paymentBreakdown[0]?.revenue || 1;
 
@@ -174,7 +184,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
   // ── Baixar relatório (PDF via janela de impressão) ──
   const downloadReport = () => {
     const now = new Date();
-    const dateLabel = now.toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    const dateLabel = now.toLocaleDateString(dateLocale(), { day: '2-digit', month: 'long', year: 'numeric' });
 
     // Últimos 6 meses
     const months: { label: string; revenue: number; count: number }[] = [];
@@ -182,7 +192,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
       const prefix = shiftMonth(monthPrefix, -i);
       const ms = sales.filter(s => key(s).startsWith(prefix));
       const [y, m] = prefix.split('-').map(Number);
-      const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+      const label = new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString(dateLocale(), { month: 'short', timeZone: 'UTC' }).replace('.', '');
       months.push({ label, revenue: ms.reduce((a, s) => a + (s.totalRevenue || 0), 0), count: ms.length });
     }
 
@@ -201,12 +211,12 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
     const revChange = prevMonthRevenue > 0 ? ((monthRevenue - prevMonthRevenue) / prevMonthRevenue) * 100 : 0;
 
     const monthRows = months.map(m => `
-      <tr><td>${m.label}</td><td>${m.count} venda${m.count !== 1 ? 's' : ''}</td>
+      <tr><td>${m.label}</td><td>${t('rep.salesCount', { count: m.count })}</td>
       <td style="text-align:right;font-weight:600;color:#E91E63">${formatBRL(m.revenue)}</td></tr>`).join('');
 
     const recipeRows = top.map((r, i) => `
-      <tr><td style="font-weight:700;color:${i === 0 ? '#E91E63' : '#333'}">${i + 1}º</td>
-      <td>${r.name}</td><td>${r.q} un</td>
+      <tr><td style="font-weight:700;color:${i === 0 ? '#E91E63' : '#333'}">${t('rep.pdf.rank', { n: i + 1 })}</td>
+      <td>${r.name}</td><td>${t('rep.pdf.units', { count: r.q })}</td>
       <td style="text-align:right;font-weight:600;color:#E91E63">${formatBRL(r.r)}</td></tr>`).join('');
 
     // Vendas por forma de pagamento (geral)
@@ -219,13 +229,13 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
       paymentMapAll.set(method, cur);
     });
     const paymentAll = [...paymentMapAll.entries()]
-      .map(([method, d]) => ({ label: PAYMENT_LABEL[method] || 'Não informado', ...d }))
+      .map(([method, d]) => ({ label: paymentLabel(t, method), ...d }))
       .sort((a, b) => b.revenue - a.revenue);
     const paymentRows = paymentAll.map(p => `
-      <tr><td>${p.label}</td><td>${p.count} venda${p.count !== 1 ? 's' : ''}</td>
+      <tr><td>${p.label}</td><td>${t('rep.salesCount', { count: p.count })}</td>
       <td style="text-align:right;font-weight:600;color:#E91E63">${formatBRL(p.revenue)}</td></tr>`).join('');
 
-    const html = `<!doctype html><html><head><meta charset="utf-8"/><title>Relatório DocePreço</title>
+    const html = `<!doctype html><html lang="${getLang() === 'en' ? 'en' : 'pt-BR'}"><head><meta charset="utf-8"/><title>${t('rep.pdf.title')}</title>
       <style>
         body { font-family: Arial, sans-serif; padding: 32px; color: #333; }
         h1 { color: #E91E63; font-size: 24px; margin-bottom: 4px; }
@@ -242,43 +252,43 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
         td { padding: 8px 10px; border-bottom: 1px solid #f0f0f0; }
         .footer { margin-top: 40px; font-size: 11px; color: #bbb; text-align: center; }
       </style></head><body>
-      <h1>Relatório DocePreço</h1>
-      <div class="subtitle">Gerado em ${dateLabel}</div>
+      <h1>${t('rep.pdf.title')}</h1>
+      <div class="subtitle">${t('rep.pdf.generatedAt', { date: dateLabel })}</div>
       <div class="stat-grid">
         <div class="stat">
-          <div class="stat-label">Faturamento do mês</div>
+          <div class="stat-label">${t('rep.pdf.monthRevenue')}</div>
           <div class="stat-value">${formatBRL(monthRevenue)}</div>
-          ${prevMonthRevenue > 0 ? `<div class="stat-sub">${revChange >= 0 ? '▲' : '▼'} ${Math.abs(revChange).toFixed(1)}% vs mês anterior</div>` : ''}
+          ${prevMonthRevenue > 0 ? `<div class="stat-sub">${revChange >= 0 ? '▲' : '▼'} ${t('rep.pdf.vsPrev', { value: Math.abs(revChange).toFixed(1) })}</div>` : ''}
         </div>
         <div class="stat">
-          <div class="stat-label">Ticket médio</div>
+          <div class="stat-label">${t('rep.avgTicket')}</div>
           <div class="stat-value">${formatBRL(avg)}</div>
-          <div class="stat-sub">${sales.length} vendas no total</div>
+          <div class="stat-sub">${t('rep.pdf.totalSales', { count: sales.length })}</div>
         </div>
       </div>
       <div class="section">
-        <h2>Vendas por mês (últimos 6 meses)</h2>
-        <table><thead><tr><th>Mês</th><th>Qtd. vendas</th><th style="text-align:right">Faturamento</th></tr></thead>
+        <h2>${t('rep.pdf.byMonth')}</h2>
+        <table><thead><tr><th>${t('rep.pdf.colMonth')}</th><th>${t('rep.pdf.colQtySales')}</th><th style="text-align:right">${t('rep.pdf.colRevenue')}</th></tr></thead>
         <tbody>${monthRows}</tbody></table>
       </div>
       <div class="section">
-        <h2>Receitas mais vendidas</h2>
+        <h2>${t('rep.pdf.topRecipes')}</h2>
         ${top.length === 0
-          ? '<p style="color:#aaa">Nenhuma venda registrada.</p>'
-          : `<table><thead><tr><th>#</th><th>Receita</th><th>Qtd.</th><th style="text-align:right">Faturamento</th></tr></thead><tbody>${recipeRows}</tbody></table>`}
+          ? `<p style="color:#aaa">${t('rep.pdf.noSales')}</p>`
+          : `<table><thead><tr><th>#</th><th>${t('rep.pdf.colRecipe')}</th><th>${t('rep.pdf.colQty')}</th><th style="text-align:right">${t('rep.pdf.colRevenue')}</th></tr></thead><tbody>${recipeRows}</tbody></table>`}
       </div>
       <div class="section">
-        <h2>Vendas por forma de pagamento</h2>
+        <h2>${t('rep.pdf.byPayment')}</h2>
         ${paymentAll.length === 0
-          ? '<p style="color:#aaa">Nenhuma venda registrada.</p>'
-          : `<table><thead><tr><th>Forma de pagamento</th><th>Qtd. vendas</th><th style="text-align:right">Faturamento</th></tr></thead><tbody>${paymentRows}</tbody></table>`}
+          ? `<p style="color:#aaa">${t('rep.pdf.noSales')}</p>`
+          : `<table><thead><tr><th>${t('rep.pdf.colPayment')}</th><th>${t('rep.pdf.colQtySales')}</th><th style="text-align:right">${t('rep.pdf.colRevenue')}</th></tr></thead><tbody>${paymentRows}</tbody></table>`}
       </div>
-      <div class="footer">DocePreço · relatório gerado automaticamente</div>
+      <div class="footer">${t('rep.pdf.footer')}</div>
       </body></html>`;
 
     const w = window.open('', '_blank');
     if (!w) {
-      toast.error('Permita pop-ups para baixar o relatório.');
+      toast.error(t('rep.allowPopups'));
       return;
     }
     w.document.write(html);
@@ -291,14 +301,14 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
     <div>
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Painel</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Visão geral do seu negócio</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{t('rep.title')}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('rep.subtitle')}</p>
         </div>
         <button
           onClick={downloadReport}
           className="flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors shrink-0"
         >
-          <Download size={16} /> Baixar relatório
+          <Download size={16} /> {t('rep.download')}
         </button>
       </div>
 
@@ -315,37 +325,37 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <CalendarDays size={16} className="text-white/80" />
-                  <p className="text-xs font-medium text-white/80">Hoje</p>
+                  <p className="text-xs font-medium text-white/80">{t('rep.today')}</p>
                 </div>
                 <GrowthBadge current={todayRevenue} previous={yesterdayRevenue} light />
               </div>
               <p className="text-2xl font-bold text-white tracking-tight leading-tight">{formatBRL(todayRevenue)}</p>
               <div className="flex items-center justify-between mt-2">
                 <p className="text-[11px] text-white/80">
-                  {todayCount} venda{todayCount !== 1 ? 's' : ''} · vs. ontem
+                  {t('rep.todaySales', { count: todayCount })}
                 </p>
                 {recipes.length > 0 && (
                   <button
                     onClick={() => setCreating(true)}
                     className="text-[11px] font-semibold bg-white text-primary-600 px-2.5 py-1.5 rounded-lg hover:bg-primary-50 transition-colors"
                   >
-                    + Registrar venda
+                    {t('rep.registerSale')}
                   </button>
                 )}
               </div>
             </div>
 
             {/* Semana */}
-            <RevenueCard label="Esta semana" sub="últimos 7 dias" value={weekRevenue} current={weekRevenue} previous={prevWeekRevenue} />
+            <RevenueCard label={t('rep.thisWeek')} sub={t('rep.last7')} value={weekRevenue} current={weekRevenue} previous={prevWeekRevenue} />
             {/* Mês */}
-            <RevenueCard label="Este mês" sub="vs. mês anterior" value={monthRevenue} current={monthRevenue} previous={prevMonthRevenue} />
+            <RevenueCard label={t('rep.thisMonth')} sub={t('rep.vsPrevMonth')} value={monthRevenue} current={monthRevenue} previous={prevMonthRevenue} />
           </div>
 
           {/* ── Gráfico 7 dias ── */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp size={16} className="text-gray-400" />
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">Faturamento dos últimos 7 dias</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('rep.chartTitle')}</p>
             </div>
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={chartData} margin={{ top: 8, right: 4, left: 4, bottom: 0 }}>
@@ -365,7 +375,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
             <div className="flex items-center gap-2 mb-3">
               <Filter size={16} className="text-gray-400" />
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">Vendas por receita</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('rep.byRecipe')}</p>
             </div>
             <div className="flex flex-wrap items-center gap-2 mb-4">
               <select
@@ -373,7 +383,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                 onChange={e => setFilterRecipe(e.target.value)}
                 className={`${inputClass} max-w-xs`}
               >
-                <option value="all">Todas as receitas</option>
+                <option value="all">{t('rep.allRecipes')}</option>
                 {recipeOptions.map(r => (
                   <option key={r.id} value={r.id}>{r.name}</option>
                 ))}
@@ -389,15 +399,15 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                         : 'text-gray-500 dark:text-gray-400'
                     }`}
                   >
-                    {p.label}
+                    {t(p.labelKey)}
                   </button>
                 ))}
               </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <Metric label="Faturamento" value={formatBRL(filterRevenue)} highlight />
-              <Metric label="Un. vendidas" value={String(filterQty)} />
-              <Metric label="Vendas" value={String(filterSales.length)} />
+              <Metric label={t('rep.revenue')} value={formatBRL(filterRevenue)} highlight />
+              <Metric label={t('rep.unitsSold')} value={String(filterQty)} />
+              <Metric label={t('rep.sales')} value={String(filterSales.length)} />
             </div>
           </div>
 
@@ -407,10 +417,10 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                 <Trophy size={16} className="text-amber-500" />
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">Mais vendidos no mês</p>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('rep.topMonth')}</p>
               </div>
               {topProducts.length === 0 ? (
-                <p className="text-sm text-gray-400 text-center py-10">Sem vendas neste mês.</p>
+                <p className="text-sm text-gray-400 text-center py-10">{t('rep.noSalesMonth')}</p>
               ) : (
                 <div className="p-3 space-y-2.5">
                   {topProducts.map((p, i) => (
@@ -424,7 +434,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                         <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
                           <div className="h-full rounded-full bg-primary-400" style={{ width: `${Math.max(8, (p.revenue / topMax) * 100)}%` }} />
                         </div>
-                        <p className="text-[11px] text-gray-400 mt-0.5">{p.qty} un. vendidas</p>
+                        <p className="text-[11px] text-gray-400 mt-0.5">{t('rep.qtySold', { count: p.qty })}</p>
                       </div>
                     </div>
                   ))}
@@ -434,10 +444,10 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
 
             {/* Indicadores */}
             <div className="grid grid-cols-2 gap-3 content-start">
-              <Indicator icon={Receipt} label="Ticket médio" value={formatBRL(avgTicket)} color="text-primary-600" bg="bg-primary-50 dark:bg-primary-900/30" />
-              <Indicator icon={ShoppingBag} label="Itens vendidos (mês)" value={String(itemsSold)} color="text-green-600" bg="bg-green-50 dark:bg-green-900/30" />
-              <Indicator icon={ChefHat} label="Receitas" value={String(stats.recipesCount)} color="text-purple-600" bg="bg-purple-50 dark:bg-purple-900/30" />
-              <Indicator icon={Package} label="Ingredientes" value={String(stats.ingredientsCount)} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
+              <Indicator icon={Receipt} label={t('rep.avgTicket')} value={formatBRL(avgTicket)} color="text-primary-600" bg="bg-primary-50 dark:bg-primary-900/30" />
+              <Indicator icon={ShoppingBag} label={t('rep.itemsSoldMonth')} value={String(itemsSold)} color="text-green-600" bg="bg-green-50 dark:bg-green-900/30" />
+              <Indicator icon={ChefHat} label={t('rep.recipes')} value={String(stats.recipesCount)} color="text-purple-600" bg="bg-purple-50 dark:bg-purple-900/30" />
+              <Indicator icon={Package} label={t('rep.ingredients')} value={String(stats.ingredientsCount)} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
             </div>
           </div>
 
@@ -445,10 +455,10 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <Receipt size={16} className="text-gray-400" />
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">Vendas por forma de pagamento (mês)</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('rep.byPaymentMonth')}</p>
             </div>
             {paymentBreakdown.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-10">Sem vendas neste mês.</p>
+              <p className="text-sm text-gray-400 text-center py-10">{t('rep.noSalesMonth')}</p>
             ) : (
               <div className="p-3 space-y-2.5">
                 {paymentBreakdown.map(p => (
@@ -461,7 +471,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                       <div className="h-1.5 rounded-full bg-gray-100 dark:bg-gray-700 overflow-hidden">
                         <div className="h-full rounded-full bg-primary-400" style={{ width: `${Math.max(8, (p.revenue / paymentMax) * 100)}%` }} />
                       </div>
-                      <p className="text-[11px] text-gray-400 mt-0.5">{p.count} venda{p.count !== 1 ? 's' : ''}</p>
+                      <p className="text-[11px] text-gray-400 mt-0.5">{t('rep.salesCount', { count: p.count })}</p>
                     </div>
                   </div>
                 ))}
@@ -473,10 +483,10 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
               <CalendarDays size={16} className="text-gray-400" />
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">Vendas recentes</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('rep.recent')}</p>
             </div>
             {recentSales.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-10">Nenhuma venda recente.</p>
+              <p className="text-sm text-gray-400 text-center py-10">{t('rep.noRecent')}</p>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {recentSales.map(s => (
@@ -485,7 +495,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                       <p className="font-medium text-gray-900 dark:text-white truncate">{s.recipeName}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
                         {s.quantitySold}× · {formatDate(s.saleDate)}
-                        {s.paymentMethod ? ` · ${PAYMENT_LABEL[s.paymentMethod] || s.paymentMethod}` : ''}
+                        {s.paymentMethod ? ` · ${paymentLabel(t, s.paymentMethod, s.paymentMethod)}` : ''}
                       </p>
                     </div>
                     <span className="font-semibold text-green-600 dark:text-green-400">{formatBRL(s.totalRevenue)}</span>
@@ -501,22 +511,16 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
               <div className="flex items-center gap-3 py-1">
                 <div className="w-9 h-9 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-green-600 dark:text-green-300">✓</div>
                 <div>
-                  <p className="font-semibold text-gray-900 dark:text-white text-sm">Obrigado pela sua avaliação!</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">Sua resposta foi registrada e ajuda a melhorar o DocePreço.</p>
+                  <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('rep.thanksTitle')}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{t('rep.thanksSub')}</p>
                 </div>
               </div>
             ) : (
               <div>
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">Como está sua experiência com o DocePreço?</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Escolha uma opção para avaliar sua experiência.</p>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('rep.surveyTitle')}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{t('rep.surveyHint')}</p>
                 <div className="flex flex-wrap gap-2 mt-3">
-                  {[
-                    { rating: 1, label: 'Muito ruim' },
-                    { rating: 2, label: 'Ruim' },
-                    { rating: 3, label: 'Regular' },
-                    { rating: 4, label: 'Boa' },
-                    { rating: 5, label: 'Excelente' },
-                  ].map(option => (
+                  {[1, 2, 3, 4, 5].map(rating => ({ rating, label: t(`rep.rating${rating}`) })).map(option => (
                     <button
                       key={option.rating}
                       type="button"
@@ -534,7 +538,7 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
                     onClick={sendSatisfaction}
                     className="rounded-lg bg-primary-500 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-primary-600 disabled:cursor-not-allowed disabled:bg-gray-300 dark:disabled:bg-gray-700"
                   >
-                    {sendingSatisfaction ? 'Enviando...' : 'Enviar avaliação'}
+                    {sendingSatisfaction ? t('rep.sending') : t('rep.sendRating')}
                   </button>
                 </div>
               </div>
@@ -556,9 +560,10 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
 }
 
 function GrowthBadge({ current, previous, light }: { current: number; previous: number; light?: boolean }) {
+  const { t } = useTranslation('finance');
   if (previous <= 0) {
     if (current <= 0) return null;
-    return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${light ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'}`}>novo</span>;
+    return <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${light ? 'bg-white/20 text-white' : 'bg-green-100 text-green-700'}`}>{t('rep.new')}</span>;
   }
   const pct = ((current - previous) / previous) * 100;
   const up = pct >= 0;

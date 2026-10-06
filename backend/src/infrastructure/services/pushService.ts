@@ -1,5 +1,6 @@
 import { Expo, ExpoPushMessage, ExpoPushTicket, ExpoPushReceiptId } from 'expo-server-sdk';
 import { PostgresPushTokenRepository } from '../repositories/PostgresPushTokenRepository';
+import { sendWebPush } from './webPushService';
 
 const expo = new Expo();
 const tokenRepo = new PostgresPushTokenRepository();
@@ -49,8 +50,10 @@ export async function sendPushNotificationsDetailed(
   body: string,
   data?: Record<string, unknown>
 ): Promise<PushSendResult> {
+  // Assinaturas do navegador (Web Push) vão pelo serviço próprio; o resto pelo Expo.
+  const webDelivered = await sendWebPush(tokens, title, body, data);
   const validTokens = tokens.filter(t => Expo.isExpoPushToken(t));
-  if (validTokens.length === 0) return { successCount: 0, successfulTokens: [] };
+  if (validTokens.length === 0) return { successCount: webDelivered.length, successfulTokens: webDelivered };
 
   const messages: ExpoPushMessage[] = validTokens.map(token => ({
     to: token,
@@ -98,7 +101,7 @@ export async function sendPushNotificationsDetailed(
     }, 8000);
   }
 
-  return { successCount, successfulTokens };
+  return { successCount: successCount + webDelivered.length, successfulTokens: [...successfulTokens, ...webDelivered] };
 }
 
 export async function sendPushNotifications(

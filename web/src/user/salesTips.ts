@@ -5,6 +5,9 @@
  * lucide-react (resolvidos na página).
  */
 import { AppStats, Sale, Recipe } from './userApi';
+import i18n from '../i18n';
+
+const tr = (key: string, opts?: Record<string, unknown>) => i18n.t(`finance:${key}`, opts) as string;
 
 /* ── Insights dinâmicos (análise do negócio) ──────────────────────────── */
 
@@ -27,13 +30,13 @@ export function generateInsights(stats: AppStats): Insight[] {
     const ticketMedio = monthlyRevenue / monthlySalesCount;
     insights.push({
       id: 'avg-ticket',
-      message: `Seu ticket médio é ${fmt(ticketMedio)} por venda.`,
+      message: tr('tips.insight.avgTicket', { value: fmt(ticketMedio) }),
       type: 'neutral',
     });
     if (monthlySalesCount >= 10 && ticketMedio < 30) {
       insights.push({
         id: 'low-ticket',
-        message: 'Você vende bastante, mas o ticket médio está baixo. Considere revisar seus preços!',
+        message: tr('tips.insight.lowTicket'),
         type: 'warning',
       });
     }
@@ -50,7 +53,7 @@ export function generateInsights(stats: AppStats): Insight[] {
     if (top) {
       insights.push({
         id: 'top-recipe',
-        message: `"${top.name}" é o campeão de vendas recente, com ${fmt(top.total)} faturados.`,
+        message: tr('tips.insight.topRecipe', { name: top.name, value: fmt(top.total) }),
         type: 'positive',
       });
     }
@@ -60,7 +63,7 @@ export function generateInsights(stats: AppStats): Insight[] {
   if (monthlySalesCount === 0 && recipesCount > 0) {
     insights.push({
       id: 'no-sales',
-      message: 'Você ainda não registrou vendas este mês. Registre suas vendas para acompanhar o faturamento!',
+      message: tr('tips.insight.noSales'),
       type: 'tip',
     });
   }
@@ -69,7 +72,7 @@ export function generateInsights(stats: AppStats): Insight[] {
   if (recipesCount === 0) {
     insights.push({
       id: 'no-recipes',
-      message: 'Crie sua primeira receita para começar a precificar seus produtos!',
+      message: tr('tips.insight.noRecipes'),
       type: 'tip',
     });
   }
@@ -78,7 +81,7 @@ export function generateInsights(stats: AppStats): Insight[] {
   if (recipesCount > 0 && recipesCount <= 2 && monthlySalesCount > 0) {
     insights.push({
       id: 'few-recipes',
-      message: `Você tem só ${recipesCount} receita${recipesCount > 1 ? 's' : ''}. Diversificar o cardápio pode aumentar seu faturamento!`,
+      message: tr('tips.insight.fewRecipes', { count: recipesCount }),
       type: 'tip',
     });
   }
@@ -133,7 +136,7 @@ export async function buildPricingTips(
     tips.push({
       id: 'underpriced',
       type: 'warning',
-      message: `Você vende "${bestUnderpriced.name}" a ${fmt(bestUnderpriced.avg)}, mas o preço sugerido é ${fmt(bestUnderpriced.suggested)} (+${bestUnderpriced.gapPct.toFixed(0)}%). Ajustar pode aumentar seu lucro.`,
+      message: tr('tips.insight.underpriced', { name: bestUnderpriced.name, avg: fmt(bestUnderpriced.avg), suggested: fmt(bestUnderpriced.suggested), gap: bestUnderpriced.gapPct.toFixed(0) }),
     });
   }
 
@@ -150,7 +153,7 @@ export async function buildPricingTips(
     tips.push({
       id: 'best-margin',
       type: 'positive',
-      message: `"${bestMargin.name}" tem o maior acréscimo sobre o custo (${bestMargin.margin.toFixed(0)}%). Confira também o lucro por unidade e a procura por esse produto.`,
+      message: tr('tips.insight.bestMargin', { name: bestMargin.name, margin: bestMargin.margin.toFixed(0) }),
     });
   }
 
@@ -162,7 +165,7 @@ export async function buildPricingTips(
       tips.push({
         id: 'concentration',
         type: 'tip',
-        message: `"${top.name}" representa ${pct.toFixed(0)}% do seu faturamento. Diversifique para não depender de um só produto.`,
+        message: tr('tips.insight.concentration', { name: top.name, pct: pct.toFixed(0) }),
       });
     }
   }
@@ -192,153 +195,59 @@ export interface CategoryMeta {
   bg: string;
 }
 
+/** Rótulo traduzido na hora da leitura (getter), mantendo o formato dos dados. */
+const category = (key: MarketingCategory, icon: string, color: string, bg: string): CategoryMeta => ({
+  key, icon, color, bg,
+  get label() { return tr(`tips.cat.${key}`); },
+});
+
 export const MARKETING_CATEGORIES: CategoryMeta[] = [
-  { key: 'instagram',   label: 'Instagram',       icon: 'Instagram',     color: '#C13584', bg: '#FCEAF4' },
-  { key: 'whatsapp',    label: 'WhatsApp',        icon: 'MessageCircle', color: '#1FA855', bg: '#E3F7EC' },
-  { key: 'fotos',       label: 'Fotos',           icon: 'Camera',        color: '#2B7DDB', bg: '#E7F1FC' },
-  { key: 'preco',       label: 'Preço & ofertas', icon: 'Tag',           color: '#7C3AED', bg: '#F1E8FB' },
-  { key: 'fidelizacao', label: 'Fidelização',     icon: 'Heart',         color: '#E8537A', bg: '#FCE7ED' },
-  { key: 'datas',       label: 'Datas',           icon: 'Calendar',      color: '#E0922B', bg: '#FCEFD9' },
-  { key: 'captacao',    label: 'Atrair clientes', icon: 'Megaphone',     color: '#0E9C8A', bg: '#E1F6F3' },
+  category('instagram', 'Instagram', '#C13584', '#FCEAF4'),
+  category('whatsapp', 'MessageCircle', '#1FA855', '#E3F7EC'),
+  category('fotos', 'Camera', '#2B7DDB', '#E7F1FC'),
+  category('preco', 'Tag', '#7C3AED', '#F1E8FB'),
+  category('fidelizacao', 'Heart', '#E8537A', '#FCE7ED'),
+  category('datas', 'Calendar', '#E0922B', '#FCEFD9'),
+  category('captacao', 'Megaphone', '#0E9C8A', '#E1F6F3'),
 ];
 
+/** Título, texto e rótulo do link vêm do idioma atual (finance.json → tips.items). */
+const tip = (id: string, category: MarketingCategory, url?: string): MarketingTip => {
+  const t: MarketingTip = {
+    id, category,
+    get title() { return tr(`tips.items.${id}.title`); },
+    get body() { return tr(`tips.items.${id}.body`); },
+  };
+  if (url) t.link = { url, get label() { return tr(`tips.items.${id}.link`); } };
+  return t;
+};
+
 export const MARKETING_TIPS: MarketingTip[] = [
-  {
-    id: 'ig-template-story', category: 'instagram',
-    title: 'Template de Story pronto no Canva',
-    body: 'Não sabe como deixar o Story bonito? Use um modelo pronto: é só trocar a foto e o texto pelo seu doce e publicar. Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.',
-    link: { url: 'https://canva.link/0e147tvm3mph6ls', label: 'Abrir template de Story no Canva' },
-  },
-  {
-    id: 'ig-template-story-oferta', category: 'instagram',
-    title: 'Template de Story OFERTA pronto no Canva',
-    body: 'Não sabe como deixar o Story bonito? Use um modelo pronto: é só trocar a foto e o texto pelo seu doce e publicar. Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.',
-    link: { url: 'https://canva.link/n8rnl24knb1gyyt', label: 'Abrir template de Story oferta no Canva' },
-  },
-  {
-    id: 'ig-template-logo-loja', category: 'instagram',
-    title: 'Logo editável para sua loja',
-    body: 'Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.',
-    link: { url: 'https://canva.link/4iyz3dsd6ku103p', label: 'Abrir logo editável no Canva' },
-  },
-  {
-    id: 'ig-constancia', category: 'instagram',
-    title: 'Apareça com constância',
-    body: 'O algoritmo premia quem posta com frequência. Defina uma rotina realista (ex.: 3 posts no feed por semana + Stories diários) e mantenha. Constância vale mais que perfeição — é melhor postar simples toda semana do que sumir por um mês.',
-  },
-  {
-    id: 'ig-reels', category: 'instagram',
-    title: 'Reels de "fazendo o doce" engajam mais',
-    body: 'Vídeos curtos mostrando o passo a passo, o recheio escorrendo ou a montagem alcançam muito mais gente do que fotos paradas. Grave 15–30s, use uma música em alta e mostre o resultado final logo nos primeiros segundos.',
-  },
-  {
-    id: 'ig-bastidores', category: 'instagram',
-    title: 'Use os Stories para criar desejo',
-    body: 'Mostre os bastidores: ingredientes chegando, a cozinha, o doce saindo do forno, o cliente recebendo. Isso gera conexão e confiança. Encerre com um convite claro: "Chama no direct para encomendar".',
-  },
-  {
-    id: 'ig-bio', category: 'instagram',
-    title: 'Bio e destaques que vendem',
-    body: 'Sua bio deve dizer em 1 linha o que você faz e como pedir (link do WhatsApp). Organize os Destaques como um cardápio: "Sabores", "Preços", "Como encomendar", "Clientes felizes". Quem chega no seu perfil precisa saber comprar em 10 segundos.',
-  },
-  {
-    id: 'wa-business', category: 'whatsapp',
-    title: 'Use o WhatsApp Business com catálogo',
-    body: 'O WhatsApp Business é gratuito e deixa você montar um catálogo com fotos e preços. O cliente navega e já escolhe sem você precisar repetir tudo. Configure também o horário de atendimento e a mensagem de saudação.',
-  },
-  {
-    id: 'wa-rapidez', category: 'whatsapp',
-    title: 'Responder rápido fecha mais venda',
-    body: 'A maioria das vendas se perde por demora na resposta. Use as "respostas rápidas" do WhatsApp Business para mandar tabela de preços, sabores e prazos em segundos. Quanto mais ágil, maior a chance de fechar antes do cliente procurar outra confeiteira.',
-  },
-  {
-    id: 'wa-transmissao', category: 'whatsapp',
-    title: 'Lista de transmissão para novidades',
-    body: 'Crie listas de transmissão para avisar clientes sobre novos sabores, promoções e abertura de agenda de datas comemorativas. Diferente do grupo, cada um recebe como mensagem individual — mais pessoal e sem incomodar.',
-  },
-  {
-    id: 'foto-luz', category: 'fotos',
-    title: 'Luz natural é seu melhor estúdio',
-    body: 'Fotografe perto de uma janela, de dia, sem flash. A luz natural deixa o doce apetitoso e com cores reais. Evite luz amarela de lâmpada, que deixa a foto "suja". A foto é sua vitrine — vale mais que mil palavras.',
-  },
-  {
-    id: 'foto-corte', category: 'fotos',
-    title: 'Mostre o recheio',
-    body: 'Foto de doce cortado, com o recheio aparecendo, desperta muito mais desejo. Brigadeiro mordido, bolo de pote em camadas, coxinha aberta. O cliente compra com os olhos — mostre a parte mais gostosa.',
-  },
-  {
-    id: 'foto-fundo', category: 'fotos',
-    title: 'Fundo limpo, foco no doce',
-    body: 'Tire a bagunça do enquadramento. Um fundo neutro (mármore, madeira clara, um pano liso) faz o produto se destacar. Aproxime a câmera e deixe o doce ser a estrela.',
-  },
-  {
-    id: 'preco-combo', category: 'preco',
-    title: 'Combos aumentam o ticket médio',
-    body: 'Em vez de vender 1 unidade, ofereça kits: "caixa com 6 sabores", "combo café da tarde", "kit festa com 50 docinhos". O cliente gasta mais por pedido e você ganha tempo produzindo em lote. Dê um pequeno desconto no combo para incentivar.',
-  },
-  {
-    id: 'preco-degustacao', category: 'preco',
-    title: 'Kit degustação para novos clientes',
-    body: 'Um kit pequeno com vários sabores é a porta de entrada perfeita. O cliente experimenta tudo, descobre o favorito e volta para comprar a versão cheia. Custa pouco para você e converte indeciso em cliente fiel.',
-  },
-  {
-    id: 'preco-ancoragem', category: 'preco',
-    title: 'Ofereça 3 opções de tamanho',
-    body: 'Quando você mostra P, M e G, a maioria escolhe o do meio — e você guia a venda. Ter uma opção "premium" mais cara também faz as outras parecerem mais acessíveis. Nunca ofereça só uma opção: dê ao cliente o poder de escolher para cima.',
-  },
-  {
-    id: 'preco-entrega', category: 'preco',
-    title: 'Deixe a taxa de entrega clara',
-    body: 'Informe o valor da entrega antes de fechar, para não gerar atrito no fim. Ofereça frete grátis acima de um valor mínimo ("entrega grátis acima de R$ 60") — isso empurra o cliente a comprar mais para "compensar o frete".',
-  },
-  {
-    id: 'fid-cartao', category: 'fidelizacao',
-    title: 'Cartão fidelidade',
-    body: 'A cada X compras, um brinde ou desconto. Simples e poderoso: dá motivo para o cliente voltar sempre em você e não na concorrência. Pode ser um cartãozinho carimbado ou um controle no caderninho mesmo.',
-  },
-  {
-    id: 'fid-posvenda', category: 'fidelizacao',
-    title: 'Pós-venda que encanta',
-    body: 'No dia seguinte à entrega, mande uma mensagem: "Oi! Que bom que escolheu meus doces 💛 Deu tudo certo na festa?". Esse cuidado faz o cliente lembrar de você e indicar. Custa 30 segundos e vale muitas recompras.',
-  },
-  {
-    id: 'fid-brinde', category: 'fidelizacao',
-    title: 'Brinde surpresa no pedido',
-    body: 'Inclua um docinho extra ou um bilhete escrito à mão de vez em quando. A surpresa gera foto, story marcando você e propaganda gratuita. Pequenos mimos criam clientes apaixonados.',
-  },
-  {
-    id: 'data-calendario', category: 'datas',
-    title: 'Planeje o calendário do ano',
-    body: 'Páscoa, Dia das Mães, Namorados, Festa Junina, Dia das Crianças e Natal são picos de venda. Marque no calendário e prepare cardápio, fotos e divulgação com antecedência. Quem se antecipa pega as melhores encomendas.',
-  },
-  {
-    id: 'data-agenda', category: 'datas',
-    title: 'Abra a agenda com antecedência',
-    body: 'Anuncie "Agenda de Páscoa aberta!" semanas antes e crie urgência: "Vagas limitadas". Ofereça desconto para quem encomenda cedo. Isso organiza sua produção e garante caixa antes da data.',
-  },
-  {
-    id: 'data-kits', category: 'datas',
-    title: 'Kits temáticos da data',
-    body: 'Monte kits exclusivos para cada ocasião: "Caixa Dia das Mães", "Cesta de Páscoa", "Box romântico". Embalagem temática justifica preço maior e vira presente pronto — o cliente compra a experiência, não só o doce.',
-  },
-  {
-    id: 'cap-indicacao', category: 'captacao',
-    title: 'Peça indicação (e recompense)',
-    body: 'Cliente satisfeito indica se você pedir. Ofereça um benefício: "Indique uma amiga e ganhe 10% no próximo pedido". O boca a boca é a propaganda mais barata e que mais converte na confeitaria.',
-  },
-  {
-    id: 'cap-parcerias', category: 'captacao',
-    title: 'Parcerias locais',
-    body: 'Cafés, floriculturas, salões e papelarias atendem o mesmo público que você. Proponha deixar seus doces à venda ou trocar indicação. Uma parceria boa coloca seu produto na frente de clientes novos sem gastar com anúncio.',
-  },
-  {
-    id: 'cap-amostra', category: 'captacao',
-    title: 'Amostras para quem tem alcance',
-    body: 'Envie um kit cortesia para uma microinfluenciadora ou pessoa querida do seu bairro. Um story marcando você pode trazer dezenas de pedidos. Escolha quem fala com o seu público local, não precisa ser alguém famoso.',
-  },
-  {
-    id: 'cap-depoimentos', category: 'captacao',
-    title: 'Colecione e mostre depoimentos',
-    body: 'Print de elogio no WhatsApp, foto do cliente com o doce, comentário feliz — guarde tudo e poste nos Stories e Destaques. Prova social vence a desconfiança de quem ainda não comprou de você.',
-  },
+  tip('ig-template-story', 'instagram', 'https://canva.link/0e147tvm3mph6ls'),
+  tip('ig-template-story-oferta', 'instagram', 'https://canva.link/n8rnl24knb1gyyt'),
+  tip('ig-template-logo-loja', 'instagram', 'https://canva.link/4iyz3dsd6ku103p'),
+  tip('ig-constancia', 'instagram'),
+  tip('ig-reels', 'instagram'),
+  tip('ig-bastidores', 'instagram'),
+  tip('ig-bio', 'instagram'),
+  tip('wa-business', 'whatsapp'),
+  tip('wa-rapidez', 'whatsapp'),
+  tip('wa-transmissao', 'whatsapp'),
+  tip('foto-luz', 'fotos'),
+  tip('foto-corte', 'fotos'),
+  tip('foto-fundo', 'fotos'),
+  tip('preco-combo', 'preco'),
+  tip('preco-degustacao', 'preco'),
+  tip('preco-ancoragem', 'preco'),
+  tip('preco-entrega', 'preco'),
+  tip('fid-cartao', 'fidelizacao'),
+  tip('fid-posvenda', 'fidelizacao'),
+  tip('fid-brinde', 'fidelizacao'),
+  tip('data-calendario', 'datas'),
+  tip('data-agenda', 'datas'),
+  tip('data-kits', 'datas'),
+  tip('cap-indicacao', 'captacao'),
+  tip('cap-parcerias', 'captacao'),
+  tip('cap-amostra', 'captacao'),
+  tip('cap-depoimentos', 'captacao'),
 ];

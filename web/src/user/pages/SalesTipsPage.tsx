@@ -4,6 +4,7 @@ import {
   LayoutGrid, AtSign, MessageCircle, Camera, Tag, Heart, Calendar, Megaphone,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { userApi } from '../userApi';
 import { ToastFn, TableSkeleton } from '../../components';
 import {
@@ -25,6 +26,7 @@ const INSIGHT_STYLE: Record<InsightType, { icon: LucideIcon; color: string; bg: 
 };
 
 export function SalesTipsPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('finance');
   const [loading, setLoading] = useState(true);
   const [insights, setInsights] = useState<Insight[]>([]);
   const [cat, setCat] = useState<CatFilter>('all');
@@ -49,21 +51,21 @@ export function SalesTipsPage({ toast }: { toast: ToastFn }) {
     load();
   }, [load]);
 
-  const tips = cat === 'all' ? MARKETING_TIPS : MARKETING_TIPS.filter(t => t.category === cat);
+  const tips = cat === 'all' ? MARKETING_TIPS : MARKETING_TIPS.filter(tip => tip.category === cat);
 
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Dicas de vendas</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Marketing e precificação</p>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{t('tips.title')}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t('tips.subtitle')}</p>
       </div>
 
       {/* Hero */}
       <div className="rounded-2xl p-5 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-800 shadow-sm mb-6">
         <Lightbulb size={26} className="text-white" />
-        <p className="text-lg font-extrabold text-white mt-2">Venda mais e melhor</p>
+        <p className="text-lg font-extrabold text-white mt-2">{t('tips.heroTitle')}</p>
         <p className="text-sm text-white/85 mt-1 leading-snug">
-          Análises do seu negócio + dicas práticas de marketing e vendas para confeitaria.
+          {t('tips.heroText')}
         </p>
       </div>
 
@@ -74,7 +76,7 @@ export function SalesTipsPage({ toast }: { toast: ToastFn }) {
         </div>
       ) : insights.length > 0 && (
         <div className="mb-6">
-          <p className="font-semibold text-gray-900 dark:text-white text-sm mb-3">📊 Análise do seu negócio</p>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm mb-3">{t('tips.analysis')}</p>
           <div className="space-y-2.5">
             {insights.map(tip => {
               const st = INSIGHT_STYLE[tip.type];
@@ -93,11 +95,11 @@ export function SalesTipsPage({ toast }: { toast: ToastFn }) {
       )}
 
       {/* Dicas de marketing curadas */}
-      <p className="font-semibold text-gray-900 dark:text-white text-sm mb-3">💡 Dicas de marketing e vendas</p>
+      <p className="font-semibold text-gray-900 dark:text-white text-sm mb-3">{t('tips.marketing')}</p>
 
       {/* Filtro por categoria */}
       <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-        <CatChip label="Todas" Icon={LayoutGrid} color="#7C3AED" active={cat === 'all'} onClick={() => setCat('all')} />
+        <CatChip label={t('tips.all')} Icon={LayoutGrid} color="#7C3AED" active={cat === 'all'} onClick={() => setCat('all')} />
         {MARKETING_CATEGORIES.map(c => (
           <CatChip
             key={c.key}

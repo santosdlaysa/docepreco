@@ -21,6 +21,8 @@ import { authMiddleware } from './presentation/middleware/authMiddleware';
 import telegramRoutes from './presentation/routes/telegramRoutes';
 import bannerRoutes from './presentation/routes/bannerRoutes';
 import pushTokenRoutes from './presentation/routes/pushTokenRoutes';
+import webPushRoutes from './presentation/routes/webPushRoutes';
+import { sendWebWeeklyReminder, sendWebDailyTip, sendWebInactivityReminders } from './infrastructure/services/webReminderService';
 import notificationRoutes from './presentation/routes/notificationRoutes';
 import tipRoutes from './presentation/routes/tipRoutes';
 import notificationTemplateRoutes from './presentation/routes/notificationTemplateRoutes';
@@ -225,6 +227,7 @@ app.use('/api/admin/winback', winbackRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/banners', bannerRoutes);
 app.use('/api/push-tokens', authMiddleware, pushTokenRoutes);
+app.use('/api/web-push', webPushRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/tips', tipRoutes);
 app.use('/api/notification-templates', notificationTemplateRoutes);
@@ -346,6 +349,20 @@ async function bootstrap() {
         console.error('[Cron] Erro no resumo de vendas:', err);
       }
     });
+
+    // Cron: lembretes que o app agenda localmente, para quem ativou notificações
+    // na WEB (no-op sem VAPID). Mesmos horários do app.
+    const webReminder = (name: string, fn: () => Promise<number>) => async () => {
+      try {
+        const n = await fn();
+        if (n > 0) console.log(`[Cron] Web push "${name}" entregue para ${n} navegador(es)`);
+      } catch (err) {
+        console.error(`[Cron] Erro no web push "${name}":`, err);
+      }
+    };
+    cron.schedule('0 9 * * 1', webReminder('weekly_reminder', sendWebWeeklyReminder), { timezone: 'America/Sao_Paulo' });
+    cron.schedule('0 10 * * *', webReminder('tip', sendWebDailyTip), { timezone: 'America/Sao_Paulo' });
+    cron.schedule('5 * * * *', webReminder('inactivity', sendWebInactivityReminders), { timezone: 'America/Sao_Paulo' });
 
     // Cron: desativa premium de usuários cuja assinatura expirou (a cada hora)
     cron.schedule('0 * * * *', async () => {

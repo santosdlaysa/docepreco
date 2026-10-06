@@ -1,0 +1,295 @@
+{
+  "fin": {
+    "title": "Financeiro",
+    "subtitle": "Resultado do negócio (DRE)",
+    "periodMonth": "Este mês",
+    "periodPrev": "Mês passado",
+    "periodAll": "Tudo",
+    "empty": "Sem dados no período. Registre vendas para ver o resultado financeiro (DRE) do seu negócio.",
+    "profitPeriod": "Lucro do período",
+    "marginBadge": "Margem {{value}}%",
+    "unitsSold": "{{count}} un vendidas",
+    "dreTitle": "Demonstrativo (DRE)",
+    "grossRevenue": "Receita bruta",
+    "productCost": "(–) Custo dos produtos",
+    "pctOfRevenue": "{{value}}% da receita",
+    "opExpenses": "(–) Despesas operacionais",
+    "netProfit": "(=) Lucro líquido",
+    "profitMargin": "Margem de lucro",
+    "flowTitle": "Fluxo financeiro simplificado",
+    "flowHint": "Compras aparecem aqui; no DRE, o ingrediente entra pelo custo do produto vendido.",
+    "flowIn": "Entradas (vendas)",
+    "flowPaidPurchases": "Compras pagas",
+    "flowExpenses": "Despesas",
+    "flowBalance": "Saldo estimado",
+    "pendingPurchases": "Compras pendentes: {{value}}",
+    "byProduct": "Resultado por produto",
+    "productLine": "{{units}} un · receita {{revenue}} · custo {{cost}}",
+    "productMargin": "{{value}}% margem",
+    "costNote": "O custo é calculado a partir da ficha técnica de cada receita (ingredientes, adicionais e sub-receitas) no momento da consulta.",
+    "recipeFallback": "Receita"
+  },
+  "exp": {
+    "title": "Despesas",
+    "subtitle_one": "{{count}} lançamento · {{total}}",
+    "subtitle_other": "{{count}} lançamentos · {{total}}",
+    "add": "Nova despesa",
+    "all": "Tudo",
+    "total": "Total",
+    "fixed": "Fixo",
+    "variable": "Variável",
+    "empty": "Nenhuma despesa lançada neste período.",
+    "recurring": " · Recorrente",
+    "recurringDay": " · Recorrente (dia {{day}})",
+    "deleted": "Despesa excluída.",
+    "confirmTitle": "Excluir despesa",
+    "confirmMsg": "Tem certeza? Esta ação não pode ser desfeita.",
+    "errDescription": "Informe a descrição.",
+    "errAmount": "Informe um valor válido.",
+    "errDate": "Informe a data.",
+    "updated": "Despesa atualizada.",
+    "created": "Despesa lançada.",
+    "edit": "Editar despesa",
+    "description": "Descrição",
+    "descPlaceholder": "Ex.: Conta de luz",
+    "amount": "Valor (R$)",
+    "date": "Data",
+    "costType": "Tipo de custo",
+    "category": "Categoria",
+    "recurringLabel": "Despesa recorrente (mensal)",
+    "dayPlaceholder": "dia",
+    "notes": "Observações (opcional)",
+    "categories": {
+      "aluguel": "Aluguel",
+      "energia": "Energia",
+      "agua": "Água",
+      "internet": "Internet",
+      "embalagem": "Embalagem",
+      "marketing": "Marketing",
+      "transporte": "Transporte",
+      "equipamento": "Equipamento",
+      "funcionario": "Funcionário",
+      "outros": "Outros"
+    }
+  },
+  "rep": {
+    "periodToday": "Hoje",
+    "periodWeek": "7 dias",
+    "periodMonth": "Mês",
+    "periodAll": "Tudo",
+    "payment": {
+      "pix": "Pix",
+      "dinheiro": "Dinheiro",
+      "credito": "Crédito",
+      "debito": "Débito",
+      "cartao": "Cartão",
+      "none": "Não informado"
+    },
+    "thanksToast": "Obrigado por avaliar sua experiência!",
+    "allowPopups": "Permita pop-ups para baixar o relatório.",
+    "title": "Painel",
+    "subtitle": "Visão geral do seu negócio",
+    "download": "Baixar relatório",
+    "today": "Hoje",
+    "todaySales_one": "{{count}} venda · vs. ontem",
+    "todaySales_other": "{{count}} vendas · vs. ontem",
+    "registerSale": "+ Registrar venda",
+    "thisWeek": "Esta semana",
+    "last7": "últimos 7 dias",
+    "thisMonth": "Este mês",
+    "vsPrevMonth": "vs. mês anterior",
+    "chartTitle": "Faturamento dos últimos 7 dias",
+    "byRecipe": "Vendas por receita",
+    "allRecipes": "Todas as receitas",
+    "revenue": "Faturamento",
+    "unitsSold": "Un. vendidas",
+    "sales": "Vendas",
+    "topMonth": "Mais vendidos no mês",
+    "noSalesMonth": "Sem vendas neste mês.",
+    "qtySold": "{{count}} un. vendidas",
+    "avgTicket": "Ticket médio",
+    "itemsSoldMonth": "Itens vendidos (mês)",
+    "recipes": "Receitas",
+    "ingredients": "Ingredientes",
+    "byPaymentMonth": "Vendas por forma de pagamento (mês)",
+    "salesCount_one": "{{count}} venda",
+    "salesCount_other": "{{count}} vendas",
+    "recent": "Vendas recentes",
+    "noRecent": "Nenhuma venda recente.",
+    "thanksTitle": "Obrigado pela sua avaliação!",
+    "thanksSub": "Sua resposta foi registrada e ajuda a melhorar o DocePreço.",
+    "surveyTitle": "Como está sua experiência com o DocePreço?",
+    "surveyHint": "Escolha uma opção para avaliar sua experiência.",
+    "rating1": "Muito ruim",
+    "rating2": "Ruim",
+    "rating3": "Regular",
+    "rating4": "Boa",
+    "rating5": "Excelente",
+    "sending": "Enviando...",
+    "sendRating": "Enviar avaliação",
+    "new": "novo",
+    "pdf": {
+      "title": "Relatório DocePreço",
+      "generatedAt": "Gerado em {{date}}",
+      "monthRevenue": "Faturamento do mês",
+      "vsPrev": "{{value}}% vs mês anterior",
+      "totalSales": "{{count}} vendas no total",
+      "byMonth": "Vendas por mês (últimos 6 meses)",
+      "colMonth": "Mês",
+      "colQtySales": "Qtd. vendas",
+      "colRevenue": "Faturamento",
+      "topRecipes": "Receitas mais vendidas",
+      "noSales": "Nenhuma venda registrada.",
+      "colRecipe": "Receita",
+      "colQty": "Qtd.",
+      "rank": "{{n}}º",
+      "units": "{{count}} un",
+      "byPayment": "Vendas por forma de pagamento",
+      "colPayment": "Forma de pagamento",
+      "footer": "DocePreço · relatório gerado automaticamente"
+    }
+  },
+  "tips": {
+    "title": "Dicas de vendas",
+    "subtitle": "Marketing e precificação",
+    "heroTitle": "Venda mais e melhor",
+    "heroText": "Análises do seu negócio + dicas práticas de marketing e vendas para confeitaria.",
+    "analysis": "📊 Análise do seu negócio",
+    "marketing": "💡 Dicas de marketing e vendas",
+    "all": "Todas",
+    "insight": {
+      "avgTicket": "Seu ticket médio é {{value}} por venda.",
+      "lowTicket": "Você vende bastante, mas o ticket médio está baixo. Considere revisar seus preços!",
+      "topRecipe": "\"{{name}}\" é o campeão de vendas recente, com {{value}} faturados.",
+      "noSales": "Você ainda não registrou vendas este mês. Registre suas vendas para acompanhar o faturamento!",
+      "noRecipes": "Crie sua primeira receita para começar a precificar seus produtos!",
+      "fewRecipes_one": "Você tem só {{count}} receita. Diversificar o cardápio pode aumentar seu faturamento!",
+      "fewRecipes_other": "Você tem só {{count}} receitas. Diversificar o cardápio pode aumentar seu faturamento!",
+      "underpriced": "Você vende \"{{name}}\" a {{avg}}, mas o preço sugerido é {{suggested}} (+{{gap}}%). Ajustar pode aumentar seu lucro.",
+      "bestMargin": "\"{{name}}\" tem o maior acréscimo sobre o custo ({{margin}}%). Confira também o lucro por unidade e a procura por esse produto.",
+      "concentration": "\"{{name}}\" representa {{pct}}% do seu faturamento. Diversifique para não depender de um só produto."
+    },
+    "cat": {
+      "instagram": "Instagram",
+      "whatsapp": "WhatsApp",
+      "fotos": "Fotos",
+      "preco": "Preço & ofertas",
+      "fidelizacao": "Fidelização",
+      "datas": "Datas",
+      "captacao": "Atrair clientes"
+    },
+    "items": {
+      "ig-template-story": {
+        "title": "Template de Story pronto no Canva",
+        "body": "Não sabe como deixar o Story bonito? Use um modelo pronto: é só trocar a foto e o texto pelo seu doce e publicar. Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.",
+        "link": "Abrir template de Story no Canva"
+      },
+      "ig-template-story-oferta": {
+        "title": "Template de Story OFERTA pronto no Canva",
+        "body": "Não sabe como deixar o Story bonito? Use um modelo pronto: é só trocar a foto e o texto pelo seu doce e publicar. Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.",
+        "link": "Abrir template de Story oferta no Canva"
+      },
+      "ig-template-logo-loja": {
+        "title": "Logo editável para sua loja",
+        "body": "Toque no botão abaixo para abrir o template no Canva e personalizar em minutos.",
+        "link": "Abrir logo editável no Canva"
+      },
+      "ig-constancia": {
+        "title": "Apareça com constância",
+        "body": "O algoritmo premia quem posta com frequência. Defina uma rotina realista (ex.: 3 posts no feed por semana + Stories diários) e mantenha. Constância vale mais que perfeição — é melhor postar simples toda semana do que sumir por um mês."
+      },
+      "ig-reels": {
+        "title": "Reels de \"fazendo o doce\" engajam mais",
+        "body": "Vídeos curtos mostrando o passo a passo, o recheio escorrendo ou a montagem alcançam muito mais gente do que fotos paradas. Grave 15–30s, use uma música em alta e mostre o resultado final logo nos primeiros segundos."
+      },
+      "ig-bastidores": {
+        "title": "Use os Stories para criar desejo",
+        "body": "Mostre os bastidores: ingredientes chegando, a cozinha, o doce saindo do forno, o cliente recebendo. Isso gera conexão e confiança. Encerre com um convite claro: \"Chama no direct para encomendar\"."
+      },
+      "ig-bio": {
+        "title": "Bio e destaques que vendem",
+        "body": "Sua bio deve dizer em 1 linha o que você faz e como pedir (link do WhatsApp). Organize os Destaques como um cardápio: \"Sabores\", \"Preços\", \"Como encomendar\", \"Clientes felizes\". Quem chega no seu perfil precisa saber comprar em 10 segundos."
+      },
+      "wa-business": {
+        "title": "Use o WhatsApp Business com catálogo",
+        "body": "O WhatsApp Business é gratuito e deixa você montar um catálogo com fotos e preços. O cliente navega e já escolhe sem você precisar repetir tudo. Configure também o horário de atendimento e a mensagem de saudação."
+      },
+      "wa-rapidez": {
+        "title": "Responder rápido fecha mais venda",
+        "body": "A maioria das vendas se perde por demora na resposta. Use as \"respostas rápidas\" do WhatsApp Business para mandar tabela de preços, sabores e prazos em segundos. Quanto mais ágil, maior a chance de fechar antes do cliente procurar outra confeiteira."
+      },
+      "wa-transmissao": {
+        "title": "Lista de transmissão para novidades",
+        "body": "Crie listas de transmissão para avisar clientes sobre novos sabores, promoções e abertura de agenda de datas comemorativas. Diferente do grupo, cada um recebe como mensagem individual — mais pessoal e sem incomodar."
+      },
+      "foto-luz": {
+        "title": "Luz natural é seu melhor estúdio",
+        "body": "Fotografe perto de uma janela, de dia, sem flash. A luz natural deixa o doce apetitoso e com cores reais. Evite luz amarela de lâmpada, que deixa a foto \"suja\". A foto é sua vitrine — vale mais que mil palavras."
+      },
+      "foto-corte": {
+        "title": "Mostre o recheio",
+        "body": "Foto de doce cortado, com o recheio aparecendo, desperta muito mais desejo. Brigadeiro mordido, bolo de pote em camadas, coxinha aberta. O cliente compra com os olhos — mostre a parte mais gostosa."
+      },
+      "foto-fundo": {
+        "title": "Fundo limpo, foco no doce",
+        "body": "Tire a bagunça do enquadramento. Um fundo neutro (mármore, madeira clara, um pano liso) faz o produto se destacar. Aproxime a câmera e deixe o doce ser a estrela."
+      },
+      "preco-combo": {
+        "title": "Combos aumentam o ticket médio",
+        "body": "Em vez de vender 1 unidade, ofereça kits: \"caixa com 6 sabores\", \"combo café da tarde\", \"kit festa com 50 docinhos\". O cliente gasta mais por pedido e você ganha tempo produzindo em lote. Dê um pequeno desconto no combo para incentivar."
+      },
+      "preco-degustacao": {
+        "title": "Kit degustação para novos clientes",
+        "body": "Um kit pequeno com vários sabores é a porta de entrada perfeita. O cliente experimenta tudo, descobre o favorito e volta para comprar a versão cheia. Custa pouco para você e converte indeciso em cliente fiel."
+      },
+      "preco-ancoragem": {
+        "title": "Ofereça 3 opções de tamanho",
+        "body": "Quando você mostra P, M e G, a maioria escolhe o do meio — e você guia a venda. Ter uma opção \"premium\" mais cara também faz as outras parecerem mais acessíveis. Nunca ofereça só uma opção: dê ao cliente o poder de escolher para cima."
+      },
+      "preco-entrega": {
+        "title": "Deixe a taxa de entrega clara",
+        "body": "Informe o valor da entrega antes de fechar, para não gerar atrito no fim. Ofereça frete grátis acima de um valor mínimo (\"entrega grátis acima de R$ 60\") — isso empurra o cliente a comprar mais para \"compensar o frete\"."
+      },
+      "fid-cartao": {
+        "title": "Cartão fidelidade",
+        "body": "A cada X compras, um brinde ou desconto. Simples e poderoso: dá motivo para o cliente voltar sempre em você e não na concorrência. Pode ser um cartãozinho carimbado ou um controle no caderninho mesmo."
+      },
+      "fid-posvenda": {
+        "title": "Pós-venda que encanta",
+        "body": "No dia seguinte à entrega, mande uma mensagem: \"Oi! Que bom que escolheu meus doces 💛 Deu tudo certo na festa?\". Esse cuidado faz o cliente lembrar de você e indicar. Custa 30 segundos e vale muitas recompras."
+      },
+      "fid-brinde": {
+        "title": "Brinde surpresa no pedido",
+        "body": "Inclua um docinho extra ou um bilhete escrito à mão de vez em quando. A surpresa gera foto, story marcando você e propaganda gratuita. Pequenos mimos criam clientes apaixonados."
+      },
+      "data-calendario": {
+        "title": "Planeje o calendário do ano",
+        "body": "Páscoa, Dia das Mães, Namorados, Festa Junina, Dia das Crianças e Natal são picos de venda. Marque no calendário e prepare cardápio, fotos e divulgação com antecedência. Quem se antecipa pega as melhores encomendas."
+      },
+      "data-agenda": {
+        "title": "Abra a agenda com antecedência",
+        "body": "Anuncie \"Agenda de Páscoa aberta!\" semanas antes e crie urgência: \"Vagas limitadas\". Ofereça desconto para quem encomenda cedo. Isso organiza sua produção e garante caixa antes da data."
+      },
+      "data-kits": {
+        "title": "Kits temáticos da data",
+        "body": "Monte kits exclusivos para cada ocasião: \"Caixa Dia das Mães\", \"Cesta de Páscoa\", \"Box romântico\". Embalagem temática justifica preço maior e vira presente pronto — o cliente compra a experiência, não só o doce."
+      },
+      "cap-indicacao": {
+        "title": "Peça indicação (e recompense)",
+        "body": "Cliente satisfeito indica se você pedir. Ofereça um benefício: \"Indique uma amiga e ganhe 10% no próximo pedido\". O boca a boca é a propaganda mais barata e que mais converte na confeitaria."
+      },
+      "cap-parcerias": {
+        "title": "Parcerias locais",
+        "body": "Cafés, floriculturas, salões e papelarias atendem o mesmo público que você. Proponha deixar seus doces à venda ou trocar indicação. Uma parceria boa coloca seu produto na frente de clientes novos sem gastar com anúncio."
+      },
+      "cap-amostra": {
+        "title": "Amostras para quem tem alcance",
+        "body": "Envie um kit cortesia para uma microinfluenciadora ou pessoa querida do seu bairro. Um story marcando você pode trazer dezenas de pedidos. Escolha quem fala com o seu público local, não precisa ser alguém famoso."
+      },
+      "cap-depoimentos": {
+        "title": "Colecione e mostre depoimentos",
+        "body": "Print de elogio no WhatsApp, foto do cliente com o doce, comentário feliz — guarde tudo e poste nos Stories e Destaques. Prova social vence a desconfiança de quem ainda não comprou de você."
+      }
+    }
+  }
+}

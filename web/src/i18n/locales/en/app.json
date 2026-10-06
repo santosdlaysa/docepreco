@@ -1,0 +1,115 @@
+{
+  "nav": {
+    "cash": "Cash register",
+    "reports": "Reports",
+    "finance": "Finance",
+    "purchases": "Purchases",
+    "expenses": "Expenses",
+    "recipes": "Recipes",
+    "ingredients": "Ingredients",
+    "stock": "Inventory",
+    "sales": "Sales",
+    "orders": "Orders",
+    "production": "Production",
+    "clients": "Customers",
+    "store": "Store",
+    "seasons": "Seasons",
+    "tips": "Sales tips",
+    "referral": "Refer & earn",
+    "announce": "Advertise in the app",
+    "support": "Support",
+    "profile": "My profile"
+  },
+  "checkout": {
+    "cancelled": "Payment cancelled. You were not charged.",
+    "confirming": "Confirming your payment…",
+    "confirmed": "Payment confirmed! Your plan is now active 🎉",
+    "pending": "Payment received. Activation may take a few minutes — refresh the page shortly."
+  },
+  "lockedFeature": "{{tier}} feature",
+  "logout": "Log out",
+  "lgpdAccepted": "Consent recorded. Thank you!",
+  "lightMode": "Light mode",
+  "darkMode": "Dark mode",
+  "expiring": {
+    "today": "Your subscription expires today.",
+    "tomorrow": "Your subscription expires tomorrow.",
+    "inDays": "Your subscription expires in {{count}} days.",
+    "title": "Your subscription is expiring",
+    "renewHint": "Renew now so you don't lose access to paid features.",
+    "benefit1": "Keep pricing without limits",
+    "benefit2": "Keep your reports and exclusive features",
+    "renewNow": "Renew now"
+  },
+  "notNow": "Not now",
+  "survey": {
+    "title": "Your opinion matters 💖",
+    "text": "Answer a few quick questions and help make DocePreço even better for you. It takes about 2 minutes.",
+    "answer": "Take the survey"
+  },
+  "guide": {
+    "step1": {
+      "title": "Add your ingredients",
+      "desc": "Name, package size and the price you paid.",
+      "action": "Add ingredient"
+    },
+    "step2": {
+      "title": "Create your first recipe",
+      "desc": "Build the recipe with your ingredients — the cost is calculated automatically.",
+      "action": "Create recipe"
+    },
+    "step3": {
+      "title": "Set the markup over cost",
+      "desc": "In the recipe, choose the percentage (e.g. 100%) to reach the selling price.",
+      "action": "View recipes"
+    },
+    "step4": {
+      "title": "Record your first sale",
+      "desc": "Track revenue and profit in the reports.",
+      "action": "Record sale"
+    },
+    "title": "Getting started",
+    "progress": "{{done}} of {{total}} done — follow the steps to start pricing with confidence.",
+    "dismissLabel": "Dismiss getting started",
+    "dismissTitle": "Don't show again"
+  },
+  "carousel": {
+    "empty": "Advertise your bakery to every DocePreço user",
+    "sponsored": "Sponsored",
+    "prev": "Previous",
+    "next": "Next",
+    "advertiseToo": "Advertise here too"
+  },
+  "bell": {
+    "todayAt": "Today at {{time}}",
+    "dateAt": "{{date}} at {{time}}",
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "empty": "No notifications here. 🎉",
+    "completeStore": "Complete your store profile",
+    "missing": "Missing: {{items}}. Without it, your store shows up less in searches.",
+    "missingItem": {
+      "city": "City",
+      "category": "Store category"
+    },
+    "learnMore": "Learn more",
+    "dismiss": "Dismiss notification",
+    "newOrder": "New online order · {{total}}"
+  },
+  "demo": {
+    "banner": "You're in <b>demo mode</b> · the data is sample data and nothing is saved to your account.",
+    "createAccount": "Create a free account",
+    "exit": "Exit",
+    "close": "Close",
+    "blockedTitle": "Create your account to continue",
+    "blockedText": "The demo has no payments, sending or account changes. With a free account you save your recipes and use everything for real.",
+    "keepExploring": "Keep exploring",
+    "blockedMessage": "This isn't available in the demo. Create your free account to continue — it takes 1 minute.",
+    "unavailable": "Not available in the demo.",
+    "notFound": "{{what}} not found.",
+    "notFoundItem": "Item",
+    "cashAlreadyOpen": "A cash register is already open.",
+    "noCashOpen": "No cash register open.",
+    "supportReply": "This message stayed in the demo only. Create your free account to talk to support for real. 💜"
+  }
+}

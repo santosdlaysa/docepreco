@@ -7,14 +7,14 @@ import { formatBRL, formatBRLUnit, formatDate } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
 import { unitOptions, unitLabel } from '../units';
+import { useTranslation } from 'react-i18next';
 
-// Métricas ou imperiais conforme a preferência (Meu perfil → Unidades), como no app.
-const UNIT_OPTIONS = unitOptions() as { value: Unit; label: string }[];
 const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
 
 const PER_PAGE = 10;
 
 export function IngredientsPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('ops');
   const [items, setItems] = useState<Ingredient[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Ingredient | null>(null);
@@ -46,7 +46,7 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
     if (!confirmId) return;
     try {
       await userApi.deleteIngredient(confirmId);
-      toast.success('Ingrediente excluído.');
+      toast.success(t('ing.deleted'));
       setConfirmId(null);
       load();
     } catch (e) {
@@ -76,8 +76,8 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
   return (
     <div>
       <Header
-        title="Ingredientes"
-        subtitle={`${items.length} cadastrado${items.length !== 1 ? 's' : ''}`}
+        title={t('ing.title')}
+        subtitle={t('ing.count', { count: items.length })}
         onAdd={() => setCreating(true)}
       />
 
@@ -85,50 +85,50 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
         <div className="mb-3 space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
-              Nome do ingrediente
+              {t('ing.nameFilter')}
               <div className="relative mt-1">
                 <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                 <input
                   value={search}
                   onChange={e => { setSearch(e.target.value); setPage(1); }}
-                  placeholder="Buscar ingrediente..."
+                  placeholder={t('ing.searchPh')}
                   className={inputClass + ' pl-9'}
                 />
               </div>
             </label>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
-              Unidade de medida
+              {t('ing.unitFilter')}
               <select value={unitFilter} onChange={e => { setUnitFilter(e.target.value); setPage(1); }} className={inputClass + ' mt-1'}>
-                <option value="">Todas as unidades</option>
+                <option value="">{t('ing.allUnits')}</option>
                 {unitOptions.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
               </select>
             </label>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
-              Embalagem
+              {t('ing.pkgFilter')}
               <select value={packageFilter} onChange={e => { setPackageFilter(e.target.value); setPage(1); }} className={inputClass + ' mt-1'}>
-                <option value="">Todas as embalagens</option>
-                <option value="__none__">Sem embalagem</option>
+                <option value="">{t('ing.allPkgs')}</option>
+                <option value="__none__">{t('ing.noPkg')}</option>
                 {packageOptions.map(label => <option key={label} value={label}>{label}</option>)}
               </select>
             </label>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300">
-              Ordenar por
+              {t('ing.sortBy')}
               <select value={sort} onChange={e => { setSort(e.target.value); setPage(1); }} className={inputClass + ' mt-1'}>
-                <option value="name-asc">Nome: A a Z</option>
-                <option value="name-desc">Nome: Z a A</option>
-                <option value="price-asc">Menor preço de compra</option>
-                <option value="price-desc">Maior preço de compra</option>
+                <option value="name-asc">{t('ing.sortNameAsc')}</option>
+                <option value="name-desc">{t('ing.sortNameDesc')}</option>
+                <option value="price-asc">{t('ing.sortPriceAsc')}</option>
+                <option value="price-desc">{t('ing.sortPriceDesc')}</option>
               </select>
             </label>
           </div>
           <div className="flex items-center justify-between gap-3 text-xs">
             <span className="text-gray-500 dark:text-gray-400" role="status">
-              {filtered.length} de {items.length} ingredientes
+              {t('ing.filteredCount', { shown: filtered.length, total: items.length })}
             </span>
             {(hasFilters || sort !== 'name-asc') && (
               <button type="button" onClick={() => { setSearch(''); setUnitFilter(''); setPackageFilter(''); setSort('name-asc'); setPage(1); }}
                 className="font-medium text-primary-600 dark:text-primary-400 hover:underline">
-                Limpar filtros
+                {t('ing.clearFilters')}
               </button>
             )}
           </div>
@@ -140,9 +140,9 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
           <TableSkeleton rows={6} cols={3} />
         </div>
       ) : items.length === 0 ? (
-        <EmptyState icon={Package} text="Nenhum ingrediente ainda. Adicione o primeiro." />
+        <EmptyState icon={Package} text={t('ing.empty')} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} text="Nenhum ingrediente encontrado com esses filtros." />
+        <EmptyState icon={Search} text={t('ing.emptyFiltered')} />
       ) : (
         <>
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
@@ -164,13 +164,13 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
                     {unitPrice > 0 ? ` · ${formatBRLUnit(unitPrice)}/${i.unit}` : ''}
                   </p>
                 </div>
-                <button onClick={() => setHistoryItem(i)} className={iconBtn} title="Histórico de preços">
+                <button onClick={() => setHistoryItem(i)} className={iconBtn} title={t('ing.priceHistory')}>
                   <History size={16} />
                 </button>
-                <button onClick={() => setEditing(i)} className={iconBtn}>
+                <button onClick={() => setEditing(i)} className={iconBtn} title={t('ing.edit')}>
                   <Pencil size={16} />
                 </button>
-                <button onClick={() => setConfirmId(i.id)} className={iconBtnDanger}>
+                <button onClick={() => setConfirmId(i.id)} className={iconBtnDanger} title={t('ing.delete')}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -184,17 +184,17 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
               disabled={currentPage <= 1}
               className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              <ChevronLeft size={16} /> Anterior
+              <ChevronLeft size={16} /> {t('prev')}
             </button>
             <span className="text-xs text-gray-500 dark:text-gray-400">
-              Página {currentPage} de {totalPages}
+              {t('pageOf', { page: currentPage, total: totalPages })}
             </span>
             <button
               onClick={() => setPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage >= totalPages}
               className="flex items-center gap-1 text-sm px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 disabled:opacity-40 hover:bg-gray-50 dark:hover:bg-gray-700"
             >
-              Próxima <ChevronRight size={16} />
+              {t('next')} <ChevronRight size={16} />
             </button>
           </div>
         )}
@@ -220,8 +220,8 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
 
       <ConfirmModal
         open={!!confirmId}
-        title="Excluir ingrediente"
-        message="Tem certeza? Esta ação não pode ser desfeita."
+        title={t('ing.deleteTitle')}
+        message={t('confirmDeleteMsg')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
@@ -240,6 +240,7 @@ function entryUnitPrice(e: PriceEntry): number {
 }
 
 function PriceHistoryModal({ ingredient, onClose, toast }: { ingredient: Ingredient; onClose: () => void; toast: ToastFn }) {
+  const { t } = useTranslation('ops');
   const [entries, setEntries] = useState<PriceEntry[] | null>(null);
 
   useEffect(() => {
@@ -256,7 +257,7 @@ function PriceHistoryModal({ ingredient, onClose, toast }: { ingredient: Ingredi
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <div>
           <h3 className="font-bold text-lg text-gray-900 dark:text-white flex items-center gap-2">
-            <History size={18} className="text-primary-500" /> Histórico de preços
+            <History size={18} className="text-primary-500" /> {t('ing.priceHistory')}
           </h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">{ingredient.name}</p>
         </div>
@@ -267,7 +268,7 @@ function PriceHistoryModal({ ingredient, onClose, toast }: { ingredient: Ingredi
           </div>
         ) : entries.length === 0 ? (
           <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-8">
-            Ainda não há histórico. Cada vez que você atualizar o preço de compra deste ingrediente, registramos aqui a evolução do custo.
+            {t('ing.historyEmpty')}
           </p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700 max-h-[60vh] overflow-y-auto">
@@ -284,7 +285,7 @@ function PriceHistoryModal({ ingredient, onClose, toast }: { ingredient: Ingredi
                     <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
                       {formatDate(e.recordedAt)}
                       {i === 0 && (
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">atual</span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">{t('ing.current')}</span>
                       )}
                     </p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
@@ -310,7 +311,7 @@ function PriceHistoryModal({ ingredient, onClose, toast }: { ingredient: Ingredi
 
         <div className="flex justify-end">
           <button onClick={onClose} className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
-            Fechar
+            {t('close')}
           </button>
         </div>
       </div>
@@ -331,6 +332,7 @@ function IngredientForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('ops');
   const editingId = initial?.id ?? null;
   const [name, setName] = useState(initial?.name ?? '');
   const [quantity, setQuantity] = useState(String(initial?.purchaseQuantity ?? ''));
@@ -359,13 +361,13 @@ function IngredientForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error('Informe o nome.');
-    if (qtyN <= 0) return toast.error('Informe a quantidade.');
-    if (priceN <= 0) return toast.error('Informe o preço pago.');
-    if (!unit) return toast.error('Escolha a unidade de medida.');
-    if (useCustom && weightN <= 0) return toast.error('Informe o peso por embalagem.');
+    if (!name.trim()) return toast.error(t('ing.errName'));
+    if (qtyN <= 0) return toast.error(t('ing.errQty'));
+    if (priceN <= 0) return toast.error(t('ing.errPrice'));
+    if (!unit) return toast.error(t('ing.errUnit'));
+    if (useCustom && weightN <= 0) return toast.error(t('ing.errPkgWeight'));
     if (useCustom && qtyN > 0 && weightN > 0 && qtyN * weightN > priceN * 1000) {
-      return toast.error('Quantidade × Peso resulta em um valor muito alto. Verifique se preencheu corretamente os campos.');
+      return toast.error(t('ing.errTooHigh'));
     }
 
     setSaving(true);
@@ -386,10 +388,10 @@ function IngredientForm({
             .addPriceHistory(editingId, { price: priceN, purchaseQuantity: qtyN, unit })
             .catch(() => {});
         }
-        toast.success('Ingrediente atualizado.');
+        toast.success(t('ing.updated'));
       } else {
         await userApi.createIngredient(data);
-        toast.success('Ingrediente criado.');
+        toast.success(t('ing.created'));
       }
       onSaved();
     } catch (err) {
@@ -403,7 +405,7 @@ function IngredientForm({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-          {editingId ? 'Editar ingrediente' : 'Novo ingrediente'}
+          {editingId ? t('ing.editTitle') : t('ing.newTitle')}
         </h3>
 
         {/* Banner */}
@@ -411,21 +413,21 @@ function IngredientForm({
           <Info size={18} className="text-sky-500 shrink-0" />
           <div className="flex-1">
             <p className="text-xs text-sky-800 dark:text-sky-200">
-              Informe a quantidade total comprada e o valor total pago. Não use aqui a quantidade da receita nem o preço por g/ml/un.
+              {t('ing.banner')}
             </p>
             <button
               type="button"
               onClick={() => setShowTutorial(true)}
               className="mt-2 text-xs font-semibold text-sky-700 dark:text-sky-200 underline underline-offset-2"
             >
-              Ver tutorial
+              {t('ing.seeTutorial')}
             </button>
           </div>
         </div>
 
         {/* Nome com autocomplete */}
         <div className="relative">
-          <FormField label="Nome do ingrediente">
+          <FormField label={t('ing.nameFilter')}>
             <input
               value={name}
               onChange={e => {
@@ -433,7 +435,7 @@ function IngredientForm({
                 setShowSuggestions(true);
               }}
               onFocus={() => setShowSuggestions(true)}
-              placeholder="Ex.: Leite condensado"
+              placeholder={t('ing.namePh')}
               className={inputClass}
               autoFocus
             />
@@ -460,10 +462,10 @@ function IngredientForm({
         {/* Tipo de embalagem */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-            Tipo de embalagem
+            {t('ing.pkgType')}
           </label>
           <p className="text-xs text-gray-400 mb-2">
-            Selecione se o ingrediente vem em embalagem (lata, pacote, etc.).
+            {t('ing.pkgTypeHint')}
           </p>
           <div className="flex flex-wrap gap-2">
             {PKG_TYPES.map(pkg => {
@@ -482,7 +484,7 @@ function IngredientForm({
                   }}
                   className={chipClass(on)}
                 >
-                  {pkg}
+                  {t(`pkg.${pkg}`, pkg)}
                 </button>
               );
             })}
@@ -491,7 +493,7 @@ function IngredientForm({
 
         {/* Peso por embalagem (quando custom) */}
         {useCustom && (
-          <FormField label="Peso por embalagem">
+          <FormField label={t('ing.pkgWeight')}>
             <div className="relative">
               <input
                 type="text"
@@ -502,19 +504,19 @@ function IngredientForm({
                 className={inputClass + ' pr-28'}
               />
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
-                {unit || 'g'} por {pkgLabel}
+                {t('ing.perPkg', { unit: unit || 'g', pkg: t(`pkg.${pkgLabel}`, pkgLabel) })}
               </span>
             </div>
-            <p className="text-xs text-gray-400 mt-1">Ex.: uma lata de leite condensado tem 330g.</p>
+            <p className="text-xs text-gray-400 mt-1">{t('ing.pkgWeightEx')}</p>
             <p className="text-xs text-amber-600 dark:text-amber-400 mt-2 bg-amber-50 dark:bg-amber-900/20 p-2 rounded">
-              ⚠️ Use este campo APENAS se comprou embalagens individualizadas (ex: 2 latas por R$ 8). Para quantidade e peso em gramas/ml (ex: 900ml por R$ 8), não use este campo.
+              {t('ing.pkgWeightWarn')}
             </p>
           </FormField>
         )}
 
         {/* Quantidade + Preço */}
         <div className="grid grid-cols-2 gap-3">
-          <FormField label={useCustom ? `Quantidade comprada (${pkgLabel}s)` : 'Quantidade comprada'}>
+          <FormField label={useCustom ? t('ing.qtyBoughtPkg', { pkg: t(`pkg.${pkgLabel}`, pkgLabel) }) : t('ing.qtyBought')}>
             <input
               type="text"
               inputMode="decimal"
@@ -524,10 +526,10 @@ function IngredientForm({
               className={inputClass}
             />
             <p className="text-xs text-gray-400 mt-1">
-              Total comprado/embalagem. Ex.: pacote de 1kg = 1000 g.
+              {t('ing.qtyHint')}
             </p>
           </FormField>
-          <FormField label="Valor total pago (R$)">
+          <FormField label={t('ing.totalPaid')}>
             <input
               type="text"
               inputMode="decimal"
@@ -537,7 +539,7 @@ function IngredientForm({
               className={inputClass}
             />
             <p className="text-xs text-gray-400 mt-1">
-              Valor da compra inteira, não preço por g/ml/un.
+              {t('ing.totalPaidHint')}
             </p>
           </FormField>
         </div>
@@ -545,9 +547,9 @@ function IngredientForm({
         {/* Unidade de medida (chips) */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
-            Unidade de medida
+            {t('ing.unitFilter')}
           </label>
-          <p className="text-xs text-gray-400 mb-2">Em qual unidade você usa esse ingrediente nas receitas?</p>
+          <p className="text-xs text-gray-400 mb-2">{t('ing.unitHint')}</p>
           <div className="flex flex-wrap gap-2">
             {(unitOptions(initial?.unit) as { value: Unit; label: string }[]).map(u => (
               <button
@@ -565,14 +567,14 @@ function IngredientForm({
         {/* Preview do preço por unidade */}
         {showPreview && (
           <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-4 text-white">
-            <p className="text-xs font-medium text-white/80">Preço por unidade</p>
+            <p className="text-xs font-medium text-white/80">{t('ing.pricePerUnit')}</p>
             <p className="text-2xl font-bold tracking-tight">
               {formatBRLUnit(pricePerUnit)}
               <span className="text-sm font-medium"> /{unit || 'un'}</span>
             </p>
             {useCustom && weightN > 0 && (
               <p className="text-xs text-white/80 mt-1">
-                Embalagem: {formatBRL(pricePerPkg)} · {weightN}{unit} cada
+                {t('ing.pkgPreview', { price: formatBRL(pricePerPkg), weight: weightN, unit })}
               </p>
             )}
           </div>
@@ -582,7 +584,7 @@ function IngredientForm({
         {showTutorial && (
           <ModalOverlay onClose={() => setShowTutorial(false)}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-              <h3 className="font-bold text-lg text-gray-900 dark:text-white">Tutorial</h3>
+              <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('ing.tutorial')}</h3>
               <pre className="whitespace-pre-wrap text-sm text-gray-700 dark:text-gray-200 font-sans leading-relaxed">
                 {PRICING_TUTORIAL}
               </pre>
@@ -592,7 +594,7 @@ function IngredientForm({
                   onClick={() => setShowTutorial(false)}
                   className="text-sm px-4 py-2 rounded-lg bg-primary-500 text-white font-medium"
                 >
-                  Fechar
+                  {t('close')}
                 </button>
               </div>
             </div>
@@ -624,13 +626,14 @@ export function Header({
   title,
   subtitle,
   onAdd,
-  addLabel = 'Adicionar',
+  addLabel,
 }: {
   title: string;
   subtitle?: string;
   onAdd?: () => void;
   addLabel?: string;
 }) {
+  const { t } = useTranslation('ops');
   return (
     <div className="flex items-center justify-between mb-5">
       <div>
@@ -643,7 +646,7 @@ export function Header({
           className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg px-3.5 py-2 transition-colors"
         >
           <Plus size={16} />
-          {addLabel}
+          {addLabel ?? t('add')}
         </button>
       )}
     </div>
@@ -674,7 +677,8 @@ export function FormField({ label, children }: { label: string; children: React.
   );
 }
 
-export function FormActions({ saving, onClose, saveLabel = 'Salvar' }: { saving: boolean; onClose: () => void; saveLabel?: string }) {
+export function FormActions({ saving, onClose, saveLabel }: { saving: boolean; onClose: () => void; saveLabel?: string }) {
+  const { t } = useTranslation('ops');
   return (
     <div className="flex justify-end gap-3 pt-2">
       <button
@@ -682,14 +686,14 @@ export function FormActions({ saving, onClose, saveLabel = 'Salvar' }: { saving:
         onClick={onClose}
         className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
       >
-        Cancelar
+        {t('cancel')}
       </button>
       <button
         type="submit"
         disabled={saving}
         className="text-sm px-4 py-2 rounded-lg font-medium bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white"
       >
-        {saving ? 'Salvando...' : saveLabel}
+        {saving ? t('saving') : saveLabel ?? t('save')}
       </button>
     </div>
   );

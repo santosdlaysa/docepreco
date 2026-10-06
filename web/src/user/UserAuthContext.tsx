@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { userApi, loadToken, saveToken, clearToken, setOnUnauthorized, AuthUser } from './userApi';
 import { engagementApi } from './engagementApi';
+import { isDemoMode, enterDemo, exitDemo } from './demo/demoMode';
 
 interface AuthState {
   user: AuthUser | null;
@@ -10,6 +11,11 @@ interface AuthState {
   logout: () => void;
   refresh: () => Promise<void>;
   setUser: (u: AuthUser) => void;
+  /** Modo demonstração (dados de exemplo, sem conta). */
+  isDemo: boolean;
+  startDemo: () => Promise<void>;
+  /** Sai da demonstração; com openRegister=true a tela de login abre no cadastro. */
+  leaveDemo: (openRegister?: boolean) => void;
 }
 
 const AuthContext = createContext<AuthState | null>(null);
@@ -17,9 +23,24 @@ const AuthContext = createContext<AuthState | null>(null);
 export function UserAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDemo, setIsDemo] = useState(isDemoMode());
 
   const logout = useCallback(() => {
     clearToken();
+    if (isDemoMode()) { exitDemo(); setIsDemo(false); }
+    setUser(null);
+  }, []);
+
+  const startDemo = useCallback(async () => {
+    clearToken();
+    enterDemo();
+    setIsDemo(true);
+    setUser(await userApi.me());
+  }, []);
+
+  const leaveDemo = useCallback((openRegister = false) => {
+    exitDemo(openRegister);
+    setIsDemo(false);
     setUser(null);
   }, []);
 
@@ -37,6 +58,8 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
       const params = new URLSearchParams(window.location.search);
       const code = params.get('code');
       if (code) {
+        // Login vindo do app tem prioridade sobre uma demonstração aberta.
+        if (isDemoMode()) { exitDemo(); setIsDemo(false); }
         params.delete('code');
         const qs = params.toString();
         window.history.replaceState({}, '', window.location.pathname + (qs ? `?${qs}` : ''));
@@ -51,6 +74,17 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         } catch {
           // Código inválido/expirado → segue para o fluxo normal (sessão salva ou login).
         }
+      }
+
+      // Demonstração em andamento (sessionStorage): restaura sem chamar a API real.
+      if (isDemoMode()) {
+        try {
+          const me = await userApi.me();
+          if (active) setUser(me);
+        } finally {
+          if (active) setLoading(false);
+        }
+        return;
       }
 
       if (!loadToken()) {
@@ -72,6 +106,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
+    if (isDemoMode()) { exitDemo(); setIsDemo(false); }
     const { user, token } = await userApi.login(email, password);
     saveToken(token);
     setUser(user);
@@ -79,6 +114,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(
     async (companyName: string, email: string, password: string, phone?: string, instagramHandle?: string, referralCode?: string) => {
+      if (isDemoMode()) { exitDemo(); setIsDemo(false); }
       const { user, token } = await engagementApi.register(companyName, email, password, phone, instagramHandle, referralCode);
       saveToken(token);
       setUser(user);
@@ -92,7 +128,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, setUser }}>
+    <AuthContext.Provider value={{ user, loading, login, register, logout, refresh, setUser, isDemo, startDemo, leaveDemo }}>
       {children}
     </AuthContext.Provider>
   );

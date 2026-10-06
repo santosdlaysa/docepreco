@@ -7,10 +7,12 @@ import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBt
 import { parseLocaleNumber } from '../number';
 import { deductStockForItems, reverseStockForItems } from '../stockDeduction';
 import { getCustomProducts, addCustomProduct, computeDiscountAmount, DiscountType } from '../customProducts';
+import { useTranslation } from 'react-i18next';
 
-const PAYMENT_LABEL: Record<string, string> = { pix: 'Pix', dinheiro: 'Dinheiro', credito: 'Crédito', debito: 'Débito', cartao: 'Cartão' };
+const PAYMENT_KEYS = ['pix', 'dinheiro', 'credito', 'debito', 'cartao'];
 
 export function SalesPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('ops');
   const [sales, setSales] = useState<Sale[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +43,7 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
     if (!confirmId) return;
     try {
       await userApi.deleteSale(confirmId);
-      toast.success('Venda excluída.');
+      toast.success(t('sales.deleted'));
       setConfirmId(null);
       load();
     } catch (e) {
@@ -52,10 +54,10 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
   return (
     <div>
       <Header
-        title="Vendas"
-        subtitle={`${sales.length} venda${sales.length !== 1 ? 's' : ''} · ${formatBRL(total)}`}
+        title={t('sales.title')}
+        subtitle={t('sales.subtitle', { count: sales.length, total: formatBRL(total) })}
         onAdd={() => setCreating(true)}
-        addLabel="Registrar venda"
+        addLabel={t('sales.register')}
       />
 
       {loading ? (
@@ -63,7 +65,7 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
           <TableSkeleton rows={6} cols={3} />
         </div>
       ) : sales.length === 0 ? (
-        <EmptyState icon={ShoppingCart} text="Nenhuma venda registrada ainda." />
+        <EmptyState icon={ShoppingCart} text={t('sales.empty')} />
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {sales.map(s => (
@@ -73,22 +75,22 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
                   {s.recipeName}
                   {s.orderId && (
                     <span className="ml-2 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300">
-                      Encomenda
+                      {t('sales.orderBadge')}
                     </span>
                   )}
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {s.quantitySold}× · {formatDate(s.saleDate)}
-                  {s.paymentMethod ? ` · ${PAYMENT_LABEL[s.paymentMethod] || s.paymentMethod}` : ''}
-                  {s.clientName && !s.orderId ? ` · Vendido para ${s.clientName}` : ''}
+                  {s.paymentMethod ? ` · ${PAYMENT_KEYS.includes(s.paymentMethod) ? t(`pay.${s.paymentMethod}`) : s.paymentMethod}` : ''}
+                  {s.clientName && !s.orderId ? ` · ${t('sales.soldTo', { name: s.clientName })}` : ''}
                   {s.notes ? ` · ${s.notes}` : ''}
                 </p>
               </div>
               <span className="font-semibold text-green-600 dark:text-green-400">{formatBRL(s.totalRevenue)}</span>
-              <button onClick={() => setEditing(s)} className={iconBtn} title="Editar venda">
+              <button onClick={() => setEditing(s)} className={iconBtn} title={t('sales.edit')}>
                 <Pencil size={16} />
               </button>
-              <button onClick={() => setConfirmId(s.id)} className={iconBtnDanger}>
+              <button onClick={() => setConfirmId(s.id)} className={iconBtnDanger} title={t('sales.delete')}>
                 <Trash2 size={16} />
               </button>
             </div>
@@ -123,8 +125,8 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
 
       <ConfirmModal
         open={!!confirmId}
-        title="Excluir venda"
-        message="Tem certeza?"
+        title={t('sales.delete')}
+        message={t('sales.confirmMsg')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
@@ -146,6 +148,7 @@ export function SaleForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('ops');
   const editing = !!sale;
   // Venda nova: receita ou produto avulso (sem ficha técnica), igual ao app.
   // Venda existente sem receita: a identidade não é editável, preservamos productName.
@@ -166,7 +169,7 @@ export function SaleForm({
   const [saving, setSaving] = useState(false);
 
   const warnLowStock = (names: string[]) => {
-    if (names.length > 0) toast.warning(`Estoque baixo: ${names.join(', ')}`);
+    if (names.length > 0) toast.warning(t('lowStock', { names: names.join(', ') }));
   };
 
   const qtyNum = parseLocaleNumber(quantity) || 1;
@@ -175,8 +178,8 @@ export function SaleForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isCustom && !recipeId) return toast.error('Selecione uma receita.');
-    if (isCustom && !customName.trim()) return toast.error('Informe o nome do produto.');
+    if (!isCustom && !recipeId) return toast.error(t('sales.errRecipe'));
+    if (isCustom && !customName.trim()) return toast.error(t('sales.errProduct'));
     setSaving(true);
     try {
       if (editing) {
@@ -192,7 +195,7 @@ export function SaleForm({
           paymentMethod,
         };
         await userApi.updateSale(sale!.id, data);
-        toast.success('Venda atualizada.');
+        toast.success(t('sales.updated'));
         // Mudou receita ou quantidade: estorna a baixa antiga e aplica a nova (igual ao app).
         const newQty = data.quantitySold ?? 1;
         if (!isCustom && (sale!.recipeId !== recipeId || sale!.quantitySold !== newQty)) {
@@ -212,7 +215,7 @@ export function SaleForm({
           paymentMethod,
         };
         await userApi.createSale(data);
-        toast.success('Venda registrada.');
+        toast.success(t('sales.registered'));
         if (isCustom) addCustomProduct(customName);
         else warnLowStock(await deductStockForItems([{ recipeId, quantity: data.quantitySold }]));
       }
@@ -227,11 +230,11 @@ export function SaleForm({
   return (
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{editing ? 'Editar venda' : 'Registrar venda'}</h3>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{editing ? t('sales.edit') : t('sales.register')}</h3>
 
         {!editing && (
           <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 dark:bg-gray-700/50 p-1">
-            {([['recipe', 'Receita'], ['custom', 'Produto avulso']] as const).map(([m, label]) => (
+            {([['recipe', t('sales.recipe')], ['custom', t('sales.custom')]] as const).map(([m, label]) => (
               <button
                 key={m}
                 type="button"
@@ -247,7 +250,7 @@ export function SaleForm({
         )}
 
         {isCustom ? (
-          <FormField label="Produto">
+          <FormField label={t('sales.product')}>
             {editing ? (
               <input value={sale!.recipeName} disabled className={`${inputClass} opacity-70`} />
             ) : (
@@ -256,7 +259,7 @@ export function SaleForm({
                   value={customName}
                   onChange={e => setCustomName(e.target.value)}
                   list="custom-products"
-                  placeholder="Ex.: Brigadeiro gourmet"
+                  placeholder={t('sales.productPh')}
                   className={inputClass}
                   autoFocus
                 />
@@ -267,9 +270,9 @@ export function SaleForm({
             )}
           </FormField>
         ) : recipes.length === 0 ? (
-          <p className="text-sm text-gray-500">Cadastre uma receita antes de registrar vendas, ou use “Produto avulso”.</p>
+          <p className="text-sm text-gray-500">{t('sales.noRecipes')}</p>
         ) : (
-          <FormField label="Receita">
+          <FormField label={t('sales.recipe')}>
             <select value={recipeId} onChange={e => setRecipeId(e.target.value)} className={inputClass}>
               {recipes.map(r => (
                 <option key={r.id} value={r.id}>
@@ -281,7 +284,7 @@ export function SaleForm({
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Quantidade">
+          <FormField label={t('sales.qty')}>
             <input
               type="text"
               inputMode="numeric"
@@ -291,7 +294,7 @@ export function SaleForm({
               className={inputClass}
             />
           </FormField>
-          <FormField label="Preço unitário (R$)">
+          <FormField label={t('sales.unitPrice')}>
             <input
               type="text"
               inputMode="decimal"
@@ -302,10 +305,10 @@ export function SaleForm({
           </FormField>
         </div>
 
-        <FormField label="Desconto (opcional)">
+        <FormField label={t('sales.discount')}>
           <div className="flex gap-2">
             <select value={discountType} onChange={e => setDiscountType(e.target.value as DiscountType)} className={`${inputClass} w-24 shrink-0`}>
-              <option value="fixed">R$</option>
+              <option value="fixed">{t('sales.discFixed')}</option>
               <option value="percent">%</option>
             </select>
             <input
@@ -320,35 +323,35 @@ export function SaleForm({
         </FormField>
         {subtotal > 0 && (
           <p className="text-sm text-gray-600 dark:text-gray-300 -mt-2">
-            Total: <span className="font-semibold text-gray-900 dark:text-white">{formatBRL(subtotal - discountAmount)}</span>
-            {discountAmount > 0 && <span className="text-xs text-gray-500"> (desconto de {formatBRL(discountAmount)})</span>}
+            {t('sales.total')} <span className="font-semibold text-gray-900 dark:text-white">{formatBRL(subtotal - discountAmount)}</span>
+            {discountAmount > 0 && <span className="text-xs text-gray-500"> {t('sales.discountOf', { amount: formatBRL(discountAmount) })}</span>}
           </p>
         )}
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Data">
+          <FormField label={t('sales.date')}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
           </FormField>
-          <FormField label="Pagamento">
+          <FormField label={t('sales.payment')}>
             <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as 'dinheiro' | 'credito' | 'debito' | 'pix')} className={inputClass}>
-              <option value="dinheiro">Dinheiro</option>
-              <option value="credito">Crédito</option>
-              <option value="debito">Débito</option>
-              <option value="pix">PIX</option>
+              <option value="dinheiro">{t('pay.dinheiro')}</option>
+              <option value="credito">{t('pay.credito')}</option>
+              <option value="debito">{t('pay.debito')}</option>
+              <option value="pix">{t('pay.PIX')}</option>
             </select>
           </FormField>
         </div>
 
-        <FormField label="Vendido para (opcional)">
+        <FormField label={t('sales.soldToLabel')}>
           <input
             value={clientName}
             onChange={e => setClientName(e.target.value)}
-            placeholder="Ex: Dona Ana"
+            placeholder={t('sales.soldToPh')}
             className={inputClass}
           />
         </FormField>
 
-        <FormField label="Observações (opcional)">
+        <FormField label={t('sales.notes')}>
           <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />
         </FormField>
 

@@ -1,0 +1,115 @@
+{
+  "nav": {
+    "cash": "Caixa",
+    "reports": "Relatórios",
+    "finance": "Financeiro",
+    "purchases": "Compras",
+    "expenses": "Despesas",
+    "recipes": "Receitas",
+    "ingredients": "Ingredientes",
+    "stock": "Estoque",
+    "sales": "Vendas",
+    "orders": "Encomendas",
+    "production": "Produção",
+    "clients": "Clientes",
+    "store": "Loja",
+    "seasons": "Temporadas",
+    "tips": "Dicas de vendas",
+    "referral": "Indique e ganhe",
+    "announce": "Anunciar no app",
+    "support": "Suporte",
+    "profile": "Meu perfil"
+  },
+  "checkout": {
+    "cancelled": "Pagamento cancelado. Nenhuma cobrança foi feita.",
+    "confirming": "Confirmando seu pagamento…",
+    "confirmed": "Pagamento confirmado! Seu plano já está ativo 🎉",
+    "pending": "Pagamento recebido. A liberação pode levar alguns minutos — atualize a página em instantes."
+  },
+  "lockedFeature": "Recurso {{tier}}",
+  "logout": "Sair",
+  "lgpdAccepted": "Consentimento registrado. Obrigado!",
+  "lightMode": "Modo claro",
+  "darkMode": "Modo escuro",
+  "expiring": {
+    "today": "Sua assinatura expira hoje.",
+    "tomorrow": "Sua assinatura expira amanhã.",
+    "inDays": "Sua assinatura expira em {{count}} dias.",
+    "title": "Sua assinatura está expirando",
+    "renewHint": "Renove agora para não perder o acesso aos recursos pagos.",
+    "benefit1": "Continue precificando sem limites",
+    "benefit2": "Mantenha seus relatórios e recursos exclusivos",
+    "renewNow": "Renovar agora"
+  },
+  "notNow": "Agora não",
+  "survey": {
+    "title": "Sua opinião importa 💖",
+    "text": "Responda algumas perguntas rápidas e ajude a deixar o DocePreço ainda melhor para você. Leva cerca de 2 minutos.",
+    "answer": "Responder pesquisa"
+  },
+  "guide": {
+    "step1": {
+      "title": "Cadastre seus ingredientes",
+      "desc": "Nome, quantidade da embalagem e o preço que você pagou.",
+      "action": "Cadastrar ingrediente"
+    },
+    "step2": {
+      "title": "Crie sua primeira receita",
+      "desc": "Monte a receita com os ingredientes — o custo é calculado sozinho.",
+      "action": "Criar receita"
+    },
+    "step3": {
+      "title": "Defina o acréscimo sobre o custo",
+      "desc": "Na receita, escolha o percentual (ex.: 100%) para chegar ao preço de venda.",
+      "action": "Ver receitas"
+    },
+    "step4": {
+      "title": "Registre sua primeira venda",
+      "desc": "Acompanhe faturamento e lucro nos relatórios.",
+      "action": "Registrar venda"
+    },
+    "title": "Primeiros passos",
+    "progress": "{{done}} de {{total}} concluídos — siga os passos para começar a precificar com segurança.",
+    "dismissLabel": "Dispensar primeiros passos",
+    "dismissTitle": "Não mostrar mais"
+  },
+  "carousel": {
+    "empty": "Anuncie sua confeitaria para todas as usuárias do DocePreço",
+    "sponsored": "Patrocinado",
+    "prev": "Anterior",
+    "next": "Próximo",
+    "advertiseToo": "Anuncie aqui também"
+  },
+  "bell": {
+    "todayAt": "Hoje às {{time}}",
+    "dateAt": "{{date}} às {{time}}",
+    "title": "Avisos",
+    "markAllRead": "Marcar tudo como lido",
+    "empty": "Nenhum aviso por aqui. 🎉",
+    "completeStore": "Complete o cadastro da loja",
+    "missing": "Falta: {{items}}. Sem isso a loja aparece menos nas buscas.",
+    "missingItem": {
+      "city": "Cidade",
+      "category": "Categoria da loja"
+    },
+    "learnMore": "Saiba mais",
+    "dismiss": "Dispensar aviso",
+    "newOrder": "Novo pedido online · {{total}}"
+  },
+  "demo": {
+    "banner": "Você está no <b>modo demonstração</b> · os dados são de exemplo e nada é salvo na sua conta.",
+    "createAccount": "Criar conta grátis",
+    "exit": "Sair",
+    "close": "Fechar",
+    "blockedTitle": "Crie sua conta para continuar",
+    "blockedText": "Na demonstração não há pagamentos, envios nem alterações na conta. Com a conta grátis você salva suas receitas e usa tudo de verdade.",
+    "keepExploring": "Continuar explorando",
+    "blockedMessage": "Na demonstração isso não está disponível. Crie sua conta grátis para continuar — leva 1 minuto.",
+    "unavailable": "Indisponível na demonstração.",
+    "notFound": "{{what}} não encontrado(a).",
+    "notFoundItem": "Item",
+    "cashAlreadyOpen": "Já existe um caixa aberto.",
+    "noCashOpen": "Nenhum caixa aberto.",
+    "supportReply": "Essa mensagem ficou só na demonstração. Crie sua conta grátis para falar com o suporte de verdade. 💜"
+  }
+}

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { Cake, Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { Cake, Eye, EyeOff, Loader2, PlayCircle } from 'lucide-react';
+import { wantsOpenRegister, clearOpenRegister } from './demo/demoMode';
 import { useAuth } from './UserAuthContext';
 import { userApi, ApiError } from './userApi';
 import { LgpdModal } from './lgpd';
@@ -13,8 +15,22 @@ const REF_FROM_URL = (() => {
 })();
 
 export function UserLoginPage() {
-  const { login, register } = useAuth();
-  const [mode, setMode] = useState<Mode>(REF_FROM_URL ? 'register' : 'login');
+  const { login, register, startDemo } = useAuth();
+  const { t } = useTranslation('account');
+  // Vindo do "Criar conta grátis" da demonstração, abre direto no cadastro.
+  const [mode, setMode] = useState<Mode>(() => (REF_FROM_URL || wantsOpenRegister() ? 'register' : 'login'));
+  useEffect(() => { clearOpenRegister(); }, []);
+  const [startingDemo, setStartingDemo] = useState(false);
+
+  const tryDemo = async () => {
+    setStartingDemo(true);
+    try {
+      await startDemo();
+    } catch {
+      setError(t('login.demoError'));
+      setStartingDemo(false);
+    }
+  };
   const [referralCode, setReferralCode] = useState(REF_FROM_URL);
 
   const [companyName, setCompanyName] = useState('');
@@ -41,18 +57,18 @@ export function UserLoginPage() {
         await login(email.trim(), password);
       } else if (mode === 'register') {
         if (!companyName.trim()) {
-          setError('Informe o nome da sua confeitaria.');
+          setError(t('login.errCompany'));
           setLoading(false);
           return;
         }
         const phoneDigits = phone.replace(/\D/g, '');
         if (phoneDigits.length < 10 || phoneDigits.length > 15) {
-          setError('Informe um telefone válido com DDD.');
+          setError(t('login.errPhone'));
           setLoading(false);
           return;
         }
         if (!acceptedLgpd) {
-          setError('Você precisa aceitar a Política de Privacidade (LGPD) para criar a conta.');
+          setError(t('login.errLgpd'));
           setLoading(false);
           return;
         }
@@ -63,25 +79,25 @@ export function UserLoginPage() {
         setMode('reset');
         setResetCode('');
         setPassword('');
-        setInfo('Se o e-mail estiver cadastrado, enviamos um código. Confira também o spam.');
+        setInfo(t('login.codeSent'));
       } else {
         if (!resetCode.trim()) {
-          setError('Informe o código recebido por e-mail.');
+          setError(t('login.errCode'));
           setLoading(false);
           return;
         }
         if (password.length < 6) {
-          setError('A nova senha deve ter pelo menos 6 caracteres.');
+          setError(t('login.errPasswordLength'));
           setLoading(false);
           return;
         }
         await userApi.resetPassword(email.trim(), resetCode.trim(), password);
         setMode('login');
         setPassword('');
-        setInfo('Senha alterada! Entre com a nova senha.');
+        setInfo(t('login.passwordChanged'));
       }
     } catch (err) {
-      const msg = err instanceof ApiError ? err.message : 'Erro de conexão. Tente novamente.';
+      const msg = err instanceof ApiError ? err.message : t('login.connectionError');
       setError(msg);
     } finally {
       setLoading(false);
@@ -89,7 +105,7 @@ export function UserLoginPage() {
   };
 
   const title =
-    mode === 'login' ? 'Entrar na sua conta' : mode === 'register' ? 'Criar conta' : mode === 'reset' ? 'Criar nova senha' : 'Recuperar senha';
+    mode === 'login' ? t('login.titleLogin') : mode === 'register' ? t('login.titleRegister') : mode === 'reset' ? t('login.titleReset') : t('login.titleForgot');
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
@@ -104,30 +120,30 @@ export function UserLoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === 'register' && (
-            <Field label="Nome da confeitaria">
+            <Field label={t('login.companyName')}>
               <input
                 value={companyName}
                 onChange={e => setCompanyName(e.target.value)}
-                placeholder="Doces da Maria"
+                placeholder={t('login.companyPlaceholder')}
                 className={inputClass}
                 autoFocus
               />
             </Field>
           )}
 
-          <Field label="E-mail">
+          <Field label={t('login.email')}>
             <input
               type="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
-              placeholder="voce@email.com"
+              placeholder={t('login.emailPlaceholder')}
               className={inputClass}
               autoFocus={mode !== 'register' && mode !== 'reset'}
             />
           </Field>
 
           {mode === 'register' && (
-            <Field label="Telefone">
+            <Field label={t('login.phone')}>
               <input
                 type="tel"
                 value={phone}
@@ -139,11 +155,11 @@ export function UserLoginPage() {
           )}
 
           {mode === 'register' && (
-            <Field label="Instagram (opcional)">
+            <Field label={t('login.instagram')}>
               <input
                 value={instagramHandle}
                 onChange={e => setInstagramHandle(e.target.value)}
-                placeholder="@suaconfeitaria"
+                placeholder={t('login.instagramPlaceholder')}
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
@@ -154,11 +170,11 @@ export function UserLoginPage() {
           )}
 
           {mode === 'register' && (
-            <Field label="Código de indicação (opcional)">
+            <Field label={t('login.referral')}>
               <input
                 value={referralCode}
                 onChange={e => setReferralCode(e.target.value.toUpperCase())}
-                placeholder="Ex.: ANA123"
+                placeholder={t('login.referralPlaceholder')}
                 autoCapitalize="characters"
                 maxLength={20}
                 className={inputClass}
@@ -167,7 +183,7 @@ export function UserLoginPage() {
           )}
 
           {mode === 'reset' && (
-            <Field label="Código recebido por e-mail">
+            <Field label={t('login.resetCode')}>
               <input
                 value={resetCode}
                 onChange={e => setResetCode(e.target.value)}
@@ -181,7 +197,7 @@ export function UserLoginPage() {
           )}
 
           {mode !== 'forgot' && (
-            <Field label={mode === 'reset' ? 'Nova senha' : 'Senha'}>
+            <Field label={mode === 'reset' ? t('login.newPassword') : t('login.password')}>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -211,9 +227,9 @@ export function UserLoginPage() {
                 className="mt-0.5 w-4 h-4 rounded accent-primary-500 shrink-0"
               />
               <span className="text-xs text-gray-600 dark:text-gray-300 leading-snug">
-                Li e aceito a{' '}
+                {t('login.acceptPrefix')}{' '}
                 <button type="button" onClick={() => setShowLgpd(true)} className={linkClass}>
-                  Política de Privacidade e o tratamento dos meus dados (LGPD)
+                  {t('login.acceptLink')}
                 </button>
                 .
               </span>
@@ -231,16 +247,16 @@ export function UserLoginPage() {
             {loading ? (
               <>
                 <Loader2 size={16} className="animate-spin-slow" />
-                Aguarde...
+                {t('login.wait')}
               </>
             ) : mode === 'login' ? (
-              'Entrar'
+              t('login.submitLogin')
             ) : mode === 'register' ? (
-              'Criar conta'
+              t('login.submitRegister')
             ) : mode === 'reset' ? (
-              'Salvar nova senha'
+              t('login.submitReset')
             ) : (
-              'Enviar'
+              t('login.submitForgot')
             )}
           </button>
         </form>
@@ -248,24 +264,36 @@ export function UserLoginPage() {
         {googleSignInEnabled && (mode === 'login' || mode === 'register') && (
           <div className="mt-4 space-y-3">
             <div className="flex items-center gap-3 text-xs text-gray-400">
-              <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" /> ou <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+              <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" /> {t('login.or')} <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
             </div>
             <GoogleSignInButton onError={msg => setError(msg)} />
           </div>
+        )}
+
+        {mode === 'login' && (
+          <button
+            type="button"
+            onClick={tryDemo}
+            disabled={startingDemo}
+            className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-700 py-2.5 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 disabled:opacity-50"
+          >
+            {startingDemo ? <Loader2 size={16} className="animate-spin-slow" /> : <PlayCircle size={16} />}
+            {t('login.tryDemo')}
+          </button>
         )}
 
         <div className="mt-5 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2">
           {mode === 'login' && (
             <>
               <p>
-                Não tem conta?{' '}
+                {t('login.noAccount')}{' '}
                 <button onClick={() => switchMode('register')} className={linkClass}>
-                  Criar conta
+                  {t('login.createAccount')}
                 </button>
               </p>
               <p>
                 <button onClick={() => switchMode('forgot')} className={linkClass}>
-                  Esqueci minha senha
+                  {t('login.forgot')}
                 </button>
               </p>
             </>
@@ -273,14 +301,14 @@ export function UserLoginPage() {
           {mode === 'reset' && (
             <p>
               <button onClick={() => switchMode('forgot')} className={linkClass}>
-                Reenviar código
+                {t('login.resend')}
               </button>
             </p>
           )}
           {mode !== 'login' && (
             <p>
               <button onClick={() => switchMode('login')} className={linkClass}>
-                Voltar para o login
+                {t('login.backToLogin')}
               </button>
             </p>
           )}

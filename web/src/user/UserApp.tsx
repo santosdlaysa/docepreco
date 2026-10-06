@@ -28,7 +28,9 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { Lock, Headset } from 'lucide-react';
+import { DemoBanner, DemoBlockedModal } from './demo/DemoUi';
 import { UserAuthProvider, useAuth } from './UserAuthContext';
 import { UserLoginPage } from './UserLoginPage';
 import { userApi, effectiveTier } from './userApi';
@@ -66,26 +68,27 @@ type Page =
   | 'cash' | 'seasons' | 'store' | 'profile' | 'finance' | 'purchases' | 'expenses' | 'stock'
   | 'clients' | 'tips' | 'support' | 'referral' | 'announce';
 
-const NAV: { id: Page; label: string; icon: LucideIcon }[] = [
-  { id: 'cash', label: 'Caixa', icon: Wallet },
-  { id: 'reports', label: 'Relatórios', icon: LayoutDashboard },
-  { id: 'finance', label: 'Financeiro', icon: PieChart },
-  { id: 'purchases', label: 'Compras', icon: FileText },
-  { id: 'expenses', label: 'Despesas', icon: Receipt },
-  { id: 'recipes', label: 'Receitas', icon: ChefHat },
-  { id: 'ingredients', label: 'Ingredientes', icon: Package },
-  { id: 'stock', label: 'Estoque', icon: Boxes },
-  { id: 'sales', label: 'Vendas', icon: ShoppingCart },
-  { id: 'orders', label: 'Encomendas', icon: ClipboardList },
-  { id: 'production', label: 'Produção', icon: CookingPot },
-  { id: 'clients', label: 'Clientes', icon: Users },
-  { id: 'store', label: 'Loja', icon: Store },
-  { id: 'seasons', label: 'Temporadas', icon: CalendarRange },
-  { id: 'tips', label: 'Dicas de vendas', icon: Lightbulb },
-  { id: 'referral', label: 'Indique e ganhe', icon: Gift },
-  { id: 'announce', label: 'Anunciar no app', icon: Megaphone },
-  { id: 'support', label: 'Suporte', icon: Headset },
-  { id: 'profile', label: 'Meu perfil', icon: User },
+// Rótulos traduzidos na renderização: t(`nav.${id}`) no namespace 'app'.
+const NAV: { id: Page; icon: LucideIcon }[] = [
+  { id: 'cash', icon: Wallet },
+  { id: 'reports', icon: LayoutDashboard },
+  { id: 'finance', icon: PieChart },
+  { id: 'purchases', icon: FileText },
+  { id: 'expenses', icon: Receipt },
+  { id: 'recipes', icon: ChefHat },
+  { id: 'ingredients', icon: Package },
+  { id: 'stock', icon: Boxes },
+  { id: 'sales', icon: ShoppingCart },
+  { id: 'orders', icon: ClipboardList },
+  { id: 'production', icon: CookingPot },
+  { id: 'clients', icon: Users },
+  { id: 'store', icon: Store },
+  { id: 'seasons', icon: CalendarRange },
+  { id: 'tips', icon: Lightbulb },
+  { id: 'referral', icon: Gift },
+  { id: 'announce', icon: Megaphone },
+  { id: 'support', icon: Headset },
+  { id: 'profile', icon: User },
 ];
 
 function useDarkMode() {
@@ -105,7 +108,7 @@ function useDarkMode() {
 }
 
 function Shell() {
-  const { user, loading, logout, setUser } = useAuth();
+  const { user, loading, logout, setUser, isDemo, leaveDemo } = useAuth();
   const [page, setPage] = useState<Page>('reports');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   // Renovação aberta pelo aviso de assinatura vencendo.
@@ -114,6 +117,7 @@ function Shell() {
   const { toasts, toast, removeToast } = useToast();
   const { dark, toggle: toggleDark } = useDarkMode();
   const routerNavigate = useNavigate();
+  const { t } = useTranslation('app');
 
   // Volta do checkout de cartão (Stripe): o webhook libera o plano em alguns
   // segundos, então confere algumas vezes antes de desistir.
@@ -128,23 +132,23 @@ function Shell() {
     const qs = params.toString();
     window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? `?${qs}` : ''));
     if (checkout !== 'success') {
-      toast('Pagamento cancelado. Nenhuma cobrança foi feita.');
+      toast(t('checkout.cancelled'));
       return;
     }
     let active = true;
     (async () => {
-      toast('Confirmando seu pagamento…');
+      toast(t('checkout.confirming'));
       for (let i = 0; i < 8 && active; i++) {
         try {
           const me = await userApi.me();
           if (effectiveTier(me) !== 'free') {
-            if (active) { setUser(me); toast.success('Pagamento confirmado! Seu plano já está ativo 🎉'); }
+            if (active) { setUser(me); toast.success(t('checkout.confirmed')); }
             return;
           }
         } catch { /* tenta de novo */ }
         await new Promise(r => setTimeout(r, 2500));
       }
-      if (active) toast.warning('Pagamento recebido. A liberação pode levar alguns minutos — atualize a página em instantes.');
+      if (active) toast.warning(t('checkout.pending'));
     })();
     return () => { active = false; };
   }, [hasUser]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -215,11 +219,11 @@ function Shell() {
             >
               {active && <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-5 bg-primary-500 rounded-r-full" />}
               <Icon size={16} className={active ? 'text-primary-500' : 'text-gray-400 dark:text-gray-500'} />
-              <span className="flex-1">{n.label}</span>
+              <span className="flex-1">{t(`nav.${n.id}`)}</span>
               {locked && (
                 <span
                   className={`inline-flex items-center justify-center w-4 h-4 rounded-full ${TIER_META[req].bg}`}
-                  title={`Recurso ${TIER_META[req].label}`}
+                  title={t('lockedFeature', { tier: TIER_META[req].label })}
                 >
                   <Lock size={10} className={TIER_META[req].color} />
                 </span>
@@ -235,7 +239,7 @@ function Shell() {
           className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
           <LogOut size={18} className="text-gray-400" />
-          Sair
+          {t('logout')}
         </button>
       </div>
     </>
@@ -264,6 +268,7 @@ function Shell() {
       </aside>
 
       <main className="flex-1 min-w-0 overflow-y-auto">
+        {isDemo && <DemoBanner onCreateAccount={() => leaveDemo(true)} onExit={() => leaveDemo(false)} />}
         <div className="md:hidden flex items-center gap-3 p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-30">
           <button onClick={() => setSidebarOpen(true)} className="text-gray-600 dark:text-gray-300">
             <Menu size={22} />
@@ -289,7 +294,7 @@ function Shell() {
               const req = PAGE_REQUIREMENT[page];
               if (req && !tierSatisfies(tier, req)) {
                 const nav = NAV.find(n => n.id === page);
-                return <Paywall featureKey={page} required={req} featureLabel={nav?.label ?? ''} featureIcon={nav?.icon} toast={toast} />;
+                return <Paywall featureKey={page} required={req} featureLabel={nav ? t(`nav.${nav.id}`) : ''} featureIcon={nav?.icon} toast={toast} />;
               }
               return (
                 <>
@@ -326,6 +331,7 @@ function Shell() {
       </main>
 
       <ToastContainer toasts={toasts} onRemove={removeToast} />
+      {isDemo && <DemoBlockedModal onCreateAccount={() => leaveDemo(true)} />}
 
       {/* Assinatura vencendo (≤ 3 dias, 1x/dia) e pesquisa de satisfação — iguais ao app. */}
       <SubscriptionExpiringModal
@@ -348,7 +354,7 @@ function Shell() {
             try {
               const { user: updated } = await userApi.acceptLgpd();
               setUser(updated);
-              toast.success('Consentimento registrado. Obrigado!');
+              toast.success(t('lgpdAccepted'));
             } catch (e) {
               toast.error((e as Error).message);
             }
@@ -360,11 +366,12 @@ function Shell() {
 }
 
 function ThemeToggle({ dark, toggle }: { dark: boolean; toggle: () => void }) {
+  const { t } = useTranslation('app');
   return (
     <button
       onClick={toggle}
       className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-      title={dark ? 'Modo claro' : 'Modo escuro'}
+      title={dark ? t('lightMode') : t('darkMode')}
     >
       {dark ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-gray-500" />}
     </button>

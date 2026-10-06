@@ -1,0 +1,295 @@
+{
+  "fin": {
+    "title": "Finance",
+    "subtitle": "Business results (income statement)",
+    "periodMonth": "This month",
+    "periodPrev": "Last month",
+    "periodAll": "All time",
+    "empty": "No data for this period. Record sales to see your business income statement (P&L).",
+    "profitPeriod": "Profit for the period",
+    "marginBadge": "Margin {{value}}%",
+    "unitsSold": "{{count}} units sold",
+    "dreTitle": "Income statement (P&L)",
+    "grossRevenue": "Gross revenue",
+    "productCost": "(–) Cost of goods sold (COGS)",
+    "pctOfRevenue": "{{value}}% of revenue",
+    "opExpenses": "(–) Operating expenses",
+    "netProfit": "(=) Net profit",
+    "profitMargin": "Profit margin",
+    "flowTitle": "Simplified cash flow",
+    "flowHint": "Purchases show up here; in the income statement, ingredients count through the cost of goods sold.",
+    "flowIn": "Inflows (sales)",
+    "flowPaidPurchases": "Paid purchases",
+    "flowExpenses": "Expenses",
+    "flowBalance": "Estimated balance",
+    "pendingPurchases": "Pending purchases: {{value}}",
+    "byProduct": "Results by product",
+    "productLine": "{{units}} units · revenue {{revenue}} · cost {{cost}}",
+    "productMargin": "{{value}}% margin",
+    "costNote": "Cost is calculated from each recipe's spec sheet (ingredients, extras and sub-recipes) at the time you view this page.",
+    "recipeFallback": "Recipe"
+  },
+  "exp": {
+    "title": "Expenses",
+    "subtitle_one": "{{count}} entry · {{total}}",
+    "subtitle_other": "{{count}} entries · {{total}}",
+    "add": "New expense",
+    "all": "All",
+    "total": "Total",
+    "fixed": "Fixed",
+    "variable": "Variable",
+    "empty": "No expenses recorded in this period.",
+    "recurring": " · Recurring",
+    "recurringDay": " · Recurring (day {{day}})",
+    "deleted": "Expense deleted.",
+    "confirmTitle": "Delete expense",
+    "confirmMsg": "Are you sure? This can't be undone.",
+    "errDescription": "Enter a description.",
+    "errAmount": "Enter a valid amount.",
+    "errDate": "Enter the date.",
+    "updated": "Expense updated.",
+    "created": "Expense recorded.",
+    "edit": "Edit expense",
+    "description": "Description",
+    "descPlaceholder": "e.g. Electricity bill",
+    "amount": "Amount",
+    "date": "Date",
+    "costType": "Cost type",
+    "category": "Category",
+    "recurringLabel": "Recurring expense (monthly)",
+    "dayPlaceholder": "day",
+    "notes": "Notes (optional)",
+    "categories": {
+      "aluguel": "Rent",
+      "energia": "Electricity",
+      "agua": "Water",
+      "internet": "Internet",
+      "embalagem": "Packaging",
+      "marketing": "Marketing",
+      "transporte": "Transportation",
+      "equipamento": "Equipment",
+      "funcionario": "Staff",
+      "outros": "Other"
+    }
+  },
+  "rep": {
+    "periodToday": "Today",
+    "periodWeek": "7 days",
+    "periodMonth": "Month",
+    "periodAll": "All time",
+    "payment": {
+      "pix": "Pix",
+      "dinheiro": "Cash",
+      "credito": "Credit card",
+      "debito": "Debit card",
+      "cartao": "Card",
+      "none": "Not specified"
+    },
+    "thanksToast": "Thanks for rating your experience!",
+    "allowPopups": "Allow pop-ups to download the report.",
+    "title": "Dashboard",
+    "subtitle": "Overview of your business",
+    "download": "Download report",
+    "today": "Today",
+    "todaySales_one": "{{count}} sale · vs. yesterday",
+    "todaySales_other": "{{count}} sales · vs. yesterday",
+    "registerSale": "+ Record sale",
+    "thisWeek": "This week",
+    "last7": "last 7 days",
+    "thisMonth": "This month",
+    "vsPrevMonth": "vs. last month",
+    "chartTitle": "Revenue over the last 7 days",
+    "byRecipe": "Sales by recipe",
+    "allRecipes": "All recipes",
+    "revenue": "Revenue",
+    "unitsSold": "Units sold",
+    "sales": "Sales",
+    "topMonth": "Best sellers this month",
+    "noSalesMonth": "No sales this month.",
+    "qtySold": "{{count}} units sold",
+    "avgTicket": "Average ticket",
+    "itemsSoldMonth": "Items sold (month)",
+    "recipes": "Recipes",
+    "ingredients": "Ingredients",
+    "byPaymentMonth": "Sales by payment method (month)",
+    "salesCount_one": "{{count}} sale",
+    "salesCount_other": "{{count}} sales",
+    "recent": "Recent sales",
+    "noRecent": "No recent sales.",
+    "thanksTitle": "Thanks for your rating!",
+    "thanksSub": "Your answer was recorded and helps us improve DocePreço.",
+    "surveyTitle": "How is your experience with DocePreço?",
+    "surveyHint": "Pick an option to rate your experience.",
+    "rating1": "Very bad",
+    "rating2": "Bad",
+    "rating3": "Okay",
+    "rating4": "Good",
+    "rating5": "Excellent",
+    "sending": "Sending...",
+    "sendRating": "Send rating",
+    "new": "new",
+    "pdf": {
+      "title": "DocePreço Report",
+      "generatedAt": "Generated on {{date}}",
+      "monthRevenue": "Revenue this month",
+      "vsPrev": "{{value}}% vs last month",
+      "totalSales": "{{count}} sales in total",
+      "byMonth": "Sales by month (last 6 months)",
+      "colMonth": "Month",
+      "colQtySales": "No. of sales",
+      "colRevenue": "Revenue",
+      "topRecipes": "Best-selling recipes",
+      "noSales": "No sales recorded.",
+      "colRecipe": "Recipe",
+      "colQty": "Qty",
+      "rank": "#{{n}}",
+      "units": "{{count}} units",
+      "byPayment": "Sales by payment method",
+      "colPayment": "Payment method",
+      "footer": "DocePreço · report generated automatically"
+    }
+  },
+  "tips": {
+    "title": "Sales tips",
+    "subtitle": "Marketing and pricing",
+    "heroTitle": "Sell more and better",
+    "heroText": "Insights about your business + practical marketing and sales tips for bakers.",
+    "analysis": "📊 Your business insights",
+    "marketing": "💡 Marketing and sales tips",
+    "all": "All",
+    "insight": {
+      "avgTicket": "Your average ticket is {{value}} per sale.",
+      "lowTicket": "You sell a lot, but your average ticket is low. Consider reviewing your prices!",
+      "topRecipe": "\"{{name}}\" is your recent best seller, with {{value}} in revenue.",
+      "noSales": "You haven't recorded any sales this month yet. Record your sales to track your revenue!",
+      "noRecipes": "Create your first recipe to start pricing your products!",
+      "fewRecipes_one": "You only have {{count}} recipe. A wider menu can increase your revenue!",
+      "fewRecipes_other": "You only have {{count}} recipes. A wider menu can increase your revenue!",
+      "underpriced": "You sell \"{{name}}\" at {{avg}}, but the suggested price is {{suggested}} (+{{gap}}%). Adjusting it could increase your profit.",
+      "bestMargin": "\"{{name}}\" has the highest markup over cost ({{margin}}%). Also check the profit per unit and the demand for this product.",
+      "concentration": "\"{{name}}\" makes up {{pct}}% of your revenue. Diversify so you don't depend on a single product."
+    },
+    "cat": {
+      "instagram": "Instagram",
+      "whatsapp": "WhatsApp",
+      "fotos": "Photos",
+      "preco": "Pricing & offers",
+      "fidelizacao": "Loyalty",
+      "datas": "Holidays",
+      "captacao": "Get customers"
+    },
+    "items": {
+      "ig-template-story": {
+        "title": "Ready-made Story template on Canva",
+        "body": "Not sure how to make your Story look good? Use a ready-made template: just swap the photo and text for your treat and post it. Tap the button below to open the template on Canva and customize it in minutes.",
+        "link": "Open Story template on Canva"
+      },
+      "ig-template-story-oferta": {
+        "title": "Ready-made OFFER Story template on Canva",
+        "body": "Not sure how to make your Story look good? Use a ready-made template: just swap the photo and text for your treat and post it. Tap the button below to open the template on Canva and customize it in minutes.",
+        "link": "Open offer Story template on Canva"
+      },
+      "ig-template-logo-loja": {
+        "title": "Editable logo for your shop",
+        "body": "Tap the button below to open the template on Canva and customize it in minutes.",
+        "link": "Open editable logo on Canva"
+      },
+      "ig-constancia": {
+        "title": "Show up consistently",
+        "body": "The algorithm rewards people who post often. Set a realistic routine (e.g. 3 feed posts a week + daily Stories) and stick to it. Consistency beats perfection — it's better to post something simple every week than to disappear for a month."
+      },
+      "ig-reels": {
+        "title": "\"Making the treat\" Reels get more engagement",
+        "body": "Short videos showing the step by step, the filling oozing or the assembly reach far more people than still photos. Record 15–30s, use a trending song and show the final result in the first few seconds."
+      },
+      "ig-bastidores": {
+        "title": "Use Stories to create desire",
+        "body": "Show what happens behind the scenes: ingredients arriving, your kitchen, the treat coming out of the oven, the customer receiving it. This builds connection and trust. End with a clear call to action: \"DM me to order\"."
+      },
+      "ig-bio": {
+        "title": "A bio and highlights that sell",
+        "body": "Your bio should say in one line what you make and how to order (WhatsApp link). Organize your Highlights like a menu: \"Flavors\", \"Prices\", \"How to order\", \"Happy customers\". Anyone landing on your profile should know how to buy within 10 seconds."
+      },
+      "wa-business": {
+        "title": "Use WhatsApp Business with a catalog",
+        "body": "WhatsApp Business is free and lets you build a catalog with photos and prices. Customers browse and choose without you repeating everything. Also set up your business hours and a greeting message."
+      },
+      "wa-rapidez": {
+        "title": "Fast replies close more sales",
+        "body": "Most sales are lost because of slow replies. Use WhatsApp Business \"quick replies\" to send your price list, flavors and lead times in seconds. The faster you are, the better the chance of closing before the customer looks for another baker."
+      },
+      "wa-transmissao": {
+        "title": "Broadcast lists for news",
+        "body": "Create broadcast lists to tell customers about new flavors, promotions and when you open orders for holidays. Unlike a group, everyone gets it as a private message — more personal and less intrusive."
+      },
+      "foto-luz": {
+        "title": "Natural light is your best studio",
+        "body": "Shoot near a window, during the day, without flash. Natural light makes treats look appetizing with true colors. Avoid yellow lamp light, which makes the photo look \"dirty\". Your photo is your shop window — it's worth a thousand words."
+      },
+      "foto-corte": {
+        "title": "Show the filling",
+        "body": "A photo of a treat cut open, with the filling showing, creates much more desire. A bitten brigadeiro, a layered cake jar, an open coxinha. Customers buy with their eyes — show the tastiest part."
+      },
+      "foto-fundo": {
+        "title": "Clean background, focus on the treat",
+        "body": "Clear the clutter out of the frame. A neutral background (marble, light wood, a plain cloth) makes the product stand out. Get the camera closer and let the treat be the star."
+      },
+      "preco-combo": {
+        "title": "Bundles raise your average ticket",
+        "body": "Instead of selling 1 unit, offer bundles: \"box with 6 flavors\", \"afternoon coffee combo\", \"party kit with 50 sweets\". Customers spend more per order and you save time producing in batches. Give a small discount on the bundle as an incentive."
+      },
+      "preco-degustacao": {
+        "title": "Tasting kit for new customers",
+        "body": "A small kit with several flavors is the perfect entry point. Customers try everything, find their favorite and come back for the full version. It costs you little and turns undecided people into loyal customers."
+      },
+      "preco-ancoragem": {
+        "title": "Offer 3 size options",
+        "body": "When you show S, M and L, most people pick the middle one — and you guide the sale. Having a pricier \"premium\" option also makes the others look more affordable. Never offer just one option: give customers the power to choose up."
+      },
+      "preco-entrega": {
+        "title": "Make the delivery fee clear",
+        "body": "Tell the delivery fee before closing, so there's no friction at the end. Offer free delivery above a minimum amount (\"free delivery over R$ 60\") — this nudges customers to buy more to \"make up for the shipping\"."
+      },
+      "fid-cartao": {
+        "title": "Loyalty card",
+        "body": "Every X purchases, a freebie or a discount. Simple and powerful: it gives customers a reason to keep coming back to you instead of the competition. It can be a stamped card or just a record in your notebook."
+      },
+      "fid-posvenda": {
+        "title": "After-sales that delights",
+        "body": "The day after delivery, send a message: \"Hi! So glad you chose my treats 💛 Did the party go well?\". This care makes customers remember you and recommend you. It takes 30 seconds and earns many repeat orders."
+      },
+      "fid-brinde": {
+        "title": "Surprise gift in the order",
+        "body": "Every now and then, include an extra treat or a handwritten note. The surprise leads to photos, Stories tagging you and free advertising. Small treats create devoted customers."
+      },
+      "data-calendario": {
+        "title": "Plan your year's calendar",
+        "body": "Easter, Mother's Day, Valentine's Day, June festivals, Children's Day and Christmas are sales peaks. Mark them on your calendar and prepare your menu, photos and promotion in advance. Those who plan ahead get the best orders."
+      },
+      "data-agenda": {
+        "title": "Open orders early",
+        "body": "Announce \"Easter orders are open!\" weeks ahead and create urgency: \"Limited spots\". Offer a discount for early orders. This organizes your production and secures cash before the date."
+      },
+      "data-kits": {
+        "title": "Holiday-themed kits",
+        "body": "Put together exclusive kits for each occasion: \"Mother's Day box\", \"Easter basket\", \"Romantic box\". Themed packaging justifies a higher price and becomes a ready-made gift — customers buy the experience, not just the treat."
+      },
+      "cap-indicacao": {
+        "title": "Ask for referrals (and reward them)",
+        "body": "Happy customers refer you if you ask. Offer a perk: \"Refer a friend and get 10% off your next order\". Word of mouth is the cheapest and best-converting advertising for bakers."
+      },
+      "cap-parcerias": {
+        "title": "Local partnerships",
+        "body": "Cafés, flower shops, salons and stationery stores serve the same audience as you. Offer to sell your treats there or swap referrals. A good partnership puts your product in front of new customers without spending on ads."
+      },
+      "cap-amostra": {
+        "title": "Samples for people with reach",
+        "body": "Send a complimentary kit to a micro-influencer or a well-loved person in your neighborhood. One Story tagging you can bring dozens of orders. Pick someone who speaks to your local audience — they don't need to be famous."
+      },
+      "cap-depoimentos": {
+        "title": "Collect and show testimonials",
+        "body": "Screenshots of praise on WhatsApp, photos of customers with your treats, happy comments — save them all and post them in your Stories and Highlights. Social proof beats the doubts of people who haven't bought from you yet."
+      }
+    }
+  }
+}

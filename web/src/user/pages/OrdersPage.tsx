@@ -1,5 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { Pencil, Trash2, ClipboardList, Phone, CalendarClock, MapPin, Plus, X, Wallet, Store, MessageCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { userApi, Order, OrderStatus, OrderPayment, OrderPaymentMethod, OrderItem, CreateOrderDTO, Recipe, Client } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL, formatDate, todayISO } from '../format';
@@ -8,23 +10,20 @@ import { parseLocaleNumber } from '../number';
 import { maskPhone, isValidPhone } from '../phone';
 import { deductStockForItems } from '../stockDeduction';
 
-const STATUS: { value: OrderStatus; label: string; cls: string }[] = [
-  { value: 'draft', label: 'Rascunho', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' },
-  { value: 'pending', label: 'Pendente', cls: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
-  { value: 'in_progress', label: 'Em produção', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
-  { value: 'done', label: 'Pronto', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' },
-  { value: 'delivered', label: 'Entregue', cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
-  { value: 'cancelled', label: 'Cancelado', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
+// Rótulos vêm do i18n (orders:status.* e orders:paymentMethod.*) na renderização.
+const STATUS: { value: OrderStatus; cls: string }[] = [
+  { value: 'draft', cls: 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400' },
+  { value: 'pending', cls: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300' },
+  { value: 'in_progress', cls: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
+  { value: 'done', cls: 'bg-sky-100 text-sky-700 dark:bg-sky-900/40 dark:text-sky-300' },
+  { value: 'delivered', cls: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' },
+  { value: 'cancelled', cls: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' },
 ];
 const statusInfo = (s: OrderStatus) => STATUS.find(x => x.value === s) ?? STATUS[0];
 
-const PAYMENT_METHODS: { value: OrderPaymentMethod; label: string }[] = [
-  { value: 'pix', label: 'Pix' },
-  { value: 'cash', label: 'Dinheiro' },
-  { value: 'credit', label: 'Crédito' },
-  { value: 'debit', label: 'Débito' },
-];
-const PAYMENT_METHOD_LABEL: Record<string, string> = Object.fromEntries(PAYMENT_METHODS.map(m => [m.value, m.label]));
+const PAYMENT_METHODS: OrderPaymentMethod[] = ['pix', 'cash', 'credit', 'debit'];
+const paymentMethodLabel = (t: TFunction, m: string) =>
+  (PAYMENT_METHODS as string[]).includes(m) ? t(`orders:paymentMethod.${m}`) : m;
 
 const toCents = (v: number) => Math.round(v * 100);
 const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
@@ -41,15 +40,16 @@ function orderPayments(o: Order): OrderPayment[] {
   return o.paidAmount > 0 ? [{ id: 'migrated', amount: o.paidAmount, method: 'cash', date: o.createdAt.slice(0, 10) }] : [];
 }
 
-const whatsappUrl = (phone: string, name: string) => {
+const whatsappUrl = (phone: string, message: string) => {
   const digits = phone.replace(/\D/g, '');
   const full = digits.length <= 11 ? `55${digits}` : digits;
-  return `https://wa.me/${full}?text=${encodeURIComponent(`Olá, ${name.split(' ')[0]}! Sobre a sua encomenda:`)}`;
+  return `https://wa.me/${full}?text=${encodeURIComponent(message)}`;
 };
 
 type SourceFilter = 'all' | 'online' | 'manual';
 
 export function OrdersPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -88,7 +88,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
       orderItems(o).map(i => ({ recipeId: i.recipeId, recipeName: i.recipeName, quantity: i.quantity })),
       'Encomenda',
     );
-    if (low.length > 0) toast.warning(`Estoque baixo: ${low.join(', ')}`);
+    if (low.length > 0) toast.warning(t('lowStock', { items: low.join(', ') }));
   };
 
   const changeStatus = async (o: Order, status: OrderStatus) => {
@@ -96,7 +96,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
       const updated = await userApi.updateOrder(o.id, { status });
       setOrders(prev => prev.map(x => (x.id === o.id ? { ...x, status } : x)));
       if (status === 'delivered' && o.status !== 'delivered') await deductForDelivery(o);
-      if (updated?.saleRegistered) toast.success('Encomenda entregue — venda registrada automaticamente.');
+      if (updated?.saleRegistered) toast.success(t('deliveredSaleRegistered'));
     } catch (e) {
       toast.error((e as Error).message);
     }
@@ -106,7 +106,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
     if (!confirmId) return;
     try {
       await userApi.deleteOrder(confirmId);
-      toast.success('Encomenda excluída.');
+      toast.success(t('deleted'));
       setConfirmId(null);
       load();
     } catch (e) {
@@ -123,18 +123,18 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
   return (
     <div>
       <Header
-        title="Encomendas"
-        subtitle={`${orders.length} no total · ${pending} em aberto`}
+        title={t('title')}
+        subtitle={t('subtitle', { total: orders.length, open: pending })}
         onAdd={() => setCreating(true)}
-        addLabel="Nova encomenda"
+        addLabel={t('newOrder')}
       />
 
       {orders.length > 0 && (
         <div className="flex gap-1 mb-4 rounded-xl bg-gray-100 dark:bg-gray-800 p-1 w-fit">
           {([
-            ['all', 'Todas'],
-            ['online', `Loja online${onlineCount ? ` (${onlineCount})` : ''}`],
-            ['manual', 'Manuais'],
+            ['all', t('filter.all')],
+            ['online', `${t('filter.online')}${onlineCount ? ` (${onlineCount})` : ''}`],
+            ['manual', t('filter.manual')],
           ] as [SourceFilter, string][]).map(([v, label]) => (
             <button
               key={v}
@@ -156,7 +156,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
       ) : visible.length === 0 ? (
         <EmptyState
           icon={ClipboardList}
-          text={orders.length === 0 ? 'Nenhuma encomenda ainda. Crie a primeira.' : 'Nenhuma encomenda neste filtro.'}
+          text={orders.length === 0 ? t('emptyAll') : t('emptyFilter')}
         />
       ) : (
         <div className="space-y-3">
@@ -175,19 +175,19 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
                         {o.orderNumber ? <span className="text-gray-400 font-normal">#{o.orderNumber} </span> : null}
                         {o.clientName}
                       </p>
-                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${si.cls}`}>{si.label}</span>
+                      <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${si.cls}`}>{t(`status.${si.value}`)}</span>
                       {o.source === 'online' && (
                         <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-primary-100 text-primary-700 dark:bg-primary-900/40 dark:text-primary-300">
-                          <Store size={11} /> Loja online
+                          <Store size={11} /> {t('onlineBadge')}
                         </span>
                       )}
                       {fullyPaid ? (
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">
-                          Pago
+                          {t('paidBadge')}
                         </span>
                       ) : (
                         <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300">
-                          {paidTotal > 0 ? `Falta ${formatBRL(remaining)}` : 'A receber'}
+                          {paidTotal > 0 ? t('remainingBadge', { amount: formatBRL(remaining) }) : t('toReceive')}
                         </span>
                       )}
                     </div>
@@ -205,15 +205,15 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
                     </ul>
 
                     <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                      Total {formatBRL(o.totalPrice)}
-                      {paidTotal > 0 && !fullyPaid ? ` · pago ${formatBRL(paidTotal)}` : ''}
+                      {t('totalLine', { amount: formatBRL(o.totalPrice) })}
+                      {paidTotal > 0 && !fullyPaid ? ` · ${t('paidLine', { amount: formatBRL(paidTotal) })}` : ''}
                       {o.paymentMethod
-                        ? ` · ${PAYMENT_METHOD_LABEL[o.paymentMethod] ?? o.paymentMethod}${o.paymentMethod === 'cash' && o.changeFor ? ` (troco p/ ${formatBRL(o.changeFor)})` : ''}`
+                        ? ` · ${paymentMethodLabel(t, o.paymentMethod)}${o.paymentMethod === 'cash' && o.changeFor ? ` (${t('changeForLine', { amount: formatBRL(o.changeFor) })})` : ''}`
                         : ''}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5 flex items-center gap-1.5 flex-wrap">
                       <CalendarClock size={12} /> {formatDate(o.deliveryDate)}
-                      {o.deliveryTime ? ` às ${o.deliveryTime}` : ''}
+                      {o.deliveryTime ? ` ${t('atTime', { time: o.deliveryTime })}` : ''}
                       {o.clientPhone ? (
                         <>
                           <Phone size={12} className="ml-2" /> {o.clientPhone}
@@ -227,10 +227,10 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
                     )}
                     {o.notes && <p className="text-xs text-gray-400 mt-1 italic">{o.notes}</p>}
                   </div>
-                  <button onClick={() => setEditing(o)} className={iconBtn} title="Editar">
+                  <button onClick={() => setEditing(o)} className={iconBtn} title={t('edit')}>
                     <Pencil size={16} />
                   </button>
-                  <button onClick={() => setConfirmId(o.id)} className={iconBtnDanger} title="Excluir">
+                  <button onClick={() => setConfirmId(o.id)} className={iconBtnDanger} title={t('delete')}>
                     <Trash2 size={16} />
                   </button>
                 </div>
@@ -243,7 +243,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
                   >
                     {STATUS.map(s => (
                       <option key={s.value} value={s.value}>
-                        {s.label}
+                        {t(`status.${s.value}`)}
                       </option>
                     ))}
                   </select>
@@ -252,12 +252,12 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
                       onClick={() => setPaying(o)}
                       className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
                     >
-                      <Wallet size={14} /> Adicionar pagamento
+                      <Wallet size={14} /> {t('addPayment')}
                     </button>
                   )}
                   {o.clientPhone && (
                     <a
-                      href={whatsappUrl(o.clientPhone, o.clientName)}
+                      href={whatsappUrl(o.clientPhone, t('whatsappMessage', { name: o.clientName.split(' ')[0] }))}
                       target="_blank"
                       rel="noreferrer"
                       className="flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-lg border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 hover:bg-green-50 dark:hover:bg-green-900/20"
@@ -305,8 +305,8 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
 
       <ConfirmModal
         open={!!confirmId}
-        title="Excluir encomenda"
-        message="Tem certeza? Esta ação não pode ser desfeita."
+        title={t('deleteTitle')}
+        message={t('deleteMessage')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
@@ -316,6 +316,7 @@ export function OrdersPage({ toast }: { toast: ToastFn }) {
 
 /** Registra um pagamento (parcial ou o restante) numa encomenda. */
 function PaymentModal({ order, toast, onClose, onSaved }: { order: Order; toast: ToastFn; onClose: () => void; onSaved: () => void }) {
+  const { t } = useTranslation('orders');
   const current = orderPayments(order);
   const paidTotal = current.reduce((s, p) => s + p.amount, 0);
   const remaining = Math.max(order.totalPrice - paidTotal, 0);
@@ -327,7 +328,7 @@ function PaymentModal({ order, toast, onClose, onSaved }: { order: Order; toast:
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const value = parseLocaleNumber(amount);
-    if (value <= 0) return toast.error('Informe o valor recebido.');
+    if (value <= 0) return toast.error(t('payment.enterAmount'));
     setSaving(true);
     try {
       const payments = [...current, { id: newId(), amount: value, method, date }];
@@ -337,7 +338,7 @@ function PaymentModal({ order, toast, onClose, onSaved }: { order: Order; toast:
         paidAmount: total,
         paid: order.totalPrice > 0 && toCents(total) >= toCents(order.totalPrice),
       });
-      toast.success('Pagamento registrado.');
+      toast.success(t('payment.registered'));
       onSaved();
     } catch (err) {
       toast.error((err as Error).message);
@@ -349,26 +350,26 @@ function PaymentModal({ order, toast, onClose, onSaved }: { order: Order; toast:
   return (
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Adicionar pagamento</h3>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('addPayment')}</h3>
         <p className="text-sm text-gray-500 dark:text-gray-400">
-          {order.clientName} · total {formatBRL(order.totalPrice)} · pago {formatBRL(paidTotal)} · falta {formatBRL(remaining)}
+          {t('payment.summary', { name: order.clientName, total: formatBRL(order.totalPrice), paid: formatBRL(paidTotal), remaining: formatBRL(remaining) })}
         </p>
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Valor (R$)">
+          <FormField label={t('payment.amount')}>
             <input type="text" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} autoFocus />
           </FormField>
-          <FormField label="Data">
+          <FormField label={t('payment.date')}>
             <input type="date" value={date} onChange={e => setDate(e.target.value)} className={inputClass} />
           </FormField>
         </div>
-        <FormField label="Forma de pagamento">
+        <FormField label={t('payment.method')}>
           <select value={method} onChange={e => setMethod(e.target.value as OrderPaymentMethod)} className={inputClass}>
             {PAYMENT_METHODS.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
+              <option key={m} value={m}>{paymentMethodLabel(t, m)}</option>
             ))}
           </select>
         </FormField>
-        <FormActions saving={saving} onClose={onClose} saveLabel="Registrar" />
+        <FormActions saving={saving} onClose={onClose} saveLabel={t('payment.register')} />
       </form>
     </ModalOverlay>
   );
@@ -415,6 +416,7 @@ function OrderForm({
   onSaved: (saved: Order, prevStatus: OrderStatus | null) => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('orders');
   const [clientName, setClientName] = useState(initial?.clientName ?? '');
   const [clientPhone, setClientPhone] = useState(maskPhone(initial?.clientPhone ?? ''));
   const [items, setItems] = useState<ItemDraft[]>(() =>
@@ -468,7 +470,7 @@ function OrderForm({
 
   const addPayment = () => {
     const amount = parseLocaleNumber(newPay.amount);
-    if (amount <= 0) return toast.error('Informe o valor do pagamento.');
+    if (amount <= 0) return toast.error(t('form.enterPaymentAmount'));
     setPayments(prev => [...prev, { id: newId(), amount, method: newPay.method, date: newPay.date }]);
     setNewPay(p => ({ ...p, amount: '' }));
   };
@@ -476,12 +478,12 @@ function OrderForm({
   // asDraft: salva como rascunho — encomenda incompleta para terminar depois.
   // Exige só o cliente; produto e data de entrega ficam opcionais.
   const save = async (asDraft: boolean) => {
-    if (!clientName.trim()) return toast.error('Informe o nome do cliente.');
-    if (clientPhone.trim() && !isValidPhone(clientPhone)) return toast.error('Telefone incompleto. Use DDD + número.');
+    if (!clientName.trim()) return toast.error(t('form.enterClient'));
+    if (clientPhone.trim() && !isValidPhone(clientPhone)) return toast.error(t('form.invalidPhone'));
     const filled = items.filter(i => i.recipeName.trim());
     if (!asDraft) {
-      if (filled.length === 0) return toast.error('Adicione pelo menos um produto.');
-      if (!deliveryDate) return toast.error('Informe a data de entrega.');
+      if (filled.length === 0) return toast.error(t('form.addProduct'));
+      if (!deliveryDate) return toast.error(t('form.enterDeliveryDate'));
     }
 
     const outItems: OrderItem[] = filled.map(i => ({
@@ -520,10 +522,10 @@ function OrderForm({
       let saved: Order;
       if (initial) {
         saved = await userApi.updateOrder(initial.id, data);
-        toast.success(saved?.saleRegistered ? 'Encomenda salva · venda registrada!' : asDraft ? 'Rascunho salvo.' : 'Encomenda atualizada.');
+        toast.success(saved?.saleRegistered ? t('form.savedSaleRegistered') : asDraft ? t('form.draftSaved') : t('form.updated'));
       } else {
         saved = await userApi.createOrder(data);
-        toast.success(saved?.saleRegistered ? 'Encomenda salva · venda registrada!' : asDraft ? 'Rascunho salvo.' : 'Encomenda criada.');
+        toast.success(saved?.saleRegistered ? t('form.savedSaleRegistered') : asDraft ? t('form.draftSaved') : t('form.created'));
       }
       onSaved(saved ?? ({ ...(initial as Order), ...data } as Order), initial?.status ?? null);
     } catch (err) {
@@ -542,12 +544,12 @@ function OrderForm({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-          {initial ? 'Editar encomenda' : 'Nova encomenda'}
+          {initial ? t('form.editTitle') : t('newOrder')}
         </h3>
 
         {/* Cliente */}
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Cliente">
+          <FormField label={t('form.client')}>
             <div className="relative">
               <input value={clientName} onChange={e => setClientName(e.target.value)} className={inputClass} autoFocus />
               {clientSuggestions.length > 0 && (
@@ -570,14 +572,14 @@ function OrderForm({
               )}
             </div>
           </FormField>
-          <FormField label="Telefone (opcional)">
+          <FormField label={t('form.phone')}>
             <input value={clientPhone ?? ''} onChange={e => setClientPhone(maskPhone(e.target.value))} className={inputClass} />
           </FormField>
         </div>
 
         {/* Itens */}
         <div>
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Produtos</p>
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">{t('form.products')}</p>
           <div className="space-y-2">
             {items.map(it => (
               <div key={it.key} className="rounded-xl bg-gray-50 dark:bg-gray-700/40 p-3 space-y-2">
@@ -585,7 +587,7 @@ function OrderForm({
                   <div className="flex-1 min-w-0">
                     {recipes.length > 0 && (
                       <select value={it.recipeId || '__free__'} onChange={e => pickRecipe(it.key, e.target.value)} className={inputClass}>
-                        <option value="__free__">Outro (digitar)</option>
+                        <option value="__free__">{t('form.otherProduct')}</option>
                         {recipes.map(r => (
                           <option key={r.id} value={r.id}>{r.name}</option>
                         ))}
@@ -595,7 +597,7 @@ function OrderForm({
                       <input
                         value={it.recipeName}
                         onChange={e => patchItem(it.key, { recipeName: e.target.value })}
-                        placeholder="Ex.: Bolo de Chocolate"
+                        placeholder={t('form.productPlaceholder')}
                         className={inputClass + (recipes.length > 0 ? ' mt-2' : '')}
                       />
                     )}
@@ -605,19 +607,19 @@ function OrderForm({
                     disabled={items.length === 1}
                     onClick={() => setItems(prev => prev.filter(x => x.key !== it.key))}
                     className="h-10 px-1 text-red-500 disabled:opacity-30"
-                    title="Remover produto"
+                    title={t('form.removeProduct')}
                   >
                     <Trash2 size={16} />
                   </button>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
-                  <FormField label="Qtd.">
+                  <FormField label={t('form.qty')}>
                     <input type="text" inputMode="decimal" value={it.quantity} onChange={e => patchItem(it.key, { quantity: e.target.value })} className={inputClass} />
                   </FormField>
-                  <FormField label="Preço un. (R$)">
+                  <FormField label={t('form.unitPrice')}>
                     <input type="text" inputMode="decimal" value={it.unitPrice} onChange={e => patchItem(it.key, { unitPrice: e.target.value })} className={inputClass} />
                   </FormField>
-                  <FormField label="Desconto">
+                  <FormField label={t('form.discount')}>
                     <div className="flex">
                       <input
                         type="text"
@@ -631,7 +633,7 @@ function OrderForm({
                         type="button"
                         onClick={() => patchItem(it.key, { discountType: it.discountType === 'fixed' ? 'percent' : 'fixed' })}
                         className="px-2 text-xs font-semibold border border-l-0 border-gray-300 dark:border-gray-600 rounded-r-lg text-gray-600 dark:text-gray-300"
-                        title="Alternar entre R$ e %"
+                        title={t('form.toggleDiscount')}
                       >
                         {it.discountType === 'fixed' ? 'R$' : '%'}
                       </button>
@@ -639,7 +641,7 @@ function OrderForm({
                   </FormField>
                 </div>
                 {it.addons && it.addons.length > 0 && (
-                  <p className="text-xs text-gray-500">Adicionais: {it.addons.map(a => a.name).join(', ')}</p>
+                  <p className="text-xs text-gray-500">{t('form.addons', { items: it.addons.map(a => a.name).join(', ') })}</p>
                 )}
               </div>
             ))}
@@ -649,43 +651,43 @@ function OrderForm({
             onClick={() => setItems(prev => [...prev, emptyItem()])}
             className="mt-2 inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700"
           >
-            <Plus size={15} /> Adicionar produto
+            <Plus size={15} /> {t('form.addProductButton')}
           </button>
         </div>
 
         <div className="bg-primary-50 dark:bg-primary-900/30 rounded-lg px-3 py-2 flex items-center justify-between">
-          <span className="text-sm text-primary-700 dark:text-primary-300">Total</span>
+          <span className="text-sm text-primary-700 dark:text-primary-300">{t('form.total')}</span>
           <span className="text-lg font-bold text-primary-700 dark:text-primary-200">{formatBRL(totalPrice)}</span>
         </div>
 
         {/* Entrega */}
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Data de entrega">
+          <FormField label={t('form.deliveryDate')}>
             <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)} className={inputClass} />
           </FormField>
-          <FormField label="Horário (opcional)">
+          <FormField label={t('form.deliveryTime')}>
             <input type="time" value={deliveryTime ?? ''} onChange={e => setDeliveryTime(e.target.value)} className={inputClass} />
           </FormField>
         </div>
         {initial?.deliveryAddress && (
           <div className="rounded-lg bg-sky-50 dark:bg-sky-900/20 px-3 py-2 text-sm text-sky-800 dark:text-sky-200 flex items-start gap-2">
             <MapPin size={15} className="mt-0.5 shrink-0" />
-            <span><span className="font-semibold">Endereço de entrega:</span> {initial.deliveryAddress}</span>
+            <span><span className="font-semibold">{t('form.deliveryAddress')}</span> {initial.deliveryAddress}</span>
           </div>
         )}
 
         {/* Pagamento */}
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Forma de pagamento combinada">
+          <FormField label={t('form.agreedMethod')}>
             <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as OrderPaymentMethod | '')} className={inputClass}>
-              <option value="">Não informada</option>
+              <option value="">{t('form.notInformed')}</option>
               {PAYMENT_METHODS.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
+                <option key={m} value={m}>{paymentMethodLabel(t, m)}</option>
               ))}
             </select>
           </FormField>
           {paymentMethod === 'cash' && (
-            <FormField label="Troco para (R$)">
+            <FormField label={t('form.changeFor')}>
               <input type="text" inputMode="decimal" value={changeFor} onChange={e => setChangeFor(e.target.value)} placeholder="0,00" className={inputClass} />
             </FormField>
           )}
@@ -693,17 +695,17 @@ function OrderForm({
 
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">Pagamentos recebidos</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200">{t('form.paymentsReceived')}</p>
             <p className="text-xs text-gray-500">
-              Pago {formatBRL(totalPaid)} · {remaining > 0 ? `falta ${formatBRL(remaining)}` : 'quitado'}
+              {t('form.paidSummary', { amount: formatBRL(totalPaid) })} · {remaining > 0 ? t('form.remaining', { amount: formatBRL(remaining) }) : t('form.settled')}
             </p>
           </div>
           {payments.map(p => (
             <div key={p.id} className="flex items-center justify-between text-sm">
               <span className="text-gray-600 dark:text-gray-300">
-                {formatBRL(p.amount)} · {PAYMENT_METHOD_LABEL[p.method] ?? p.method} · {formatDate(p.date)}
+                {formatBRL(p.amount)} · {paymentMethodLabel(t, p.method)} · {formatDate(p.date)}
               </span>
-              <button type="button" onClick={() => setPayments(prev => prev.filter(x => x.id !== p.id))} className="text-gray-400 hover:text-red-500" title="Remover">
+              <button type="button" onClick={() => setPayments(prev => prev.filter(x => x.id !== p.id))} className="text-gray-400 hover:text-red-500" title={t('form.remove')}>
                 <X size={15} />
               </button>
             </div>
@@ -714,12 +716,12 @@ function OrderForm({
               inputMode="decimal"
               value={newPay.amount}
               onChange={e => setNewPay(p => ({ ...p, amount: e.target.value }))}
-              placeholder={remaining > 0 ? remaining.toFixed(2).replace('.', ',') : 'Valor'}
+              placeholder={remaining > 0 ? remaining.toFixed(2).replace('.', ',') : t('form.amountPlaceholder')}
               className={inputClass + ' col-span-4'}
             />
             <select value={newPay.method} onChange={e => setNewPay(p => ({ ...p, method: e.target.value as OrderPaymentMethod }))} className={inputClass + ' col-span-3'}>
               {PAYMENT_METHODS.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
+                <option key={m} value={m}>{paymentMethodLabel(t, m)}</option>
               ))}
             </select>
             <input type="date" value={newPay.date} onChange={e => setNewPay(p => ({ ...p, date: e.target.value }))} className={inputClass + ' col-span-3'} />
@@ -727,24 +729,24 @@ function OrderForm({
               type="button"
               onClick={addPayment}
               className="col-span-2 h-10 rounded-lg bg-primary-500 hover:bg-primary-600 text-white flex items-center justify-center"
-              title="Adicionar pagamento"
+              title={t('addPayment')}
             >
               <Plus size={16} />
             </button>
           </div>
         </div>
 
-        <FormField label="Situação">
+        <FormField label={t('form.status')}>
           <select value={status} onChange={e => setStatus(e.target.value as OrderStatus)} className={inputClass}>
             {STATUS.map(s => (
               <option key={s.value} value={s.value}>
-                {s.label}
+                {t(`status.${s.value}`)}
               </option>
             ))}
           </select>
         </FormField>
 
-        <FormField label="Observações (opcional)">
+        <FormField label={t('form.notes')}>
           <input value={notes ?? ''} onChange={e => setNotes(e.target.value)} className={inputClass} />
         </FormField>
 
@@ -755,7 +757,7 @@ function OrderForm({
             disabled={saving}
             className="text-sm px-4 py-2 rounded-lg font-medium border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50"
           >
-            Salvar como rascunho
+            {t('form.saveDraft')}
           </button>
           <FormActions saving={saving} onClose={onClose} />
         </div>

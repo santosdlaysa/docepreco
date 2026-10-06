@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Lock, Sparkles, Check } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { ToastFn } from '../../components';
@@ -20,6 +21,7 @@ export function Paywall({
   toast: ToastFn;
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslation('account');
   const meta = TIER_META[required];
   const source = ({ clients: 'clientsManagement', orders: 'ordersManagement', store: 'store', stock: 'stock', finance: 'finance', tips: 'salesTips' } as Record<string, string>)[featureKey] ?? 'other';
   const trackedSource = useRef('');
@@ -40,22 +42,22 @@ export function Paywall({
         <div className="w-14 h-14 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
           {Icon ? <Icon size={26} className="text-white" /> : <Lock size={26} className="text-white" />}
         </div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-white/80">Recurso {meta.label}</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-white/80">{t('paywall.featureOf', { tier: meta.label })}</p>
         <h2 className="text-2xl font-extrabold text-white tracking-tight mt-1">{featureLabel}</h2>
         <p className="text-sm text-white/85 mt-2 max-w-sm mx-auto">
-          Este recurso faz parte do plano {meta.label}. Assine para desbloquear e turbinar a gestão da sua confeitaria.
+          {t('paywall.description', { tier: meta.label })}
         </p>
         <button
           onClick={() => { userApi.trackConversion('offer_clicked', source, required); setOpen(true); }}
           className="mt-5 inline-flex items-center gap-2 bg-white text-gray-900 font-semibold rounded-xl px-5 py-2.5 hover:bg-white/90 transition-colors"
         >
           <Sparkles size={16} className={meta.color} />
-          Assinar {meta.label}
+          {t('paywall.subscribe', { tier: meta.label })}
         </button>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 p-6 mt-4">
-        <p className="font-semibold text-gray-900 dark:text-white mb-3">O que você desbloqueia</p>
+        <p className="font-semibold text-gray-900 dark:text-white mb-3">{t('paywall.unlocks')}</p>
         <ul className="space-y-2">
           {meta.features.map((f, i) => (
             <li key={i} className="flex gap-2.5 text-sm text-gray-700 dark:text-gray-200">

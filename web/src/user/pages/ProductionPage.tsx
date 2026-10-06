@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarClock, CheckCircle2, CookingPot, Loader2, PackageCheck, Users } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { ToastFn } from '../../components';
 import { formatDate, todayISO } from '../format';
 import { Order, userApi } from '../userApi';
@@ -8,14 +9,11 @@ import { ProductionPlanner } from './ProductionPlanner';
 
 type ProductionStatus = 'pending' | 'in_progress' | 'done';
 
-const STATUS: Record<ProductionStatus, string> = {
-  pending: 'Pendente',
-  in_progress: 'Em produção',
-  done: 'Pronto',
-};
+const STATUS: ProductionStatus[] = ['pending', 'in_progress', 'done'];
 
 /** Ordem de produção gerada automaticamente a partir das encomendas em aberto. */
 export function ProductionPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('orders');
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -48,7 +46,7 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
     try {
       await userApi.updateOrder(order.id, { status });
       setOrders(current => current.map(item => item.id === order.id ? { ...item, status } : item));
-      toast.success(status === 'done' ? 'Produção marcada como pronta.' : 'Etapa de produção atualizada.');
+      toast.success(status === 'done' ? t('productionPage.markedDone') : t('productionPage.stepUpdated'));
     } catch (error) {
       toast.error((error as Error).message);
     } finally {
@@ -61,16 +59,16 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
   const today = todayISO();
 
   return <div>
-    <Header title="Produção inteligente" subtitle="Organize suas encomendas e saiba o que precisa comprar" />
+    <Header title={t('productionPage.title')} subtitle={t('productionPage.subtitle')} />
     <ProductionPlanner revision={orders} />
 
     {loading ? <div className="py-16 flex justify-center"><Loader2 className="animate-spin text-primary-500" /></div>
-      : productionOrders.length === 0 ? <EmptyState icon={CookingPot} text="Nenhuma produção pendente. As novas encomendas aparecerão aqui automaticamente." />
+      : productionOrders.length === 0 ? <EmptyState icon={CookingPot} text={t('productionPage.empty')} />
       : <>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-5">
-          <Metric icon={PackageCheck} label="Itens a produzir" value={String(totalItems)} />
-          <Metric icon={Users} label="Encomendas" value={String(productionOrders.length)} />
-          <Metric icon={CalendarClock} label="Para hoje" value={String(byDate[today]?.length ?? 0)} />
+          <Metric icon={PackageCheck} label={t('productionPage.itemsToProduce')} value={String(totalItems)} />
+          <Metric icon={Users} label={t('productionPage.orders')} value={String(productionOrders.length)} />
+          <Metric icon={CalendarClock} label={t('productionPage.forToday')} value={String(byDate[today]?.length ?? 0)} />
         </div>
         <div className="space-y-5">
           {Object.entries(byDate).map(([date, dateOrders]) => {
@@ -80,11 +78,11 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
             }, {});
             return <section key={date}>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="font-semibold text-gray-900 dark:text-white">{!date ? 'Sem data' : date === today ? 'Hoje' : formatDate(date)}</h2>
-                <span className="text-xs text-gray-500">{dateOrders.length} encomenda{dateOrders.length === 1 ? '' : 's'}</span>
+                <h2 className="font-semibold text-gray-900 dark:text-white">{!date ? t('productionPage.noDate') : date === today ? t('productionPage.today') : formatDate(date)}</h2>
+                <span className="text-xs text-gray-500">{t('productionPage.orderCount', { count: dateOrders.length })}</span>
               </div>
               <div className="rounded-xl border border-primary-100 dark:border-primary-900/50 bg-primary-50/50 dark:bg-primary-900/10 p-3 mb-3">
-                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300 mb-1.5">Resumo para produzir</p>
+                <p className="text-xs font-semibold uppercase tracking-wide text-primary-700 dark:text-primary-300 mb-1.5">{t('productionPage.summary')}</p>
                 <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-700 dark:text-gray-200">
                   {Object.entries(recipes).map(([recipe, quantity]) => <span key={recipe}><b>{quantity}×</b> {recipe}</span>)}
                 </div>
@@ -96,7 +94,7 @@ export function ProductionPage({ toast }: { toast: ToastFn }) {
                     <p className="text-xs text-gray-500 mt-0.5">{order.clientName}{order.deliveryTime ? ` · ${order.deliveryTime}` : ''}{order.notes ? ` · ${order.notes}` : ''}</p>
                   </div>
                   <select value={order.status} disabled={updating === order.id} onChange={event => updateStatus(order, event.target.value as ProductionStatus)} className={inputClass + ' !w-auto text-xs py-1.5'}>
-                    {Object.entries(STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    {STATUS.map(value => <option key={value} value={value}>{t(`productionPage.status.${value}`)}</option>)}
                   </select>
                 </article>)}
               </div>

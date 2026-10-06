@@ -1,4 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
+import { getLang } from '../../i18n';
 import { Send, ImagePlus, Headset, X, Loader2, Crown, MessageCircle } from 'lucide-react';
 import { SUPPORT_WHATSAPP } from '../engagementApi';
 import { imageFileToJpegDataUrl } from '../../lib/image';
@@ -9,7 +11,7 @@ import { SubscribeModal } from '../SubscribeModal';
 function formatTime(iso: string): string {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
-  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  return d.toLocaleTimeString(getLang() === 'en' ? 'en-US' : 'pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 // A equipe pode enviar [[assinar]] (ou [[assinar:master]]) numa mensagem; isso vira
@@ -24,6 +26,7 @@ function parseSubscribeCta(message: string): { text: string; cta: 'premium' | 'm
 }
 
 export function SupportPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('account');
   const [messages, setMessages] = useState<SupportMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -72,7 +75,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
   const pickImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) return toast.error('Imagem muito grande (máx. 3 MB).');
+    if (file.size > 3 * 1024 * 1024) return toast.error(t('support.imageTooLarge'));
     e.target.value = '';
     imageFileToJpegDataUrl(file)
       .then(setImage)
@@ -106,16 +109,16 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
           <Headset size={20} className="text-white" />
         </div>
         <div className="flex-1">
-          <p className="font-bold text-gray-900 dark:text-white">Suporte DocePreço</p>
-          <p className="text-xs text-green-600 dark:text-green-400">Fale com a nossa equipe</p>
+          <p className="font-bold text-gray-900 dark:text-white">{t('support.title')}</p>
+          <p className="text-xs text-green-600 dark:text-green-400">{t('support.subtitle')}</p>
         </div>
         <a
-          href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent('Olá! Preciso de ajuda com o DocePreço.')}`}
+          href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(t('support.whatsappMessage'))}`}
           target="_blank"
           rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-400 border border-green-200 dark:border-green-900/50 rounded-lg px-2.5 py-1.5 hover:bg-green-50 dark:hover:bg-green-900/20"
         >
-          <MessageCircle size={14} /> WhatsApp
+          <MessageCircle size={14} /> {t('support.whatsapp')}
         </a>
       </div>
 
@@ -129,7 +132,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
           <div className="h-full flex flex-col items-center justify-center text-center px-6">
             <Headset size={36} className="text-gray-300 dark:text-gray-600 mb-3" />
             <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
-              Precisa de ajuda? Envie sua mensagem que a equipe do DocePreço responde por aqui.
+              {t('support.empty')}
             </p>
           </div>
         ) : (
@@ -155,7 +158,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
                       className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-500 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-primary-600 transition-colors"
                     >
                       <Crown size={15} />
-                      Assinar {cta === 'master' ? 'Master' : 'agora'}
+                      {cta === 'master' ? t('support.subscribeMaster') : t('support.subscribeNow')}
                     </button>
                   )}
                   <p className={`text-[10px] mt-1 ${mine ? 'text-white/70' : 'text-gray-400'}`}>{formatTime(m.createdAt)}</p>
@@ -183,6 +186,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
           <img src={image} alt="" className="w-16 h-16 rounded-lg object-cover" />
           <button
             onClick={() => setImage(null)}
+            aria-label={t('support.removeImage')}
             className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-gray-900 text-white flex items-center justify-center"
           >
             <X size={12} />
@@ -192,7 +196,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
 
       {/* Barra de envio */}
       <div className="flex items-end gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-        <label className="shrink-0 w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center cursor-pointer text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700">
+        <label title={t('support.attachImage')} className="shrink-0 w-10 h-10 rounded-lg border border-gray-200 dark:border-gray-600 flex items-center justify-center cursor-pointer text-gray-500 hover:bg-gray-50 dark:hover:bg-gray-700">
           <ImagePlus size={18} />
           <input type="file" accept="image/*" className="hidden" onChange={pickImage} />
         </label>
@@ -205,7 +209,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
               send();
             }
           }}
-          placeholder="Escreva sua mensagem..."
+          placeholder={t('support.placeholder')}
           rows={1}
           maxLength={1000}
           className="flex-1 resize-none border border-gray-300 dark:border-gray-600 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white max-h-32"
@@ -213,6 +217,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
         <button
           onClick={send}
           disabled={sending || (!text.trim() && !image)}
+          aria-label={t('support.send')}
           className="shrink-0 w-10 h-10 rounded-lg bg-primary-500 hover:bg-primary-600 disabled:opacity-40 text-white flex items-center justify-center transition-colors"
         >
           {sending ? <Loader2 size={18} className="animate-spin-slow" /> : <Send size={18} />}

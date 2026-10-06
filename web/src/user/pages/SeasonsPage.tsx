@@ -5,8 +5,10 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
+import { useTranslation } from 'react-i18next';
 
 export function SeasonsPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('ops');
   const [items, setItems] = useState<Season[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Season | null>(null);
@@ -32,7 +34,7 @@ export function SeasonsPage({ toast }: { toast: ToastFn }) {
     if (!confirmId) return;
     try {
       await userApi.deleteSeason(confirmId);
-      toast.success('Temporada excluída.');
+      toast.success(t('sea.deleted'));
       setConfirmId(null);
       load();
     } catch (e) {
@@ -43,10 +45,10 @@ export function SeasonsPage({ toast }: { toast: ToastFn }) {
   return (
     <div>
       <Header
-        title="Temporadas"
-        subtitle="Ajuste preços em datas especiais (ex.: Páscoa, Natal)"
+        title={t('sea.title')}
+        subtitle={t('sea.subtitle')}
         onAdd={() => setCreating(true)}
-        addLabel="Nova temporada"
+        addLabel={t('sea.new')}
       />
 
       {loading ? (
@@ -54,7 +56,7 @@ export function SeasonsPage({ toast }: { toast: ToastFn }) {
           <TableSkeleton rows={4} cols={3} />
         </div>
       ) : items.length === 0 ? (
-        <EmptyState icon={CalendarRange} text="Nenhuma temporada cadastrada." />
+        <EmptyState icon={CalendarRange} text={t('sea.empty')} />
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {items.map(s => (
@@ -65,10 +67,10 @@ export function SeasonsPage({ toast }: { toast: ToastFn }) {
                   {formatDate(s.startDate)} – {formatDate(s.endDate)} · ×{s.multiplier}
                 </p>
               </div>
-              <button onClick={() => setEditing(s)} className={iconBtn}>
+              <button onClick={() => setEditing(s)} className={iconBtn} title={t('sea.edit')}>
                 <Pencil size={16} />
               </button>
-              <button onClick={() => setConfirmId(s.id)} className={iconBtnDanger}>
+              <button onClick={() => setConfirmId(s.id)} className={iconBtnDanger} title={t('sea.delete')}>
                 <Trash2 size={16} />
               </button>
             </div>
@@ -94,8 +96,8 @@ export function SeasonsPage({ toast }: { toast: ToastFn }) {
 
       <ConfirmModal
         open={!!confirmId}
-        title="Excluir temporada"
-        message="Tem certeza?"
+        title={t('sea.delete')}
+        message={t('sales.confirmMsg')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
@@ -114,6 +116,7 @@ function SeasonForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('ops');
   const [name, setName] = useState(initial?.name ?? '');
   const [startDate, setStartDate] = useState(initial?.startDate?.slice(0, 10) ?? todayISO());
   const [endDate, setEndDate] = useState(initial?.endDate?.slice(0, 10) ?? todayISO());
@@ -122,7 +125,7 @@ function SeasonForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error('Informe o nome.');
+    if (!name.trim()) return toast.error(t('sea.errName'));
     setSaving(true);
     const data = {
       name: name.trim(),
@@ -133,10 +136,10 @@ function SeasonForm({
     try {
       if (initial) {
         await userApi.updateSeason(initial.id, data);
-        toast.success('Temporada atualizada.');
+        toast.success(t('sea.updated'));
       } else {
         await userApi.createSeason(data);
-        toast.success('Temporada criada.');
+        toast.success(t('sea.created'));
       }
       onSaved();
     } catch (err) {
@@ -150,23 +153,23 @@ function SeasonForm({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-          {initial ? 'Editar temporada' : 'Nova temporada'}
+          {initial ? t('sea.edit') : t('sea.new')}
         </h3>
 
-        <FormField label="Nome">
+        <FormField label={t('sea.name')}>
           <input value={name} onChange={e => setName(e.target.value)} className={inputClass} autoFocus />
         </FormField>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Início">
+          <FormField label={t('sea.start')}>
             <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className={inputClass} />
           </FormField>
-          <FormField label="Fim">
+          <FormField label={t('sea.end')}>
             <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className={inputClass} />
           </FormField>
         </div>
 
-        <FormField label="Multiplicador de preço (ex.: 1.2 = +20%)">
+        <FormField label={t('sea.multiplier')}>
           <input
             type="text"
             inputMode="decimal"

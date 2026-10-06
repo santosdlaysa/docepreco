@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import i18n, { getLang } from '../i18n';
 import { req, saveToken, AuthUser } from './userApi';
 import { useAuth } from './UserAuthContext';
 
@@ -31,7 +32,7 @@ function loadScript(): Promise<void> {
     s.src = 'https://accounts.google.com/gsi/client';
     s.async = true;
     s.onload = () => resolve();
-    s.onerror = () => { scriptPromise = null; reject(new Error('Não foi possível carregar o login do Google.')); };
+    s.onerror = () => { scriptPromise = null; reject(new Error(i18n.t('account:google.loadError'))); };
     document.head.appendChild(s);
   });
   return scriptPromise;
@@ -51,7 +52,7 @@ export function GoogleSignInButton({ onError }: { onError: (msg: string) => void
         window.google.accounts.id.initialize({
           client_id: CLIENT_ID,
           callback: async ({ credential }) => {
-            if (!credential) return onError('Login com Google cancelado.');
+            if (!credential) return onError(i18n.t('account:google.cancelled'));
             setBusy(true);
             try {
               const { user, token } = await req<{ user: AuthUser; token: string; isNew?: boolean }>('/auth/social', {
@@ -61,14 +62,14 @@ export function GoogleSignInButton({ onError }: { onError: (msg: string) => void
               saveToken(token);
               setUser(user);
             } catch (err) {
-              onError((err as Error).message || 'Não foi possível entrar com o Google.');
+              onError((err as Error).message || i18n.t('account:google.error'));
             } finally {
               setBusy(false);
             }
           },
         });
         window.google.accounts.id.renderButton(ref.current, {
-          theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', width: 320, locale: 'pt-BR',
+          theme: 'outline', size: 'large', text: 'continue_with', shape: 'rectangular', width: 320, locale: getLang() === 'en' ? 'en' : 'pt-BR',
         });
       })
       .catch(err => onError((err as Error).message));

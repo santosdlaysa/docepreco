@@ -4,6 +4,8 @@ import { userApi, Client, CreateClientDTO } from '../userApi';
 import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../components';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { maskPhone, isValidPhone } from '../phone';
+import { useTranslation } from 'react-i18next';
+import { getLang } from '../../i18n';
 
 const MONTHS = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
 const AVATAR_GRADIENTS = [
@@ -35,6 +37,7 @@ function birthdayLabel(birthday: string | null): string | null {
 }
 
 export function ClientsPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('ops');
   const [items, setItems] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -61,7 +64,7 @@ export function ClientsPage({ toast }: { toast: ToastFn }) {
     if (!confirmId) return;
     try {
       await userApi.deleteClient(confirmId);
-      toast.success('Cliente excluído.');
+      toast.success(t('cli.deleted'));
       setConfirmId(null);
       load();
     } catch (e) {
@@ -76,10 +79,10 @@ export function ClientsPage({ toast }: { toast: ToastFn }) {
   return (
     <div>
       <Header
-        title="Clientes"
-        subtitle={`${items.length} cadastrado${items.length !== 1 ? 's' : ''}`}
+        title={t('cli.title')}
+        subtitle={t('ing.count', { count: items.length })}
         onAdd={() => setCreating(true)}
-        addLabel="Novo cliente"
+        addLabel={t('cli.new')}
       />
 
       {!loading && items.length > 0 && (
@@ -88,7 +91,7 @@ export function ClientsPage({ toast }: { toast: ToastFn }) {
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar cliente..."
+            placeholder={t('cli.searchPh')}
             className={inputClass + ' pl-9'}
           />
         </div>
@@ -99,9 +102,9 @@ export function ClientsPage({ toast }: { toast: ToastFn }) {
           <TableSkeleton rows={6} cols={2} />
         </div>
       ) : items.length === 0 ? (
-        <EmptyState icon={Users} text="Nenhum cliente cadastrado ainda. Adicione o primeiro." />
+        <EmptyState icon={Users} text={t('cli.empty')} />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={Search} text="Nenhum cliente encontrado para essa busca." />
+        <EmptyState icon={Search} text={t('cli.emptySearch')} />
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {filtered.map((c, idx) => {
@@ -118,12 +121,12 @@ export function ClientsPage({ toast }: { toast: ToastFn }) {
                     {c.name}
                     {soon && (
                       <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300">
-                        Aniversário 🎂
+                        {t('cli.birthday')}
                       </span>
                     )}
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {c.phone || 'Sem telefone'}
+                    {c.phone || t('cli.noPhone')}
                     {bday ? ` · 🎂 ${bday}` : ''}
                   </p>
                 </div>
@@ -133,15 +136,15 @@ export function ClientsPage({ toast }: { toast: ToastFn }) {
                     target="_blank"
                     rel="noreferrer"
                     className="p-2 rounded-lg text-gray-400 hover:text-green-600 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    title="Abrir no WhatsApp"
+                    title={t('cli.whatsapp')}
                   >
                     <MessageCircle size={16} />
                   </a>
                 )}
-                <button onClick={() => setEditing(c)} className={iconBtn}>
+                <button onClick={() => setEditing(c)} className={iconBtn} title={t('cli.edit')}>
                   <Pencil size={16} />
                 </button>
-                <button onClick={() => setConfirmId(c.id)} className={iconBtnDanger}>
+                <button onClick={() => setConfirmId(c.id)} className={iconBtnDanger} title={t('cli.delete')}>
                   <Trash2 size={16} />
                 </button>
               </div>
@@ -161,8 +164,8 @@ export function ClientsPage({ toast }: { toast: ToastFn }) {
 
       <ConfirmModal
         open={!!confirmId}
-        title="Excluir cliente"
-        message="Tem certeza? Esta ação não pode ser desfeita."
+        title={t('cli.delete')}
+        message={t('confirmDeleteMsg')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
@@ -181,6 +184,7 @@ function ClientForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('ops');
   const editingId = initial?.id ?? null;
   const [name, setName] = useState(initial?.name ?? '');
   const [phone, setPhone] = useState(maskPhone(initial?.phone ?? ''));
@@ -193,14 +197,14 @@ function ClientForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error('Informe o nome.');
-    if (phone.trim() && !isValidPhone(phone)) return toast.error('Telefone incompleto. Use DDD + número.');
+    if (!name.trim()) return toast.error(t('cli.errName'));
+    if (phone.trim() && !isValidPhone(phone)) return toast.error(t('cli.errPhone'));
 
     let birthday: string | null = null;
     if (bDay && bMonth) {
       const d = Number(bDay), m = Number(bMonth);
-      if (d < 1 || d > 31) return toast.error('Dia de aniversário inválido.');
-      if (m < 1 || m > 12) return toast.error('Mês de aniversário inválido.');
+      if (d < 1 || d > 31) return toast.error(t('cli.errDay'));
+      if (m < 1 || m > 12) return toast.error(t('cli.errMonth'));
       birthday = `${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     }
 
@@ -216,10 +220,10 @@ function ClientForm({
     try {
       if (editingId) {
         await userApi.updateClient(editingId, data);
-        toast.success('Cliente atualizado.');
+        toast.success(t('cli.updated'));
       } else {
         await userApi.createClient(data);
-        toast.success('Cliente cadastrado.');
+        toast.success(t('cli.created'));
       }
       onSaved();
     } catch (err) {
@@ -233,48 +237,48 @@ function ClientForm({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-          {editingId ? 'Editar cliente' : 'Novo cliente'}
+          {editingId ? t('cli.edit') : t('cli.new')}
         </h3>
 
-        <FormField label="Nome">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Dona Ana" className={inputClass} autoFocus />
+        <FormField label={t('cli.name')}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={t('cli.namePh')} className={inputClass} autoFocus />
         </FormField>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Telefone / WhatsApp">
+          <FormField label={t('cli.phone')}>
             <input value={phone} onChange={e => setPhone(maskPhone(e.target.value))} placeholder="(00) 00000-0000" className={inputClass} />
           </FormField>
-          <FormField label="E-mail (opcional)">
+          <FormField label={t('cli.email')}>
             <input value={email} onChange={e => setEmail(e.target.value)} className={inputClass} />
           </FormField>
         </div>
 
-        <FormField label="Aniversário (opcional)">
+        <FormField label={t('cli.birthdayLabel')}>
           <div className="flex gap-3">
             <input
               type="text"
               inputMode="numeric"
               value={bDay}
               onChange={e => setBDay(e.target.value.replace(/\D/g, '').slice(0, 2))}
-              placeholder="Dia"
+              placeholder={t('cli.day')}
               className={`${inputClass} w-24`}
             />
             <select value={bMonth} onChange={e => setBMonth(e.target.value)} className={inputClass}>
-              <option value="">Mês</option>
+              <option value="">{t('cli.month')}</option>
               {MONTHS.map((m, i) => (
                 <option key={m} value={m}>
-                  {new Date(2000, i, 1).toLocaleDateString('pt-BR', { month: 'long' })}
+                  {new Date(2000, i, 1).toLocaleDateString(getLang() === 'en' ? 'en-US' : 'pt-BR', { month: 'long' })}
                 </option>
               ))}
             </select>
           </div>
         </FormField>
 
-        <FormField label="Endereço (opcional)">
+        <FormField label={t('cli.address')}>
           <input value={address} onChange={e => setAddress(e.target.value)} className={inputClass} />
         </FormField>
 
-        <FormField label="Observações (opcional)">
+        <FormField label={t('cli.notes')}>
           <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />
         </FormField>
 

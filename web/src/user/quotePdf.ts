@@ -1,5 +1,8 @@
 import { Recipe, CalculationResult } from './userApi';
 import { PdfSettings } from './localPrefs';
+import i18n, { getLang } from '../i18n';
+
+const tr = (key: string, opts?: Record<string, unknown>) => i18n.t(`recipes:${key}`, opts);
 
 const fmt = (v: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(v || 0);
 
@@ -27,13 +30,13 @@ export function printRecipeQuote(
   const logoHtml = pdf?.logoBase64?.startsWith('data:image/')
     ? `<img src="${esc(pdf.logoBase64)}" style="width:48px;height:48px;border-radius:8px;object-fit:cover;margin-right:12px" />`
     : '';
-  const dateLabel = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+  const dateLabel = new Date().toLocaleDateString(getLang() === 'en' ? 'en-US' : 'pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
 
   const ingredientRows = (recipe.ingredients ?? [])
     .map(
       (ri, i) => `<tr>
         <td style="color:#bbb;width:28px">${i + 1}</td>
-        <td>${esc(ri.ingredientName || 'Ingrediente')}</td>
+        <td>${esc(ri.ingredientName || tr('pdfIngredient'))}</td>
         <td style="text-align:right">${ri.quantityUsed} ${esc(ri.unit)}</td>
       </tr>`
     )
@@ -42,7 +45,7 @@ export function printRecipeQuote(
   const additionalRows = (recipe.additionalCosts ?? [])
     .map(
       c => `<tr><td colspan="2">${esc(c.name)}</td>
-        <td style="text-align:right;color:${BRAND};font-weight:600">${fmt(c.value)} ${c.costType === 'unit' ? '/ un' : '/ receita'}</td></tr>`
+        <td style="text-align:right;color:${BRAND};font-weight:600">${fmt(c.value)} ${c.costType === 'unit' ? tr('pdfPerUnit') : tr('pdfPerRecipe')}</td></tr>`
     )
     .join('');
 
@@ -52,8 +55,8 @@ export function printRecipeQuote(
       <td style="text-align:right;${strong ? `font-weight:700;color:${BRAND}` : 'font-weight:600'}">${value}</td>
     </tr>`;
 
-  const html = `<!doctype html><html><head><meta charset="utf-8"/>
-  <title>Orçamento - ${esc(recipe.name)}</title>
+  const html = `<!doctype html><html lang="${getLang() === 'en' ? 'en' : 'pt-BR'}"><head><meta charset="utf-8"/>
+  <title>${esc(tr('pdfTitle', { name: recipe.name }))}</title>
   <style>
     * { box-sizing: border-box; }
     body { font-family: Arial, Helvetica, sans-serif; color: #333; padding: 36px; max-width: 800px; margin: 0 auto; }
@@ -84,37 +87,37 @@ export function printRecipeQuote(
         <div class="brand">DocePreço</div>
         ${companyName ? `<div class="company">${esc(companyName)}</div>` : ''}
         ${pdf?.companySlogan ? `<div class="company" style="font-style:italic">${esc(pdf.companySlogan)}</div>` : ''}
-        <div class="date">Gerado em ${dateLabel}</div>
+        <div class="date">${esc(tr('pdfGeneratedOn', { date: dateLabel }))}</div>
       </div>
     </div>
 
     <h1>${esc(recipe.name)}</h1>
-    <div class="sub">Orçamento detalhado de produção</div>
+    <div class="sub">${tr('pdfSubtitle')}</div>
 
     <div class="meta">
-      <div class="card"><div class="lbl">Rendimento</div><div class="val">${recipe.yield}</div></div>
-      <div class="card"><div class="lbl">Acréscimo</div><div class="val">${recipe.profitMargin}%</div></div>
-      <div class="card"><div class="lbl">Ingredientes</div><div class="val">${recipe.ingredients?.length ?? 0}</div></div>
+      <div class="card"><div class="lbl">${tr('pdfYield')}</div><div class="val">${recipe.yield}</div></div>
+      <div class="card"><div class="lbl">${tr('pdfMarkup')}</div><div class="val">${recipe.profitMargin}%</div></div>
+      <div class="card"><div class="lbl">${tr('pdfIngredients')}</div><div class="val">${recipe.ingredients?.length ?? 0}</div></div>
     </div>
 
     <div class="hl">
-      <div class="box p"><div class="lbl">Preço sugerido / un</div><div class="val">${fmt(calc.suggestedPrice)}</div></div>
-      <div class="box g"><div class="lbl">Lucro estimado (total)</div><div class="val">${fmt(calc.estimatedProfit)}</div></div>
+      <div class="box p"><div class="lbl">${tr('pdfSuggested')}</div><div class="val">${fmt(calc.suggestedPrice)}</div></div>
+      <div class="box g"><div class="lbl">${tr('pdfProfit')}</div><div class="val">${fmt(calc.estimatedProfit)}</div></div>
     </div>
 
-    ${ingredientRows ? `<h2>Ingredientes</h2><table>${ingredientRows}</table>` : ''}
-    ${additionalRows ? `<h2>Custos adicionais</h2><table>${additionalRows}</table>` : ''}
+    ${ingredientRows ? `<h2>${tr('pdfIngredients')}</h2><table>${ingredientRows}</table>` : ''}
+    ${additionalRows ? `<h2>${tr('pdfAdditional')}</h2><table>${additionalRows}</table>` : ''}
 
-    <h2>Resumo financeiro</h2>
+    <h2>${tr('pdfSummary')}</h2>
     <table>
-      ${breakdownRow('Custo dos ingredientes', fmt(calc.ingredientsCost))}
-      ${calc.subRecipesCost > 0 ? breakdownRow('Custo das sub-receitas', fmt(calc.subRecipesCost)) : ''}
-      ${calc.additionalCostTotal > 0 ? breakdownRow('Custos adicionais', fmt(calc.additionalCostTotal)) : ''}
-      ${breakdownRow('Custo por unidade', fmt(calc.costPerUnit))}
-      ${breakdownRow('Custo total', fmt(calc.totalCost), true)}
+      ${breakdownRow(tr('pdfIngredientsCost'), fmt(calc.ingredientsCost))}
+      ${calc.subRecipesCost > 0 ? breakdownRow(tr('pdfSubCost'), fmt(calc.subRecipesCost)) : ''}
+      ${calc.additionalCostTotal > 0 ? breakdownRow(tr('pdfAdditional'), fmt(calc.additionalCostTotal)) : ''}
+      ${breakdownRow(tr('pdfCostPerUnit'), fmt(calc.costPerUnit))}
+      ${breakdownRow(tr('pdfTotalCost'), fmt(calc.totalCost), true)}
     </table>
 
-    ${pdf?.hideWatermark ? '' : '<div class="footer">Orçamento gerado por DocePreço</div>'}
+    ${pdf?.hideWatermark ? '' : `<div class="footer">${tr('pdfFooter')}</div>`}
   </body></html>`;
 
   const w = window.open('', '_blank');

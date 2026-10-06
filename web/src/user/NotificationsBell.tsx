@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n, { getLang } from '../i18n';
 import { Bell, X, Info, AlertTriangle, Gift, ArrowUpCircle, Store, ShoppingBag, ExternalLink } from 'lucide-react';
 import { userApi, PlanTier } from './userApi';
 import { engagementApi, Banner, getMissingStoreItems, localPref } from './engagementApi';
@@ -19,9 +21,10 @@ interface OnlineOrder { id: string; clientName: string; totalPrice: number; crea
 
 const fmtWhen = (iso: string) => {
   const d = new Date(iso);
-  const time = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-  if (d.toDateString() === new Date().toDateString()) return `Hoje às ${time}`;
-  return `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} às ${time}`;
+  const locale = getLang() === 'en' ? 'en-US' : 'pt-BR';
+  const time = d.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
+  if (d.toDateString() === new Date().toDateString()) return i18n.t('app:bell.todayAt', { time });
+  return i18n.t('app:bell.dateAt', { date: d.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' }), time });
 };
 
 /**
@@ -29,6 +32,7 @@ const fmtWhen = (iso: string) => {
  * por plano, loja com cadastro incompleto e novos pedidos da loja online.
  */
 export function NotificationsBell({ tier, onNavigate }: { tier: PlanTier; onNavigate: (page: 'orders' | 'store') => void }) {
+  const { t } = useTranslation('app');
   const [open, setOpen] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [missing, setMissing] = useState<{ key: string; label: string }[]>([]);
@@ -45,8 +49,8 @@ export function NotificationsBell({ tier, onNavigate }: { tier: PlanTier; onNavi
         localPref.set(DISMISSED_KEY, dismissed.filter(id => active.some(b => b.id === id)));
         setBanners(active.filter(b => {
           if (dismissed.includes(b.id)) return false;
-          const t = b.targetPlans;
-          return !t?.length || t.includes('all') || t.includes(tier);
+          const tp = b.targetPlans;
+          return !tp?.length || tp.includes('all') || tp.includes(tier);
         }));
       }).catch(() => {}),
       isMaster
@@ -98,8 +102,8 @@ export function NotificationsBell({ tier, onNavigate }: { tier: PlanTier; onNavi
       <button
         onClick={() => setOpen(o => !o)}
         className="relative p-2 rounded-lg text-gray-500 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
-        aria-label="Avisos"
-        title="Avisos"
+        aria-label={t('bell.title')}
+        title={t('bell.title')}
       >
         <Bell size={18} />
         {unread > 0 && (
@@ -112,18 +116,18 @@ export function NotificationsBell({ tier, onNavigate }: { tier: PlanTier; onNavi
       {open && (
         <div className="absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-xl z-50">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-            <p className="font-semibold text-sm text-gray-900 dark:text-white">Avisos</p>
+            <p className="font-semibold text-sm text-gray-900 dark:text-white">{t('bell.title')}</p>
             {!empty && (
               <button
                 onClick={() => markRead([...banners.map(b => bannerId(b.id)), ...orders.map(o => orderId(o.id))])}
                 className="text-xs font-medium text-primary-600 hover:underline"
               >
-                Marcar tudo como lido
+                {t('bell.markAllRead')}
               </button>
             )}
           </div>
 
-          {empty && <p className="text-sm text-gray-400 text-center py-8">Nenhum aviso por aqui. 🎉</p>}
+          {empty && <p className="text-sm text-gray-400 text-center py-8">{t('bell.empty')}</p>}
 
           {missing.length > 0 && (
             <button
@@ -132,8 +136,8 @@ export function NotificationsBell({ tier, onNavigate }: { tier: PlanTier; onNavi
             >
               <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-red-600 bg-red-100 dark:bg-red-900/30"><Store size={16} /></span>
               <span className="min-w-0">
-                <span className="block text-sm font-semibold text-gray-900 dark:text-white">Complete o cadastro da loja</span>
-                <span className="block text-xs text-gray-500 dark:text-gray-400">Falta: {missing.map(m => m.label).join(', ')}. Sem isso a loja aparece menos nas buscas.</span>
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white">{t('bell.completeStore')}</span>
+                <span className="block text-xs text-gray-500 dark:text-gray-400">{t('bell.missing', { items: missing.map(m => t(`bell.missingItem.${m.key}`, { defaultValue: m.label })).join(', ') })}</span>
               </span>
             </button>
           )}
@@ -151,11 +155,11 @@ export function NotificationsBell({ tier, onNavigate }: { tier: PlanTier; onNavi
                   <p className="text-xs text-gray-600 dark:text-gray-300 whitespace-pre-wrap">{b.message}</p>
                   {b.actionUrl && (
                     <a href={b.actionUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mt-1 text-xs font-semibold text-primary-600 hover:underline">
-                      Saiba mais <ExternalLink size={11} />
+                      {t('bell.learnMore')} <ExternalLink size={11} />
                     </a>
                   )}
                 </div>
-                <button onClick={() => dismiss(b.id)} className="text-gray-300 hover:text-gray-500 shrink-0" aria-label="Dispensar aviso"><X size={14} /></button>
+                <button onClick={() => dismiss(b.id)} className="text-gray-300 hover:text-gray-500 shrink-0" aria-label={t('bell.dismiss')}><X size={14} /></button>
               </div>
             );
           })}
@@ -168,7 +172,7 @@ export function NotificationsBell({ tier, onNavigate }: { tier: PlanTier; onNavi
                 className={`w-full text-left flex gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700 ${isRead ? '' : 'bg-primary-50/40 dark:bg-primary-900/10'}`}>
                 <span className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 text-green-600 bg-green-50 dark:bg-green-900/30"><ShoppingBag size={16} /></span>
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-gray-900 dark:text-white">Novo pedido online · {formatBRL(o.totalPrice)}</span>
+                  <span className="block text-sm font-semibold text-gray-900 dark:text-white">{t('bell.newOrder', { total: formatBRL(o.totalPrice) })}</span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400">{o.clientName} · {fmtWhen(o.createdAt)}</span>
                 </span>
               </button>

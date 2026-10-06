@@ -1,6 +1,9 @@
 import { StoreReceiving } from './StoreReceiving';
 import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store, Plus, Pencil, Trash2, ImagePlus, PlusCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { getLang } from '../../i18n';
 import { ToastFn, TableSkeleton, ModalOverlay, ConfirmModal } from '../../components';
 import { formatBRL } from '../format';
 import { MyStore, StoreSettingsDTO, StoreBusinessHours, StoreProduct, StoreAddon, CreateStoreProductDTO, DiscountType, Recipe, PixKeyType, StorePaymentMethod, userApi } from '../userApi';
@@ -8,7 +11,7 @@ import { imageFileToJpegDataUrl } from '../../lib/image';
 import { EmptyState, Header, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
 
-const WEEKDAYS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
+// Rótulos dos dias vêm de store:weekday.0..6 (domingo = 0).
 
 const SEM_CATEGORIA = 'Outros';
 // Agrupa os produtos por categoria (alfabética; "Outros" no fim). Os cabeçalhos
@@ -25,7 +28,7 @@ function groupProductsByCategory(
   const cats = Array.from(map.keys()).sort((a, b) => {
     if (a === SEM_CATEGORIA) return 1;
     if (b === SEM_CATEGORIA) return -1;
-    return a.localeCompare(b, 'pt-BR');
+    return a.localeCompare(b, getLang() === 'en' ? 'en' : 'pt-BR');
   });
   const showHeader = cats.length > 1;
   return cats.map(category => ({ category, items: map.get(category)!, showHeader }));
@@ -104,6 +107,7 @@ function ToggleRow({
 }
 
 export function StorePage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('store');
   const [store, setStore] = useState<MyStore | null>(null);
   const [addons, setAddons] = useState<StoreAddon[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -141,7 +145,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
     if (!confirmProductId) return;
     try {
       await userApi.deleteStoreProduct(confirmProductId);
-      toast.success('Produto excluído.');
+      toast.success(t('productDeleted'));
       setConfirmProductId(null);
       load();
     } catch (e) {
@@ -153,7 +157,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
     if (!confirmAddonId) return;
     try {
       await userApi.deleteStoreAddon(confirmAddonId);
-      toast.success('Adicional excluído.');
+      toast.success(t('addonDeleted'));
       setConfirmAddonId(null);
       load();
     } catch (e) {
@@ -172,8 +176,8 @@ export function StorePage({ toast }: { toast: ToastFn }) {
       setStore(updated);
       toast.success(
         field === 'active'
-          ? value ? 'Loja publicada.' : 'Loja removida da vitrine pública.'
-          : value ? 'Loja aberta para pedidos.' : 'Loja fechada para pedidos.'
+          ? value ? t('toast.published') : t('toast.unpublished')
+          : value ? t('toast.opened') : t('toast.closed')
       );
     } catch (e) {
       setStore(previous);
@@ -188,14 +192,14 @@ export function StorePage({ toast }: { toast: ToastFn }) {
 
   return (
     <div>
-      <Header title="Loja online" subtitle="Controle a publicação e o recebimento de pedidos" />
+      <Header title={t('title')} subtitle={t('subtitle')} />
 
       {loading ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
           <TableSkeleton rows={5} cols={3} />
         </div>
       ) : !store ? (
-        <EmptyState icon={Store} text="Loja online não configurada para esta conta." />
+        <EmptyState icon={Store} text={t('notConfigured')} />
       ) : (
         <div className="space-y-4">
           <StoreReceiving />
@@ -207,8 +211,8 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">{store.description}</p>
                 )}
                 <div className="flex items-center gap-2 flex-wrap mt-3">
-                  <StatusPill on={store.active} onText="Publicada" offText="Não publicada" />
-                  <StatusPill on={acceptingOrders} onText="Aberta para pedidos" offText="Fechada para pedidos" />
+                  <StatusPill on={store.active} onText={t('pill.published')} offText={t('pill.unpublished')} />
+                  <StatusPill on={acceptingOrders} onText={t('pill.open')} offText={t('pill.closed')} />
                 </div>
               </div>
               <div className="flex items-center gap-3 shrink-0">
@@ -218,7 +222,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                   className="inline-flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-1.5 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                 >
                   <Settings size={15} />
-                  Configurações
+                  {t('settingsButton')}
                 </button>
                 <a
                   href={publicUrl}
@@ -227,7 +231,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                   className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-600 hover:text-primary-700"
                 >
                   <ExternalLink size={15} />
-                  Ver loja
+                  {t('viewStore')}
                 </a>
               </div>
             </div>
@@ -236,16 +240,16 @@ export function StorePage({ toast }: { toast: ToastFn }) {
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-3">
             <ToggleRow
               icon={Store}
-              title="Loja publicada"
-              description="Quando desligada, a loja sai da vitrine pública e o link pode ficar indisponível para clientes."
+              title={t('toggle.publishedTitle')}
+              description={t('toggle.publishedDesc')}
               checked={store.active}
               saving={savingField === 'active'}
               onChange={value => updateStatus('active', value)}
             />
             <ToggleRow
               icon={Power}
-              title="Recebendo pedidos"
-              description="Quando desligada, a loja continua visível, mostra “Loja fechada” e bloqueia novos pedidos."
+              title={t('toggle.ordersTitle')}
+              description={t('toggle.ordersDesc')}
               checked={acceptingOrders}
               disabled={!store.active}
               saving={savingField === 'acceptingOrders'}
@@ -255,17 +259,17 @@ export function StorePage({ toast }: { toast: ToastFn }) {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-400">Produtos</p>
+              <p className="text-xs text-gray-400">{t('stat.products')}</p>
               <p className="text-xl font-bold text-gray-900 dark:text-white mt-0.5">{store.products.length}</p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-400">Atendimento</p>
+              <p className="text-xs text-gray-400">{t('stat.service')}</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
-                {[store.acceptsDelivery && 'Entrega', store.acceptsPickup && 'Retirada'].filter(Boolean).join(' e ') || '-'}
+                {[store.acceptsDelivery && t('stat.delivery'), store.acceptsPickup && t('stat.pickup')].filter(Boolean).join(t('stat.and')) || '-'}
               </p>
             </div>
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-              <p className="text-xs text-gray-400">Pedido mínimo</p>
+              <p className="text-xs text-gray-400">{t('stat.minOrder')}</p>
               <p className="text-sm font-semibold text-gray-900 dark:text-white mt-1">
                 {store.minOrderValue != null ? formatBRL(store.minOrderValue) : '-'}
               </p>
@@ -277,19 +281,19 @@ export function StorePage({ toast }: { toast: ToastFn }) {
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <ShoppingBag size={16} className="text-primary-500" />
-                <p className="font-semibold text-gray-900 dark:text-white">Cardápio</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{t('menu')}</p>
               </div>
               <button
                 onClick={() => setProductModal('new')}
                 className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 transition-colors"
               >
-                <Plus size={15} /> Produto
+                <Plus size={15} /> {t('addProduct')}
               </button>
             </div>
             {store.products.length === 0 ? (
               <div className="py-12 flex flex-col items-center text-center">
                 <PackageOpen size={32} className="text-gray-300 dark:text-gray-600 mb-2" />
-                <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum produto no cardápio. Adicione o primeiro.</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{t('emptyMenu')}</p>
               </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -297,7 +301,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                   <div key={group.category}>
                     {group.showHeader && (
                       <div className="px-4 pt-3 pb-1 bg-gray-50 dark:bg-gray-900/40">
-                        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{group.category}</p>
+                        <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{group.category === SEM_CATEGORIA ? t('uncategorized') : group.category}</p>
                       </div>
                     )}
                     {group.items.map(product => (
@@ -313,14 +317,14 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                           <p className="font-medium text-gray-900 dark:text-white truncate">{product.name}</p>
                           <p className="text-xs text-gray-400 truncate">
                             {formatBRL(product.publicPrice)}
-                            {product.stock != null ? ` · ${product.stock} em estoque` : ''}
-                            {!product.available ? ' · Indisponível' : ''}
+                            {product.stock != null ? ` · ${t('inStock', { count: product.stock })}` : ''}
+                            {!product.available ? ` · ${t('unavailable')}` : ''}
                           </p>
                         </button>
-                        <button onClick={() => setProductModal(product)} className={iconBtn}>
+                        <button onClick={() => setProductModal(product)} className={iconBtn} title={t('edit')} aria-label={t('edit')}>
                           <Pencil size={16} />
                         </button>
-                        <button onClick={() => setConfirmProductId(product.id)} className={iconBtnDanger}>
+                        <button onClick={() => setConfirmProductId(product.id)} className={iconBtnDanger} title={t('delete')} aria-label={t('delete')}>
                           <Trash2 size={16} />
                         </button>
                       </div>
@@ -336,19 +340,19 @@ export function StorePage({ toast }: { toast: ToastFn }) {
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <PlusCircle size={16} className="text-primary-500" />
-                <p className="font-semibold text-gray-900 dark:text-white">Adicionais</p>
+                <p className="font-semibold text-gray-900 dark:text-white">{t('addons')}</p>
               </div>
               <button
                 onClick={() => setAddonModal('new')}
                 className="flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-medium rounded-lg px-3 py-1.5 transition-colors"
               >
-                <Plus size={15} /> Adicional
+                <Plus size={15} /> {t('addAddon')}
               </button>
             </div>
             {addons.length === 0 ? (
               <div className="py-8 flex flex-col items-center text-center">
                 <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs">
-                  Complementos que o cliente pode incluir no pedido (ex.: cobertura extra, embalagem para presente).
+                  {t('addonsEmpty')}
                 </p>
               </div>
             ) : (
@@ -358,13 +362,13 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                     <button onClick={() => setAddonModal(addon)} className="flex-1 min-w-0 text-left">
                       <p className="font-medium text-gray-900 dark:text-white truncate">{addon.name}</p>
                       <p className="text-xs text-gray-400">
-                        {formatBRL(addon.price)}{!addon.available ? ' · Indisponível' : ''}
+                        {formatBRL(addon.price)}{!addon.available ? ` · ${t('unavailable')}` : ''}
                       </p>
                     </button>
-                    <button onClick={() => setAddonModal(addon)} className={iconBtn}>
+                    <button onClick={() => setAddonModal(addon)} className={iconBtn} title={t('edit')} aria-label={t('edit')}>
                       <Pencil size={16} />
                     </button>
-                    <button onClick={() => setConfirmAddonId(addon.id)} className={iconBtnDanger}>
+                    <button onClick={() => setConfirmAddonId(addon.id)} className={iconBtnDanger} title={t('delete')} aria-label={t('delete')}>
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -390,7 +394,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
           recipes={recipes}
           knownCategories={Array.from(
             new Set((store?.products ?? []).map(p => (p.category ?? '').trim()).filter(Boolean))
-          ).sort((a, b) => a.localeCompare(b, 'pt-BR'))}
+          ).sort((a, b) => a.localeCompare(b, getLang() === 'en' ? 'en' : 'pt-BR'))}
           onClose={() => setProductModal(null)}
           onSaved={() => { setProductModal(null); load(); }}
           toast={toast}
@@ -408,15 +412,15 @@ export function StorePage({ toast }: { toast: ToastFn }) {
 
       <ConfirmModal
         open={!!confirmProductId}
-        title="Excluir produto"
-        message="Tem certeza? O produto sai do cardápio da loja."
+        title={t('deleteProductTitle')}
+        message={t('deleteProductMessage')}
         onConfirm={deleteProduct}
         onCancel={() => setConfirmProductId(null)}
       />
       <ConfirmModal
         open={!!confirmAddonId}
-        title="Excluir adicional"
-        message="Tem certeza?"
+        title={t('deleteAddonTitle')}
+        message={t('deleteAddonMessage')}
         onConfirm={deleteAddon}
         onCancel={() => setConfirmAddonId(null)}
       />
@@ -439,6 +443,7 @@ function StoreProductForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('store');
   const editingId = initial?.id ?? null;
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -457,7 +462,7 @@ function StoreProductForm({
   const onPickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 3 * 1024 * 1024) return toast.error('Imagem muito grande (máx. 3 MB).');
+    if (file.size > 3 * 1024 * 1024) return toast.error(t('product.imageTooLarge'));
     const reader = new FileReader();
     reader.onload = () => setPhotoUrl(String(reader.result));
     reader.readAsDataURL(file);
@@ -465,9 +470,9 @@ function StoreProductForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error('Informe o nome do produto.');
+    if (!name.trim()) return toast.error(t('product.enterName'));
     const priceN = parseLocaleNumber(price);
-    if (priceN <= 0) return toast.error('Informe um preço válido.');
+    if (priceN <= 0) return toast.error(t('enterValidPrice'));
 
     const discN = discountValue.trim() ? parseLocaleNumber(discountValue) : 0;
     setSaving(true);
@@ -486,10 +491,10 @@ function StoreProductForm({
     try {
       if (editingId) {
         await userApi.updateStoreProduct(editingId, data);
-        toast.success('Produto atualizado.');
+        toast.success(t('product.updated'));
       } else {
         await userApi.createStoreProduct(data);
-        toast.success('Produto adicionado.');
+        toast.success(t('product.added'));
       }
       onSaved();
     } catch (err) {
@@ -503,7 +508,7 @@ function StoreProductForm({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-          {editingId ? 'Editar produto' : 'Novo produto'}
+          {editingId ? t('product.editTitle') : t('product.newTitle')}
         </h3>
 
         {/* Foto */}
@@ -517,19 +522,19 @@ function StoreProductForm({
           )}
           <div className="flex flex-col gap-1.5">
             <label className="inline-flex items-center gap-1.5 text-sm font-medium border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200">
-              <ImagePlus size={15} /> {photoUrl ? 'Trocar foto' : 'Adicionar foto'}
+              <ImagePlus size={15} /> {photoUrl ? t('product.changePhoto') : t('product.addPhoto')}
               <input type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
             </label>
             {photoUrl && (
               <button type="button" onClick={() => setPhotoUrl('')} className="text-xs text-red-500 hover:underline text-left">
-                Remover foto
+                {t('product.removePhoto')}
               </button>
             )}
           </div>
         </div>
 
         {recipes.length > 0 && (
-          <FormField label="Vincular a uma receita (opcional)">
+          <FormField label={t('product.linkRecipe')}>
             <select
               value={recipeId}
               onChange={e => {
@@ -540,7 +545,7 @@ function StoreProductForm({
               }}
               className={inputClass}
             >
-              <option value="">Sem vínculo</option>
+              <option value="">{t('product.noLink')}</option>
               {recipes.map(r => (
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
@@ -548,30 +553,30 @@ function StoreProductForm({
           </FormField>
         )}
 
-        <FormField label="Nome">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Brigadeiro gourmet" className={inputClass} autoFocus />
+        <FormField label={t('name')}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={t('product.namePlaceholder')} className={inputClass} autoFocus />
         </FormField>
 
-        <FormField label="Descrição (opcional)">
+        <FormField label={t('descriptionOptional')}>
           <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} className={inputClass + ' resize-none'} />
         </FormField>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Preço de venda (R$)">
+          <FormField label={t('product.price')}>
             <input type="text" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="0,00" className={inputClass} />
           </FormField>
-          <FormField label="Estoque (opcional)">
-            <input type="text" inputMode="numeric" value={stock} onChange={e => setStock(e.target.value)} placeholder="Ilimitado" className={inputClass} />
+          <FormField label={t('product.stock')}>
+            <input type="text" inputMode="numeric" value={stock} onChange={e => setStock(e.target.value)} placeholder={t('product.unlimited')} className={inputClass} />
           </FormField>
         </div>
 
         {/* Categoria */}
-        <FormField label="Categoria (opcional)">
+        <FormField label={t('product.category')}>
           <input
             type="text"
             value={category}
             onChange={e => setCategory(e.target.value)}
-            placeholder="Ex.: Bolos, Tortas, Doces"
+            placeholder={t('product.categoryPlaceholder')}
             maxLength={60}
             className={inputClass}
           />
@@ -596,11 +601,11 @@ function StoreProductForm({
               })}
             </div>
           )}
-          <p className="text-xs text-gray-400 mt-1.5">Produtos com a mesma categoria ficam agrupados no cardápio. Vazio = "Outros".</p>
+          <p className="text-xs text-gray-400 mt-1.5">{t('product.categoryHint')}</p>
         </FormField>
 
         {/* Desconto */}
-        <FormField label="Desconto (opcional)">
+        <FormField label={t('product.discount')}>
           <div className="flex gap-2">
             <div className="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-0.5 shrink-0">
               {([['fixed', 'R$'], ['percent', '%']] as [DiscountType, string][]).map(([val, lbl]) => (
@@ -627,7 +632,7 @@ function StoreProductForm({
 
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" checked={available} onChange={e => setAvailable(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
-          <span className="text-sm text-gray-700 dark:text-gray-200">Disponível para pedido</span>
+          <span className="text-sm text-gray-700 dark:text-gray-200">{t('product.availableForOrder')}</span>
         </label>
 
         <FormActions saving={saving} onClose={onClose} />
@@ -647,6 +652,7 @@ function StoreAddonForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('store');
   const editingId = initial?.id ?? null;
   const [name, setName] = useState(initial?.name ?? '');
   const [price, setPrice] = useState(initial ? Number(initial.price).toFixed(2).replace('.', ',') : '');
@@ -655,18 +661,18 @@ function StoreAddonForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return toast.error('Informe o nome do adicional.');
+    if (!name.trim()) return toast.error(t('addon.enterName'));
     const priceN = parseLocaleNumber(price);
-    if (priceN < 0) return toast.error('Informe um preço válido.');
+    if (priceN < 0) return toast.error(t('enterValidPrice'));
     setSaving(true);
     const data = { name: name.trim(), price: priceN, available };
     try {
       if (editingId) {
         await userApi.updateStoreAddon(editingId, data);
-        toast.success('Adicional atualizado.');
+        toast.success(t('addon.updated'));
       } else {
         await userApi.createStoreAddon(data);
-        toast.success('Adicional criado.');
+        toast.success(t('addon.created'));
       }
       onSaved();
     } catch (err) {
@@ -680,17 +686,17 @@ function StoreAddonForm({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-          {editingId ? 'Editar adicional' : 'Novo adicional'}
+          {editingId ? t('addon.editTitle') : t('addon.newTitle')}
         </h3>
-        <FormField label="Nome">
-          <input value={name} onChange={e => setName(e.target.value)} placeholder="Ex.: Cobertura extra" className={inputClass} autoFocus />
+        <FormField label={t('name')}>
+          <input value={name} onChange={e => setName(e.target.value)} placeholder={t('addon.namePlaceholder')} className={inputClass} autoFocus />
         </FormField>
-        <FormField label="Preço (R$)">
+        <FormField label={t('addon.price')}>
           <input type="text" inputMode="decimal" value={price} onChange={e => setPrice(e.target.value)} placeholder="0,00" className={inputClass} />
         </FormField>
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input type="checkbox" checked={available} onChange={e => setAvailable(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
-          <span className="text-sm text-gray-700 dark:text-gray-200">Disponível</span>
+          <span className="text-sm text-gray-700 dark:text-gray-200">{t('addon.available')}</span>
         </label>
         <FormActions saving={saving} onClose={onClose} />
       </form>
@@ -698,36 +704,32 @@ function StoreAddonForm({
   );
 }
 
-function pixKeyPlaceholder(type: PixKeyType): string {
+function pixKeyPlaceholder(type: PixKeyType, t: TFunction): string {
   switch (type) {
     case 'cpf': return '000.000.000-00';
     case 'cnpj': return '00.000.000/0000-00';
-    case 'email': return 'voce@email.com';
+    case 'email': return t('store:settings.pixEmailPlaceholder');
     case 'phone': return '(00) 00000-0000';
-    default: return 'chave aleatória (UUID)';
+    default: return t('store:settings.pixRandomPlaceholder');
   }
 }
 
-/** Categorias da vitrine — mesmas chaves do app (StoreSettingsScreen). */
+/** Categorias da vitrine — mesmas chaves do app (StoreSettingsScreen). Rótulo em store:category.<key>. */
 const STORE_CATEGORIES = [
-  { key: 'hamburguer', label: 'Hambúrguer', emoji: '🍔' },
-  { key: 'bolos', label: 'Bolos', emoji: '🎂' },
-  { key: 'doces', label: 'Doces', emoji: '🍬' },
-  { key: 'sorvetes', label: 'Sorvetes', emoji: '🍦' },
-  { key: 'pudins', label: 'Pudins', emoji: '🍮' },
-  { key: 'salgados', label: 'Salgados', emoji: '🥟' },
-  { key: 'bebidas', label: 'Bebidas', emoji: '🥤' },
-  { key: 'pizzas', label: 'Pizzas', emoji: '🍕' },
-  { key: 'marmitas', label: 'Marmitas', emoji: '🍱' },
-  { key: 'outros', label: 'Outros', emoji: '🍽️' },
+  { key: 'hamburguer', emoji: '🍔' },
+  { key: 'bolos', emoji: '🎂' },
+  { key: 'doces', emoji: '🍬' },
+  { key: 'sorvetes', emoji: '🍦' },
+  { key: 'pudins', emoji: '🍮' },
+  { key: 'salgados', emoji: '🥟' },
+  { key: 'bebidas', emoji: '🥤' },
+  { key: 'pizzas', emoji: '🍕' },
+  { key: 'marmitas', emoji: '🍱' },
+  { key: 'outros', emoji: '🍽️' },
 ];
 
-const STORE_PAYMENT_METHODS: { key: StorePaymentMethod; label: string; sub: string }[] = [
-  { key: 'pix', label: 'PIX', sub: 'Na hora do pedido' },
-  { key: 'cash', label: 'Dinheiro', sub: 'Na entrega/retirada' },
-  { key: 'credit', label: 'Cartão de crédito', sub: 'Na maquininha' },
-  { key: 'debit', label: 'Cartão de débito', sub: 'Na maquininha' },
-];
+/** Rótulos em store:payment.<key>.label / .sub */
+const STORE_PAYMENT_METHODS: StorePaymentMethod[] = ['pix', 'cash', 'credit', 'debit'];
 
 function StoreSettingsForm({
   store,
@@ -740,6 +742,7 @@ function StoreSettingsForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('store');
   const [storeName, setStoreName] = useState(store.storeName ?? '');
   const [description, setDescription] = useState(store.description ?? '');
   const [city, setCity] = useState(store.city ?? '');
@@ -785,12 +788,12 @@ function StoreSettingsForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!storeName.trim()) return toast.error('Informe o nome da loja.');
+    if (!storeName.trim()) return toast.error(t('settings.enterName'));
     if (!acceptsDelivery && !acceptsPickup) {
-      return toast.error('Escolha ao menos uma forma de atendimento (entrega ou retirada).');
+      return toast.error(t('settings.chooseService'));
     }
-    if (paymentMethods.length === 0) return toast.error('Escolha ao menos uma forma de pagamento.');
-    if (loyaltyEnabled && !loyaltyReward.trim()) return toast.error('Informe o prêmio do cartão fidelidade.');
+    if (paymentMethods.length === 0) return toast.error(t('settings.choosePayment'));
+    if (loyaltyEnabled && !loyaltyReward.trim()) return toast.error(t('settings.enterReward'));
     setSaving(true);
     const data: StoreSettingsDTO = {
       storeName: storeName.trim(),
@@ -816,7 +819,7 @@ function StoreSettingsForm({
     };
     try {
       await userApi.updateStoreSettings(data);
-      toast.success('Configurações da loja salvas.');
+      toast.success(t('settings.saved'));
       onSaved();
     } catch (err) {
       toast.error((err as Error).message);
@@ -828,17 +831,17 @@ function StoreSettingsForm({
   return (
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Configurações da loja</h3>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('settings.title')}</h3>
 
-        <FormField label="Nome da loja">
-          <input value={storeName} onChange={e => setStoreName(e.target.value)} placeholder="Doces da Maria" className={inputClass} autoFocus />
+        <FormField label={t('settings.storeName')}>
+          <input value={storeName} onChange={e => setStoreName(e.target.value)} placeholder={t('settings.storeNamePlaceholder')} className={inputClass} autoFocus />
         </FormField>
 
-        <FormField label="Descrição (opcional)">
+        <FormField label={t('descriptionOptional')}>
           <textarea
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="Uma frase que apresenta sua loja aos clientes."
+            placeholder={t('settings.descriptionPlaceholder')}
             rows={2}
             className={inputClass + ' resize-none'}
           />
@@ -847,36 +850,36 @@ function StoreSettingsForm({
         {/* Capa e logo */}
         <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Imagem de capa</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{t('settings.cover')}</label>
             <div className="relative h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               {coverImageUrl ? <img src={coverImageUrl} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={22} className="text-gray-400" />}
             </div>
             <div className="flex gap-3 mt-1.5 text-xs">
               <label className="text-primary-600 font-semibold cursor-pointer hover:underline">
-                {coverImageUrl ? 'Trocar capa' : 'Adicionar capa'}
+                {coverImageUrl ? t('settings.changeCover') : t('settings.addCover')}
                 <input type="file" accept="image/*" className="hidden" onChange={pickImage(setCoverImageUrl, 1600)} />
               </label>
-              {coverImageUrl && <button type="button" onClick={() => setCoverImageUrl('')} className="text-gray-500 hover:underline">Remover</button>}
+              {coverImageUrl && <button type="button" onClick={() => setCoverImageUrl('')} className="text-gray-500 hover:underline">{t('remove')}</button>}
             </div>
           </div>
           <div className="w-24">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Logo</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{t('settings.logo')}</label>
             <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
               {logoUrl ? <img src={logoUrl} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={20} className="text-gray-400" />}
             </div>
             <div className="flex flex-col mt-1.5 text-xs">
               <label className="text-primary-600 font-semibold cursor-pointer hover:underline">
-                {logoUrl ? 'Trocar' : 'Adicionar'}
+                {logoUrl ? t('settings.change') : t('settings.add')}
                 <input type="file" accept="image/*" className="hidden" onChange={pickImage(setLogoUrl, 512)} />
               </label>
-              {logoUrl && <button type="button" onClick={() => setLogoUrl('')} className="text-left text-gray-500 hover:underline">Remover</button>}
+              {logoUrl && <button type="button" onClick={() => setLogoUrl('')} className="text-left text-gray-500 hover:underline">{t('remove')}</button>}
             </div>
           </div>
         </div>
 
         {/* Categoria */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Categoria da loja</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{t('settings.storeCategory')}</label>
           <div className="flex flex-wrap gap-2">
             {STORE_CATEGORIES.map(c => (
               <button
@@ -889,47 +892,47 @@ function StoreSettingsForm({
                     : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
                 }`}
               >
-                {c.emoji} {c.label}
+                {c.emoji} {t(`category.${c.key}`)}
               </button>
             ))}
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormField label="Cidade">
-            <input value={city} onChange={e => setCity(e.target.value)} placeholder="Sua cidade" className={inputClass} />
+          <FormField label={t('settings.city')}>
+            <input value={city} onChange={e => setCity(e.target.value)} placeholder={t('settings.cityPlaceholder')} className={inputClass} />
           </FormField>
-          <FormField label="Endereço (opcional)">
-            <input value={address} onChange={e => setAddress(e.target.value)} placeholder="Rua, nº, bairro" className={inputClass} />
+          <FormField label={t('settings.address')}>
+            <input value={address} onChange={e => setAddress(e.target.value)} placeholder={t('settings.addressPlaceholder')} className={inputClass} />
           </FormField>
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Formas de atendimento</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{t('settings.serviceTypes')}</label>
           <div className="flex flex-col gap-2">
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input type="checkbox" checked={acceptsDelivery} onChange={e => setAcceptsDelivery(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
-              <span className="text-sm text-gray-700 dark:text-gray-200">Entrega (delivery)</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">{t('settings.delivery')}</span>
             </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input type="checkbox" checked={acceptsPickup} onChange={e => setAcceptsPickup(e.target.checked)} className="w-4 h-4 rounded accent-primary-500" />
-              <span className="text-sm text-gray-700 dark:text-gray-200">Retirada no local</span>
+              <span className="text-sm text-gray-700 dark:text-gray-200">{t('settings.pickup')}</span>
             </label>
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <FormField label="Pedido mínimo (R$)">
+          <FormField label={t('settings.minOrder')}>
             <input
               type="text"
               inputMode="decimal"
               value={minOrderValue}
               onChange={e => setMinOrderValue(e.target.value)}
-              placeholder="Sem mínimo"
+              placeholder={t('settings.noMinimum')}
               className={inputClass}
             />
           </FormField>
-          <FormField label="Taxa de entrega (R$)">
+          <FormField label={t('settings.deliveryFee')}>
             <input
               type="text"
               inputMode="decimal"
@@ -944,19 +947,19 @@ function StoreSettingsForm({
 
         {/* Formas de pagamento aceitas */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Formas de pagamento aceitas</label>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{t('settings.acceptedPayments')}</label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {STORE_PAYMENT_METHODS.map(m => (
-              <label key={m.key} className="flex items-start gap-2 rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 cursor-pointer select-none">
+              <label key={m} className="flex items-start gap-2 rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
-                  checked={paymentMethods.includes(m.key)}
-                  onChange={() => togglePayment(m.key)}
+                  checked={paymentMethods.includes(m)}
+                  onChange={() => togglePayment(m)}
                   className="mt-0.5 w-4 h-4 rounded accent-primary-500 shrink-0"
                 />
                 <span>
-                  <span className="block text-sm text-gray-800 dark:text-gray-100">{m.label}</span>
-                  <span className="block text-xs text-gray-400">{m.sub}</span>
+                  <span className="block text-sm text-gray-800 dark:text-gray-100">{t(`payment.${m}.label`)}</span>
+                  <span className="block text-xs text-gray-400">{t(`payment.${m}.sub`)}</span>
                 </span>
               </label>
             ))}
@@ -966,31 +969,30 @@ function StoreSettingsForm({
         {/* Recebimento por PIX */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Recebimento por PIX</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">{t('settings.pixTitle')}</label>
             <p className="text-xs text-gray-400 mt-0.5">
-              Cadastre sua chave PIX para o cliente pagar na hora do pedido. O dinheiro cai
-              direto na sua conta — você confere e marca o pedido como pago na tela de encomendas.
+              {t('settings.pixHint')}
             </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[150px_1fr] gap-3">
-            <FormField label="Tipo de chave">
+            <FormField label={t('settings.pixKeyType')}>
               <select value={pixKeyType} onChange={e => setPixKeyType(e.target.value as PixKeyType)} className={inputClass}>
-                <option value="random">Aleatória</option>
+                <option value="random">{t('settings.pixRandom')}</option>
                 <option value="cpf">CPF</option>
                 <option value="cnpj">CNPJ</option>
-                <option value="email">E-mail</option>
-                <option value="phone">Celular</option>
+                <option value="email">{t('settings.pixEmail')}</option>
+                <option value="phone">{t('settings.pixPhone')}</option>
               </select>
             </FormField>
-            <FormField label="Chave PIX">
-              <input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder={pixKeyPlaceholder(pixKeyType)} className={inputClass} />
+            <FormField label={t('settings.pixKey')}>
+              <input value={pixKey} onChange={e => setPixKey(e.target.value)} placeholder={pixKeyPlaceholder(pixKeyType, t)} className={inputClass} />
             </FormField>
           </div>
-          <FormField label="Nome do recebedor (opcional)">
+          <FormField label={t('settings.pixReceiver')}>
             <input
               value={pixReceiverName}
               onChange={e => setPixReceiverName(e.target.value)}
-              placeholder={storeName || 'Aparece no app do banco do cliente'}
+              placeholder={storeName || t('settings.pixReceiverPlaceholder')}
               className={inputClass}
             />
           </FormField>
@@ -1000,9 +1002,9 @@ function StoreSettingsForm({
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
             <span>
-              <span className="block text-sm font-medium text-gray-900 dark:text-white">Cartão fidelidade</span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-white">{t('settings.loyaltyTitle')}</span>
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Recompense quem compra sempre: a cada X pedidos o cliente ganha um prêmio.
+                {t('settings.loyaltyHint')}
               </span>
             </span>
             <input
@@ -1014,11 +1016,11 @@ function StoreSettingsForm({
           </label>
           {loyaltyEnabled && (
             <div className="mt-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3">
-              <FormField label="Meta (pedidos)">
+              <FormField label={t('settings.loyaltyGoal')}>
                 <input type="number" min={1} max={100} value={loyaltyGoal} onChange={e => setLoyaltyGoal(e.target.value)} className={inputClass} />
               </FormField>
-              <FormField label="Prêmio">
-                <input value={loyaltyReward} onChange={e => setLoyaltyReward(e.target.value)} maxLength={255} placeholder="Ex.: 1 bolo de pote grátis" className={inputClass} />
+              <FormField label={t('settings.loyaltyReward')}>
+                <input value={loyaltyReward} onChange={e => setLoyaltyReward(e.target.value)} maxLength={255} placeholder={t('settings.loyaltyRewardPlaceholder')} className={inputClass} />
               </FormField>
             </div>
           )}
@@ -1028,9 +1030,9 @@ function StoreSettingsForm({
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
           <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
             <span>
-              <span className="block text-sm font-medium text-gray-900 dark:text-white">Horários de funcionamento</span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-white">{t('settings.hoursTitle')}</span>
               <span className="block text-xs text-gray-500 dark:text-gray-400">
-                Mostra aos clientes os dias e horários em que a loja atende.
+                {t('settings.hoursHint')}
               </span>
             </span>
             <input
@@ -1045,9 +1047,9 @@ function StoreSettingsForm({
             <div className="mt-3 space-y-2">
               {businessHours.map(day => (
                 <div key={day.dayOfWeek} className="flex items-center gap-2">
-                  <span className="w-20 text-sm text-gray-700 dark:text-gray-200 shrink-0">{WEEKDAYS[day.dayOfWeek]}</span>
+                  <span className="w-20 text-sm text-gray-700 dark:text-gray-200 shrink-0">{t(`weekday.${day.dayOfWeek}`)}</span>
                   {day.closed ? (
-                    <span className="flex-1 text-sm text-gray-400">Fechado</span>
+                    <span className="flex-1 text-sm text-gray-400">{t('settings.closed')}</span>
                   ) : (
                     <div className="flex-1 flex items-center gap-1.5">
                       <input
@@ -1056,7 +1058,7 @@ function StoreSettingsForm({
                         onChange={e => updateDay(day.dayOfWeek, { openTime: e.target.value })}
                         className={inputClass + ' py-1.5'}
                       />
-                      <span className="text-gray-400 text-sm">às</span>
+                      <span className="text-gray-400 text-sm">{t('settings.until')}</span>
                       <input
                         type="time"
                         value={day.closeTime}
@@ -1074,7 +1076,7 @@ function StoreSettingsForm({
                         : 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
                     }`}
                   >
-                    {day.closed ? 'Fechado' : 'Aberto'}
+                    {day.closed ? t('settings.closed') : t('settings.open')}
                   </button>
                 </div>
               ))}

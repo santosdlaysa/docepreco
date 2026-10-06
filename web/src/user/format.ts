@@ -1,3 +1,5 @@
+import { getLang } from '../i18n';
+
 /** Moedas suportadas (mesma lista do app — mobile/src/presentation/utils/currency.ts). */
 export const CURRENCIES = {
   BRL: { name: 'Real Brasileiro', locale: 'pt-BR' },
@@ -53,7 +55,7 @@ export function formatDate(iso: string | null | undefined): string {
   if (!iso) return '-';
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '-';
-  return d.toLocaleDateString('pt-BR');
+  return d.toLocaleDateString(getLang() === 'en' ? 'en-US' : 'pt-BR');
 }
 
 /** Data de hoje no formato YYYY-MM-DD para inputs type="date". */

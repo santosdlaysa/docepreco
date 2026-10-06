@@ -576,6 +576,9 @@ export async function runMigrations() {
     // Premium subscription columns (ALTER TABLE for existing DBs)
     // Expand push_tokens.token column for long FCM tokens
     await client.query(`ALTER TABLE push_tokens ALTER COLUMN token TYPE TEXT`);
+    // Web Push: assinaturas do navegador ficam na mesma tabela (platform = 'web')
+    await client.query(`ALTER TABLE push_tokens DROP CONSTRAINT IF EXISTS push_tokens_platform_check`);
+    await client.query(`ALTER TABLE push_tokens ADD CONSTRAINT push_tokens_platform_check CHECK (platform IN ('ios', 'android', 'web'))`);
 
     await addColumnIfMissing(client, 'users', 'is_premium', 'BOOLEAN NOT NULL DEFAULT FALSE');
     await addColumnIfMissing(client, 'users', 'premium_until', 'TIMESTAMP NULL');

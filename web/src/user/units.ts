@@ -3,6 +3,8 @@
  * iguais às do app. Fatores no padrão US, os mesmos do backend
  * (backend/src/domain/services/recipeCalculator.ts → convertUnit).
  */
+import i18n from '../i18n';
+
 export type UnitSystem = 'metric' | 'imperial';
 
 const MASS_TO_G: Record<string, number> = { g: 1, kg: 1000, oz: 28.349523125, lb: 453.59237 };
@@ -20,8 +22,8 @@ export const UNIT_SYSTEM_OPTIONS: Record<UnitSystem, string[]> = {
   imperial: ['unit', 'oz', 'lb', 'fl_oz', 'cup', 'tbsp', 'tsp'],
 };
 
-/** Rótulo curto de uma unidade ('unit' → 'un'). */
-export const unitLabel = (unit: string): string => UNIT_SHORT[unit] ?? unit;
+/** Rótulo curto de uma unidade ('unit' → 'un'), no idioma atual. */
+export const unitLabel = (unit: string): string => i18n.t(`ops:unit.${unit}`, { defaultValue: UNIT_SHORT[unit] ?? unit });
 
 /** Converte entre unidades da mesma família; null se incompatíveis. */
 export function convertUnitOrNull(qty: number, from: string, to: string): number | null {

@@ -9,13 +9,16 @@ import { formatBRL } from '../format';
 import { Header, FormField, FormActions, inputClass } from './IngredientsPage';
 import { SaleForm } from './SalesPage';
 import { parseLocaleNumber } from '../number';
+import { useTranslation } from 'react-i18next';
+import { getLang } from '../../i18n';
 
 const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+  new Date(iso).toLocaleString(getLang() === 'en' ? 'en-US' : 'pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
 
-const METHOD_LABEL: Record<string, string> = { dinheiro: 'Dinheiro', cartao: 'Cartão', credito: 'Crédito', debito: 'Débito', pix: 'PIX', outros: 'Outros' };
+const METHOD_KEY: Record<string, string> = { dinheiro: 'pay.dinheiro', cartao: 'pay.cartao', credito: 'pay.credito', debito: 'pay.debito', pix: 'pay.PIX', outros: 'pay.outros' };
 
 export function CashPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('ops');
   const [session, setSession] = useState<CashSession | null>(null);
   const [history, setHistory] = useState<CashSession[]>([]);
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -45,7 +48,7 @@ export function CashPage({ toast }: { toast: ToastFn }) {
   if (loading) {
     return (
       <div>
-        <Header title="Caixa" subtitle="Abertura e fechamento de caixa" />
+        <Header title={t('cash.title')} subtitle={t('cash.subtitle')} />
         <div className="flex justify-center py-16"><Loader2 size={26} className="animate-spin text-primary-500" /></div>
       </div>
     );
@@ -55,7 +58,7 @@ export function CashPage({ toast }: { toast: ToastFn }) {
 
   return (
     <div>
-      <Header title="Caixa" subtitle={session ? `Aberto desde ${fmtDateTime(session.openedAt)}` : 'Abertura e fechamento de caixa'} />
+      <Header title={t('cash.title')} subtitle={session ? t('cash.openSince', { date: fmtDateTime(session.openedAt) }) : t('cash.subtitle')} />
 
       {!session ? (
         /* ── Caixa fechado ── */
@@ -63,10 +66,10 @@ export function CashPage({ toast }: { toast: ToastFn }) {
           <div className="w-14 h-14 rounded-2xl bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mx-auto mb-3">
             <Wallet size={26} className="text-primary-500" />
           </div>
-          <p className="font-semibold text-gray-900 dark:text-white">Nenhum caixa aberto</p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">Abra o caixa para começar a registrar as vendas do dia.</p>
+          <p className="font-semibold text-gray-900 dark:text-white">{t('cash.noneOpen')}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 mb-4">{t('cash.noneOpenHint')}</p>
           <button onClick={() => setModal('open')} className="inline-flex items-center gap-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold px-5 py-2.5 rounded-lg transition-colors">
-            <Wallet size={16} /> Abrir caixa
+            <Wallet size={16} /> {t('cash.open')}
           </button>
         </div>
       ) : (
@@ -76,12 +79,12 @@ export function CashPage({ toast }: { toast: ToastFn }) {
           <div className="bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl p-4 text-white shadow-sm">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-white/80">Total vendido no caixa</p>
+                <p className="text-xs text-white/80">{t('cash.totalSold')}</p>
                 <p className="text-3xl font-bold tracking-tight">{formatBRL(session.salesTotal)}</p>
-                <p className="text-[11px] text-white/80 mt-0.5">{session.salesCount} venda{session.salesCount !== 1 ? 's' : ''} · troco inicial {formatBRL(session.openingAmount)}</p>
+                <p className="text-[11px] text-white/80 mt-0.5">{t('cash.salesInfo', { count: session.salesCount, opening: formatBRL(session.openingAmount) })}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-white/80">Dinheiro esperado</p>
+                <p className="text-xs text-white/80">{t('cash.expected')}</p>
                 <p className="text-xl font-bold">{formatBRL(session.expectedCash)}</p>
               </div>
             </div>
@@ -89,20 +92,20 @@ export function CashPage({ toast }: { toast: ToastFn }) {
 
           {/* Ações */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <ActionBtn icon={Plus} label="Registrar venda" onClick={() => setModal('sale')} primary />
-            <ActionBtn icon={ArrowDownCircle} label="Sangria" onClick={() => setModal('sangria')} />
-            <ActionBtn icon={ArrowUpCircle} label="Suprimento" onClick={() => setModal('suprimento')} />
-            <ActionBtn icon={Lock} label="Fechar caixa" onClick={() => setModal('close')} danger />
+            <ActionBtn icon={Plus} label={t('sales.register')} onClick={() => setModal('sale')} primary />
+            <ActionBtn icon={ArrowDownCircle} label={t('cash.withdrawal')} onClick={() => setModal('sangria')} />
+            <ActionBtn icon={ArrowUpCircle} label={t('cash.deposit')} onClick={() => setModal('suprimento')} />
+            <ActionBtn icon={Lock} label={t('cash.close')} onClick={() => setModal('close')} danger />
           </div>
 
           {/* Por forma de pagamento */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <MethodCard icon={Banknote} label="Dinheiro" value={session.byMethod.dinheiro} color="text-green-600" bg="bg-green-50 dark:bg-green-900/30" />
-            <MethodCard icon={CreditCard} label="Crédito" value={session.byMethod.credito} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
-            <MethodCard icon={CreditCard} label="Débito" value={session.byMethod.debito} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
-            <MethodCard icon={QrCode} label="PIX" value={session.byMethod.pix} color="text-primary-600" bg="bg-primary-50 dark:bg-primary-900/30" />
+            <MethodCard icon={Banknote} label={t('pay.dinheiro')} value={session.byMethod.dinheiro} color="text-green-600" bg="bg-green-50 dark:bg-green-900/30" />
+            <MethodCard icon={CreditCard} label={t('pay.credito')} value={session.byMethod.credito} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
+            <MethodCard icon={CreditCard} label={t('pay.debito')} value={session.byMethod.debito} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
+            <MethodCard icon={QrCode} label={t('pay.PIX')} value={session.byMethod.pix} color="text-primary-600" bg="bg-primary-50 dark:bg-primary-900/30" />
             {session.byMethod.cartao > 0 && (
-              <MethodCard icon={CreditCard} label="Cartão" value={session.byMethod.cartao} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
+              <MethodCard icon={CreditCard} label={t('pay.cartao')} value={session.byMethod.cartao} color="text-blue-600" bg="bg-blue-50 dark:bg-blue-900/30" />
             )}
           </div>
 
@@ -110,9 +113,9 @@ export function CashPage({ toast }: { toast: ToastFn }) {
           {session.movements.length > 0 && (
             <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
               <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
-                <p className="font-semibold text-gray-900 dark:text-white text-sm">Movimentos</p>
+                <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('cash.movements')}</p>
                 <p className="text-xs text-gray-400">
-                  Sangrias {formatBRL(session.sangriaTotal)} · Suprimentos {formatBRL(session.suprimentoTotal)}
+                  {t('cash.movementsTotals', { out: formatBRL(session.sangriaTotal), in: formatBRL(session.suprimentoTotal) })}
                 </p>
               </div>
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -122,7 +125,7 @@ export function CashPage({ toast }: { toast: ToastFn }) {
                       ? <ArrowDownCircle size={18} className="text-red-500 shrink-0" />
                       : <ArrowUpCircle size={18} className="text-green-500 shrink-0" />}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{m.type}</p>
+                      <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">{t(`cash.type.${m.type}`, m.type)}</p>
                       {m.reason && <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{m.reason}</p>}
                     </div>
                     <span className={`font-semibold ${m.type === 'sangria' ? 'text-red-500' : 'text-green-600'}`}>
@@ -137,10 +140,10 @@ export function CashPage({ toast }: { toast: ToastFn }) {
           {/* Vendas do caixa */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">Vendas deste caixa</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('cash.salesOfSession')}</p>
             </div>
             {!session.sales || session.sales.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-8">Nenhuma venda ainda. Use “Registrar venda”.</p>
+              <p className="text-sm text-gray-400 text-center py-8">{t('cash.noSales')}</p>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
                 {session.sales.map(s => (
@@ -148,7 +151,7 @@ export function CashPage({ toast }: { toast: ToastFn }) {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{s.recipeName}</p>
                       <p className="text-xs text-gray-500 dark:text-gray-400">
-                        {s.quantitySold}× · {METHOD_LABEL[s.paymentMethod ?? 'outros']} · {fmtDateTime(s.createdAt)}
+                        {s.quantitySold}× · {t(METHOD_KEY[s.paymentMethod ?? 'outros'] ?? 'pay.outros')} · {fmtDateTime(s.createdAt)}
                       </p>
                     </div>
                     <span className="font-semibold text-green-600 dark:text-green-400">{formatBRL(s.totalRevenue)}</span>
@@ -164,10 +167,10 @@ export function CashPage({ toast }: { toast: ToastFn }) {
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
           <History size={16} className="text-gray-400" />
-          <p className="font-semibold text-gray-900 dark:text-white text-sm">Histórico de caixas</p>
+          <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('cash.history')}</p>
         </div>
         {closedHistory.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-8">Nenhum caixa fechado ainda.</p>
+          <p className="text-sm text-gray-400 text-center py-8">{t('cash.noHistory')}</p>
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-gray-700">
             {closedHistory.map(s => (
@@ -182,14 +185,14 @@ export function CashPage({ toast }: { toast: ToastFn }) {
                   <span className="font-semibold text-gray-900 dark:text-white shrink-0">{formatBRL(s.salesTotal)}</span>
                 </div>
                 <div className="flex items-center gap-3 mt-1 pl-6 text-xs text-gray-500 dark:text-gray-400">
-                  <span>{s.salesCount} venda{s.salesCount !== 1 ? 's' : ''}</span>
+                  <span>{t('cash.salesCount', { count: s.salesCount })}</span>
                   {s.difference != null && (
                     <span className={`inline-flex items-center gap-1 font-medium ${
                       Math.abs(s.difference) < 0.005 ? 'text-green-600' : 'text-amber-600'
                     }`}>
                       {Math.abs(s.difference) < 0.005
-                        ? <><CheckCircle size={12} /> caixa certo</>
-                        : <><AlertTriangle size={12} /> {s.difference > 0 ? 'sobra' : 'falta'} {formatBRL(Math.abs(s.difference))}</>}
+                        ? <><CheckCircle size={12} /> {t('cash.balanced')}</>
+                        : <><AlertTriangle size={12} /> {t(s.difference > 0 ? 'cash.surplus' : 'cash.shortage', { amount: formatBRL(Math.abs(s.difference)) })}</>}
                     </span>
                   )}
                 </div>
@@ -246,6 +249,7 @@ function MethodCard({ icon: Icon, label, value, color, bg }: {
 }
 
 function OpenCashModal({ toast, onClose, onDone }: { toast: ToastFn; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation('ops');
   const [amount, setAmount] = useState('0');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -254,27 +258,28 @@ function OpenCashModal({ toast, onClose, onDone }: { toast: ToastFn; onClose: ()
     setSaving(true);
     try {
       await userApi.openCash(parseLocaleNumber(amount), notes.trim() || undefined);
-      toast.success('Caixa aberto!');
+      toast.success(t('cash.opened'));
       onDone();
     } catch (err) { toast.error((err as Error).message); } finally { setSaving(false); }
   };
   return (
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Abrir caixa</h3>
-        <FormField label="Troco inicial (R$)">
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('cash.open')}</h3>
+        <FormField label={t('cash.openingFloat')}>
           <input type="text" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} autoFocus />
         </FormField>
-        <FormField label="Observações (opcional)">
+        <FormField label={t('cash.notes')}>
           <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />
         </FormField>
-        <FormActions saving={saving} onClose={onClose} saveLabel="Abrir caixa" />
+        <FormActions saving={saving} onClose={onClose} saveLabel={t('cash.open')} />
       </form>
     </ModalOverlay>
   );
 }
 
 function CloseCashModal({ session, toast, onClose, onDone }: { session: CashSession; toast: ToastFn; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation('ops');
   const [counted, setCounted] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -284,60 +289,61 @@ function CloseCashModal({ session, toast, onClose, onDone }: { session: CashSess
     setSaving(true);
     try {
       await userApi.closeCash(parseLocaleNumber(counted), notes.trim() || undefined);
-      toast.success('Caixa fechado!');
+      toast.success(t('cash.closed'));
       onDone();
     } catch (err) { toast.error((err as Error).message); } finally { setSaving(false); }
   };
   return (
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Fechar caixa</h3>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('cash.close')}</h3>
 
         {/* Recebido por forma de pagamento */}
         <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 space-y-1 text-sm">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Recebido nas vendas</p>
-          <Row label="Dinheiro" value={formatBRL(session.byMethod.dinheiro)} />
-          <Row label="Crédito" value={formatBRL(session.byMethod.credito)} />
-          <Row label="Débito" value={formatBRL(session.byMethod.debito)} />
-          <Row label="PIX" value={formatBRL(session.byMethod.pix)} />
-          {session.byMethod.cartao > 0 && <Row label="Cartão" value={formatBRL(session.byMethod.cartao)} />}
-          {session.byMethod.outros > 0 && <Row label="Outros" value={formatBRL(session.byMethod.outros)} />}
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('cash.received')}</p>
+          <Row label={t('pay.dinheiro')} value={formatBRL(session.byMethod.dinheiro)} />
+          <Row label={t('pay.credito')} value={formatBRL(session.byMethod.credito)} />
+          <Row label={t('pay.debito')} value={formatBRL(session.byMethod.debito)} />
+          <Row label={t('pay.PIX')} value={formatBRL(session.byMethod.pix)} />
+          {session.byMethod.cartao > 0 && <Row label={t('pay.cartao')} value={formatBRL(session.byMethod.cartao)} />}
+          {session.byMethod.outros > 0 && <Row label={t('pay.outros')} value={formatBRL(session.byMethod.outros)} />}
           <div className="border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
-            <Row label="Total recebido" value={formatBRL(session.salesTotal)} bold />
+            <Row label={t('cash.totalReceived')} value={formatBRL(session.salesTotal)} bold />
           </div>
         </div>
 
         {/* Conferência da gaveta (somente dinheiro) */}
         <div className="rounded-lg bg-gray-50 dark:bg-gray-900/40 p-3 space-y-1 text-sm">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">Conferência da gaveta (dinheiro)</p>
-          <Row label="Troco inicial" value={formatBRL(session.openingAmount)} />
-          <Row label="Vendas em dinheiro" value={`+ ${formatBRL(session.byMethod.dinheiro)}`} />
-          <Row label="Suprimentos" value={`+ ${formatBRL(session.suprimentoTotal)}`} />
-          <Row label="Sangrias" value={`- ${formatBRL(session.sangriaTotal)}`} />
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{t('cash.drawerCheck')}</p>
+          <Row label={t('cash.openingFloat')} value={formatBRL(session.openingAmount)} />
+          <Row label={t('cash.cashSales')} value={`+ ${formatBRL(session.byMethod.dinheiro)}`} />
+          <Row label={t('cash.deposits')} value={`+ ${formatBRL(session.suprimentoTotal)}`} />
+          <Row label={t('cash.withdrawals')} value={`- ${formatBRL(session.sangriaTotal)}`} />
           <div className="border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
-            <Row label="Dinheiro esperado" value={formatBRL(session.expectedCash)} bold />
+            <Row label={t('cash.expected')} value={formatBRL(session.expectedCash)} bold />
           </div>
         </div>
-        <FormField label="Valor contado em dinheiro (R$)">
+        <FormField label={t('cash.counted')}>
           <input type="text" inputMode="decimal" value={counted} onChange={e => setCounted(e.target.value)} className={inputClass} autoFocus placeholder="0,00" />
         </FormField>
         {diff != null && (
           <div className={`text-sm font-medium rounded-lg px-3 py-2 ${
             Math.abs(diff) < 0.005 ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
           }`}>
-            {Math.abs(diff) < 0.005 ? 'Caixa bate certo ✓' : `${diff > 0 ? 'Sobra' : 'Falta'} de ${formatBRL(Math.abs(diff))}`}
+            {Math.abs(diff) < 0.005 ? t('cash.matches') : t(diff > 0 ? 'cash.surplusOf' : 'cash.shortageOf', { amount: formatBRL(Math.abs(diff)) })}
           </div>
         )}
-        <FormField label="Observações (opcional)">
+        <FormField label={t('cash.notes')}>
           <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />
         </FormField>
-        <FormActions saving={saving} onClose={onClose} saveLabel="Fechar caixa" />
+        <FormActions saving={saving} onClose={onClose} saveLabel={t('cash.close')} />
       </form>
     </ModalOverlay>
   );
 }
 
 function MovementModal({ type, toast, onClose, onDone }: { type: 'sangria' | 'suprimento'; toast: ToastFn; onClose: () => void; onDone: () => void }) {
+  const { t } = useTranslation('ops');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   const [saving, setSaving] = useState(false);
@@ -345,28 +351,28 @@ function MovementModal({ type, toast, onClose, onDone }: { type: 'sangria' | 'su
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const amountValue = parseLocaleNumber(amount);
-    if (!amountValue) return toast.error('Informe um valor.');
+    if (!amountValue) return toast.error(t('cash.errAmount'));
     setSaving(true);
     try {
       await userApi.addCashMovement(type, amountValue, reason.trim() || undefined);
-      toast.success(isSangria ? 'Sangria registrada.' : 'Suprimento registrado.');
+      toast.success(isSangria ? t('cash.withdrawalDone') : t('cash.depositDone'));
       onDone();
     } catch (err) { toast.error((err as Error).message); } finally { setSaving(false); }
   };
   return (
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{isSangria ? 'Sangria (retirada)' : 'Suprimento (entrada)'}</h3>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{isSangria ? t('cash.withdrawalTitle') : t('cash.depositTitle')}</h3>
         <p className="text-xs text-gray-500 dark:text-gray-400 -mt-2">
-          {isSangria ? 'Retirada de dinheiro do caixa.' : 'Reforço/entrada de dinheiro no caixa.'}
+          {isSangria ? t('cash.withdrawalHint') : t('cash.depositHint')}
         </p>
-        <FormField label="Valor (R$)">
+        <FormField label={t('cash.amount')}>
           <input type="text" inputMode="decimal" value={amount} onChange={e => setAmount(e.target.value)} className={inputClass} autoFocus placeholder="0,00" />
         </FormField>
-        <FormField label="Motivo (opcional)">
-          <input value={reason} onChange={e => setReason(e.target.value)} className={inputClass} placeholder={isSangria ? 'Ex.: pagamento fornecedor' : 'Ex.: reforço de troco'} />
+        <FormField label={t('cash.reason')}>
+          <input value={reason} onChange={e => setReason(e.target.value)} className={inputClass} placeholder={isSangria ? t('cash.withdrawalPh') : t('cash.depositPh')} />
         </FormField>
-        <FormActions saving={saving} onClose={onClose} saveLabel="Registrar" />
+        <FormActions saving={saving} onClose={onClose} saveLabel={t('cash.record')} />
       </form>
     </ModalOverlay>
   );

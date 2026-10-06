@@ -5,6 +5,7 @@ import { ToastFn, ModalOverlay, TableSkeleton } from '../../components';
 import { formatBRL, formatDate } from '../format';
 import { EmptyState, FormField, inputClass } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
+import { useTranslation } from 'react-i18next';
 
 /** Preço por unidade base do ingrediente (mesma regra da tela de Ingredientes). */
 function unitPrice(i: Ingredient): number {
@@ -16,14 +17,15 @@ function unitPrice(i: Ingredient): number {
 
 type Status = 'none' | 'ok' | 'low' | 'out';
 
-const STATUS_META: Record<Status, { label: string; dot: string; text: string }> = {
-  none: { label: 'Sem controle', dot: 'bg-gray-300 dark:bg-gray-600', text: 'text-gray-400' },
-  ok: { label: 'Em estoque', dot: 'bg-green-500', text: 'text-green-600 dark:text-green-400' },
-  low: { label: 'Estoque baixo', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
-  out: { label: 'Em falta', dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
+const STATUS_META: Record<Status, { dot: string; text: string }> = {
+  none: { dot: 'bg-gray-300 dark:bg-gray-600', text: 'text-gray-400' },
+  ok: { dot: 'bg-green-500', text: 'text-green-600 dark:text-green-400' },
+  low: { dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-400' },
+  out: { dot: 'bg-red-500', text: 'text-red-600 dark:text-red-400' },
 };
 
 export function StockPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('ops');
   const [ingredients, setIngredients] = useState<Ingredient[]>([]);
   const [items, setItems] = useState<StockItem[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
@@ -68,20 +70,20 @@ export function StockPage({ toast }: { toast: ToastFn }) {
   return (
     <div>
       <div className="mb-5">
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Estoque</h2>
-        <p className="text-sm text-gray-500 dark:text-gray-400">Controle de insumos e reposição</p>
+        <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{t('stock.title')}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400">{t('stock.subtitle')}</p>
       </div>
 
       {/* Hero */}
       <div className="rounded-2xl p-5 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-800 shadow-sm mb-4">
-        <p className="text-xs font-medium text-white/80">Valor em estoque</p>
+        <p className="text-xs font-medium text-white/80">{t('stock.value')}</p>
         <p className="text-3xl font-extrabold text-white tracking-tight mt-1">{formatBRL(totalValue)}</p>
         <div className="flex gap-2 mt-3">
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/20 rounded-lg px-2.5 py-1.5">
-            <PackageCheck size={13} /> {trackedCount} controlado{trackedCount !== 1 ? 's' : ''}
+            <PackageCheck size={13} /> {t('stock.tracked', { count: trackedCount })}
           </span>
           <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/20 rounded-lg px-2.5 py-1.5">
-            <AlertTriangle size={13} /> {lowCount} em falta/baixo
+            <AlertTriangle size={13} /> {t('stock.lowCount', { count: lowCount })}
           </span>
         </div>
       </div>
@@ -91,7 +93,7 @@ export function StockPage({ toast }: { toast: ToastFn }) {
           <TableSkeleton rows={6} cols={2} />
         </div>
       ) : ingredients.length === 0 ? (
-        <EmptyState icon={Boxes} text="Cadastre ingredientes para controlar o estoque deles." />
+        <EmptyState icon={Boxes} text={t('stock.empty')} />
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {ingredients.map(i => {
@@ -108,7 +110,7 @@ export function StockPage({ toast }: { toast: ToastFn }) {
                 <div className="flex-1 min-w-0">
                   <p className="font-medium text-gray-900 dark:text-white truncate">{i.name}</p>
                   <p className={`text-xs ${meta.text}`}>
-                    {meta.label}
+                    {t(`stock.status.${status}`)}
                     {it ? ` · ${it.quantity} ${i.unit}` : ''}
                   </p>
                 </div>
@@ -152,6 +154,7 @@ function StockModal({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('ops');
   const [qty, setQty] = useState(item ? String(item.quantity) : '');
   const [min, setMin] = useState(item ? String(item.minQuantity) : '');
   const [entry, setEntry] = useState('');
@@ -166,7 +169,7 @@ function StockModal({
         parseLocaleNumber(min),
         ingredient.unit
       );
-      toast.success('Estoque atualizado.');
+      toast.success(t('stock.updated'));
       onSaved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -177,11 +180,11 @@ function StockModal({
 
   const addEntry = async () => {
     const q = parseLocaleNumber(entry);
-    if (q <= 0) return toast.error('Informe a quantidade que chegou.');
+    if (q <= 0) return toast.error(t('stock.errEntry'));
     setSaving(true);
     try {
       await userApi.addStockEntry(ingredient.id, q, ingredient.unit, 'Reposição');
-      toast.success('Reposição registrada.');
+      toast.success(t('stock.restockDone'));
       onSaved();
     } catch (e) {
       toast.error((e as Error).message);
@@ -191,9 +194,9 @@ function StockModal({
   };
 
   const moveLabel = (m: StockMovement) => {
-    if (m.type === 'set') return `Ajuste para ${m.balance} ${ingredient.unit}`;
-    if (m.type === 'in') return `+${m.quantity} ${ingredient.unit} (reposição)`;
-    return `−${m.quantity} ${ingredient.unit} (${m.reason || 'saída'})`;
+    if (m.type === 'set') return t('stock.moveSet', { balance: m.balance, unit: ingredient.unit });
+    if (m.type === 'in') return t('stock.moveIn', { qty: m.quantity, unit: ingredient.unit });
+    return t('stock.moveOut', { qty: m.quantity, unit: ingredient.unit, reason: m.reason || t('stock.out') });
   };
 
   return (
@@ -201,15 +204,15 @@ function StockModal({
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <div>
           <h3 className="font-bold text-lg text-gray-900 dark:text-white">{ingredient.name}</h3>
-          <p className="text-xs text-gray-400">Unidade: {ingredient.unit}</p>
+          <p className="text-xs text-gray-400">{t('stock.unit', { unit: ingredient.unit })}</p>
         </div>
 
         {/* Inventário (saldo + mínimo) */}
         <div className="grid grid-cols-2 gap-3">
-          <FormField label={`Saldo atual (${ingredient.unit})`}>
+          <FormField label={t('stock.balance', { unit: ingredient.unit })}>
             <input type="text" inputMode="decimal" value={qty} onChange={e => setQty(e.target.value)} placeholder="0" className={inputClass} />
           </FormField>
-          <FormField label={`Estoque mínimo (${ingredient.unit})`}>
+          <FormField label={t('stock.min', { unit: ingredient.unit })}>
             <input type="text" inputMode="decimal" value={min} onChange={e => setMin(e.target.value)} placeholder="0" className={inputClass} />
           </FormField>
         </div>
@@ -218,19 +221,19 @@ function StockModal({
           disabled={saving}
           className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg py-2.5 transition-colors"
         >
-          {saving ? 'Salvando...' : 'Salvar inventário'}
+          {saving ? t('saving') : t('stock.saveInventory')}
         </button>
 
         {/* Entrada rápida */}
         <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Reposição rápida</p>
+          <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">{t('stock.quickRestock')}</p>
           <div className="flex gap-2">
             <input
               type="text"
               inputMode="decimal"
               value={entry}
               onChange={e => setEntry(e.target.value)}
-              placeholder={`Quanto chegou (${ingredient.unit})`}
+              placeholder={t('stock.howMuch', { unit: ingredient.unit })}
               className={inputClass}
             />
             <button
@@ -238,7 +241,7 @@ function StockModal({
               disabled={saving}
               className="flex items-center gap-1.5 bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white text-sm font-semibold rounded-lg px-4 transition-colors shrink-0"
             >
-              <PlusCircle size={16} /> Somar
+              <PlusCircle size={16} /> {t('stock.add')}
             </button>
           </div>
         </div>
@@ -246,7 +249,7 @@ function StockModal({
         {/* Histórico */}
         {movements.length > 0 && (
           <div className="border-t border-gray-100 dark:border-gray-700 pt-4">
-            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">Movimentações recentes</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-2">{t('stock.recent')}</p>
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {movements.slice(0, 8).map(m => (
                 <div key={m.id} className="flex items-center justify-between text-xs">
@@ -263,7 +266,7 @@ function StockModal({
             onClick={onClose}
             className="text-sm px-4 py-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
           >
-            Fechar
+            {t('close')}
           </button>
         </div>
       </div>

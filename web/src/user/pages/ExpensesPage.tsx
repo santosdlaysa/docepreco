@@ -5,10 +5,13 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatDate, todayISO } from '../format';
 import { Header, EmptyState, FormField, FormActions, inputClass, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
+import { getLang } from '../../i18n';
 
-const CATEGORY_LABEL: Record<string, string> = Object.fromEntries(
-  EXPENSE_CATEGORIES.map(c => [c.key, c.label])
-);
+/** Rótulo exibido da categoria (o valor gravado no banco continua sendo a chave). */
+const categoryLabel = (t: TFunction, key: string) =>
+  EXPENSE_CATEGORIES.some(c => c.key === key) ? t(`exp.categories.${key}`) : key;
 
 /** Últimos 6 meses no formato { key: 'YYYY-MM', label: 'jul' } + opção "Tudo" (''). */
 function recentMonths(): { key: string; label: string }[] {
@@ -17,13 +20,14 @@ function recentMonths(): { key: string; label: string }[] {
   for (let i = 0; i < 6; i++) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
+    const label = d.toLocaleDateString(getLang() === 'en' ? 'en-US' : 'pt-BR', { month: 'short' }).replace('.', '');
     out.push({ key, label });
   }
   return out;
 }
 
 export function ExpensesPage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('finance');
   const [items, setItems] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -50,7 +54,7 @@ export function ExpensesPage({ toast }: { toast: ToastFn }) {
     if (!confirmId) return;
     try {
       await userApi.deleteExpense(confirmId);
-      toast.success('Despesa excluída.');
+      toast.success(t('exp.deleted'));
       setConfirmId(null);
       load();
     } catch (e) {
@@ -67,15 +71,15 @@ export function ExpensesPage({ toast }: { toast: ToastFn }) {
   return (
     <div>
       <Header
-        title="Despesas"
-        subtitle={`${items.length} lançamento${items.length !== 1 ? 's' : ''} · ${formatBRL(total)}`}
+        title={t('exp.title')}
+        subtitle={t('exp.subtitle', { count: items.length, total: formatBRL(total) })}
         onAdd={() => setCreating(true)}
-        addLabel="Nova despesa"
+        addLabel={t('exp.add')}
       />
 
       {/* Filtro por mês */}
       <div className="flex gap-1.5 overflow-x-auto pb-2 mb-3">
-        <MonthChip label="Tudo" active={month === ''} onClick={() => setMonth('')} />
+        <MonthChip label={t('exp.all')} active={month === ''} onClick={() => setMonth('')} />
         {months.map(m => (
           <MonthChip key={m.key} label={m.label} active={month === m.key} onClick={() => setMonth(m.key)} />
         ))}
@@ -84,9 +88,9 @@ export function ExpensesPage({ toast }: { toast: ToastFn }) {
       {/* Resumo Total / Fixo / Variável */}
       {!loading && items.length > 0 && (
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <SummaryCard label="Total" value={formatBRL(total)} highlight />
-          <SummaryCard label="Fixo" value={formatBRL(fixed)} dotClass="bg-purple-500" />
-          <SummaryCard label="Variável" value={formatBRL(variable)} dotClass="bg-amber-500" />
+          <SummaryCard label={t('exp.total')} value={formatBRL(total)} highlight />
+          <SummaryCard label={t('exp.fixed')} value={formatBRL(fixed)} dotClass="bg-purple-500" />
+          <SummaryCard label={t('exp.variable')} value={formatBRL(variable)} dotClass="bg-amber-500" />
         </div>
       )}
 
@@ -95,7 +99,7 @@ export function ExpensesPage({ toast }: { toast: ToastFn }) {
           <TableSkeleton rows={6} cols={3} />
         </div>
       ) : items.length === 0 ? (
-        <EmptyState icon={Receipt} text="Nenhuma despesa lançada neste período." />
+        <EmptyState icon={Receipt} text={t('exp.empty')} />
       ) : (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 divide-y divide-gray-100 dark:divide-gray-700">
           {items.map(e => (
@@ -104,8 +108,8 @@ export function ExpensesPage({ toast }: { toast: ToastFn }) {
               <button onClick={() => setEditing(e)} className="flex-1 min-w-0 text-left">
                 <p className="font-medium text-gray-900 dark:text-white truncate">{e.description}</p>
                 <p className="text-xs text-gray-500 dark:text-gray-400">
-                  {CATEGORY_LABEL[e.category] || e.category} · {formatDate(e.expenseDate)}
-                  {e.isRecurring ? ` · Recorrente${e.recurrenceDay ? ` (dia ${e.recurrenceDay})` : ''}` : ''}
+                  {categoryLabel(t, e.category)} · {formatDate(e.expenseDate)}
+                  {e.isRecurring ? (e.recurrenceDay ? t('exp.recurringDay', { day: e.recurrenceDay }) : t('exp.recurring')) : ''}
                 </p>
               </button>
               <span className="font-semibold text-red-600 dark:text-red-400 shrink-0">− {formatBRL(e.amount)}</span>
@@ -128,8 +132,8 @@ export function ExpensesPage({ toast }: { toast: ToastFn }) {
 
       <ConfirmModal
         open={!!confirmId}
-        title="Excluir despesa"
-        message="Tem certeza? Esta ação não pode ser desfeita."
+        title={t('exp.confirmTitle')}
+        message={t('exp.confirmMsg')}
         onConfirm={handleDelete}
         onCancel={() => setConfirmId(null)}
       />
@@ -175,6 +179,7 @@ function ExpenseForm({
   onSaved: () => void;
   toast: ToastFn;
 }) {
+  const { t } = useTranslation('finance');
   const editingId = initial?.id ?? null;
   const [description, setDescription] = useState(initial?.description ?? '');
   const [amount, setAmount] = useState(initial ? Number(initial.amount).toFixed(2) : '');
@@ -188,10 +193,10 @@ function ExpenseForm({
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!description.trim()) return toast.error('Informe a descrição.');
+    if (!description.trim()) return toast.error(t('exp.errDescription'));
     const amountN = parseLocaleNumber(amount);
-    if (amountN <= 0) return toast.error('Informe um valor válido.');
-    if (!expenseDate) return toast.error('Informe a data.');
+    if (amountN <= 0) return toast.error(t('exp.errAmount'));
+    if (!expenseDate) return toast.error(t('exp.errDate'));
 
     setSaving(true);
     const data: CreateExpenseDTO = {
@@ -207,10 +212,10 @@ function ExpenseForm({
     try {
       if (editingId) {
         await userApi.updateExpense(editingId, data);
-        toast.success('Despesa atualizada.');
+        toast.success(t('exp.updated'));
       } else {
         await userApi.createExpense(data);
-        toast.success('Despesa lançada.');
+        toast.success(t('exp.created'));
       }
       onSaved();
     } catch (err) {
@@ -224,21 +229,21 @@ function ExpenseForm({
     <ModalOverlay onClose={onClose}>
       <form onSubmit={submit} className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-4">
         <h3 className="font-bold text-lg text-gray-900 dark:text-white">
-          {editingId ? 'Editar despesa' : 'Nova despesa'}
+          {editingId ? t('exp.edit') : t('exp.add')}
         </h3>
 
-        <FormField label="Descrição">
+        <FormField label={t('exp.description')}>
           <input
             value={description}
             onChange={e => setDescription(e.target.value)}
-            placeholder="Ex.: Conta de luz"
+            placeholder={t('exp.descPlaceholder')}
             className={inputClass}
             autoFocus
           />
         </FormField>
 
         <div className="grid grid-cols-2 gap-3">
-          <FormField label="Valor (R$)">
+          <FormField label={t('exp.amount')}>
             <input
               type="text"
               inputMode="decimal"
@@ -248,15 +253,15 @@ function ExpenseForm({
               className={inputClass}
             />
           </FormField>
-          <FormField label="Data">
+          <FormField label={t('exp.date')}>
             <input type="date" value={expenseDate} onChange={e => setExpenseDate(e.target.value)} className={inputClass} />
           </FormField>
         </div>
 
         {/* Tipo de custo */}
-        <FormField label="Tipo de custo">
+        <FormField label={t('exp.costType')}>
           <div className="flex gap-2">
-            {([['fixed', 'Fixo'], ['variable', 'Variável']] as [ExpenseCostType, string][]).map(([val, lbl]) => (
+            {([['fixed', t('exp.fixed')], ['variable', t('exp.variable')]] as [ExpenseCostType, string][]).map(([val, lbl]) => (
               <button
                 key={val}
                 type="button"
@@ -274,7 +279,7 @@ function ExpenseForm({
         </FormField>
 
         {/* Categoria */}
-        <FormField label="Categoria">
+        <FormField label={t('exp.category')}>
           <div className="flex flex-wrap gap-2">
             {EXPENSE_CATEGORIES.map(c => (
               <button
@@ -287,7 +292,7 @@ function ExpenseForm({
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                {c.label}
+                {categoryLabel(t, c.key)}
               </button>
             ))}
           </div>
@@ -302,7 +307,7 @@ function ExpenseForm({
               onChange={e => setIsRecurring(e.target.checked)}
               className="w-4 h-4 rounded accent-primary-500"
             />
-            <span className="text-sm text-gray-700 dark:text-gray-200">Despesa recorrente (mensal)</span>
+            <span className="text-sm text-gray-700 dark:text-gray-200">{t('exp.recurringLabel')}</span>
           </label>
           {isRecurring && (
             <input
@@ -310,13 +315,13 @@ function ExpenseForm({
               inputMode="numeric"
               value={recurrenceDay}
               onChange={e => setRecurrenceDay(e.target.value)}
-              placeholder="dia"
+              placeholder={t('exp.dayPlaceholder')}
               className={`${inputClass} w-20`}
             />
           )}
         </div>
 
-        <FormField label="Observações (opcional)">
+        <FormField label={t('exp.notes')}>
           <input value={notes} onChange={e => setNotes(e.target.value)} className={inputClass} />
         </FormField>
 

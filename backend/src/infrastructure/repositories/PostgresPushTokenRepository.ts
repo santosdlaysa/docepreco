@@ -4,7 +4,7 @@ export interface PushToken {
   id: string;
   userId: string;
   token: string;
-  platform: 'ios' | 'android';
+  platform: 'ios' | 'android' | 'web';
   createdAt: string;
 }
 
@@ -18,6 +18,37 @@ export class PostgresPushTokenRepository {
       [userId, token, platform]
     );
     return this.mapRow(result.rows[0]);
+  }
+
+  /**
+   * Assinatura Web Push do navegador. Remove antes a assinatura anterior do mesmo
+   * endpoint (as chaves podem mudar) para não duplicar entregas.
+   */
+  async upsertWeb(userId: string, token: string, endpointPrefix: string): Promise<PushToken> {
+    await pool.query(
+      `DELETE FROM push_tokens WHERE platform = 'web' AND left(token, length($1)) = $1`,
+      [endpointPrefix]
+    );
+    return this.upsert(userId, token, 'web');
+  }
+
+  async removeWebByEndpoint(userId: string, endpointPrefix: string): Promise<void> {
+    await pool.query(
+      `DELETE FROM push_tokens WHERE user_id = $1 AND platform = 'web' AND left(token, length($2)) = $2`,
+      [userId, endpointPrefix]
+    );
+  }
+
+  /** Assinaturas web (para os lembretes que no app são agendados localmente). */
+  async findWebTokensByUserIds(userIds?: string[]): Promise<{ userId: string; token: string }[]> {
+    const result = userIds
+      ? await pool.query(`SELECT user_id, token FROM push_tokens WHERE platform = 'web' AND user_id = ANY($1::uuid[])`, [userIds])
+      : await pool.query(
+        `SELECT pt.user_id, pt.token FROM push_tokens pt
+         JOIN users u ON u.id = pt.user_id
+         WHERE pt.platform = 'web' AND COALESCE(u.is_active, TRUE)`
+      );
+    return result.rows.map((r: Record<string, unknown>) => ({ userId: r.user_id as string, token: r.token as string }));
   }
 
   async findAll(): Promise<PushToken[]> {

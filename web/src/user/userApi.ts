@@ -3,6 +3,8 @@
 // usados em mobile/src/data/api/*.
 
 import { ProductionPlan } from './productionPlan';
+import { isDemoMode } from './demo/demoMode';
+import { demoRequest } from './demo/demoApi';
 const BASE = import.meta.env.VITE_API_URL ?? 'https://docepreco.onrender.com/api';
 
 // Timeout das requisições — evita a tela girar pra sempre quando o servidor
@@ -37,6 +39,8 @@ export function setOnUnauthorized(fn: () => void) {
 }
 
 export async function req<T>(path: string, init: RequestInit = {}): Promise<T> {
+  // Modo demonstração: responde com os dados de exemplo, sem tocar na API real.
+  if (isDemoMode()) return demoRequest<T>(path, init);
   const token = loadToken();
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

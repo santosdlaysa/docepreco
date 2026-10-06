@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import type { TFunction } from 'i18next';
 import { AlarmClock, CheckCircle2, MessageCircleHeart, ExternalLink } from 'lucide-react';
 import { ModalOverlay } from '../components';
 import { localPref } from './engagementApi';
@@ -18,8 +20,8 @@ export function daysUntil(iso: string | null | undefined): number | null {
   return Math.round((startOfDay(end) - startOfDay(new Date())) / 86_400_000);
 }
 
-const expiryLabel = (daysLeft: number) =>
-  daysLeft <= 0 ? 'Sua assinatura expira hoje.' : daysLeft === 1 ? 'Sua assinatura expira amanhã.' : `Sua assinatura expira em ${daysLeft} dias.`;
+const expiryLabel = (daysLeft: number, t: TFunction) =>
+  daysLeft <= 0 ? t('expiring.today') : daysLeft === 1 ? t('expiring.tomorrow') : t('expiring.inDays', { count: daysLeft });
 
 /**
  * Assinatura perto de vencer (≤ 3 dias): avisa uma vez por dia com CTA de
@@ -32,6 +34,7 @@ export function SubscriptionExpiringModal({ enabled, premiumUntil, onRenew, onVi
   onRenew: () => void;
   onVisibleChange?: (v: boolean) => void;
 }) {
+  const { t } = useTranslation('app');
   const [visible, setVisible] = useState(false);
   const daysLeft = daysUntil(premiumUntil);
 
@@ -54,16 +57,16 @@ export function SubscriptionExpiringModal({ enabled, premiumUntil, onRenew, onVi
         <div className="w-14 h-14 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mx-auto">
           <AlarmClock size={28} className="text-primary-500" />
         </div>
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Sua assinatura está expirando</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-300">{expiryLabel(daysLeft)} Renove agora para não perder o acesso aos recursos pagos.</p>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('expiring.title')}</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{expiryLabel(daysLeft, t)} {t('expiring.renewHint')}</p>
         <ul className="text-left text-sm text-gray-600 dark:text-gray-300 space-y-1.5">
-          <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" /> Continue precificando sem limites</li>
-          <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" /> Mantenha seus relatórios e recursos exclusivos</li>
+          <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" /> {t('expiring.benefit1')}</li>
+          <li className="flex gap-2"><CheckCircle2 size={16} className="text-green-500 shrink-0 mt-0.5" /> {t('expiring.benefit2')}</li>
         </ul>
         <button onClick={() => { close(); onRenew(); }} className="w-full bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg py-2.5">
-          Renovar agora
+          {t('expiring.renewNow')}
         </button>
-        <button onClick={close} className="w-full text-sm text-gray-500 hover:underline">Agora não</button>
+        <button onClick={close} className="w-full text-sm text-gray-500 hover:underline">{t('notNow')}</button>
       </div>
     </ModalOverlay>
   );
@@ -71,6 +74,7 @@ export function SubscriptionExpiringModal({ enabled, premiumUntil, onRenew, onVi
 
 /** Convite para a pesquisa de satisfação (mesma do app): some ao abrir; "depois" volta em 3 dias. */
 export function SatisfactionSurveyModal({ enabled }: { enabled: boolean }) {
+  const { t } = useTranslation('app');
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -92,13 +96,13 @@ export function SatisfactionSurveyModal({ enabled }: { enabled: boolean }) {
         <div className="w-14 h-14 rounded-full bg-primary-50 dark:bg-primary-900/30 flex items-center justify-center mx-auto">
           <MessageCircleHeart size={28} className="text-primary-500" />
         </div>
-        <h3 className="font-bold text-lg text-gray-900 dark:text-white">Sua opinião importa 💖</h3>
-        <p className="text-sm text-gray-600 dark:text-gray-300">Responda algumas perguntas rápidas e ajude a deixar o DocePreço ainda melhor para você. Leva cerca de 2 minutos.</p>
+        <h3 className="font-bold text-lg text-gray-900 dark:text-white">{t('survey.title')}</h3>
+        <p className="text-sm text-gray-600 dark:text-gray-300">{t('survey.text')}</p>
         <a href={SURVEY_URL} target="_blank" rel="noopener noreferrer" onClick={() => remember('opened')}
           className="w-full inline-flex items-center justify-center gap-2 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold rounded-lg py-2.5">
-          <ExternalLink size={16} /> Responder pesquisa
+          <ExternalLink size={16} /> {t('survey.answer')}
         </a>
-        <button onClick={() => remember('later')} className="w-full text-sm text-gray-500 hover:underline">Agora não</button>
+        <button onClick={() => remember('later')} className="w-full text-sm text-gray-500 hover:underline">{t('notNow')}</button>
       </div>
     </ModalOverlay>
   );

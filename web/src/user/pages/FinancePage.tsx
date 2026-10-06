@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { TrendingUp, Package, BarChart3 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { userApi, Sale, Expense, PurchaseInvoice } from '../userApi';
 import { ToastFn, TableSkeleton } from '../../components';
 import { formatBRL } from '../format';
@@ -28,6 +29,7 @@ interface ProductLine {
 }
 
 export function FinancePage({ toast }: { toast: ToastFn }) {
+  const { t } = useTranslation('finance');
   const [loading, setLoading] = useState(true);
   const [sales, setSales] = useState<Sale[]>([]);
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -103,7 +105,7 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
   for (const s of filtered) {
     const line = byProduct[s.recipeId] ?? {
       recipeId: s.recipeId,
-      name: s.recipeName || recipeName[s.recipeId] || 'Receita',
+      name: s.recipeName || recipeName[s.recipeId] || t('fin.recipeFallback'),
       units: 0, revenue: 0, cost: 0, profit: 0, margin: 0,
     };
     line.units += s.quantitySold;
@@ -119,14 +121,14 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
     <div>
       <div className="flex items-start justify-between gap-3 mb-5">
         <div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">Financeiro</h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Resultado do negócio (DRE)</p>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{t('fin.title')}</h2>
+          <p className="text-sm text-gray-500 dark:text-gray-400">{t('fin.subtitle')}</p>
         </div>
       </div>
 
       {/* Seletor de período */}
       <div className="flex rounded-lg bg-gray-100 dark:bg-gray-700 p-0.5 mb-4">
-        {([['month', 'Este mês'], ['prev', 'Mês passado'], ['all', 'Tudo']] as [Period, string][]).map(([key, label]) => (
+        {([['month', t('fin.periodMonth')], ['prev', t('fin.periodPrev')], ['all', t('fin.periodAll')]] as [Period, string][]).map(([key, label]) => (
           <button
             key={key}
             onClick={() => setPeriod(key)}
@@ -146,30 +148,30 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
           <TableSkeleton rows={5} cols={2} />
         </div>
       ) : filtered.length === 0 && expenses.length === 0 && purchases.length === 0 ? (
-        <EmptyState icon={BarChart3} text="Sem dados no período. Registre vendas para ver o resultado financeiro (DRE) do seu negócio." />
+        <EmptyState icon={BarChart3} text={t('fin.empty')} />
       ) : (
         <div className="space-y-4">
           {/* Hero — Lucro do período */}
           <div className="rounded-2xl p-5 bg-gradient-to-br from-purple-500 via-purple-600 to-purple-800 shadow-sm">
-            <p className="text-xs font-medium text-white/80">Lucro do período</p>
+            <p className="text-xs font-medium text-white/80">{t('fin.profitPeriod')}</p>
             <p className="text-3xl font-extrabold text-white tracking-tight mt-1">{formatBRL(profit)}</p>
             <div className="flex gap-2 mt-3">
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/20 rounded-lg px-2.5 py-1.5">
-                <TrendingUp size={13} /> Margem {margin.toFixed(0)}%
+                <TrendingUp size={13} /> {t('fin.marginBadge', { value: margin.toFixed(0) })}
               </span>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-white/20 rounded-lg px-2.5 py-1.5">
-                <Package size={13} /> {units} un vendidas
+                <Package size={13} /> {t('fin.unitsSold', { count: units })}
               </span>
             </div>
           </div>
 
           {/* DRE */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-4">Demonstrativo (DRE)</p>
-            <DreRow label="Receita bruta" value={formatBRL(revenue)} valueClass="text-gray-900 dark:text-white" bar={100} barClass="bg-purple-200 dark:bg-purple-500/40" />
+            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-4">{t('fin.dreTitle')}</p>
+            <DreRow label={t('fin.grossRevenue')} value={formatBRL(revenue)} valueClass="text-gray-900 dark:text-white" bar={100} barClass="bg-purple-200 dark:bg-purple-500/40" />
             <DreRow
-              label="(–) Custo dos produtos"
-              sub={`${costPct.toFixed(0)}% da receita`}
+              label={t('fin.productCost')}
+              sub={t('fin.pctOfRevenue', { value: costPct.toFixed(0) })}
               value={`− ${formatBRL(cost)}`}
               valueClass="text-red-500"
               bar={costPct}
@@ -177,8 +179,8 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
             />
             {totalExpenses > 0 && (
               <DreRow
-                label="(–) Despesas operacionais"
-                sub={`${expensePct.toFixed(0)}% da receita`}
+                label={t('fin.opExpenses')}
+                sub={t('fin.pctOfRevenue', { value: expensePct.toFixed(0) })}
                 value={`− ${formatBRL(totalExpenses)}`}
                 valueClass="text-red-500"
                 bar={expensePct}
@@ -187,7 +189,7 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
             )}
             <div className="border-t border-gray-100 dark:border-gray-700 my-2" />
             <DreRow
-              label="(=) Lucro líquido"
+              label={t('fin.netProfit')}
               value={formatBRL(profit)}
               valueClass={profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}
               bold
@@ -195,7 +197,7 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
               barClass="bg-green-200 dark:bg-green-500/40"
             />
             <div className="flex items-center justify-between pt-3 mt-1 border-t border-gray-100 dark:border-gray-700">
-              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Margem de lucro</span>
+              <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{t('fin.profitMargin')}</span>
               <span className={`text-xl font-extrabold ${profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>
                 {margin.toFixed(1)}%
               </span>
@@ -204,21 +206,21 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
 
           {/* Fluxo financeiro: compras pagas são saída de caixa, não nova despesa no DRE. */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4">
-            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">Fluxo financeiro simplificado</p>
-            <p className="text-[11px] text-gray-400 mb-3">Compras aparecem aqui; no DRE, o ingrediente entra pelo custo do produto vendido.</p>
+            <p className="font-semibold text-gray-900 dark:text-white text-sm mb-1">{t('fin.flowTitle')}</p>
+            <p className="text-[11px] text-gray-400 mb-3">{t('fin.flowHint')}</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <FlowCard label="Entradas (vendas)" value={formatBRL(revenue)} className="text-green-600" />
-              <FlowCard label="Compras pagas" value={`− ${formatBRL(paidPurchases)}`} className="text-red-500" />
-              <FlowCard label="Despesas" value={`− ${formatBRL(totalExpenses)}`} className="text-red-500" />
-              <FlowCard label="Saldo estimado" value={formatBRL(cashBalance)} className={cashBalance >= 0 ? 'text-green-600' : 'text-red-500'} />
+              <FlowCard label={t('fin.flowIn')} value={formatBRL(revenue)} className="text-green-600" />
+              <FlowCard label={t('fin.flowPaidPurchases')} value={`− ${formatBRL(paidPurchases)}`} className="text-red-500" />
+              <FlowCard label={t('fin.flowExpenses')} value={`− ${formatBRL(totalExpenses)}`} className="text-red-500" />
+              <FlowCard label={t('fin.flowBalance')} value={formatBRL(cashBalance)} className={cashBalance >= 0 ? 'text-green-600' : 'text-red-500'} />
             </div>
-            {pendingPurchases > 0 && <p className="text-xs text-amber-600 mt-3">Compras pendentes: {formatBRL(pendingPurchases)}</p>}
+            {pendingPurchases > 0 && <p className="text-xs text-amber-600 mt-3">{t('fin.pendingPurchases', { value: formatBRL(pendingPurchases) })}</p>}
           </div>
 
           {/* Por produto */}
           <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
             <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <p className="font-semibold text-gray-900 dark:text-white text-sm">Resultado por produto</p>
+              <p className="font-semibold text-gray-900 dark:text-white text-sm">{t('fin.byProduct')}</p>
             </div>
             <div className="divide-y divide-gray-100 dark:divide-gray-700">
               {products.map(p => (
@@ -226,12 +228,12 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-900 dark:text-white truncate">{p.name}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {p.units} un · receita {formatBRL(p.revenue)} · custo {formatBRL(p.cost)}
+                      {t('fin.productLine', { units: p.units, revenue: formatBRL(p.revenue), cost: formatBRL(p.cost) })}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className={`font-bold ${p.profit >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500'}`}>{formatBRL(p.profit)}</p>
-                    <p className="text-[11px] text-gray-400">{p.margin.toFixed(0)}% margem</p>
+                    <p className="text-[11px] text-gray-400">{t('fin.productMargin', { value: p.margin.toFixed(0) })}</p>
                   </div>
                 </div>
               ))}
@@ -239,7 +241,7 @@ export function FinancePage({ toast }: { toast: ToastFn }) {
           </div>
 
           <p className="text-[11px] text-gray-400 text-center leading-relaxed px-2">
-            O custo é calculado a partir da ficha técnica de cada receita (ingredientes, adicionais e sub-receitas) no momento da consulta.
+            {t('fin.costNote')}
           </p>
         </div>
       )}
