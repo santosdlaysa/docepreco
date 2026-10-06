@@ -2,6 +2,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { api, SupportConversation, SupportMessage, AdminUser, SupportBroadcastTarget } from '../lib/api';
 import { TableSkeleton, ModalOverlay, ToastFn } from '../components';
 import { Headset, Send, MessageCircle, Search, PenSquare, X, ImagePlus, Trash2, Megaphone } from 'lucide-react';
+import { imageFileToJpegDataUrl } from '../lib/image';
 
 const BROADCAST_TARGETS: { value: SupportBroadcastTarget; label: string; hint: string }[] = [
   { value: 'all', label: 'Todos os usuários', hint: 'Toda a base' },
@@ -250,14 +251,12 @@ export function SupportChatPage({ toast }: Props) {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return;
-      setSelectedImage(reader.result);
-      setSelectedImageName(file.name);
-    };
-    reader.onerror = () => toast.error('Não foi possível ler a imagem');
-    reader.readAsDataURL(file);
+    imageFileToJpegDataUrl(file)
+      .then(dataUrl => {
+        setSelectedImage(dataUrl);
+        setSelectedImageName(file.name);
+      })
+      .catch(err => toast.error((err as Error).message));
   };
 
   const sendTypingSignal = useCallback(() => {

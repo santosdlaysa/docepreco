@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { api, SupportMessage } from '../lib/api';
+import { imageFileToJpegDataUrl } from '../lib/image';
 import { ModalOverlay } from '../components';
 import { ChatDiscountOffer } from './ChatDiscountOffer';
 import { Crown, X, MessageSquare, ImagePlus, Send, Trash2, Bell, BellOff } from 'lucide-react';
@@ -116,14 +117,12 @@ export function UserChatModal({ userId, userName, userEmail, onClose, onError }:
       onError?.('A imagem deve ter no máximo 3 MB');
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result !== 'string') return;
-      setSelectedImage(reader.result);
-      setSelectedImageName(file.name);
-    };
-    reader.onerror = () => onError?.('Não foi possível ler a imagem');
-    reader.readAsDataURL(file);
+    imageFileToJpegDataUrl(file)
+      .then(dataUrl => {
+        setSelectedImage(dataUrl);
+        setSelectedImageName(file.name);
+      })
+      .catch(err => onError?.((err as Error).message));
   };
 
   const sendTypingSignal = () => {

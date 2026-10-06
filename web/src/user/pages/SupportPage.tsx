@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Send, ImagePlus, Headset, X, Loader2, Crown } from 'lucide-react';
+import { imageFileToJpegDataUrl } from '../../lib/image';
 import { userApi, SupportMessage, PlanTier } from '../userApi';
 import { ToastFn } from '../../components';
 import { SubscribeModal } from '../SubscribeModal';
@@ -71,10 +72,10 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (file.size > 3 * 1024 * 1024) return toast.error('Imagem muito grande (máx. 3 MB).');
-    const reader = new FileReader();
-    reader.onload = () => setImage(String(reader.result));
-    reader.readAsDataURL(file);
     e.target.value = '';
+    imageFileToJpegDataUrl(file)
+      .then(setImage)
+      .catch(err => toast.error((err as Error).message));
   };
 
   const send = async () => {
