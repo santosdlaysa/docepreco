@@ -1,3 +1,5 @@
+import { convertUnitOrNull } from './units';
+
 export interface IngredientPurchase {
   purchaseQuantity: number;
   purchasePrice: number;
@@ -16,12 +18,10 @@ export function getIngredientUsageCost(ingredient: IngredientPurchase, quantity:
   if (unit !== ingredient.unit) {
     if (unit === 'unit' && ingredient.purchaseUnitWeight && ingredient.unit !== 'unit') {
       convertedQuantity *= ingredient.purchaseUnitWeight;
-    } else if ((unit === 'g' && ingredient.unit === 'kg') || (unit === 'ml' && ingredient.unit === 'l')) {
-      convertedQuantity /= 1000;
-    } else if ((unit === 'kg' && ingredient.unit === 'g') || (unit === 'l' && ingredient.unit === 'ml')) {
-      convertedQuantity *= 1000;
     } else {
-      throw new Error('Unidade incompatível com o ingrediente selecionado.');
+      const converted = convertUnitOrNull(quantity, unit, ingredient.unit);
+      if (converted === null) throw new Error('Unidade incompatível com o ingrediente selecionado.');
+      convertedQuantity = converted;
     }
   }
   return ingredient.purchasePrice * convertedQuantity / totalQuantity;

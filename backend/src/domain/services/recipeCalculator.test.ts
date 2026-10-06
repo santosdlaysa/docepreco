@@ -519,3 +519,17 @@ describe('regressão: conteúdo da embalagem e quantidade usada', () => {
     expect(result.ingredientsCost).toBeCloseTo(expected, 8);
   });
 });
+
+describe('convertUnit — unidades imperiais', () => {
+  it('converte dentro da mesma família (incluindo métrico ↔ imperial)', () => {
+    expect(convertUnit(16, 'oz', 'lb')).toBeCloseTo(1);
+    expect(convertUnit(1, 'lb', 'g')).toBeCloseTo(453.59237);
+    expect(convertUnit(1, 'cup', 'tbsp')).toBeCloseTo(16);
+    expect(convertUnit(3, 'tsp', 'tbsp')).toBeCloseTo(1);
+    expect(convertUnit(1, 'l', 'fl_oz')).toBeCloseTo(33.814, 2);
+  });
+
+  it('recusa famílias diferentes', () => {
+    expect(() => convertUnit(1, 'oz', 'ml')).toThrow();
+  });
+});

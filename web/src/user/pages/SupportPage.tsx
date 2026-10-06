@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
-import { Send, ImagePlus, Headset, X, Loader2, Crown } from 'lucide-react';
+import { Send, ImagePlus, Headset, X, Loader2, Crown, MessageCircle } from 'lucide-react';
+import { SUPPORT_WHATSAPP } from '../engagementApi';
 import { imageFileToJpegDataUrl } from '../../lib/image';
 import { userApi, SupportMessage, PlanTier } from '../userApi';
 import { ToastFn } from '../../components';
@@ -104,10 +105,18 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
         <div className="w-10 h-10 rounded-full bg-primary-500 flex items-center justify-center">
           <Headset size={20} className="text-white" />
         </div>
-        <div>
+        <div className="flex-1">
           <p className="font-bold text-gray-900 dark:text-white">Suporte DocePreço</p>
           <p className="text-xs text-green-600 dark:text-green-400">Fale com a nossa equipe</p>
         </div>
+        <a
+          href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent('Olá! Preciso de ajuda com o DocePreço.')}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1.5 text-xs font-semibold text-green-700 dark:text-green-400 border border-green-200 dark:border-green-900/50 rounded-lg px-2.5 py-1.5 hover:bg-green-50 dark:hover:bg-green-900/20"
+        >
+          <MessageCircle size={14} /> WhatsApp
+        </a>
       </div>
 
       {/* Mensagens */}

@@ -7,11 +7,9 @@ import { ToastFn, TableSkeleton } from '../../components';
 import { formatBRL, formatDate, todayISO } from '../format';
 import { parseLocaleNumber } from '../number';
 import { EmptyState, FormField, Header, inputClass } from './IngredientsPage';
+import { unitOptions } from '../units';
 
-const UNITS: { value: Unit; label: string }[] = [
-  { value: 'g', label: 'g' }, { value: 'kg', label: 'kg' },
-  { value: 'ml', label: 'ml' }, { value: 'l', label: 'l' }, { value: 'unit', label: 'un' },
-];
+const UNITS = unitOptions() as { value: Unit; label: string }[];
 type DraftItem = { ingredientId: string; quantity: string; unit: Unit; total: string; updateIngredientPrice: boolean };
 const blankItem = (ingredient?: Ingredient): DraftItem => ({
   ingredientId: ingredient?.id ?? '', quantity: '', unit: ingredient?.unit ?? 'g', total: '', updateIngredientPrice: true,

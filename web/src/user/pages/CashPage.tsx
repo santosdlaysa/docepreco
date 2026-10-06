@@ -89,7 +89,7 @@ export function CashPage({ toast }: { toast: ToastFn }) {
 
           {/* Ações */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <ActionBtn icon={Plus} label="Registrar venda" onClick={() => setModal('sale')} primary disabled={recipes.length === 0} />
+            <ActionBtn icon={Plus} label="Registrar venda" onClick={() => setModal('sale')} primary />
             <ActionBtn icon={ArrowDownCircle} label="Sangria" onClick={() => setModal('sangria')} />
             <ActionBtn icon={ArrowUpCircle} label="Suprimento" onClick={() => setModal('suprimento')} />
             <ActionBtn icon={Lock} label="Fechar caixa" onClick={() => setModal('close')} danger />

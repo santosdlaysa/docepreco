@@ -18,19 +18,26 @@ export interface RecipeCalculationInput {
   subRecipes?: SubRecipe[];
 }
 
+// Fatores para a unidade base de cada família (massa → g, volume → ml).
+// Inclui as unidades imperiais do app (oz, lb, fl oz, xícara e colheres — padrão US).
+const MASS_TO_G: Record<string, number> = { g: 1, kg: 1000, oz: 28.349523125, lb: 453.59237 };
+const VOLUME_TO_ML: Record<string, number> = {
+  ml: 1, l: 1000, tsp: 4.92892159375, tbsp: 14.78676478125, fl_oz: 29.5735295625, cup: 236.5882365,
+};
+
 export function convertUnit(quantity: number, fromUnit: string, toUnit: string): number {
   if (fromUnit === toUnit) return quantity;
-  if (fromUnit === 'g'  && toUnit === 'kg') return quantity / 1000;
-  if (fromUnit === 'kg' && toUnit === 'g')  return quantity * 1000;
-  if (fromUnit === 'ml' && toUnit === 'l')  return quantity / 1000;
-  if (fromUnit === 'l'  && toUnit === 'ml') return quantity * 1000;
+  for (const table of [MASS_TO_G, VOLUME_TO_ML]) {
+    if (table[fromUnit] !== undefined && table[toUnit] !== undefined) {
+      return quantity * table[fromUnit] / table[toUnit];
+    }
+  }
   throw new Error(`Cannot convert ${fromUnit} to ${toUnit}`);
 }
 
 export function normalizeToBaseMeasure(quantity: number, unit: string): number | undefined {
-  if (unit === 'g' || unit === 'ml') return quantity;
-  if (unit === 'kg' || unit === 'l') return quantity * 1000;
-  return undefined;
+  const factor = MASS_TO_G[unit] ?? VOLUME_TO_ML[unit];
+  return factor === undefined ? undefined : quantity * factor;
 }
 
 function convertSubRecipeQuantity(quantity: number, unit: string, info: SubRecipeCostInfo): number {

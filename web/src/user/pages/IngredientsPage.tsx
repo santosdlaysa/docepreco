@@ -6,14 +6,10 @@ import { ToastFn, ConfirmModal, ModalOverlay, TableSkeleton } from '../../compon
 import { formatBRL, formatBRLUnit, formatDate } from '../format';
 import { PRICING_TUTORIAL } from '../pricingTutorial';
 import { parseLocaleNumber } from '../number';
+import { unitOptions, unitLabel } from '../units';
 
-const UNIT_OPTIONS: { value: Unit; label: string }[] = [
-  { value: 'unit', label: 'un' },
-  { value: 'g', label: 'g' },
-  { value: 'kg', label: 'kg' },
-  { value: 'ml', label: 'ml' },
-  { value: 'l', label: 'l' },
-];
+// Métricas ou imperiais conforme a preferência (Meu perfil → Unidades), como no app.
+const UNIT_OPTIONS = unitOptions() as { value: Unit; label: string }[];
 const PKG_TYPES = ['Lata', 'Pacote', 'Saco', 'Caixa', 'Garrafa', 'Pote'];
 
 const PER_PAGE = 10;
@@ -62,7 +58,7 @@ export function IngredientsPage({ toast }: { toast: ToastFn }) {
   const packageOptions = [...new Set(items.map(i => i.purchaseUnitLabel).filter((label): label is string => !!label))]
     .sort((a, b) => a.localeCompare(b, 'pt-BR'));
   const unitOptions = [...new Set(items.map(i => i.unit))]
-    .map(unit => ({ value: unit, label: UNIT_OPTIONS.find(option => option.value === unit)?.label ?? unit }));
+    .map(unit => ({ value: unit, label: unitLabel(unit) }));
   const hasFilters = !!(search || unitFilter || packageFilter);
   const filtered = items.filter(i =>
     normalize(i.name).includes(normalize(search))
@@ -553,7 +549,7 @@ function IngredientForm({
           </label>
           <p className="text-xs text-gray-400 mb-2">Em qual unidade você usa esse ingrediente nas receitas?</p>
           <div className="flex flex-wrap gap-2">
-            {UNIT_OPTIONS.map(u => (
+            {(unitOptions(initial?.unit) as { value: Unit; label: string }[]).map(u => (
               <button
                 key={u.value}
                 type="button"

@@ -106,12 +106,20 @@ export const RecipeDetailScreen: React.FC = () => {
   const pickPhoto = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
-      quality: 0.7,
+      quality: 0.5,
       allowsEditing: true,
       aspect: [16, 9],
+      base64: true,
     });
     if (!result.canceled && result.assets[0]) {
-      const uri = result.assets[0].uri;
+      // Salva a imagem em si (data URL), não o caminho local (file://) — senão a
+      // foto só aparece neste aparelho e some na web e em outros celulares.
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        showToast('Erro ao ler a foto', 'error');
+        return;
+      }
+      const uri = `data:${asset.mimeType ?? 'image/jpeg'};base64,${asset.base64}`;
       try {
         await api.update(recipeId, { photoUrl: uri });
         setRecipe(prev => prev ? { ...prev, photoUrl: uri } : prev);

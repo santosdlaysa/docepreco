@@ -3,7 +3,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store, Plus, Pencil, Trash2, ImagePlus, PlusCircle } from 'lucide-react';
 import { ToastFn, TableSkeleton, ModalOverlay, ConfirmModal } from '../../components';
 import { formatBRL } from '../format';
-import { MyStore, StoreSettingsDTO, StoreBusinessHours, StoreProduct, StoreAddon, CreateStoreProductDTO, DiscountType, Recipe, PixKeyType, userApi } from '../userApi';
+import { MyStore, StoreSettingsDTO, StoreBusinessHours, StoreProduct, StoreAddon, CreateStoreProductDTO, DiscountType, Recipe, PixKeyType, StorePaymentMethod, userApi } from '../userApi';
+import { imageFileToJpegDataUrl } from '../../lib/image';
 import { EmptyState, Header, FormField, FormActions, inputClass, iconBtn, iconBtnDanger } from './IngredientsPage';
 import { parseLocaleNumber } from '../number';
 
@@ -707,6 +708,27 @@ function pixKeyPlaceholder(type: PixKeyType): string {
   }
 }
 
+/** Categorias da vitrine — mesmas chaves do app (StoreSettingsScreen). */
+const STORE_CATEGORIES = [
+  { key: 'hamburguer', label: 'Hambúrguer', emoji: '🍔' },
+  { key: 'bolos', label: 'Bolos', emoji: '🎂' },
+  { key: 'doces', label: 'Doces', emoji: '🍬' },
+  { key: 'sorvetes', label: 'Sorvetes', emoji: '🍦' },
+  { key: 'pudins', label: 'Pudins', emoji: '🍮' },
+  { key: 'salgados', label: 'Salgados', emoji: '🥟' },
+  { key: 'bebidas', label: 'Bebidas', emoji: '🥤' },
+  { key: 'pizzas', label: 'Pizzas', emoji: '🍕' },
+  { key: 'marmitas', label: 'Marmitas', emoji: '🍱' },
+  { key: 'outros', label: 'Outros', emoji: '🍽️' },
+];
+
+const STORE_PAYMENT_METHODS: { key: StorePaymentMethod; label: string; sub: string }[] = [
+  { key: 'pix', label: 'PIX', sub: 'Na hora do pedido' },
+  { key: 'cash', label: 'Dinheiro', sub: 'Na entrega/retirada' },
+  { key: 'credit', label: 'Cartão de crédito', sub: 'Na maquininha' },
+  { key: 'debit', label: 'Cartão de débito', sub: 'Na maquininha' },
+];
+
 function StoreSettingsForm({
   store,
   onClose,
@@ -737,7 +759,26 @@ function StoreSettingsForm({
   const [pixKeyType, setPixKeyType] = useState<PixKeyType>(store.pixKeyType ?? 'random');
   const [pixKey, setPixKey] = useState(store.pixKey ?? '');
   const [pixReceiverName, setPixReceiverName] = useState(store.pixReceiverName ?? '');
+  const [coverImageUrl, setCoverImageUrl] = useState(store.coverImageUrl ?? '');
+  const [logoUrl, setLogoUrl] = useState(store.logoUrl ?? '');
+  const [category, setCategory] = useState(store.category ?? '');
+  const [paymentMethods, setPaymentMethods] = useState<StorePaymentMethod[]>(
+    store.paymentMethods?.length ? store.paymentMethods : ['pix', 'cash', 'credit', 'debit']
+  );
+  const [loyaltyEnabled, setLoyaltyEnabled] = useState(store.loyaltyEnabled ?? false);
+  const [loyaltyGoal, setLoyaltyGoal] = useState(String(store.loyaltyGoal ?? 10));
+  const [loyaltyReward, setLoyaltyReward] = useState(store.loyaltyReward ?? '');
   const [saving, setSaving] = useState(false);
+
+  const pickImage = (setter: (v: string) => void, maxSide: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    imageFileToJpegDataUrl(file, maxSide).then(setter).catch(err => toast.error((err as Error).message));
+  };
+
+  const togglePayment = (m: StorePaymentMethod) =>
+    setPaymentMethods(prev => (prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]));
 
   const updateDay = (dayOfWeek: number, patch: Partial<StoreBusinessHours>) =>
     setBusinessHours(prev => prev.map(d => (d.dayOfWeek === dayOfWeek ? { ...d, ...patch } : d)));
@@ -748,6 +789,8 @@ function StoreSettingsForm({
     if (!acceptsDelivery && !acceptsPickup) {
       return toast.error('Escolha ao menos uma forma de atendimento (entrega ou retirada).');
     }
+    if (paymentMethods.length === 0) return toast.error('Escolha ao menos uma forma de pagamento.');
+    if (loyaltyEnabled && !loyaltyReward.trim()) return toast.error('Informe o prêmio do cartão fidelidade.');
     setSaving(true);
     const data: StoreSettingsDTO = {
       storeName: storeName.trim(),
@@ -763,6 +806,13 @@ function StoreSettingsForm({
       pixReceiverName: pixReceiverName.trim() || null,
       useBusinessHours,
       businessHours,
+      coverImageUrl: coverImageUrl || null,
+      logoUrl: logoUrl || null,
+      category: category || null,
+      paymentMethods,
+      loyaltyEnabled,
+      loyaltyGoal: Math.max(1, Math.min(100, Math.floor(Number(loyaltyGoal) || 10))),
+      loyaltyReward: loyaltyReward.trim() || null,
     };
     try {
       await userApi.updateStoreSettings(data);
@@ -793,6 +843,57 @@ function StoreSettingsForm({
             className={inputClass + ' resize-none'}
           />
         </FormField>
+
+        {/* Capa e logo */}
+        <div className="grid grid-cols-[1fr_auto] gap-3 items-start">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Imagem de capa</label>
+            <div className="relative h-24 rounded-xl overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              {coverImageUrl ? <img src={coverImageUrl} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={22} className="text-gray-400" />}
+            </div>
+            <div className="flex gap-3 mt-1.5 text-xs">
+              <label className="text-primary-600 font-semibold cursor-pointer hover:underline">
+                {coverImageUrl ? 'Trocar capa' : 'Adicionar capa'}
+                <input type="file" accept="image/*" className="hidden" onChange={pickImage(setCoverImageUrl, 1600)} />
+              </label>
+              {coverImageUrl && <button type="button" onClick={() => setCoverImageUrl('')} className="text-gray-500 hover:underline">Remover</button>}
+            </div>
+          </div>
+          <div className="w-24">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Logo</label>
+            <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+              {logoUrl ? <img src={logoUrl} alt="" className="w-full h-full object-cover" /> : <ImagePlus size={20} className="text-gray-400" />}
+            </div>
+            <div className="flex flex-col mt-1.5 text-xs">
+              <label className="text-primary-600 font-semibold cursor-pointer hover:underline">
+                {logoUrl ? 'Trocar' : 'Adicionar'}
+                <input type="file" accept="image/*" className="hidden" onChange={pickImage(setLogoUrl, 512)} />
+              </label>
+              {logoUrl && <button type="button" onClick={() => setLogoUrl('')} className="text-left text-gray-500 hover:underline">Remover</button>}
+            </div>
+          </div>
+        </div>
+
+        {/* Categoria */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Categoria da loja</label>
+          <div className="flex flex-wrap gap-2">
+            {STORE_CATEGORIES.map(c => (
+              <button
+                key={c.key}
+                type="button"
+                onClick={() => setCategory(category === c.key ? '' : c.key)}
+                className={`text-sm rounded-full px-3 py-1.5 border transition-colors ${
+                  category === c.key
+                    ? 'border-primary-500 bg-primary-50 text-primary-700 dark:bg-primary-900/30 dark:text-primary-300'
+                    : 'border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300'
+                }`}
+              >
+                {c.emoji} {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <FormField label="Cidade">
@@ -841,6 +942,27 @@ function StoreSettingsForm({
           </FormField>
         </div>
 
+        {/* Formas de pagamento aceitas */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Formas de pagamento aceitas</label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {STORE_PAYMENT_METHODS.map(m => (
+              <label key={m.key} className="flex items-start gap-2 rounded-lg border border-gray-200 dark:border-gray-700 p-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={paymentMethods.includes(m.key)}
+                  onChange={() => togglePayment(m.key)}
+                  className="mt-0.5 w-4 h-4 rounded accent-primary-500 shrink-0"
+                />
+                <span>
+                  <span className="block text-sm text-gray-800 dark:text-gray-100">{m.label}</span>
+                  <span className="block text-xs text-gray-400">{m.sub}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </div>
+
         {/* Recebimento por PIX */}
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-3">
           <div>
@@ -872,6 +994,34 @@ function StoreSettingsForm({
               className={inputClass}
             />
           </FormField>
+        </div>
+
+        {/* Cartão fidelidade */}
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <label className="flex items-center justify-between gap-3 cursor-pointer select-none">
+            <span>
+              <span className="block text-sm font-medium text-gray-900 dark:text-white">Cartão fidelidade</span>
+              <span className="block text-xs text-gray-500 dark:text-gray-400">
+                Recompense quem compra sempre: a cada X pedidos o cliente ganha um prêmio.
+              </span>
+            </span>
+            <input
+              type="checkbox"
+              checked={loyaltyEnabled}
+              onChange={e => setLoyaltyEnabled(e.target.checked)}
+              className="w-4 h-4 rounded accent-primary-500 shrink-0"
+            />
+          </label>
+          {loyaltyEnabled && (
+            <div className="mt-3 grid grid-cols-1 sm:grid-cols-[140px_1fr] gap-3">
+              <FormField label="Meta (pedidos)">
+                <input type="number" min={1} max={100} value={loyaltyGoal} onChange={e => setLoyaltyGoal(e.target.value)} className={inputClass} />
+              </FormField>
+              <FormField label="Prêmio">
+                <input value={loyaltyReward} onChange={e => setLoyaltyReward(e.target.value)} maxLength={255} placeholder="Ex.: 1 bolo de pote grátis" className={inputClass} />
+              </FormField>
+            </div>
+          )}
         </div>
 
         {/* Horários de funcionamento */}
