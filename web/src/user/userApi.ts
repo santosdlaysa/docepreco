@@ -375,6 +375,8 @@ export interface CreateOrderDTO {
   paymentMethod?: OrderPaymentMethod | null;
   changeFor?: number | null;
   notes?: string;
+  /** Endereço de entrega (vazio = retirada). '' na edição limpa o endereço. */
+  deliveryAddress?: string;
 }
 
 export interface PixPlanConfig {

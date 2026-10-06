@@ -440,6 +440,7 @@ function OrderForm({
   const [deliveryTime, setDeliveryTime] = useState(initial?.deliveryTime ?? '');
   const [status, setStatus] = useState<OrderStatus>(initial?.status ?? 'pending');
   const [notes, setNotes] = useState(initial?.notes ?? '');
+  const [deliveryAddress, setDeliveryAddress] = useState(initial?.deliveryAddress ?? '');
   const [saving, setSaving] = useState(false);
   const [newPay, setNewPay] = useState({ amount: '', method: 'pix' as OrderPaymentMethod, date: todayISO() });
 
@@ -515,6 +516,8 @@ function OrderForm({
       paymentMethod: paymentMethod || null,
       changeFor: paymentMethod === 'cash' && parseLocaleNumber(changeFor) > 0 ? parseLocaleNumber(changeFor) : null,
       notes: notes.trim() || undefined,
+      // '' limpa o endereço na edição; vazio na criação = sem endereço (retirada).
+      deliveryAddress: deliveryAddress.trim() || (initial ? '' : undefined),
     };
 
     setSaving(true);
@@ -669,12 +672,18 @@ function OrderForm({
             <input type="time" value={deliveryTime ?? ''} onChange={e => setDeliveryTime(e.target.value)} className={inputClass} />
           </FormField>
         </div>
-        {initial?.deliveryAddress && (
-          <div className="rounded-lg bg-sky-50 dark:bg-sky-900/20 px-3 py-2 text-sm text-sky-800 dark:text-sky-200 flex items-start gap-2">
-            <MapPin size={15} className="mt-0.5 shrink-0" />
-            <span><span className="font-semibold">{t('form.deliveryAddress')}</span> {initial.deliveryAddress}</span>
+        <FormField label={t('form.deliveryAddressLabel')}>
+          <div className="relative">
+            <MapPin size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <input
+              value={deliveryAddress}
+              onChange={e => setDeliveryAddress(e.target.value)}
+              maxLength={500}
+              placeholder={t('form.deliveryAddressPlaceholder')}
+              className={inputClass + ' pl-9'}
+            />
           </div>
-        )}
+        </FormField>
 
         {/* Pagamento */}
         <div className="grid grid-cols-2 gap-3">

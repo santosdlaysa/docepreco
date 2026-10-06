@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { preferencesApi } from '../api/preferencesApi';
 
 const STORAGE_KEY = '@docepreco_pdf_settings';
 
@@ -20,7 +21,14 @@ export const pdfSettingsStorage = {
     return raw ? { ...DEFAULT_SETTINGS, ...JSON.parse(raw) } : DEFAULT_SETTINGS;
   },
 
+  /** Salva no aparelho e na conta (a web usa as mesmas configurações). */
   save: async (settings: PdfSettings): Promise<void> => {
+    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+    void preferencesApi.push({ pdf: { ...settings, logoBase64: settings.logoBase64 ?? null } });
+  },
+
+  /** Só no aparelho (ao aplicar o que veio da conta). */
+  saveLocal: async (settings: PdfSettings): Promise<void> => {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
   },
 };

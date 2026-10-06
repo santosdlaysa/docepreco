@@ -203,6 +203,7 @@ export const CreateOrderScreen: React.FC = () => {
         paidAmount: totalPaid,
         payments,
         notes: notes.trim() || undefined,
+        deliveryAddress: deliveryAddress.trim() || (isEditing ? '' : undefined),
       };
       // A venda é registrada automaticamente pelo backend quando o status é
       // 'delivered' (vinculada ao orderId, idempotente). Não registramos venda
@@ -249,6 +250,7 @@ export const CreateOrderScreen: React.FC = () => {
         paidAmount: totalPaid,
         payments,
         notes: notes.trim() || undefined,
+        deliveryAddress: deliveryAddress.trim() || (isEditing ? '' : undefined),
       };
       if (isEditing) await orderStorage.update(orderId!, data);
       else await orderStorage.create({ ...data, source: 'manual' as const });
@@ -297,6 +299,7 @@ export const CreateOrderScreen: React.FC = () => {
         paidAmount: finalPaid,
         payments: finalPayments,
         notes: notes.trim() || undefined,
+        deliveryAddress: deliveryAddress.trim() || (isEditing ? '' : undefined),
       };
       // Venda registrada automaticamente pelo backend ao marcar como entregue
       // (vinculada ao orderId, idempotente) — não registramos manualmente aqui.
@@ -600,16 +603,14 @@ export const CreateOrderScreen: React.FC = () => {
             </View>
           )}
 
-          {/* ── Endereço de entrega (pedidos online) ── */}
-          {deliveryAddress ? (
-            <View style={st.addressCard}>
-              <Ionicons name="location-outline" size={16} color={colors.blueDark} />
-              <View style={{ flex: 1 }}>
-                <Text style={st.addressLabel}>Endereço de entrega</Text>
-                <Text style={st.addressText}>{deliveryAddress}</Text>
-              </View>
-            </View>
-          ) : null}
+          {/* ── Endereço de entrega (vazio = retirada) ── */}
+          <Text style={st.sec}>Endereço de entrega (opcional)</Text>
+          <View style={st.input}>
+            <Ionicons name="location-outline" size={16} color={INK3} style={{ marginRight: 6 }} />
+            <TextInput style={st.inputText} value={deliveryAddress} onChangeText={setDeliveryAddress}
+              editable={!isLocked} maxLength={500}
+              placeholder="Rua, número, bairro — vazio se for retirada" placeholderTextColor={INK3} />
+          </View>
 
           {/* ── Forma de pagamento escolhida pelo cliente (pedidos online) ── */}
           {orderPaymentMethod ? (

@@ -148,6 +148,8 @@
     "amountPlaceholder": "Valor",
     "status": "Situação",
     "notes": "Observações (opcional)",
-    "saveDraft": "Salvar como rascunho"
+    "saveDraft": "Salvar como rascunho",
+    "deliveryAddressLabel": "Endereço de entrega (opcional)",
+    "deliveryAddressPlaceholder": "Rua, número, bairro — deixe vazio se for retirada"
   }
 }

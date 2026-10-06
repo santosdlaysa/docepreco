@@ -50,6 +50,13 @@ export interface Order {
 
 export type OrderInput = Omit<Order, 'id' | 'userId' | 'orderNumber' | 'createdAt'>;
 
+/** Endereço de entrega digitado na encomenda manual: texto livre, até 500 caracteres. */
+const normalizeAddress = (v: unknown): string | null => {
+  if (typeof v !== 'string') return null;
+  const t = v.trim().slice(0, 500);
+  return t || null;
+};
+
 const isUuid = (v: unknown): v is string =>
   typeof v === 'string' &&
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
@@ -74,8 +81,8 @@ export class PostgresOrderRepository {
       `INSERT INTO orders
         (user_id, client_name, client_phone, recipe_id, recipe_name, quantity, unit_price,
          total_price, delivery_date, delivery_time, status, paid, paid_amount, payments, items, notes,
-         payment_method, change_for, order_number)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,
+         payment_method, change_for, delivery_address, order_number)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,
          (SELECT COALESCE(MAX(order_number), 0) + 1 FROM orders WHERE user_id = $1))
        RETURNING *`,
       [
@@ -97,6 +104,7 @@ export class PostgresOrderRepository {
         d.notes ?? null,
         d.paymentMethod ?? null,
         d.changeFor ?? null,
+        normalizeAddress(d.deliveryAddress) ?? null,
       ]
     );
     return this.mapRow(result.rows[0]);
@@ -121,7 +129,8 @@ export class PostgresOrderRepository {
         items         = COALESCE($16, items),
         notes         = COALESCE($17, notes),
         payment_method = COALESCE($18, payment_method),
-        change_for    = COALESCE($19, change_for)
+        change_for    = COALESCE($19, change_for),
+        delivery_address = COALESCE($20, delivery_address)
        WHERE id = $1 AND user_id = $2
        RETURNING *`,
       [
@@ -144,6 +153,8 @@ export class PostgresOrderRepository {
         d.notes ?? null,
         d.paymentMethod ?? null,
         d.changeFor ?? null,
+        // '' limpa o endereço; undefined mantém o atual.
+        d.deliveryAddress === undefined ? null : (normalizeAddress(d.deliveryAddress) ?? ''),
       ]
     );
     if (result.rows.length === 0) return null;

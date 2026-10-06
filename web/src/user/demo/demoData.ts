@@ -39,6 +39,8 @@ export interface DemoDb {
   supportMessages: SupportMessage[];
   priceHistory: PriceEntry[];
   cashSessions: DemoCashSession[];
+  /** Metas de faturamento por 'mês-ano' (opcional: demos antigas não têm). */
+  goals?: Record<string, number>;
   seq: number;
 }
 

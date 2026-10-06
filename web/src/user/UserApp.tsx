@@ -62,6 +62,7 @@ import { NotificationsBell } from './NotificationsBell';
 import { BeginnerGuide, SponsoredCarousel } from './HomeExtras';
 import { SubscriptionExpiringModal, SatisfactionSurveyModal } from './EngagementModals';
 import { SubscribeModal } from './SubscribeModal';
+import { pullPreferences } from './prefsSync';
 
 type Page =
   | 'reports' | 'recipes' | 'ingredients' | 'sales' | 'orders' | 'production'
@@ -118,6 +119,14 @@ function Shell() {
   const { dark, toggle: toggleDark } = useDarkMode();
   const routerNavigate = useNavigate();
   const { t } = useTranslation('app');
+
+  // Preferências da conta (moeda, unidades, idioma, PDF): aplica as salvas no
+  // app/outro navegador; recarrega uma vez se algo mudou.
+  const userId = user?.id;
+  useEffect(() => {
+    if (!userId) return;
+    void pullPreferences(userId).then(changed => { if (changed) window.location.reload(); });
+  }, [userId]);
 
   // Volta do checkout de cartão (Stripe): o webhook libera o plano em alguns
   // segundos, então confere algumas vezes antes de desistir.

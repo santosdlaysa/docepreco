@@ -252,6 +252,14 @@ function route(db: DemoDb, method: string, path: string, query: URLSearchParams,
       if (method === 'GET' && (a === 'active' || a === 'carousel')) return [];
       return blocked();
 
+    case 'goals': {
+      const key = `${a}-${b}`;
+      db.goals ??= {};
+      if (method === 'PUT') db.goals[key] = Number((body as { amount?: number })?.amount) || 0;
+      const amount = db.goals[key];
+      return amount ? { id: key, amount, month: Number(a), year: Number(b) } : null;
+    }
+
     case 'referrals': {
       const data: ReferralData = { code: 'DEMO2026', validCount: 1, rewardedCount: 0, pendingCount: 1, target: 3, cycle: 1, remainingToReward: 2, rewardsEarned: 0, history: [] };
       return data;

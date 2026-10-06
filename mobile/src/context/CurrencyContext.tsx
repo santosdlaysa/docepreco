@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { preferencesApi } from '../data/api/preferencesApi';
 
 export type Currency = 'BRL' | 'USD' | 'EUR' | 'GBP' | 'NZD' | 'ARS' | 'CLP' | 'COP' | 'MXN';
 
 interface CurrencyContextType {
   currency: Currency;
-  setCurrency: (currency: Currency) => Promise<void>;
+  /** `sync: false` = só local (usado ao aplicar o que veio da conta). */
+  setCurrency: (currency: Currency, opts?: { sync?: boolean }) => Promise<void>;
   loading: boolean;
 }
 
@@ -39,13 +41,15 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadCurrency();
   }, []);
 
-  const setCurrency = async (newCurrency: Currency) => {
+  const setCurrency = async (newCurrency: Currency, opts?: { sync?: boolean }) => {
     setCurrencyState(newCurrency);
     try {
       await AsyncStorage.setItem(CURRENCY_STORAGE_KEY, newCurrency);
     } catch {
       console.error('Erro ao salvar moeda');
     }
+    // Guarda na conta para a web (e outros aparelhos) mostrarem a mesma moeda.
+    if (opts?.sync !== false) void preferencesApi.push({ currency: newCurrency });
   };
 
   return (

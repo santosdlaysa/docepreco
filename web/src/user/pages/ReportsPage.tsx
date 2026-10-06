@@ -11,6 +11,7 @@ import { formatBRL, formatDate, todayISO } from '../format';
 import { inputClass } from './IngredientsPage';
 import { SaleForm } from './SalesPage';
 import { useTranslation } from 'react-i18next';
+import { MonthlyGoalCard } from '../MonthlyGoalCard';
 import type { TFunction } from 'i18next';
 import { getLang } from '../../i18n';
 
@@ -311,6 +312,8 @@ export function ReportsPage({ toast }: { toast: ToastFn }) {
           <Download size={16} /> {t('rep.download')}
         </button>
       </div>
+
+      <MonthlyGoalCard />
 
       {loading || !stats ? (
         <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">

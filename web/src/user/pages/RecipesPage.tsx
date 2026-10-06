@@ -22,6 +22,7 @@ import { formatBRL, formatBRLUnit } from '../format';
 import { parseLocaleNumber } from '../number';
 import { IFOOD_PLANS, ifoodPrice } from '../ifoodPricing';
 import { sameFamilyUnits, unitLabel } from '../units';
+import { pushPreferences } from '../prefsSync';
 import { getCurrency } from '../format';
 import { getEffectivePurchaseQuantity, getIngredientUsageCost } from '../ingredientPricing';
 import { useAuth } from '../UserAuthContext';
@@ -559,6 +560,9 @@ function RecipeForm({
   const [showTutorial, setShowTutorial] = useState(false);
   const [showYieldInfo, setShowYieldInfo] = useState(false);
   const [showTemplates, setShowTemplates] = useState(false);
+  // Modelos prontos são Premium, como no app (guard 'recipeTemplates').
+  const templatesLocked = effectiveTier(useAuth().user) === 'free';
+  const [showTemplateOffer, setShowTemplateOffer] = useState(false);
   const [applyingTemplate, setApplyingTemplate] = useState(false);
 
   // ── Rascunho (só receita nova) e mão de obra lembrada — igual ao app ──
@@ -815,14 +819,16 @@ function RecipeForm({
         {!initial && (
           <button
             type="button"
-            onClick={() => setShowTemplates(true)}
+            onClick={() => (templatesLocked ? setShowTemplateOffer(true) : setShowTemplates(true))}
             disabled={applyingTemplate}
             className="w-full flex items-center justify-center gap-2 rounded-xl border-2 border-dashed border-primary-200 dark:border-primary-800 py-2.5 text-sm font-semibold text-primary-600 hover:bg-primary-50 dark:hover:bg-primary-900/20 disabled:opacity-50"
           >
             {applyingTemplate ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
             {applyingTemplate ? t('applyingTemplate') : t('startFromTemplate')}
+            {templatesLocked && <span className="ml-1 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">PRO</span>}
           </button>
         )}
+        {showTemplateOffer && createPortal(<SubscribeModal initialTier="premium" source="recipe_templates" onClose={() => setShowTemplateOffer(false)} toast={toast} />, document.body)}
         {showTemplates && createPortal(
           <ModalOverlay onClose={() => setShowTemplates(false)}>
             <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-6 space-y-3">
@@ -1750,6 +1756,7 @@ function PdfSettingsModal({ isPaid, onClose, toast }: { isPaid: boolean; onClose
 
   const save = () => {
     savePdfSettings(settings);
+    void pushPreferences({ pdf: { ...settings, logoBase64: settings.logoBase64 ?? null } });
     toast.success(t('pdfSaved'));
     onClose();
   };

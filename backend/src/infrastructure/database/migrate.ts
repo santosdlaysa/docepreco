@@ -1161,6 +1161,8 @@ export async function runMigrations() {
 
     // Cliente do Stripe, para abrir o portal de cobrança sem depender de busca por e-mail.
     await addColumnIfMissing(client, 'users', 'stripe_customer_id', 'VARCHAR(100) NULL');
+    // Preferências sincronizadas entre app e web (moeda, unidades, idioma, PDF)
+    await addColumnIfMissing(client, 'users', 'preferences', "JSONB NOT NULL DEFAULT '{}'::jsonb");
 
     // Até aqui o pagamento por PIX era gravado como 'manual' — o mesmo valor que o
     // admin usa ao liberar acesso de cortesia —, então a tela de plano não teria como

@@ -4,6 +4,7 @@ import { Coins } from 'lucide-react';
 import { CURRENCIES, Currency, getCurrency, setCurrency } from './format';
 import { UnitSystem, getUnitSystem, setUnitSystem } from './units';
 import { Lang, getLang, setLang } from '../i18n';
+import { pushPreferences } from './prefsSync';
 
 /**
  * Preferências regionais (iguais às telas Moeda e Unidades do app). Ficam no
@@ -14,15 +15,24 @@ export function CurrencySettings() {
   const [value, setValue] = useState<Currency>(getCurrency());
   const [system, setSystem] = useState<UnitSystem>(getUnitSystem());
 
-  const changeSystem = (s: UnitSystem) => {
+  // Salva na conta (para o app/outro navegador) e recarrega para reformatar tudo.
+  const changeSystem = async (s: UnitSystem) => {
     setSystem(s);
     setUnitSystem(s);
+    await pushPreferences({ unitSystem: s });
     window.location.reload();
   };
 
-  const change = (c: Currency) => {
+  const change = async (c: Currency) => {
     setValue(c);
     setCurrency(c);
+    await pushPreferences({ currency: c });
+    window.location.reload();
+  };
+
+  const changeLang = async (l: Lang) => {
+    setLang(l);
+    await pushPreferences({ lang: l });
     window.location.reload();
   };
 
@@ -48,7 +58,7 @@ export function CurrencySettings() {
           <button
             key={l}
             type="button"
-            onClick={() => l !== getLang() && (setLang(l), window.location.reload())}
+            onClick={() => l !== getLang() && changeLang(l)}
             className={`rounded-xl border-2 p-2.5 text-sm font-semibold text-gray-900 dark:text-white ${getLang() === l ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'}`}
           >
             {label}

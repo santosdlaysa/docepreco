@@ -148,6 +148,8 @@
     "amountPlaceholder": "Amount",
     "status": "Status",
     "notes": "Notes (optional)",
-    "saveDraft": "Save as draft"
+    "saveDraft": "Save as draft",
+    "deliveryAddressLabel": "Delivery address (optional)",
+    "deliveryAddressPlaceholder": "Street, number, area — leave empty for pickup"
   }
 }

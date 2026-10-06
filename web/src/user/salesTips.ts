@@ -6,6 +6,7 @@
  */
 import { AppStats, Sale, Recipe } from './userApi';
 import i18n from '../i18n';
+import { formatBRL } from './format';
 
 const tr = (key: string, opts?: Record<string, unknown>) => i18n.t(`finance:${key}`, opts) as string;
 
@@ -19,7 +20,8 @@ export interface Insight {
   type: InsightType;
 }
 
-const fmt = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// Na moeda escolhida pela confeiteira (format.ts).
+const fmt = (v: number) => formatBRL(v);
 
 export function generateInsights(stats: AppStats): Insight[] {
   const insights: Insight[] = [];

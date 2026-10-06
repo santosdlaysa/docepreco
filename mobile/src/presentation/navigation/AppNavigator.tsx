@@ -1,3 +1,4 @@
+import { PreferencesSync } from '../components/PreferencesSync';
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -589,6 +590,8 @@ export function AppNavigator() {
   return (
     <AuthContext.Provider value={{ logout, deleteAccount, goToRegister, companyName, isDemoMode: demoMode, companyLogo, setCompanyLogo: handleSetCompanyLogo, impersonatedCompany, startImpersonation, stopImpersonation }}>
       <View style={{ flex: 1 }}>
+      {/* Preferências da conta (moeda, unidades, PDF) iguais às da web */}
+      <PreferencesSync key={sessionKey} />
       {impersonatedCompany !== null && (
         <ImpersonationBanner company={impersonatedCompany} onExit={() => void stopImpersonation()} />
       )}

@@ -3,6 +3,7 @@ import { AuthController } from '../controllers/AuthController';
 import { authMiddleware } from '../middleware/authMiddleware';
 import { authLimiter, loginLimiter, resetLimiter } from '../middleware/rateLimiter';
 import { loginLockout } from '../middleware/loginLockout';
+import { PreferencesController } from '../controllers/PreferencesController';
 
 const router = Router();
 const controller = new AuthController();
@@ -21,5 +22,10 @@ router.post('/accept-lgpd', authMiddleware, (req, res) => controller.acceptLgpd(
 router.post('/change-password', authMiddleware, (req, res) => controller.changePassword(req as any, res));
 router.post('/suggestion', authMiddleware, (req, res) => controller.sendSuggestion(req as any, res));
 router.delete('/account', authMiddleware, (req, res) => controller.deleteAccount(req as any, res));
+
+// Preferências (moeda, unidades, idioma, PDF) sincronizadas entre app e web
+const preferences = new PreferencesController();
+router.get('/preferences', authMiddleware, (req, res) => preferences.get(req as any, res));
+router.put('/preferences', authMiddleware, (req, res) => preferences.update(req as any, res));
 
 export default router;

@@ -291,5 +291,17 @@
         "body": "Screenshots of praise on WhatsApp, photos of customers with your treats, happy comments — save them all and post them in your Stories and Highlights. Social proof beats the doubts of people who haven't bought from you yet."
       }
     }
+  },
+  "goal": {
+    "title": "Monthly revenue goal",
+    "edit": "Change",
+    "empty": "Set how much you want to earn this month to track your progress.",
+    "placeholder": "e.g. 3000.00",
+    "save": "Save goal",
+    "cancel": "Cancel",
+    "invalid": "Enter an amount greater than zero.",
+    "of": "of {{value}}",
+    "reached": "Goal reached! 🎉",
+    "missing": "{{pct}}% of goal · {{value}} to go"
   }
 }

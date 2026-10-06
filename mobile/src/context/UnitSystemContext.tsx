@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { preferencesApi } from '../data/api/preferencesApi';
 
 export type UnitSystem = 'metric' | 'imperial';
 
 interface UnitSystemContextType {
   unitSystem: UnitSystem;
-  setUnitSystem: (unitSystem: UnitSystem) => Promise<void>;
+  /** `sync: false` = só local (usado ao aplicar o que veio da conta). */
+  setUnitSystem: (unitSystem: UnitSystem, opts?: { sync?: boolean }) => Promise<void>;
   loading: boolean;
 }
 
@@ -50,13 +52,15 @@ export const UnitSystemProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     loadUnitSystem();
   }, []);
 
-  const setUnitSystem = async (newUnitSystem: UnitSystem) => {
+  const setUnitSystem = async (newUnitSystem: UnitSystem, opts?: { sync?: boolean }) => {
     setUnitSystemState(newUnitSystem);
     try {
       await AsyncStorage.setItem(UNIT_SYSTEM_STORAGE_KEY, newUnitSystem);
     } catch {
       console.error('Erro ao salvar sistema de unidades');
     }
+    // Guarda na conta para a web (e outros aparelhos) usarem as mesmas unidades.
+    if (opts?.sync !== false) void preferencesApi.push({ unitSystem: newUnitSystem });
   };
 
   return (

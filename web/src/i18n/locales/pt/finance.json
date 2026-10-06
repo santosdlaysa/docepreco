@@ -291,5 +291,17 @@
         "body": "Print de elogio no WhatsApp, foto do cliente com o doce, comentário feliz — guarde tudo e poste nos Stories e Destaques. Prova social vence a desconfiança de quem ainda não comprou de você."
       }
     }
+  },
+  "goal": {
+    "title": "Meta de faturamento do mês",
+    "edit": "Alterar",
+    "empty": "Defina quanto quer faturar este mês para acompanhar o progresso.",
+    "placeholder": "Ex.: 3000,00",
+    "save": "Salvar meta",
+    "cancel": "Cancelar",
+    "invalid": "Informe um valor maior que zero.",
+    "of": "de {{value}}",
+    "reached": "Meta batida! 🎉",
+    "missing": "{{pct}}% da meta · faltam {{value}}"
   }
 }
