@@ -423,7 +423,7 @@ export class PremiumController {
    * Admin-only endpoint to manually toggle premium status.
    * Protected by X-Admin-Secret header. Useful for testing, cortesias, support.
    *
-   * Body: { isPremium: boolean, premiumUntil?: string | null }
+   * Body: { isPremium: boolean, premiumUntil?: string | null, planTier?: 'premium' | 'master' }
    */
   async setPremiumManually(req: Request, res: Response): Promise<void> {
     const expected = process.env.DOCEPRECO_ADMIN_SECRET;
@@ -439,9 +439,10 @@ export class PremiumController {
     }
 
     const { id } = req.params;
-    const { isPremium, premiumUntil } = req.body as {
+    const { isPremium, premiumUntil, planTier } = req.body as {
       isPremium: boolean;
       premiumUntil?: string | null;
+      planTier?: 'premium' | 'master';
     };
 
     if (typeof isPremium !== 'boolean') {
@@ -449,9 +450,18 @@ export class PremiumController {
       return;
     }
 
+    if (planTier !== undefined && planTier !== 'premium' && planTier !== 'master') {
+      res.status(400).json({ success: false, error: 'planTier must be premium or master' });
+      return;
+    }
+
     try {
       const until = premiumUntil ? new Date(premiumUntil) : null;
-      const user = await userRepo.updatePremiumStatus(id, isPremium, until, 'manual');
+      // The admin panel sends the selected tier. updatePremiumStatus() is a
+      // legacy binary toggle and can only grant Premium, so use the tier-aware
+      // method here to allow a manual Master grant as well.
+      const tier = isPremium ? (planTier ?? 'premium') : 'free';
+      const user = await userRepo.updatePlanTier(id, tier, until, 'manual');
       if (!user) {
         res.status(404).json({ success: false, error: 'User not found' });
         return;
