@@ -217,10 +217,11 @@ export class PremiumController {
       return;
     }
 
-    const { active, expiresAt, platform } = req.body as {
+    const { active, expiresAt, platform, planTier } = req.body as {
       active: boolean;
       expiresAt?: string | null;
       platform?: 'ios' | 'android';
+      planTier?: 'premium' | 'master';
     };
 
     if (typeof active !== 'boolean') {
@@ -296,9 +297,12 @@ export class PremiumController {
       console.warn('[Premium] syncPremium SEM REVENUECAT_SECRET_KEY — confiando no cliente (INSEGURO). Configure a chave para validar no servidor.');
       const until = expiresAt ? new Date(expiresAt) : null;
       const plat: PremiumPlatform = platform === 'android' ? 'android' : 'ios';
-      const updated = await userRepo.updatePremiumStatus(userId, true, until, plat);
+      // This legacy path already trusts the client for the entitlement. Preserve
+      // the reported tier so an App Store Master purchase is not stored as Premium.
+      const tier = planTier === 'master' ? 'master' : 'premium';
+      const updated = await userRepo.updatePlanTier(userId, tier, until, plat);
 
-      console.log(`[Premium] Sync: ${userId} → premium=true via ${plat} | expiresAt=${expiresAt ?? 'null'} | prevUntil=${user.premiumUntil ?? 'null'}`);
+      console.log(`[Premium] Sync: ${userId} → ${tier} via ${plat} | expiresAt=${expiresAt ?? 'null'} | prevUntil=${user.premiumUntil ?? 'null'}`);
 
       // Record sync event
       await pool.query(

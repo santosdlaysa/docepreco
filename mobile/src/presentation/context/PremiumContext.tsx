@@ -4,7 +4,7 @@ import { authApi, AuthUser, PremiumPlatform, PlanTier } from '../../data/api/aut
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { impersonationStorage } from '../../data/storage/impersonationStorage';
 import { isDemoMode, loadDemoMode } from '../../data/demo/demoMode';
-import { getActiveEntitlements, getActiveEntitlementExpiration, isRevenueCatConfigured } from '../../data/premium/revenueCat';
+import { getActiveEntitlements, getActiveEntitlementExpiration, getActiveEntitlementTier, isRevenueCatConfigured } from '../../data/premium/revenueCat';
 import { ADMIN_EMAIL } from '../../data/api/adminApi';
 
 interface PremiumContextData {
@@ -118,16 +118,17 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // admin — sincronizar marcaria premium na conta do usuário-alvo por engano
     if (await impersonationStorage.isActive()) return;
     // Backend already shows active premium — nothing to sync
-    if (isActive(backendUser)) return;
-
     try {
       const entitlements = await getActiveEntitlements();
       if (entitlements.length === 0) return;
 
+      const tier = await getActiveEntitlementTier();
+      if (isActive(backendUser) && !(tier === 'master' && backendUser.planTier !== 'master')) return;
+
       // RevenueCat says active but backend says expired — sync it
       const expiresAt = await getActiveEntitlementExpiration();
       const platform = Platform.OS === 'android' ? 'android' : 'ios';
-      const updated = await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android');
+      const updated = await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android', tier ?? 'premium');
       if (updated) {
         setUser(updated);
         void tokenStorage.saveUser(updated);

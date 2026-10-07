@@ -60,7 +60,7 @@ export async function fetchRevenueCatEntitlement(appUserId: string): Promise<RcE
   let tier: 'premium' | 'master' = 'premium';
   let platform: PremiumPlatform | null = null;
 
-  for (const ent of Object.values(entitlements)) {
+  for (const [entitlementId, ent] of Object.entries(entitlements)) {
     const expiresMs = ent?.expires_date ? Date.parse(ent.expires_date) : null;
     const stillActive = expiresMs === null || expiresMs > now; // null = vitalício
     if (!stillActive) continue;
@@ -69,8 +69,10 @@ export async function fetchRevenueCatEntitlement(appUserId: string): Promise<RcE
     if (expiresMs !== null && (latestExpiry === null || expiresMs > latestExpiry)) {
       latestExpiry = expiresMs;
     }
-    const productId: string = (ent?.product_identifier ?? '').toLowerCase();
-    if (productId.includes('master')) tier = 'master';
+    // The App Store product identifier may omit the tier while RevenueCat keeps
+    // it in the entitlement identifier, so consider both values.
+    const tierSource = `${entitlementId} ${ent?.product_identifier ?? ''}`.toLowerCase();
+    if (tierSource.includes('master')) tier = 'master';
     if (!platform) platform = storeToPlatform(ent?.store);
   }
 

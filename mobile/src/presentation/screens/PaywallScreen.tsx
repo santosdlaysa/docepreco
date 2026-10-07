@@ -26,6 +26,7 @@ import {
   purchasePackage,
   restorePurchases,
   getActiveEntitlementExpiration,
+  getActiveEntitlementTier,
   PremiumPackage,
   isRevenueCatConfigured,
 } from '../../data/premium/revenueCat';
@@ -299,8 +300,9 @@ export const PaywallScreen: React.FC = () => {
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
         const expiresAt = await getActiveEntitlementExpiration();
+        const tier = await getActiveEntitlementTier();
         const platform = Platform.OS === 'android' ? 'android' : 'ios';
-        const updated = await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android');
+        const updated = await authApi.syncPremium(true, expiresAt, platform as 'ios' | 'android', tier ?? 'premium');
         if (updated.isPremium) break;
       } catch { /* fallback */ }
       if (attempt < 2) await new Promise(r => setTimeout(r, 2000));

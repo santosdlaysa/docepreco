@@ -277,6 +277,22 @@ export async function getActiveEntitlements(): Promise<string[]> {
   }
 }
 
+/** Returns the tier represented by the active RevenueCat entitlement. */
+export async function getActiveEntitlementTier(): Promise<'premium' | 'master' | null> {
+  const Purchases = getPurchases();
+  if (!Purchases || !configured) return null;
+  try {
+    const entitlements = (await Purchases.getCustomerInfo())?.entitlements?.active ?? {};
+    for (const [entitlementId, entitlement] of Object.entries(entitlements)) {
+      const source = `${entitlementId} ${(entitlement as any)?.productIdentifier ?? ''}`.toLowerCase();
+      if (source.includes('master')) return 'master';
+    }
+    return Object.keys(entitlements).length > 0 ? 'premium' : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Returns the expiration date of the first active entitlement, or null.
  */

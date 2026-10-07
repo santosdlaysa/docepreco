@@ -118,8 +118,8 @@ export const authApi = {
     return normalized;
   },
 
-  syncPremium: async (active: boolean, expiresAt: string | null, platform: 'ios' | 'android'): Promise<AuthUser> => {
-    const response = await apiClient.post('/premium/sync', { active, expiresAt, platform });
+  syncPremium: async (active: boolean, expiresAt: string | null, platform: 'ios' | 'android', planTier?: 'premium' | 'master'): Promise<AuthUser> => {
+    const response = await apiClient.post('/premium/sync', { active, expiresAt, platform, planTier });
     const normalized = normalizeUser(response.data.data);
     await tokenStorage.saveUser(normalized);
     return normalized;
