@@ -12,6 +12,10 @@ import { useAuth } from '../../context/AuthContext';
 import { usePremium } from '../context/PremiumContext';
 import { tokenStorage } from '../../data/storage/tokenStorage';
 import { authApi } from '../../data/api/authApi';
+import { ingredientApi } from '../../data/api/ingredientApi';
+import { recipeApi } from '../../data/api/recipeApi';
+import { saleApi } from '../../data/api/saleApi';
+import { accountEngagementStorage } from '../../data/storage/accountEngagementStorage';
 import { getNotificationsEnabled, setNotificationsEnabled } from '../utils/notifications';
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '../../context/CurrencyContext';
@@ -131,12 +135,55 @@ export const ProfileScreen: React.FC = () => {
     finally { setSendingSuggestion(false); }
   };
 
-  const handleLogout = () => {
+  const confirmLogout = () => {
     if (Platform.OS === 'web') {
       if (window.confirm('Deseja sair da sua conta?')) logout();
       return;
     }
     Alert.alert('Sair', 'Deseja sair da sua conta?', [{ text: 'Cancelar', style: 'cancel' }, { text: 'Sair', style: 'destructive', onPress: logout }]);
+  };
+
+  const handleLogout = async () => {
+    if (isDemoMode) {
+      confirmLogout();
+      return;
+    }
+
+    try {
+      const isRecentAccount = await accountEngagementStorage.isRecentAccount();
+      if (!isRecentAccount) {
+        confirmLogout();
+        return;
+      }
+
+      const [ingredients, recipes, sales] = await Promise.all([
+        ingredientApi.getAll(),
+        recipeApi.getAll(),
+        saleApi.getAll(),
+      ]);
+      const hasNotStartedYet = ingredients.length === 0 && recipes.length === 0 && sales.length === 0;
+      if (!hasNotStartedYet) {
+        confirmLogout();
+        return;
+      }
+
+      const message = 'Sua conta é nova e você ainda não cadastrou ingredientes, receitas ou vendas. Quer que eu te acompanhe nos primeiros passos?';
+      if (Platform.OS === 'web') {
+        const openGuide = window.confirm(`${message}\n\nClique em OK para ver o guia ou em Cancelar para sair mesmo assim.`);
+        if (openGuide) navigation.navigate('BeginnerGuide');
+        else logout();
+        return;
+      }
+
+      Alert.alert('Precisa de uma mão?', message, [
+        { text: 'Ficar no app', style: 'cancel' },
+        { text: 'Ver guia', onPress: () => navigation.navigate('BeginnerGuide') },
+        { text: 'Sair mesmo assim', style: 'destructive', onPress: logout },
+      ]);
+    } catch {
+      // Se não houver conexão, mantém o comportamento usual de saída.
+      confirmLogout();
+    }
   };
 
   const runDeleteAccount = async () => {

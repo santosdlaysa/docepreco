@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import { apiClient } from './client';
 import { tokenStorage } from '../storage/tokenStorage';
+import { accountEngagementStorage } from '../storage/accountEngagementStorage';
 
 export type PremiumPlatform = 'ios' | 'android' | 'manual' | 'card' | 'pix';
 export type PlanTier = 'free' | 'premium' | 'master';
@@ -45,6 +46,7 @@ export const authApi = {
     const normalized = normalizeUser(user);
     await tokenStorage.saveToken(token);
     await tokenStorage.saveUser(normalized);
+    await accountEngagementStorage.markAccountCreated();
     return normalized;
   },
 
@@ -79,6 +81,7 @@ export const authApi = {
     const normalized = normalizeUser(user);
     await tokenStorage.saveToken(token);
     await tokenStorage.saveUser(normalized);
+    if (isNew) await accountEngagementStorage.markAccountCreated();
     return { user: normalized, isNew: Boolean(isNew) };
   },
 
