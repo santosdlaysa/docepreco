@@ -39,7 +39,7 @@ export function PlanConfigPage({ toast }: Props) {
       // Garante campos novos (Master/PIX) mesmo se o backend ainda não os retornar
       setConfig({
         ...data,
-        masterPrice: data.masterPrice ?? 30,
+        masterPrice: data.masterPrice ?? 39.99,
         masterFeatures: data.masterFeatures ?? ['Tudo do Premium', 'Gestão financeira (DRE)', 'Controle de estoque', 'Dicas de vendas'],
         pix: { ...DEFAULT_PIX, ...(data.pix ?? {}) },
       });
