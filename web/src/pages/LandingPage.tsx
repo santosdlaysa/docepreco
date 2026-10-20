@@ -51,16 +51,20 @@ const PLANS = [
     name: 'Gratuito', price: 'R$ 0', priceAnnual: 'R$ 0', period: '/mes', desc: 'Para quem esta comecando',
     features: ['Ate 10 receitas', 'Ingredientes ilimitados', 'Calculo de custo', 'Geracao de PDF'],
     highlighted: false,
+    cta: 'Baixar grátis',
   },
   {
     name: 'Premium', price: 'R$ 19,99', priceAnnual: 'R$ 120,00', period: '/mes', desc: 'Para quem quer crescer',
     features: ['Receitas e ingredientes ilimitados', 'Seu logo personalizado no PDF', 'Relatórios avançados com gráficos', 'Gestão de clientes e aniversários', 'Sistema de encomendas e entregas', 'Precificação sazonal avançada', 'Histórico de preços de ingredientes', 'Suporte prioritário'],
     highlighted: true,
+    cta: 'Assinar Premium',
   },
   {
     name: 'Master', price: 'R$ 39,99', priceAnnual: 'R$ 200,00', period: '/mes', desc: 'Solucao completa para seu negocio',
     features: ['Tudo do Premium', 'Loja online com link compartilhável', 'Pedidos com notificação em tempo real', 'Controle de estoque com baixa automática', 'Gestão financeira completa (DRE)', 'Dicas de vendas e precificação', 'Suporte premium'],
     highlighted: false,
+    cta: 'Assinar Master',
+    master: true,
   },
 ];
 
@@ -111,18 +115,21 @@ export function LandingPage() {
             <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-pink-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
               <Cake size={18} className="text-white" />
             </div>
-            <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">DocePreco</span>
+            <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">DocePreço</span>
           </div>
-          <nav className="flex items-center gap-8">
+          <nav className="flex items-center gap-3 sm:gap-6">
             <a href="#funcionalidades" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Funcionalidades</a>
             <a href="#loja-online" className="hidden md:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Loja Online</a>
             <a href="#planos" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Planos</a>
+            <a href="#baixar" className="sm:hidden inline-flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm">
+              Baixar grátis
+            </a>
             <Link to="/app"
-              className="inline-flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+              className="hidden sm:inline-flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <LogIn size={14} />
               Entrar
             </Link>
-            <div className="flex items-center gap-2">
+            <div className="hidden sm:flex items-center gap-2">
               <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm">
                 <Smartphone size={14} />
@@ -204,7 +211,7 @@ export function LandingPage() {
             {/* App Preview */}
             <div className="flex-1 relative max-w-sm sm:max-w-md">
               <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-pink-500/20 rounded-[3rem] blur-3xl scale-90" />
-              <img src="/app-preview.png" alt="DocePreco - Telas do aplicativo" className="relative w-full drop-shadow-2xl" />
+              <img src="/app-preview.png" alt="DocePreço - Telas do aplicativo" className="relative w-full drop-shadow-2xl" />
             </div>
           </div>
         </div>
@@ -369,6 +376,50 @@ export function LandingPage() {
         </div>
       </section>
 
+      {/* Resultado visível */}
+      <section className="py-24 sm:py-32 bg-rose-50/70 dark:bg-gray-900/40">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6">
+          <div className="text-center max-w-2xl mx-auto mb-14">
+            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Na prática</span>
+            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
+              Troque o achismo por um preço que faz sentido
+            </h2>
+            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg">
+              Um caminho visual para enxergar o custo completo antes de definir quanto cobrar.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-[1fr_auto_1fr] items-stretch gap-5">
+            <div className="rounded-3xl bg-white dark:bg-gray-800 p-7 sm:p-8 border border-rose-100 dark:border-gray-700 shadow-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-500">Sem organização</p>
+              <h3 className="mt-3 text-xl font-bold text-gray-900 dark:text-white">Preço no improviso</h3>
+              <ul className="mt-6 space-y-4 text-sm text-gray-600 dark:text-gray-300">
+                <li className="flex gap-3"><span className="mt-0.5 text-rose-500">×</span> Ingredientes anotados de memória</li>
+                <li className="flex gap-3"><span className="mt-0.5 text-rose-500">×</span> Mão de obra e embalagem esquecidas</li>
+                <li className="flex gap-3"><span className="mt-0.5 text-rose-500">×</span> Lucro incerto a cada encomenda</li>
+              </ul>
+            </div>
+
+            <div className="hidden md:flex items-center justify-center" aria-hidden="true">
+              <div className="w-14 h-14 rounded-full bg-primary-500 text-white flex items-center justify-center shadow-lg shadow-primary-500/30">
+                <ArrowRight size={24} />
+              </div>
+            </div>
+
+            <div className="rounded-3xl bg-gray-950 dark:bg-primary-950 p-7 sm:p-8 text-white shadow-xl shadow-gray-900/20">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-300">Com DocePreço</p>
+              <h3 className="mt-3 text-xl font-bold">Preço com segurança</h3>
+              <ul className="mt-6 space-y-4 text-sm text-gray-300">
+                <li className="flex gap-3"><Check size={18} className="shrink-0 text-primary-300" /> Custo de ingredientes calculado por receita</li>
+                <li className="flex gap-3"><Check size={18} className="shrink-0 text-primary-300" /> Margem, embalagem e mão de obra considerados</li>
+                <li className="flex gap-3"><Check size={18} className="shrink-0 text-primary-300" /> Preço sugerido para vender com lucro</li>
+              </ul>
+              <p className="mt-8 text-xs text-gray-500">Exemplo ilustrativo do fluxo de precificação.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Features ── */}
       <section id="funcionalidades" className="py-24 sm:py-32 relative">
         <div className="absolute inset-0 bg-gradient-to-b from-gray-50/80 dark:from-gray-900/50 to-white dark:to-gray-950" />
@@ -424,7 +475,7 @@ export function LandingPage() {
             </h2>
             <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-2xl mx-auto">
               Monte seu cardápio digital, compartilhe o link com seus clientes e gerencie os pedidos
-              do recebimento até a entrega — tudo pelo DocePreco.
+              do recebimento até a entrega — tudo pelo DocePreço.
             </p>
           </div>
 
@@ -454,8 +505,11 @@ export function LandingPage() {
           <div className="text-center mb-16">
             <span className="text-xs font-bold text-primary-400 uppercase tracking-[0.2em]">Depoimentos</span>
             <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Quem usa, recomenda
+              Histórias de quem usa
             </h2>
+            <p className="mt-4 max-w-xl mx-auto text-gray-400 text-lg">
+              Confeiteiras que encontraram mais clareza para precificar, organizar e vender.
+            </p>
           </div>
 
           <div className="grid sm:grid-cols-3 gap-6">
@@ -517,11 +571,18 @@ export function LandingPage() {
               <div key={i} className={`rounded-2xl p-6 sm:p-7 transition-all relative ${
                 plan.highlighted
                   ? 'bg-gray-950 dark:bg-white/5 text-white ring-1 ring-gray-800 dark:ring-gray-700 shadow-2xl shadow-gray-900/30'
+                  : plan.master
+                    ? 'bg-violet-50/80 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-700'
                   : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600'
               }`}>
                 {plan.highlighted && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-pink-500 text-white text-[11px] font-bold px-5 py-1 rounded-full shadow-lg shadow-primary-500/25">
                     Mais popular
+                  </div>
+                )}
+                {plan.master && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[11px] font-bold px-5 py-1 rounded-full shadow-lg shadow-violet-500/25">
+                    Mais completo
                   </div>
                 )}
                 <div className="flex items-center gap-2 mb-1">
@@ -559,7 +620,21 @@ export function LandingPage() {
                   ))}
                 </ul>
 
-                <p className={`mt-8 text-xs text-center ${plan.highlighted ? 'text-gray-500' : 'text-gray-400'}`}>
+                <a
+                  href="#baixar"
+                  className={`mt-8 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-all hover:-translate-y-0.5 ${
+                    plan.highlighted
+                      ? 'bg-primary-500 hover:bg-primary-400 text-white shadow-lg shadow-primary-500/25'
+                      : plan.master
+                        ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'
+                        : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
+                  }`}
+                >
+                  {plan.cta}
+                  <ArrowRight size={15} />
+                </a>
+
+                <p className={`mt-4 text-xs text-center ${plan.highlighted ? 'text-gray-500' : 'text-gray-400'}`}>
                   {plan.highlighted ? 'Disponivel para assinatura dentro do app' : 'Incluso ao baixar o app'}
                 </p>
               </div>
@@ -569,7 +644,7 @@ export function LandingPage() {
       </section>
 
       {/* ── CTA Final ── */}
-      <section className="py-24 sm:py-32 relative overflow-hidden">
+      <section id="baixar" className="py-24 sm:py-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-pink-500 to-rose-600" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.1),transparent_50%)]" />
@@ -582,7 +657,7 @@ export function LandingPage() {
             Pronta para lucrar<br />com seus doces?
           </h2>
           <p className="mt-6 text-lg text-white/80 max-w-lg mx-auto">
-            Baixe o DocePreco agora e descubra em minutos quanto realmente cobrar.
+            Baixe o DocePreço agora e descubra em minutos quanto realmente cobrar.
           </p>
           <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
@@ -611,12 +686,16 @@ export function LandingPage() {
                 <Cake size={14} className="text-white" />
               </div>
               <span className="text-sm text-gray-500 dark:text-gray-400">
-                &copy; {new Date().getFullYear()} DocePreco. Todos os direitos reservados.
+                &copy; {new Date().getFullYear()} DocePreço. Todos os direitos reservados.
               </span>
             </div>
-            <Link to="/admin" className="text-sm text-gray-400 hover:text-primary-500 transition-colors">
-              Painel Admin
-            </Link>
+            <nav aria-label="Links do rodapé" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm">
+              <a href="https://www.instagram.com/doceprecoapp/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-gray-500 hover:text-primary-500 transition-colors">
+                <MessageCircle size={15} /> Instagram
+              </a>
+              <a href="/privacy.html" className="text-gray-500 hover:text-primary-500 transition-colors">Privacidade</a>
+              <a href="#baixar" className="text-gray-500 hover:text-primary-500 transition-colors">Baixar o app</a>
+            </nav>
           </div>
         </div>
       </footer>
