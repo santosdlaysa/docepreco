@@ -96,6 +96,7 @@ export class SupportController {
         return;
       }
       const item = await repo.create({ userId: req.userId!, senderType: 'user', message: trimmed, imageUrl: imageUrl ?? null });
+      let answeredAutomatically = false;
 
       // Respostas rápidas para as dúvidas mais comuns. Elas são gravadas como
       // mensagens do suporte para aparecerem em todos os clientes do chat e
@@ -104,21 +105,27 @@ export class SupportController {
         try {
           const history = await repo.findByUserId(req.userId!);
           const reply = getAutomaticSupportReply(trimmed, history);
-          if (reply) await repo.create({ userId: req.userId!, senderType: 'admin', message: reply });
+          if (reply) {
+            await repo.create({ userId: req.userId!, senderType: 'admin', message: reply });
+            answeredAutomatically = true;
+          }
         } catch (autoReplyError) {
           console.error('[Support] automatic reply error:', autoReplyError);
         }
       }
 
-      // Telegram notification (fire-and-forget)
-      pool.query('SELECT company_name, email FROM users WHERE id = $1', [req.userId!])
-        .then(({ rows }) => {
-          if (rows.length > 0) {
-            const preview = trimmed || '[imagem]';
-            notifySupportMessage(rows[0].company_name ?? 'Sem nome', rows[0].email, preview);
-          }
-        })
-        .catch(() => {});
+      // Telegram é reservado para mensagens que realmente precisam da equipe.
+      // Perguntas já resolvidas pelo atendimento automático ficam só no chat.
+      if (!answeredAutomatically) {
+        pool.query('SELECT company_name, email FROM users WHERE id = $1', [req.userId!])
+          .then(({ rows }) => {
+            if (rows.length > 0) {
+              const preview = trimmed || '[imagem]';
+              notifySupportMessage(rows[0].company_name ?? 'Sem nome', rows[0].email, preview);
+            }
+          })
+          .catch(() => {});
+      }
 
       res.status(201).json({ success: true, data: item });
     } catch (error: any) {
