@@ -8,27 +8,32 @@ const router = Router();
  * Controlado por variáveis de ambiente para que o alerta de "atualize o app"
  * possa ser disparado/ajustado SEM precisar publicar um build novo:
  *
- *  - APP_ANDROID_LATEST_VERSION_CODE: versionCode da última versão publicada.
- *      Se o versionCode instalado for MENOR que este, o app mostra um aviso
- *      dispensável ("Nova versão disponível").
- *  - APP_ANDROID_MIN_VERSION_CODE: versionCode mínimo suportado (bloqueante).
- *      0 = nunca bloqueia. Reservado para uso futuro; hoje o app trata como aviso.
- *  - APP_ANDROID_STORE_URL: link da Play Store (fallback abaixo).
+ *  - APP_{ANDROID,IOS}_LATEST_VERSION_CODE: build mais recente publicado.
+ *      Uma instalação anterior recebe um aviso de atualização ao abrir o app.
+ *  - APP_{ANDROID,IOS}_MIN_VERSION_CODE: build mínimo suportado.
+ *      Abaixo deste número, a atualização passa a ser obrigatória.
+ *  - APP_{ANDROID,IOS}_STORE_URL: link da loja correspondente.
  *
  * GET /api/app-version
  */
 router.get('/', (_req: Request, res: Response) => {
-  const latestVersionCode = Number(process.env.APP_ANDROID_LATEST_VERSION_CODE) || 85;
-  const minVersionCode = Number(process.env.APP_ANDROID_MIN_VERSION_CODE) || 0;
-  const storeUrl =
+  const androidStoreUrl =
     process.env.APP_ANDROID_STORE_URL ||
     'https://play.google.com/store/apps/details?id=com.orgenyx';
+  const iosStoreUrl =
+    process.env.APP_IOS_STORE_URL ||
+    'https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172';
 
   res.json({
     android: {
-      latestVersionCode,
-      minVersionCode,
-      storeUrl,
+      latestVersionCode: Number(process.env.APP_ANDROID_LATEST_VERSION_CODE) || 98,
+      minVersionCode: Number(process.env.APP_ANDROID_MIN_VERSION_CODE) || 0,
+      storeUrl: androidStoreUrl,
+    },
+    ios: {
+      latestVersionCode: Number(process.env.APP_IOS_LATEST_VERSION_CODE) || 44,
+      minVersionCode: Number(process.env.APP_IOS_MIN_VERSION_CODE) || 0,
+      storeUrl: iosStoreUrl,
     },
   });
 });

@@ -9,47 +9,66 @@ import { typography } from '../theme/typography';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 const DISMISS_KEY = '@update_alert_dismissed_version';
+const ANDROID_STORE_URL = 'https://play.google.com/store/apps/details?id=com.orgenyx';
+const IOS_STORE_URL = 'https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172';
+
+type UpdateInfo = {
+  latestVersionCode?: number;
+  minVersionCode?: number;
+  storeUrl?: string;
+};
 
 /**
  * Consulta a versão publicada no backend e, se o app instalado estiver
- * desatualizado, mostra um aviso DISPENSÁVEL sugerindo atualizar na Play Store.
- * O backend controla o número da versão (env APP_ANDROID_LATEST_VERSION_CODE),
+ * desatualizado, mostra um aviso para atualizar na loja correspondente.
+ * O backend controla o número da versão e a versão mínima suportada,
  * então o alerta pode ser disparado sem publicar um build novo.
  */
 export function UpdateGate() {
   const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [latestVersion, setLatestVersion] = useState<number | null>(null);
-  const [storeUrl, setStoreUrl] = useState('https://play.google.com/store/apps/details?id=com.orgenyx');
+  const [storeUrl, setStoreUrl] = useState(Platform.OS === 'ios' ? IOS_STORE_URL : ANDROID_STORE_URL);
+  const [forceUpdate, setForceUpdate] = useState(false);
 
   useEffect(() => {
-    // Por enquanto o alerta é só para Android.
-    if (Platform.OS !== 'android') return;
+    const platform = Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : null;
+    if (!platform) return;
 
     let cancelled = false;
 
     (async () => {
       try {
-        const installed = Number(Constants.expoConfig?.android?.versionCode);
+        const installed = Number(
+          platform === 'android'
+            ? Constants.expoConfig?.android?.versionCode
+            : Constants.expoConfig?.ios?.buildNumber,
+        );
         if (!Number.isFinite(installed)) return;
 
         const res = await fetch(`${BASE_URL}/app-version`);
         if (!res.ok) return;
         const data = await res.json();
-        const latest = Number(data?.android?.latestVersionCode);
+        const update = data?.[platform] as UpdateInfo | undefined;
+        const latest = Number(update?.latestVersionCode);
         if (!Number.isFinite(latest)) return;
-
-        if (data?.android?.storeUrl) setStoreUrl(String(data.android.storeUrl));
 
         // App atualizado: nada a fazer.
         if (installed >= latest) return;
 
+        const minimum = Number(update?.minVersionCode) || 0;
+        const mandatory = minimum > 0 && installed < minimum;
+
         // Já dispensou este mesmo número de versão? Não incomoda de novo.
-        const dismissed = Number(await AsyncStorage.getItem(DISMISS_KEY));
-        if (Number.isFinite(dismissed) && dismissed >= latest) return;
+        if (!mandatory) {
+          const dismissed = Number(await AsyncStorage.getItem(`${DISMISS_KEY}:${platform}`));
+          if (Number.isFinite(dismissed) && dismissed >= latest) return;
+        }
 
         if (!cancelled) {
+          if (update?.storeUrl) setStoreUrl(String(update.storeUrl));
           setLatestVersion(latest);
+          setForceUpdate(mandatory);
           setVisible(true);
         }
       } catch {
@@ -67,31 +86,41 @@ export function UpdateGate() {
   };
 
   const handleDismiss = () => {
+    if (forceUpdate) return;
+
     // Não incomoda de novo até sair uma versão ainda mais nova.
     if (latestVersion != null) {
-      void AsyncStorage.setItem(DISMISS_KEY, String(latestVersion));
+      const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+      void AsyncStorage.setItem(`${DISMISS_KEY}:${platform}`, String(latestVersion));
     }
     setVisible(false);
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={handleDismiss}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={forceUpdate ? () => undefined : handleDismiss}
+    >
       <View style={styles.overlay}>
         <View style={styles.box}>
           <View style={styles.iconCircle}>
             <Ionicons name="rocket" size={30} color={colors.primary} />
           </View>
-          <Text style={styles.title}>{t('updateAlert.title')}</Text>
-          <Text style={styles.body}>{t('updateAlert.body')}</Text>
+          <Text style={styles.title}>{t(forceUpdate ? 'updateAlert.requiredTitle' : 'updateAlert.title')}</Text>
+          <Text style={styles.body}>{t(forceUpdate ? 'updateAlert.requiredBody' : 'updateAlert.body')}</Text>
 
           <TouchableOpacity style={styles.primaryBtn} onPress={handleUpdate} activeOpacity={0.85}>
-            <Ionicons name="logo-google-playstore" size={18} color="#fff" />
+            <Ionicons name={Platform.OS === 'ios' ? 'logo-apple' : 'logo-google-playstore'} size={18} color="#fff" />
             <Text style={styles.primaryText}>{t('updateAlert.updateNow')}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.secondaryBtn} onPress={handleDismiss} activeOpacity={0.7}>
-            <Text style={styles.secondaryText}>{t('updateAlert.later')}</Text>
-          </TouchableOpacity>
+          {!forceUpdate && (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleDismiss} activeOpacity={0.7}>
+              <Text style={styles.secondaryText}>{t('updateAlert.later')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </Modal>

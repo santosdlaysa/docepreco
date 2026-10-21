@@ -305,7 +305,9 @@
     "title": "Nova versão disponível",
     "body": "Saiu uma versão nova do app com melhorias e correções. Atualize para ter a melhor experiência.",
     "updateNow": "Atualizar agora",
-    "later": "Agora não"
+    "later": "Agora não",
+    "requiredTitle": "Atualização necessária",
+    "requiredBody": "Esta versão não é mais compatível. Atualize o app para continuar."
   },
   "createRecipe": {
     "titleNew": "Nova Receita",
