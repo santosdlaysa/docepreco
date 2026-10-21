@@ -42,7 +42,7 @@ import onboardingRoutes from './presentation/routes/onboardingRoutes';
 import telegramAlertRoutes from './presentation/routes/telegramAlertRoutes';
 import supportRoutes from './presentation/routes/supportRoutes';
 import whatsappRoutes from './presentation/routes/whatsappRoutes';
-import evolutionWebhookRoutes from './presentation/routes/evolutionWebhookRoutes';
+import metaWebhookRoutes from './presentation/routes/metaWebhookRoutes';
 import pixRoutes from './presentation/routes/pixRoutes';
 import winbackRoutes from './presentation/routes/winbackRoutes';
 import cashRoutes from './presentation/routes/cashRoutes';
@@ -53,7 +53,6 @@ import purchaseInvoiceRoutes from './presentation/routes/purchaseInvoiceRoutes';
 import clientRoutes from './presentation/routes/clientRoutes';
 import stockRoutes from './presentation/routes/stockRoutes';
 import storeRoutes from './presentation/routes/storeRoutes';
-import { warmUpEvolutionApi } from './infrastructure/services/whatsappService';
 import { backfillStoreCoordinates } from './infrastructure/services/geocodeBackfill';
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
@@ -99,9 +98,15 @@ if (corsOrigins.length > 0) {
 
 // Stripe webhook needs raw body — must be registered BEFORE express.json
 app.use('/api/stripe/webhook', express.raw({ type: 'application/json' }));
+// A assinatura da Meta é calculada sobre o corpo bruto; registra antes do JSON parser.
+app.use('/api/webhooks/whatsapp', express.raw({ type: 'application/json' }));
 
 // Limite ampliado para acomodar imagens (ex.: QR do PIX) enviadas em base64
 app.use(express.json({ limit: '5mb' }));
+
+// Webhook assinado da Meta fica fora do middleware de request_logs: os eventos
+// podem conter conteúdo e telefone do cliente, que não devem ser gravados em claro.
+app.use('/api', metaWebhookRoutes);
 
 // Campos que nunca podem ir para request_logs em claro (senhas, tokens, segredos).
 // Comparação por nome de chave, sem case, em qualquer nível do JSON.
@@ -222,7 +227,6 @@ app.use('/api/admin/feedbacks', feedbackRoutes);
 app.use('/api/admin/suggestions', suggestionRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/admin/whatsapp', whatsappRoutes);
-app.use('/api', evolutionWebhookRoutes);
 app.use('/api/admin/winback', winbackRoutes);
 app.use('/api/telegram', telegramRoutes);
 app.use('/api/banners', bannerRoutes);
@@ -267,10 +271,6 @@ async function bootstrap() {
     });
     // Geocodifica lojas antigas sem coordenadas (fire-and-forget)
     void backfillStoreCoordinates();
-
-    // Ping Evolution API a cada 5 min para evitar cold start
-    warmUpEvolutionApi();
-    cron.schedule('*/5 * * * *', () => warmUpEvolutionApi());
 
     // Telegram reports — lê crons do banco
     const telegramAlertRepo = new PostgresTelegramAlertRepository();

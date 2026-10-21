@@ -1266,6 +1266,10 @@ export async function runMigrations() {
     // "Outros" no fim do cardápio). Só organiza a exibição — não afeta preço/estoque.
     await addColumnIfMissing(client, 'store_products', 'category', 'VARCHAR(60) NULL');
 
+    // Ordem de exibição dos produtos e adicionais no cardápio (0 = padrão/topo).
+    await addColumnIfMissing(client, 'store_products', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+    await addColumnIfMissing(client, 'store_addons', 'sort_order', 'INTEGER NOT NULL DEFAULT 0');
+
     // Limpeza de segurança: logs antigos de rotas de auth gravaram senhas em claro no
     // request_body (e tokens no response_body) antes da redação ser implementada.
     await client.query(`
@@ -1308,6 +1312,24 @@ export async function runMigrations() {
       )
     `);
     await client.query(`CREATE INDEX IF NOT EXISTS idx_winback_user_status ON winback_offers (user_id, status)`);
+
+    // Consentimento explícito para campanhas de marketing via WhatsApp. Registros
+    // antigos ficam sem opt-in por padrão e, portanto, não recebem campanhas.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_marketing_opt_in BOOLEAN NOT NULL DEFAULT FALSE`);
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp_marketing_opted_in_at TIMESTAMP NULL`);
+
+    // IDs e status oficiais da Cloud API, persistidos para sobreviver a reinícios.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS whatsapp_messages (
+        provider_message_id VARCHAR(255) PRIMARY KEY,
+        recipient_phone VARCHAR(32),
+        status VARCHAR(64) NOT NULL,
+        payload JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+      )
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_whatsapp_messages_updated_at ON whatsapp_messages (updated_at DESC)`);
 
     // Assinaturas recorrentes via Pix Automático (Mercado Pago preapproval).
     // O usuário autoriza uma vez pelo init_point; cada cobrança aprovada chega

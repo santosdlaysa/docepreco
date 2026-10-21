@@ -3,7 +3,7 @@ import { pool } from '../../infrastructure/database/connection';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { sendWinbackEmail } from '../../infrastructure/services/emailService';
-import { sendWhatsAppMessage } from '../../infrastructure/services/whatsappService';
+import { sendWinbackWhatsAppTemplate } from '../../infrastructure/services/whatsappService';
 
 const pushTokenRepo = new PostgresPushTokenRepository();
 
@@ -12,6 +12,7 @@ interface EligibleUser {
   company_name: string;
   email: string;
   phone: string | null;
+  whatsapp_marketing_opt_in: boolean;
   premium_until: Date;
   last_product: string | null;
 }
@@ -50,7 +51,7 @@ async function findEligibleUsers(userIds?: string[]): Promise<EligibleUser[]> {
     idFilter = `AND u.id = ANY($1::uuid[])`;
   }
   const result = await pool.query(
-    `SELECT u.id, u.company_name, u.email, u.phone, u.premium_until,
+    `SELECT u.id, u.company_name, u.email, u.phone, u.whatsapp_marketing_opt_in, u.premium_until,
             (SELECT pe.product_id FROM premium_events pe
              WHERE pe.user_id = u.id AND pe.product_id IS NOT NULL
              ORDER BY pe.created_at DESC LIMIT 1) AS last_product
@@ -228,18 +229,16 @@ export class WinbackController {
           console.error(`[Winback] E-mail falhou para ${user.email}:`, err);
         }
 
-        // WhatsApp (opcional, best effort)
-        if (includeWhatsapp && user.phone) {
+        // WhatsApp: somente template de marketing aprovado e contato com opt-in.
+        if (includeWhatsapp && user.phone && user.whatsapp_marketing_opt_in) {
           try {
-            await sendWhatsAppMessage(
-              user.phone,
-              `Oi, ${user.company_name}! 💖 Sentimos sua falta no Precifica Doces.\n\n` +
-              `Preparamos uma oferta exclusiva para você voltar: *${discountPercent}% de desconto* no primeiro mês — ` +
-              `de ${formatBRL(fullCents)} por *${formatBRL(discountedCents)}*.\n\n` +
-              `É só abrir o app e tocar em *Assinar via PIX*: o app mostra o preço normal, mas o seu QR já sai com o desconto — ` +
-              `na hora de pagar, o banco mostra *${formatBRL(discountedCents)}*. Sem cupom.\n\n` +
-              `⏰ Válido até ${validUntilLabel}.`
-            );
+            await sendWinbackWhatsAppTemplate(user.phone, {
+              companyName: user.company_name,
+              discountPercent,
+              fullPriceLabel: formatBRL(fullCents),
+              discountedPriceLabel: formatBRL(discountedCents),
+              validUntilLabel,
+            });
             whatsOk = true;
           } catch (err) {
             console.error(`[Winback] WhatsApp falhou para ${user.email}:`, err);

@@ -71,6 +71,7 @@ export interface StoreProduct {
   stock?: number | null;
   /** Categoria no cardápio (texto livre). NULL = sem categoria ("Outros"). */
   category?: string | null;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -81,6 +82,7 @@ export interface StoreAddon {
   name: string;
   price: number;
   available: boolean;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -161,6 +163,7 @@ function mapAddon(row: Record<string, unknown>): StoreAddon {
     name: row.name as string,
     price: Number(row.price),
     available: row.available as boolean,
+    sortOrder: row.sort_order != null ? Number(row.sort_order) : 0,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -180,6 +183,7 @@ function mapProduct(row: Record<string, unknown>): StoreProduct {
     discountValue: row.discount_value != null ? Number(row.discount_value) : null,
     stock: row.stock != null ? Number(row.stock) : null,
     category: (row.category as string | null) ?? null,
+    sortOrder: row.sort_order != null ? Number(row.sort_order) : 0,
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
   };
@@ -370,7 +374,7 @@ export class PostgresStoreRepository {
 
   async getProducts(userId: string): Promise<StoreProduct[]> {
     const result = await pool.query(
-      'SELECT * FROM store_products WHERE user_id = $1 ORDER BY created_at ASC',
+      'SELECT * FROM store_products WHERE user_id = $1 ORDER BY sort_order ASC, created_at ASC',
       [userId]
     );
     return result.rows.map(mapProduct);
@@ -456,7 +460,7 @@ export class PostgresStoreRepository {
 
   async getAddons(userId: string): Promise<StoreAddon[]> {
     const result = await pool.query(
-      'SELECT * FROM store_addons WHERE user_id = $1 ORDER BY created_at ASC',
+      'SELECT * FROM store_addons WHERE user_id = $1 ORDER BY sort_order ASC, created_at ASC',
       [userId]
     );
     return result.rows.map(mapAddon);
@@ -503,5 +507,43 @@ export class PostgresStoreRepository {
       [id, userId]
     );
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async reorderProducts(userId: string, orderedIds: string[]): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (let i = 0; i < orderedIds.length; i++) {
+        await client.query(
+          'UPDATE store_products SET sort_order = $1 WHERE id = $2 AND user_id = $3',
+          [i, orderedIds[i], userId]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
+  async reorderAddons(userId: string, orderedIds: string[]): Promise<void> {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      for (let i = 0; i < orderedIds.length; i++) {
+        await client.query(
+          'UPDATE store_addons SET sort_order = $1 WHERE id = $2 AND user_id = $3',
+          [i, orderedIds[i], userId]
+        );
+      }
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }
 }

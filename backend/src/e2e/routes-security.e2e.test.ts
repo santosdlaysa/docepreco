@@ -25,10 +25,9 @@ jest.mock('../infrastructure/services/telegramService', () => ({
   notifySupportMessage: jest.fn(),
 }));
 jest.mock('../infrastructure/services/whatsappService', () => ({
-  createInstance: jest.fn(),
-  getQrCode: jest.fn(),
-  getInstanceStatus: jest.fn(),
-  sendWhatsAppMessage: jest.fn(),
+  getWhatsAppStatus: jest.fn(),
+  getMessageStatus: jest.fn(),
+  sendWhatsAppTemplate: jest.fn(),
 }));
 
 import { authMiddleware } from '../presentation/middleware/authMiddleware';

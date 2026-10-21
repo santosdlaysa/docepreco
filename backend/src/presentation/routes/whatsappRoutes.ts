@@ -1,84 +1,33 @@
 import { Router, Request, Response } from 'express';
 import { adminMiddleware } from '../middleware/adminMiddleware';
 import { WhatsAppOfferController } from '../controllers/WhatsAppOfferController';
-import {
-  createInstance,
-  getQrCode,
-  getInstanceStatus,
-  sendWhatsAppMessage,
-  resetInstance,
-  getMessageStatus,
-} from '../../infrastructure/services/whatsappService';
+import { getMessageStatus, getWhatsAppStatus, sendWhatsAppTemplate, WhatsAppCloudApiError } from '../../infrastructure/services/whatsappService';
 
 const router = Router();
-
 router.use(adminMiddleware);
 router.post('/discount-offer/:userId', (req, res) => new WhatsAppOfferController().prepare(req, res));
 
-// Criar instância (só precisa uma vez)
-router.post('/instance', async (_req: Request, res: Response) => {
-  try {
-    const result = await createInstance();
-    res.json({ data: result });
-  } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao criar instância' });
-  }
-});
+router.get('/status', (_req: Request, res: Response) => res.json({ data: getWhatsAppStatus() }));
 
-// Reset da instância (força recriação na próxima requisição)
-router.post('/reset', async (_req: Request, res: Response) => {
-  try {
-    await resetInstance();
-    res.json({ data: 'WhatsApp desconectado. A próxima requisição irá recriar a instância e gerar um novo QR code.' });
-  } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao desconectar o WhatsApp' });
+router.post('/send-template', async (req: Request, res: Response) => {
+  const { phone, templateName, languageCode, bodyParameters } = req.body as Record<string, unknown>;
+  if (typeof phone !== 'string' || typeof templateName !== 'string'
+    || (languageCode !== undefined && typeof languageCode !== 'string')
+    || (bodyParameters !== undefined && (!Array.isArray(bodyParameters) || bodyParameters.some((value) => typeof value !== 'string')))) {
+    res.status(400).json({ error: 'phone e templateName são obrigatórios; bodyParameters deve ser uma lista de textos.' });
+    return;
   }
-});
-
-// QR Code para conectar o WhatsApp
-router.get('/qrcode', async (_req: Request, res: Response) => {
   try {
-    const result = await getQrCode();
-    res.json({ data: result });
-  } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao obter QR code' });
-  }
-});
-
-// Status da conexão
-router.get('/status', async (_req: Request, res: Response) => {
-  try {
-    const result = await getInstanceStatus();
-    res.json({ data: result });
-  } catch (e: unknown) {
-    res.status(500).json({ error: e instanceof Error ? e.message : 'Erro ao verificar status' });
-  }
-});
-
-// Enviar mensagem
-router.post('/send', async (req: Request, res: Response) => {
-  try {
-    const { phone, message } = req.body;
-    if (!phone || !message) {
-      res.status(400).json({ error: 'phone e message são obrigatórios' });
-      return;
-    }
-    if (typeof message !== 'string' || message.length === 0 || message.length > 4096) {
-      res.status(400).json({ error: 'Mensagem deve ter entre 1 e 4096 caracteres' });
-      return;
-    }
-    const result = await sendWhatsAppMessage(phone, message);
-    res.json({ data: result });
-  } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : 'Erro ao enviar mensagem';
-    // Diferencia erros de validação (400) de erros do servidor (500)
-    const status = msg.includes('inválido') || msg.includes('obrigatório') ? 400 : 500;
-    res.status(status).json({ error: msg });
+    const result = await sendWhatsAppTemplate(phone, { name: templateName, languageCode: languageCode as string | undefined, bodyParameters: bodyParameters as string[] | undefined });
+    res.status(202).json({ data: result });
+  } catch (error) {
+    const status = error instanceof WhatsAppCloudApiError && error.status ? error.status : 500;
+    res.status(status).json({ error: error instanceof Error ? error.message : 'Erro ao enviar template WhatsApp.' });
   }
 });
 
 router.get('/message-status/:id', async (req: Request, res: Response) => {
-  res.json({ data: getMessageStatus(req.params.id) });
+  res.json({ data: await getMessageStatus(req.params.id) });
 });
 
 export default router;

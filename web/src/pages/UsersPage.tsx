@@ -736,48 +736,11 @@ function WhatsAppModal({ userId, phone, contactName, onClose, toast }: { userId:
   const [message, setMessage] = useState('');
   const [recipientPhone, setRecipientPhone] = useState(phone);
   const [offerPrepared, setOfferPrepared] = useState(false);
-  const [sending, setSending] = useState(false);
-
   const handleSend = async () => {
-    if (!message.trim() || sending) return;
-    setSending(true);
-    try {
-      const result = await api.whatsappSend(recipientPhone, message.trim());
-      if (result.status === 'ERROR') {
-        throw new Error('O WhatsApp recusou o envio da mensagem. Tente reconectar a instância e enviar novamente.');
-      }
-      if (result.status === 'PENDING') {
-        if (result.key?.id) {
-          let finalStatus: string | null = null;
-          for (let attempt = 0; attempt < 15; attempt++) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const current = await api.whatsappMessageStatus(result.key.id);
-            finalStatus = current?.status ?? null;
-            if (finalStatus === 'ERROR') {
-              throw new Error('O WhatsApp recusou o envio da mensagem. Tente reconectar a instância e enviar novamente.');
-            }
-            if (finalStatus === 'SERVER_ACK' || finalStatus === 'DELIVERY_ACK' || finalStatus === 'READ') break;
-          }
-          if (finalStatus !== 'SERVER_ACK' && finalStatus !== 'DELIVERY_ACK' && finalStatus !== 'READ') {
-            toast.error('O envio não foi confirmado pelo WhatsApp.');
-            return;
-          }
-        }
-        toast.success(`Mensagem enviada para ${contactName}!`);
-      } else {
-        toast.success(`Mensagem enviada para ${contactName}!`);
-      }
-      onClose();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Erro ao enviar';
-      if (msg.includes('401') || msg.includes('not connected') || msg.includes('instance')) {
-        toast.error('WhatsApp nao conectado. Conecte pelo painel de configuracoes.');
-      } else {
-        toast.error(msg);
-      }
-    } finally {
-      setSending(false);
-    }
+    if (!message.trim()) return;
+    handleOpenWhatsApp();
+    toast.success(`Abrindo WhatsApp para ${contactName}. O envio manual não passa pela automação.`);
+    onClose();
   };
 
   const handleOpenWhatsApp = () => {
@@ -802,7 +765,7 @@ function WhatsAppModal({ userId, phone, contactName, onClose, toast }: { userId:
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 text-xl leading-none">&times;</button>
         </div>
         <div className="p-4 space-y-3">
-          <WhatsAppDiscountOffer userId={userId} disabled={sending} onPrepared={(text, recipient) => {
+          <WhatsAppDiscountOffer userId={userId} disabled={false} onPrepared={(text, recipient) => {
             setMessage(text); setRecipientPhone(recipient); setOfferPrepared(true);
           }} />
           {offerPrepared && <p role="status" className="text-xs text-green-600">Oferta ativa. Confira a mensagem e clique em Enviar ou abra o WhatsApp Web para concluir o envio.</p>}
@@ -826,14 +789,14 @@ function WhatsAppModal({ userId, phone, contactName, onClose, toast }: { userId:
             </button>
             <button
               onClick={handleSend}
-              disabled={sending || !message.trim()}
+              disabled={!message.trim()}
               className="flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors disabled:opacity-50"
             >
               <Send size={14} />
-              {sending ? 'Enviando...' : 'Enviar'}
+              Abrir WhatsApp
             </button>
           </div>
-          <p className="text-xs text-gray-400 text-center">Ctrl+Enter para enviar</p>
+          <p className="text-xs text-gray-400 text-center">Mensagens manuais são abertas no WhatsApp; automações usam somente templates aprovados.</p>
         </div>
       </div>
     </ModalOverlay>

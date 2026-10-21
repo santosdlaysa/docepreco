@@ -11,8 +11,9 @@ const supportRepo = {
   getUnreadCountForUser: jest.fn(), getConversations: jest.fn(), getTotalUnreadCount: jest.fn(),
 };
 const pushRepo = { findByUserId: jest.fn() };
+class mockWhatsAppCloudApiError extends Error {}
 const whatsapp = {
-  createInstance: jest.fn(), getQrCode: jest.fn(), getInstanceStatus: jest.fn(), sendWhatsAppMessage: jest.fn(),
+  getWhatsAppStatus: jest.fn(), getMessageStatus: jest.fn(), sendWhatsAppTemplate: jest.fn(),
 };
 
 jest.mock('../infrastructure/database/connection', () => ({
@@ -35,7 +36,7 @@ jest.mock('../infrastructure/repositories/PostgresPushTokenRepository', () => ({
 }));
 jest.mock('../infrastructure/services/telegramService', () => ({ notifySupportMessage: jest.fn() }));
 jest.mock('../infrastructure/services/pushService', () => ({ sendPushNotifications: jest.fn() }));
-jest.mock('../infrastructure/services/whatsappService', () => whatsapp);
+jest.mock('../infrastructure/services/whatsappService', () => ({ ...whatsapp, WhatsAppCloudApiError: mockWhatsAppCloudApiError }));
 
 import couponRoutes from '../presentation/routes/couponRoutes';
 import feedbackRoutes from '../presentation/routes/feedbackRoutes';
@@ -187,20 +188,16 @@ describe('Rotas públicas e WhatsApp', () => {
     expect((await request(createApp()).get('/public/stats')).status).toBe(500);
   });
 
-  it('executa operações do WhatsApp e valida envio', async () => {
-    whatsapp.createInstance.mockResolvedValue({ id: 'instance' });
-    expect((await admin(request(createApp()).post('/whatsapp/instance'))).status).toBe(200);
-    whatsapp.getQrCode.mockResolvedValue({ code: 'qr' });
-    expect((await admin(request(createApp()).get('/whatsapp/qrcode'))).status).toBe(200);
-    whatsapp.getInstanceStatus.mockResolvedValue({ connected: true });
+  it('expõe status da Cloud API e aceita apenas template para envio', async () => {
+    whatsapp.getWhatsAppStatus.mockReturnValue({ state: 'configured', provider: 'meta-cloud-api' });
     expect((await admin(request(createApp()).get('/whatsapp/status'))).status).toBe(200);
-    whatsapp.sendWhatsAppMessage.mockResolvedValue({ sent: true });
-    expect((await admin(request(createApp()).post('/whatsapp/send')).send({ phone: '5592', message: 'Oi' })).status).toBe(200);
-    expect((await admin(request(createApp()).post('/whatsapp/send')).send({ phone: '5592' })).status).toBe(400);
+    whatsapp.sendWhatsAppTemplate.mockResolvedValue({ id: 'wamid.1', status: 'accepted' });
+    expect((await admin(request(createApp()).post('/whatsapp/send-template')).send({ phone: '5592999999999', templateName: 'winback_offer_pt_br' })).status).toBe(202);
+    expect((await admin(request(createApp()).post('/whatsapp/send-template')).send({ phone: '5592' })).status).toBe(400);
   });
 
   it('retorna 500 quando serviço do WhatsApp falha', async () => {
-    whatsapp.createInstance.mockRejectedValue(new Error('offline'));
-    expect((await admin(request(createApp()).post('/whatsapp/instance'))).status).toBe(500);
+    whatsapp.sendWhatsAppTemplate.mockRejectedValue(new Error('offline'));
+    expect((await admin(request(createApp()).post('/whatsapp/send-template')).send({ phone: '5592999999999', templateName: 'winback_offer_pt_br' })).status).toBe(500);
   });
 });

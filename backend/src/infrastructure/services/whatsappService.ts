@@ -1,256 +1,128 @@
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || 'http://localhost:8080';
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || 'docepreco-evo-secret-key';
-const EVOLUTION_INSTANCE = process.env.EVOLUTION_INSTANCE || 'docepreco';
-const EVOLUTION_WEBHOOK_URL = process.env.EVOLUTION_WEBHOOK_URL || 'https://docepreco.onrender.com/api/webhooks/evolution';
+import { pool } from '../database/connection';
 
-class EvolutionApiError extends Error {
+const META_GRAPH_BASE_URL = 'https://graph.facebook.com';
+
+export class WhatsAppCloudApiError extends Error {
   constructor(message: string, readonly status?: number) {
     super(message);
-    this.name = 'EvolutionApiError';
+    this.name = 'WhatsAppCloudApiError';
   }
 }
 
-class EvolutionTimeoutError extends Error {
-  constructor() {
-    super('Evolution API timeout');
-    this.name = 'EvolutionTimeoutError';
-  }
-}
+type TemplateMessage = { name: string; languageCode?: string; bodyParameters?: string[] };
 
-async function evoFetch(path: string, body?: unknown, timeoutMs = 60_000, method?: 'GET' | 'POST' | 'DELETE'): Promise<any> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    console.log(`[EvolutionAPI] ${body ? 'POST' : 'GET'} ${path}`);
-    const res = await fetch(`${EVOLUTION_API_URL}${path}`, {
-      method: method ?? (body ? 'POST' : 'GET'),
-      headers: {
-        'Content-Type': 'application/json',
-        apikey: EVOLUTION_API_KEY,
-      },
-      signal: controller.signal,
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    const json = await res.json().catch(() => ({})) as Record<string, unknown>;
-    if (!res.ok) {
-      const message = typeof json.message === 'string'
-        ? json.message
-        : `Evolution API error: ${res.status}`;
-      console.error(`[EvolutionAPI] Error ${res.status}: ${message}`);
-      throw new EvolutionApiError(message, res.status);
-    }
-    return json;
-  } catch (err: unknown) {
-    if (err instanceof Error && err.name === 'AbortError') {
-      console.error('[EvolutionAPI] Request timeout');
-      throw new EvolutionTimeoutError();
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-/**
- * A Evolution hospedada pode estar em cold start. A primeira requisicao acorda o
- * servico, entao fazemos uma unica nova tentativa em vez de devolver erro ao painel.
- */
-async function evoFetchWithColdStartRetry(path: string, body?: unknown): Promise<any> {
-  try {
-    return await evoFetch(path, body);
-  } catch (err: unknown) {
-    if (!(err instanceof EvolutionTimeoutError)) throw err;
-  }
-
-  try {
-    return await evoFetch(path, body, 30_000);
-  } catch (err: unknown) {
-    if (err instanceof EvolutionTimeoutError) {
-      throw new Error('Evolution API indisponível após duas tentativas. Verifique o serviço e tente novamente.');
-    }
-    throw err;
-  }
-}
-
-let instanceVerified = false;
-let webhookConfigured = false;
-const messageStatuses = new Map<string, { status: string; updatedAt: number }>();
-
-export function recordMessageUpdate(payload: unknown): void {
-  type MessageUpdate = { id?: string; remoteJid?: string; key?: { id?: string; remoteJid?: string }; status?: unknown; statusReason?: unknown; error?: unknown; update?: { status?: unknown; error?: unknown } };
-  const root = payload as { data?: MessageUpdate; error?: unknown } & MessageUpdate;
-  const data = root.data ?? root;
-  const id = data.key?.id ?? data.id;
-  const rawStatus = data.status ?? data.update?.status;
-  if (!id || rawStatus === undefined) return;
-  const status = String(rawStatus).toUpperCase();
-  const remoteJid = data.key?.remoteJid ?? data.remoteJid ?? 'unknown';
-  messageStatuses.set(id, { status, updatedAt: Date.now() });
-  const log = `[WhatsApp] Message status: ${status} | id=${id} | remoteJid=${remoteJid}`;
-  const detail = data.error ?? data.update?.error ?? data.statusReason ?? root.error;
-  if (status === 'ERROR') console.error(detail ? `${log} | detail=${JSON.stringify(detail)}` : log);
-  else console.log(log);
-}
-
-export function getMessageStatus(id: string): { status: string; updatedAt: number } | null {
-  return messageStatuses.get(id) ?? null;
-}
-
-async function configureWebhook(): Promise<void> {
-  if (webhookConfigured) return;
-  try {
-    await evoFetch(`/webhook/set/${EVOLUTION_INSTANCE}`, {
-      enabled: true,
-      url: EVOLUTION_WEBHOOK_URL,
-      events: ['MESSAGES_UPDATE', 'SEND_MESSAGE', 'CONNECTION_UPDATE'],
-      base64: false,
-    });
-    webhookConfigured = true;
-    console.log(`[WhatsApp] Webhook configurado: ${EVOLUTION_WEBHOOK_URL}`);
-  } catch (error) {
-    console.error('[WhatsApp] Não foi possível configurar o webhook:', error);
-  }
-}
-
-// Reset instance state se necessário (força recriação)
-export function resetInstanceState(): void {
-  instanceVerified = false;
-  webhookConfigured = false;
-  console.log('[WhatsApp] Instance state resetado - será recriada na próxima requisição');
-}
-
-/** Desconecta a sessão atual e deixa a próxima leitura pronta para gerar outro QR. */
-export async function resetInstance(): Promise<void> {
-  resetInstanceState();
-  try {
-    await logoutInstance();
-  } catch (error) {
-    // Depois de um logout/401 a Evolution pode responder erro porque a sessão
-    // já foi encerrada. Nesse caso ainda devemos continuar até o connect/QR.
-    console.warn('[WhatsApp] Logout anterior não exigiu encerramento adicional:', error);
-  }
-  try {
-    await deleteInstance();
-    console.log(`[WhatsApp] Instância ${EVOLUTION_INSTANCE} excluída para limpar a sessão antiga`);
-  } catch (error) {
-    // A instância pode já ter sido removida pelo monitor da Evolution.
-    if (!(error instanceof EvolutionApiError && error.status === 404)) {
-      console.warn('[WhatsApp] Não foi possível excluir a instância antiga:', error);
-    }
-  }
-}
-
-async function ensureInstance(): Promise<void> {
-  if (instanceVerified) return;
-  try {
-    console.log(`[WhatsApp] Verificando instância ${EVOLUTION_INSTANCE}`);
-    await evoFetchWithColdStartRetry(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
-    instanceVerified = true;
-    await configureWebhook();
-    console.log(`[WhatsApp] Instância verificada com sucesso`);
-  } catch (err: unknown) {
-    // Somente 404 significa que a instancia nao existe. Timeout, autenticacao e
-    // falhas de rede nao devem disparar uma tentativa incorreta de criacao.
-    if (!(err instanceof EvolutionApiError) || err.status !== 404) {
-      console.error(`[WhatsApp] Erro ao verificar instância:`, err);
-      throw err;
-    }
-    try {
-      console.log(`[WhatsApp] Criando nova instância ${EVOLUTION_INSTANCE}`);
-      await evoFetchWithColdStartRetry('/instance/create', {
-        instanceName: EVOLUTION_INSTANCE,
-        qrcode: true,
-      });
-      instanceVerified = true;
-      await configureWebhook();
-      console.log(`[WhatsApp] Instância criada com sucesso`);
-    } catch (createErr) {
-      console.error(`[WhatsApp] Erro ao criar instância:`, createErr);
-      throw createErr;
-    }
-  }
-}
-
-export async function createInstance(): Promise<unknown> {
-  return evoFetch('/instance/create', {
-    instanceName: EVOLUTION_INSTANCE,
-    qrcode: true,
-  });
-}
-
-export async function logoutInstance(): Promise<unknown> {
-  return evoFetch(`/instance/logout/${EVOLUTION_INSTANCE}`, undefined, 60_000, 'DELETE');
-}
-
-export async function deleteInstance(): Promise<unknown> {
-  return evoFetch(`/instance/delete/${EVOLUTION_INSTANCE}`, undefined, 60_000, 'DELETE');
-}
-
-export async function getQrCode(): Promise<{ base64: string; code: string }> {
-  await ensureInstance();
-  const res = await evoFetch(`/instance/connect/${EVOLUTION_INSTANCE}`) as Record<string, unknown>;
-  const nested = (res.qrcode ?? {}) as Record<string, unknown>;
+function getConfig() {
+  const accessToken = process.env.META_WHATSAPP_ACCESS_TOKEN?.trim();
+  const phoneNumberId = process.env.META_WHATSAPP_PHONE_NUMBER_ID?.trim();
   return {
-    base64: String(res.base64 ?? nested.base64 ?? ''),
-    code: String(res.code ?? res.pairingCode ?? nested.code ?? ''),
+    accessToken, phoneNumberId,
+    graphVersion: process.env.META_GRAPH_API_VERSION?.trim() || 'v24.0',
+    configured: Boolean(accessToken && phoneNumberId),
   };
 }
 
-export async function getInstanceStatus(): Promise<{ state: string }> {
-  await ensureInstance();
-  const res = await evoFetch(`/instance/connectionState/${EVOLUTION_INSTANCE}`);
-  return { state: (res.instance as Record<string, unknown>)?.state as string ?? res.state as string ?? 'unknown' };
+function requireConfig() {
+  const config = getConfig();
+  if (!config.configured) {
+    throw new WhatsAppCloudApiError('WhatsApp Cloud API não configurada. Defina META_WHATSAPP_ACCESS_TOKEN e META_WHATSAPP_PHONE_NUMBER_ID.', 503);
+  }
+  return config as typeof config & { accessToken: string; phoneNumberId: string };
 }
 
-export async function sendWhatsAppMessage(phone: string, message: string): Promise<unknown> {
-  console.log(`[WhatsApp] Tentando enviar mensagem para ${phone}`);
-
-  await ensureInstance();
-  const connection = await getInstanceStatus();
-  if (connection.state !== 'open') {
-    const error = `WhatsApp não está conectado (estado: ${connection.state}). Reconecte e escaneie um novo QR code antes de enviar.`;
-    console.error(`[WhatsApp] ${error}`);
-    throw new Error(error);
+function normalizeBrazilianPhone(phone: string): string {
+  let normalized = phone.replace(/\D/g, '');
+  if (!normalized.startsWith('55')) normalized = `55${normalized}`;
+  if (normalized.slice(2).length < 10 || normalized.slice(2).length > 11) {
+    throw new WhatsAppCloudApiError('Número de telefone brasileiro inválido.', 400);
   }
-  let cleanPhone = phone.replace(/\D/g, '');
-  if (!cleanPhone.startsWith('55')) cleanPhone = `55${cleanPhone}`;
+  return normalized;
+}
 
-  // Validação: número brasileiro deve ter 10-11 dígitos após o 55
-  const digitsAfter55 = cleanPhone.replace(/^55/, '');
-  if (digitsAfter55.length < 10 || digitsAfter55.length > 11) {
-    const error = `Número de telefone inválido: ${phone} (após limpeza: 55${digitsAfter55}). Deve ter 10-11 dígitos.`;
-    console.error(`[WhatsApp] ${error}`);
-    throw new Error(error);
+async function cloudFetch(path: string, body: unknown): Promise<Record<string, unknown>> {
+  const config = requireConfig();
+  const response = await fetch(`${META_GRAPH_BASE_URL}/${config.graphVersion}/${path}`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${config.accessToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body), signal: AbortSignal.timeout(30_000),
+  });
+  const json = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok) {
+    const error = json.error as { message?: string; error_user_msg?: string } | undefined;
+    throw new WhatsAppCloudApiError(error?.error_user_msg ?? error?.message ?? `Meta Graph API error: ${response.status}`, response.status);
   }
+  return json;
+}
 
-  console.log(`[WhatsApp] Número validado: ${cleanPhone}`);
-
+async function saveMessageStatus(providerMessageId: string, phone: string | null, status: string, payload: unknown): Promise<void> {
   try {
-    const result = await evoFetchWithColdStartRetry(`/message/sendText/${EVOLUTION_INSTANCE}`, {
-      number: cleanPhone,
-      textMessage: { text: message },
-    });
-    if (result?.key?.id) {
-      messageStatuses.set(result.key.id, { status: String(result.status ?? 'PENDING').toUpperCase(), updatedAt: Date.now() });
-    }
-    console.log(`[WhatsApp] Mensagem enviada com sucesso para ${cleanPhone}`);
-    return result;
-  } catch (err) {
-    const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error(`[WhatsApp] Erro ao enviar: ${errorMsg}`);
-    if (errorMsg.includes('Evolution API') || errorMsg.includes('indisponível')) {
-      throw new Error(`Evolution API indisponível: ${errorMsg}`);
-    }
-    throw err;
+    await pool.query(
+      `INSERT INTO whatsapp_messages (provider_message_id, recipient_phone, status, payload, updated_at)
+       VALUES ($1, $2, $3, $4::jsonb, NOW())
+       ON CONFLICT (provider_message_id) DO UPDATE
+       SET recipient_phone = COALESCE(EXCLUDED.recipient_phone, whatsapp_messages.recipient_phone),
+           status = EXCLUDED.status, payload = EXCLUDED.payload, updated_at = NOW()`,
+      [providerMessageId, phone, status, JSON.stringify(payload)],
+    );
+  } catch (error) {
+    // A telemetria não pode deixar o webhook da Meta indisponível.
+    console.error('[WhatsApp Cloud] Falha ao persistir status:', error);
   }
 }
 
-/** Pinga a Evolution API para mantê-la acordada no Render */
-export async function warmUpEvolutionApi(): Promise<void> {
-  try {
-    await fetch(`${EVOLUTION_API_URL}`, { method: 'GET', signal: AbortSignal.timeout(10_000) });
-    console.log('[EvolutionAPI] warm-up ping ok');
-  } catch {
-    console.log('[EvolutionAPI] warm-up ping falhou (serviço pode estar iniciando)');
+export function getWhatsAppStatus(): { state: 'configured' | 'not_configured'; provider: 'meta-cloud-api' } {
+  return { state: getConfig().configured ? 'configured' : 'not_configured', provider: 'meta-cloud-api' };
+}
+
+/** Envia somente templates aprovados; texto livre é proibido no painel para evitar disparos fora da janela de 24h. */
+export async function sendWhatsAppTemplate(phone: string, template: TemplateMessage): Promise<{ id: string; status: 'accepted' }> {
+  if (!/^[a-z0-9_]{1,512}$/.test(template.name)) throw new WhatsAppCloudApiError('Nome de template inválido.', 400);
+  const to = normalizeBrazilianPhone(phone);
+  const config = requireConfig();
+  const parameters = (template.bodyParameters ?? []).map((text) => ({ type: 'text', text: String(text) }));
+  const result = await cloudFetch(`${config.phoneNumberId}/messages`, {
+    messaging_product: 'whatsapp', to, type: 'template',
+    template: {
+      name: template.name, language: { code: template.languageCode ?? 'pt_BR' },
+      ...(parameters.length ? { components: [{ type: 'body', parameters }] } : {}),
+    },
+  });
+  const id = (result.messages as Array<{ id?: string }> | undefined)?.[0]?.id;
+  if (!id) throw new WhatsAppCloudApiError('A Meta não retornou o identificador da mensagem.');
+  await saveMessageStatus(id, to, 'accepted', result);
+  return { id, status: 'accepted' };
+}
+
+/** Template de marketing aprovado na Meta, usado somente para contatos com opt-in registrado. */
+export async function sendWinbackWhatsAppTemplate(phone: string, values: {
+  companyName: string; discountPercent: number; fullPriceLabel: string; discountedPriceLabel: string; validUntilLabel: string;
+}): Promise<{ id: string; status: 'accepted' }> {
+  const templateName = process.env.WHATSAPP_WINBACK_TEMPLATE_NAME?.trim();
+  if (!templateName) {
+    throw new WhatsAppCloudApiError('WHATSAPP_WINBACK_TEMPLATE_NAME não configurado. A campanha foi bloqueada para evitar envio fora das regras da Meta.', 503);
+  }
+  return sendWhatsAppTemplate(phone, {
+    name: templateName,
+    bodyParameters: [values.companyName || 'cliente', String(values.discountPercent), values.fullPriceLabel, values.discountedPriceLabel, values.validUntilLabel],
+  });
+}
+
+export async function getMessageStatus(id: string): Promise<{ status: string; updatedAt: number } | null> {
+  const result = await pool.query('SELECT status, updated_at FROM whatsapp_messages WHERE provider_message_id = $1', [id]).catch(() => ({ rows: [] }));
+  const message = result.rows[0];
+  return message ? { status: message.status, updatedAt: new Date(message.updated_at).getTime() } : null;
+}
+
+/** Processa atualizações de entrega/lida/falha da Cloud API. */
+export async function recordMessageUpdate(payload: unknown): Promise<void> {
+  type Status = { id?: string; recipient_id?: string; status?: string };
+  type Change = { value?: { statuses?: Status[] } };
+  const entries = (payload as { entry?: Array<{ changes?: Change[] }> })?.entry ?? [];
+  for (const entry of entries) for (const change of entry.changes ?? []) for (const status of change.value?.statuses ?? []) {
+    if (status.id && status.status) {
+      // Guarda somente o evento de status; não persiste conteúdo de mensagens recebidas.
+      await saveMessageStatus(status.id, status.recipient_id ?? null, status.status, {
+        id: status.id, recipientId: status.recipient_id ?? null, status: status.status,
+      });
+    }
   }
 }

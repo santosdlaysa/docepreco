@@ -1,6 +1,6 @@
 import { StoreReceiving } from './StoreReceiving';
 import { useCallback, useEffect, useState } from 'react';
-import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store, Plus, Pencil, Trash2, ImagePlus, PlusCircle } from 'lucide-react';
+import { ExternalLink, Loader2, PackageOpen, Power, Settings, ShoppingBag, Store, Plus, Pencil, Trash2, ImagePlus, PlusCircle, ChevronUp, ChevronDown } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
 import { getLang } from '../../i18n';
@@ -140,6 +140,39 @@ export function StorePage({ toast }: { toast: ToastFn }) {
   useEffect(() => {
     load();
   }, [load]);
+
+  const moveProduct = async (productId: string, direction: 'up' | 'down') => {
+    if (!store) return;
+    const products = [...store.products];
+    const idx = products.findIndex(p => p.id === productId);
+    if (idx < 0) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= products.length) return;
+    [products[idx], products[swapIdx]] = [products[swapIdx], products[idx]];
+    setStore({ ...store, products });
+    try {
+      await userApi.reorderStoreProducts(products.map(p => p.id));
+    } catch (e) {
+      toast.error((e as Error).message);
+      load();
+    }
+  };
+
+  const moveAddon = async (addonId: string, direction: 'up' | 'down') => {
+    const list = [...addons];
+    const idx = list.findIndex(a => a.id === addonId);
+    if (idx < 0) return;
+    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (swapIdx < 0 || swapIdx >= list.length) return;
+    [list[idx], list[swapIdx]] = [list[swapIdx], list[idx]];
+    setAddons(list);
+    try {
+      await userApi.reorderStoreAddons(list.map(a => a.id));
+    } catch (e) {
+      toast.error((e as Error).message);
+      load();
+    }
+  };
 
   const deleteProduct = async () => {
     if (!confirmProductId) return;
@@ -304,8 +337,26 @@ export function StorePage({ toast }: { toast: ToastFn }) {
                         <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">{group.category === SEM_CATEGORIA ? t('uncategorized') : group.category}</p>
                       </div>
                     )}
-                    {group.items.map(product => (
+                    {group.items.map((product, i) => (
                       <div key={product.id} className="px-4 py-3 flex items-center gap-3">
+                        <div className="flex flex-col shrink-0">
+                          <button
+                            onClick={() => moveProduct(product.id, 'up')}
+                            disabled={store.products.indexOf(product) === 0}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-20 disabled:cursor-default p-0.5"
+                            title="Mover para cima"
+                          >
+                            <ChevronUp size={14} />
+                          </button>
+                          <button
+                            onClick={() => moveProduct(product.id, 'down')}
+                            disabled={store.products.indexOf(product) === store.products.length - 1}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-20 disabled:cursor-default p-0.5"
+                            title="Mover para baixo"
+                          >
+                            <ChevronDown size={14} />
+                          </button>
+                        </div>
                         {product.photoUrl ? (
                           <img src={product.photoUrl} alt={product.name} className="w-10 h-10 rounded-lg object-cover shrink-0" />
                         ) : (
@@ -357,8 +408,26 @@ export function StorePage({ toast }: { toast: ToastFn }) {
               </div>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-gray-700">
-                {addons.map(addon => (
+                {addons.map((addon, i) => (
                   <div key={addon.id} className="px-4 py-3 flex items-center gap-3">
+                    <div className="flex flex-col shrink-0">
+                      <button
+                        onClick={() => moveAddon(addon.id, 'up')}
+                        disabled={i === 0}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-20 disabled:cursor-default p-0.5"
+                        title="Mover para cima"
+                      >
+                        <ChevronUp size={14} />
+                      </button>
+                      <button
+                        onClick={() => moveAddon(addon.id, 'down')}
+                        disabled={i === addons.length - 1}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 disabled:opacity-20 disabled:cursor-default p-0.5"
+                        title="Mover para baixo"
+                      >
+                        <ChevronDown size={14} />
+                      </button>
+                    </div>
                     <button onClick={() => setAddonModal(addon)} className="flex-1 min-w-0 text-left">
                       <p className="font-medium text-gray-900 dark:text-white truncate">{addon.name}</p>
                       <p className="text-xs text-gray-400">

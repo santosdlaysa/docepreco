@@ -213,6 +213,22 @@ export class StoreController {
     }
   }
 
+  async reorderProducts(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const ids = req.body?.orderedIds;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ success: false, message: 'orderedIds é obrigatório' });
+        return;
+      }
+      await repo.reorderProducts(req.userId!, ids);
+      const products = await repo.getProducts(req.userId!);
+      res.json({ success: true, data: products });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao reordenar produtos' });
+    }
+  }
+
   async deleteProduct(req: AuthRequest, res: Response): Promise<void> {
     try {
       const deleted = await repo.deleteProduct(req.params.id, req.userId!);
@@ -288,6 +304,22 @@ export class StoreController {
     } catch (error) {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, message: 'Erro ao atualizar adicional' });
+    }
+  }
+
+  async reorderAddons(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const ids = req.body?.orderedIds;
+      if (!Array.isArray(ids) || ids.length === 0) {
+        res.status(400).json({ success: false, message: 'orderedIds é obrigatório' });
+        return;
+      }
+      await repo.reorderAddons(req.userId!, ids);
+      const addons = await repo.getAddons(req.userId!);
+      res.json({ success: true, data: addons });
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, message: 'Erro ao reordenar adicionais' });
     }
   }
 

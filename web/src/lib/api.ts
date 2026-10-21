@@ -748,18 +748,12 @@ export const api = {
     req<void>(`/admin/telegram-alerts/${id}`, { method: 'DELETE' }),
 
   // ── WhatsApp ──
-  whatsappCreateInstance: () =>
-    req<unknown>('/admin/whatsapp/instance', { method: 'POST' }),
-  whatsappResetInstance: () =>
-    req<unknown>('/admin/whatsapp/reset', { method: 'POST' }),
-  whatsappGetQrCode: () =>
-    req<{ base64: string; code: string }>('/admin/whatsapp/qrcode'),
   whatsappGetStatus: () =>
-    req<{ state: string }>('/admin/whatsapp/status'),
-  whatsappSend: (phone: string, message: string) =>
-    req<{ status?: string; key?: { id?: string } }>('/admin/whatsapp/send', {
+    req<{ state: string; provider: 'meta-cloud-api' }>('/admin/whatsapp/status'),
+  whatsappSendTemplate: (phone: string, templateName: string, bodyParameters: string[] = [], languageCode = 'pt_BR') =>
+    req<{ id: string; status: 'accepted' }>('/admin/whatsapp/send-template', {
       method: 'POST',
-      body: JSON.stringify({ phone, message }),
+      body: JSON.stringify({ phone, templateName, bodyParameters, languageCode }),
     }),
   whatsappPrepareDiscountOffer: (userId: string, discountPercent: number, validDays: number) =>
     req<{ offerId: string; phone: string; message: string; expiresAt: string }>(`/admin/whatsapp/discount-offer/${userId}`, {

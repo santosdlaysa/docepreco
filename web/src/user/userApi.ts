@@ -442,6 +442,7 @@ export interface StoreProduct {
   stock?: number | null;
   /** Categoria no cardápio (texto livre). null/vazio = sem categoria ("Outros"). */
   category?: string | null;
+  sortOrder?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -463,6 +464,7 @@ export interface StoreAddon {
   name: string;
   price: number;
   available: boolean;
+  sortOrder?: number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -773,6 +775,8 @@ export const userApi = {
   updateStoreProduct: (id: string, data: Partial<CreateStoreProductDTO>) =>
     req<StoreProduct>(`/store/products/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteStoreProduct: (id: string) => req<void>(`/store/products/${id}`, { method: 'DELETE' }),
+  reorderStoreProducts: (orderedIds: string[]) =>
+    req<StoreProduct[]>('/store/products/reorder', { method: 'PUT', body: JSON.stringify({ orderedIds }) }),
   // Adicionais da loja
   getStoreAddons: () => req<StoreAddon[]>('/store/addons'),
   createStoreAddon: (data: { name: string; price: number; available?: boolean }) =>
@@ -780,6 +784,8 @@ export const userApi = {
   updateStoreAddon: (id: string, data: Partial<{ name: string; price: number; available: boolean }>) =>
     req<StoreAddon>(`/store/addons/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteStoreAddon: (id: string) => req<void>(`/store/addons/${id}`, { method: 'DELETE' }),
+  reorderStoreAddons: (orderedIds: string[]) =>
+    req<StoreAddon[]>('/store/addons/reorder', { method: 'PUT', body: JSON.stringify({ orderedIds }) }),
 
   // Receitas
   listRecipes: () => req<Recipe[]>('/recipes'),

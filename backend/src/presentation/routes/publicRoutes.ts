@@ -271,12 +271,12 @@ router.get('/store/:slug', async (req: Request, res: Response) => {
     const u = userResult.rows[0] ?? {};
     // Buscar produtos disponíveis
     const productsResult = await pool.query(
-      'SELECT id, name, description, photo_url, public_price, discount_type, discount_value, stock, category FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
+      'SELECT id, name, description, photo_url, public_price, discount_type, discount_value, stock, category FROM store_products WHERE user_id = $1 AND available = TRUE ORDER BY sort_order ASC, created_at ASC',
       [s.user_id]
     );
     // Itens adicionais disponíveis — o cliente escolhe no detalhe do produto
     const addonsResult = await pool.query(
-      'SELECT id, name, price FROM store_addons WHERE user_id = $1 AND available = TRUE ORDER BY created_at ASC',
+      'SELECT id, name, price FROM store_addons WHERE user_id = $1 AND available = TRUE ORDER BY sort_order ASC, created_at ASC',
       [s.user_id]
     );
     res.json({

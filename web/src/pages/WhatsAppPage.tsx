@@ -1,181 +1,53 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { CheckCircle2, AlertTriangle, RefreshCw, ShieldCheck, Loader2 } from 'lucide-react';
 import { api } from '../lib/api';
-import { Wifi, WifiOff, RefreshCw, QrCode, Loader2 } from 'lucide-react';
 
 type ToastFn = { success: (m: string) => void; error: (m: string) => void };
 
 export function WhatsAppPage({ toast }: { toast: ToastFn }) {
-  const [status, setStatus] = useState<string>('unknown');
-  const [qr, setQr] = useState<{ base64: string; code: string } | null>(null);
+  const [state, setState] = useState<'configured' | 'not_configured' | 'unknown'>('unknown');
   const [loading, setLoading] = useState(true);
-  const [qrLoading, setQrLoading] = useState(false);
-  const [reconnecting, setReconnecting] = useState(false);
 
-  const fetchStatus = useCallback(async () => {
+  const refresh = useCallback(async () => {
     try {
-      const res = await api.whatsappGetStatus();
-      setStatus(res.state);
-      return res.state;
-    } catch {
-      setStatus('disconnected');
-      return 'disconnected';
-    }
-  }, []);
-
-  const fetchQr = useCallback(async () => {
-    setQrLoading(true);
-    try {
-      const res = await api.whatsappGetQrCode();
-      setQr(res);
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao obter QR code');
+      const result = await api.whatsappGetStatus();
+      setState(result.state === 'configured' ? 'configured' : 'not_configured');
+    } catch (error) {
+      setState('unknown');
+      toast.error(error instanceof Error ? error.message : 'Não foi possível verificar a Cloud API.');
     } finally {
-      setQrLoading(false);
+      setLoading(false);
     }
   }, [toast]);
 
-  useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const state = await fetchStatus();
-      if (state !== 'open') await fetchQr();
-      setLoading(false);
-    })();
-  }, [fetchStatus, fetchQr]);
+  useEffect(() => { void refresh(); }, [refresh]);
+  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 size={24} className="animate-spin text-gray-400" /></div>;
 
-  // Poll status every 10s when not connected
-  useEffect(() => {
-    if (status === 'open') return;
-    const interval = setInterval(async () => {
-      const state = await fetchStatus();
-      if (state === 'open') {
-        setQr(null);
-        toast.success('WhatsApp conectado!');
-      }
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [status, fetchStatus, toast]);
-
-  const handleRefreshQr = async () => {
-    await fetchQr();
-    toast.success('QR code atualizado');
-  };
-
-  const handleReconnect = async () => {
-    setReconnecting(true);
-    setQr(null);
-    try {
-      await api.whatsappResetInstance();
-      toast.success('Reconexão iniciada. Gerando QR code...');
-      await fetchStatus();
-      await fetchQr();
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'Erro ao reconectar o WhatsApp');
-    } finally {
-      setReconnecting(false);
-    }
-  };
-
-  const connected = status === 'open';
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 size={24} className="animate-spin text-gray-400" />
-      </div>
-    );
-  }
-
+  const ready = state === 'configured';
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-3xl">
       <div>
-        <h1 className="text-xl font-bold text-gray-900 dark:text-white">WhatsApp</h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Conexao com a Evolution API para envio de mensagens</p>
+        <h1 className="text-xl font-bold text-gray-900 dark:text-white">WhatsApp oficial</h1>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Integração pela WhatsApp Cloud API da Meta — sem sessão do WhatsApp Web e sem QR Code.</p>
       </div>
 
-      {/* Status card */}
-      <div className={`rounded-xl border p-5 flex items-center flex-wrap gap-4 ${connected ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-red-50 dark:bg-red-900/20 border-red-200'}`}>
-        {connected ? <Wifi size={24} className="text-green-600" /> : <WifiOff size={24} className="text-red-500" />}
+      <div className={`rounded-xl border p-5 flex items-center gap-4 ${ready ? 'bg-green-50 dark:bg-green-900/20 border-green-200' : 'bg-amber-50 dark:bg-amber-900/20 border-amber-200'}`}>
+        {ready ? <CheckCircle2 size={25} className="text-green-600" /> : <AlertTriangle size={25} className="text-amber-600" />}
         <div className="flex-1">
-          <p className={`font-semibold text-sm ${connected ? 'text-green-800' : 'text-red-800'}`}>
-            {connected ? 'Conectado' : 'Desconectado'}
-          </p>
-          <p className={`text-xs ${connected ? 'text-green-600' : 'text-red-600'}`}>
-            {connected ? 'WhatsApp pronto para enviar mensagens' : 'Escaneie o QR code abaixo para conectar'}
-          </p>
+          <p className={`font-semibold text-sm ${ready ? 'text-green-800 dark:text-green-300' : 'text-amber-800 dark:text-amber-300'}`}>{ready ? 'Cloud API configurada' : 'Cloud API aguardando configuração'}</p>
+          <p className={`text-xs mt-0.5 ${ready ? 'text-green-700 dark:text-green-400' : 'text-amber-700 dark:text-amber-400'}`}>{ready ? 'O backend possui token e ID do número configurados.' : 'Cadastre as credenciais da Meta no ambiente do backend antes de ativar envios.'}</p>
         </div>
-        <button
-          onClick={fetchStatus}
-          className="p-2 rounded-lg hover:bg-white/50 transition-colors"
-          title="Atualizar status"
-        >
-          <RefreshCw size={16} className={connected ? 'text-green-600' : 'text-red-500'} />
-        </button>
-        <button
-          onClick={handleReconnect}
-          disabled={reconnecting}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-700 bg-white/70 rounded-lg hover:bg-white transition-colors disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={reconnecting ? 'animate-spin' : ''} />
-          {reconnecting ? 'Reconectando...' : 'Reconectar / novo QR'}
-        </button>
+        <button onClick={() => void refresh()} className="p-2 rounded-lg hover:bg-white/50" title="Atualizar status"><RefreshCw size={16} /></button>
       </div>
 
-      {/* QR Code */}
-      {!connected && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <QrCode size={18} className="text-gray-500 dark:text-gray-400" />
-              <h2 className="font-semibold text-gray-900 dark:text-white text-sm">QR Code</h2>
-            </div>
-            <button
-              onClick={handleRefreshQr}
-              disabled={qrLoading}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
-            >
-              <RefreshCw size={12} className={qrLoading ? 'animate-spin' : ''} />
-              Atualizar
-            </button>
-          </div>
-
-          <div className="flex flex-col items-center gap-4">
-            {qrLoading ? (
-              <div className="w-64 h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg">
-                <Loader2 size={32} className="animate-spin text-gray-400" />
-              </div>
-            ) : qr?.base64 ? (
-              <img
-                src={qr.base64.startsWith('data:') ? qr.base64 : `data:image/png;base64,${qr.base64}`}
-                alt="WhatsApp QR Code"
-                className="w-64 h-64 rounded-lg border border-gray-100 dark:border-gray-700"
-              />
-            ) : (
-              <div className="w-64 h-64 flex items-center justify-center bg-gray-50 dark:bg-gray-900 rounded-lg text-gray-400 text-sm">
-                QR code indisponivel
-              </div>
-            )}
-
-            <div className="text-center max-w-xs">
-              <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">Como conectar:</p>
-              <ol className="text-xs text-gray-500 dark:text-gray-400 mt-2 space-y-1 text-left">
-                <li>1. Abra o WhatsApp no celular</li>
-                <li>2. Toque em <strong>Configuracoes</strong> → <strong>Dispositivos conectados</strong></li>
-                <li>3. Toque em <strong>Conectar dispositivo</strong></li>
-                <li>4. Escaneie o QR code acima</li>
-              </ol>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {connected && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 text-center">
-          <Wifi size={40} className="text-green-500 mx-auto mb-3" />
-          <p className="text-sm text-gray-700 dark:text-gray-200 font-medium">Tudo certo!</p>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Voce ja pode enviar mensagens pelo painel de usuarios.</p>
-        </div>
-      )}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 space-y-4">
+        <div className="flex gap-3"><ShieldCheck className="text-green-600 shrink-0" size={22} /><div><h2 className="font-semibold text-sm text-gray-900 dark:text-white">Proteções ativas</h2><p className="text-xs text-gray-500 dark:text-gray-400 mt-1">O sistema só aceita templates aprovados para envio automático. Campanhas de win-back exigem opt-in de marketing salvo para o contato.</p></div></div>
+        <ul className="text-xs text-gray-600 dark:text-gray-300 space-y-2 list-disc pl-5">
+          <li>Webhook assinado pela Meta para status de entrega, leitura e falha.</li>
+          <li>Sem reconexão, QR Code ou instância Evolution/Baileys.</li>
+          <li>Mensagens manuais continuam disponíveis pelo botão “Abrir no WhatsApp”, sem automação pelo sistema.</li>
+        </ul>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,506 @@
+<title>Business Model Canvas — Doce Preço</title>
+<style>
+  :root {
+    --wine-darkest: #45091f;
+    --wine-dark: #5a0e2e;
+    --wine: #6b1136;
+    --magenta: #9d174d;
+    --rose: #d6336c;
+    --rose-soft: #f6d7e2;
+    --ground: #fbf7f8;
+    --card: #ffffff;
+    --ink: #3a2830;
+    --muted: #8a6b76;
+    --line: #ecdae1;
+    --good: #2f7d55;
+  }
+
+  * { box-sizing: border-box; }
+
+  .page {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    padding: clamp(20px, 4vw, 48px);
+    max-width: 1360px;
+    margin: 0 auto;
+  }
+
+  /* ---- Masthead ---- */
+  .masthead {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 20px;
+    padding-bottom: 20px;
+    margin-bottom: 24px;
+    border-bottom: 2px solid var(--wine);
+  }
+  .brand-eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.22em;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--magenta);
+    margin: 0 0 6px;
+  }
+  .brand-title {
+    font-family: Georgia, "Times New Roman", serif;
+    font-weight: 700;
+    font-size: clamp(28px, 5vw, 44px);
+    line-height: 1.05;
+    color: var(--wine-dark);
+    margin: 0;
+    text-wrap: balance;
+  }
+  .brand-sub {
+    margin: 8px 0 0;
+    font-size: 14px;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+  .masthead-meta {
+    text-align: right;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .masthead-meta strong { color: var(--wine); }
+
+  /* ---- Metrics strip ---- */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 28px;
+  }
+  .metric {
+    background: var(--card);
+    padding: 14px 16px;
+  }
+  .metric .val {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--wine-dark);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+  }
+  .metric .lbl {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 2px;
+  }
+
+  /* ---- Canvas grid ---- */
+  .canvas {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(5, 1fr);
+    grid-template-areas:
+      "kp ka vp cr cs"
+      "kp kr vp ch cs"
+      "cost cost cost rev rev";
+  }
+  .kp   { grid-area: kp; }
+  .ka   { grid-area: ka; }
+  .kr   { grid-area: kr; }
+  .vp   { grid-area: vp; }
+  .cr   { grid-area: cr; }
+  .ch   { grid-area: ch; }
+  .cs   { grid-area: cs; }
+  .cost { grid-area: cost; }
+  .rev  { grid-area: rev; }
+
+  .block {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .block-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line);
+    background: linear-gradient(180deg, #fdf6f9, #fbeef3);
+  }
+  .block-head .num {
+    font-size: 11px;
+    font-weight: 700;
+    color: #fff;
+    background: var(--magenta);
+    width: 20px;
+    height: 20px;
+    border-radius: 5px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    font-variant-numeric: tabular-nums;
+  }
+  .block-head h3 {
+    margin: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--wine-dark);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .block-body {
+    padding: 12px 14px 14px;
+  }
+  ul.items {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+  }
+  ul.items li {
+    position: relative;
+    padding-left: 15px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  ul.items li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 7px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--rose);
+  }
+  ul.items li b { color: var(--wine-dark); font-weight: 600; }
+  ul.items li span.note { color: var(--muted); }
+
+  /* Value proposition — the heart, emphasized */
+  .vp {
+    border: 1.5px solid var(--magenta);
+  }
+  .vp .block-head {
+    background: linear-gradient(160deg, var(--wine), var(--magenta));
+  }
+  .vp .block-head h3 { color: #fff; }
+  .vp .block-head .num { background: rgba(255,255,255,0.22); }
+  .vp ul.items li::before { background: var(--magenta); }
+  .vp .hero-line {
+    font-family: Georgia, serif;
+    font-size: 15px;
+    line-height: 1.35;
+    color: var(--wine-dark);
+    margin: 0 0 12px;
+    padding-bottom: 12px;
+    border-bottom: 1px dashed var(--line);
+    text-wrap: balance;
+  }
+
+  /* Cost vs revenue foot blocks tinted */
+  .cost .block-head { background: linear-gradient(180deg, #fbeef1, #f6e3e9); }
+  .rev  .block-head { background: linear-gradient(180deg, #eef7f1, #e3f1e9); }
+  .rev  .block-head .num { background: var(--good); }
+  .rev  ul.items li::before { background: var(--good); }
+
+  .tier-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+  .tier {
+    flex: 1 1 130px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 9px 11px;
+    background: #fcfbfb;
+  }
+  .tier .name {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+  }
+  .tier .price {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--wine-dark);
+    font-variant-numeric: tabular-nums;
+  }
+  .tier .price small { font-size: 11px; font-weight: 500; color: var(--muted); }
+  .tier .desc { font-size: 11.5px; color: var(--ink); margin-top: 3px; }
+  .tier.featured { border-color: var(--magenta); background: #fdf2f6; }
+  .tier.featured .name { color: var(--magenta); }
+
+  .foot-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .margin-note {
+    margin-top: 12px;
+    padding: 9px 12px;
+    background: #fbeef1;
+    border-radius: 8px;
+    font-size: 12.5px;
+    color: var(--wine-dark);
+  }
+  .margin-note b { color: var(--magenta); }
+
+  .colophon {
+    margin-top: 26px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+    font-size: 11.5px;
+    color: var(--muted);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  @media (max-width: 900px) {
+    .canvas {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "vp vp"
+        "kp cs"
+        "ka cr"
+        "kr ch"
+        "cost cost"
+        "rev rev";
+    }
+    .foot-grid { grid-template-columns: 1fr; gap: 14px; }
+  }
+  @media (max-width: 560px) {
+    .canvas {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        "vp" "cs" "kp" "ka" "kr" "cr" "ch" "cost" "rev";
+    }
+  }
+
+  /* ---- Print (PDF landscape) ---- */
+  @page { size: A4 landscape; margin: 10mm; }
+  @media print {
+    .page {
+      padding: 0;
+      max-width: none;
+      background: #fff;
+    }
+    .metrics { break-inside: avoid; }
+    .canvas {
+      gap: 8px;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-areas:
+        "kp ka vp cr cs"
+        "kp kr vp ch cs"
+        "cost cost cost rev rev";
+    }
+    .block { break-inside: avoid; box-shadow: none; }
+    ul.items li, .tier .desc { font-size: 11px; }
+    .colophon { break-inside: avoid; }
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <div>
+      <p class="brand-eyebrow">Business Model Canvas</p>
+      <h1 class="brand-title">Doce Preço</h1>
+      <p class="brand-sub">SaaS de precificação e gestão para confeitarias artesanais — do custo da receita à loja online com Pix.</p>
+    </div>
+    <div class="masthead-meta">
+      iOS · Android · Web<br>
+      Boa Vista · Roraima<br>
+      <strong>Snapshot: jul/2026</strong>
+    </div>
+  </header>
+
+  <section class="metrics" aria-label="Tração atual">
+    <div class="metric"><div class="val">870</div><div class="lbl">Contas</div></div>
+    <div class="metric"><div class="val">34</div><div class="lbl">Pagantes</div></div>
+    <div class="metric"><div class="val">3,9%</div><div class="lbl">Conversão</div></div>
+    <div class="metric"><div class="val">+273</div><div class="lbl">Novos / 30d</div></div>
+    <div class="metric"><div class="val">981</div><div class="lbl">Receitas</div></div>
+    <div class="metric"><div class="val">R$ 64 mil</div><div class="lbl">GMV movimentado</div></div>
+    <div class="metric"><div class="val">~85%</div><div class="lbl">Margem bruta</div></div>
+  </section>
+
+  <div class="canvas">
+
+    <!-- 1. Parcerias-chave -->
+    <section class="block kp">
+      <div class="block-head"><span class="num">1</span><h3>Parcerias-chave</h3></div>
+      <div class="block-body">
+        <ul class="items">
+          <li><b>App Store &amp; Google Play</b> <span class="note">— distribuição e cobrança</span></li>
+          <li><b>RevenueCat</b> <span class="note">— gestão de assinaturas</span></li>
+          <li><b>Stripe</b> e <b>Mercado Pago</b> <span class="note">— cartão e Pix</span></li>
+          <li><b>Anthropic (Claude)</b> <span class="note">— IA operacional no Telegram</span></li>
+          <li><b>Render</b> <span class="note">— infraestrutura / banco</span></li>
+          <li><b>Resend · Expo Push · Sentry · Evolution/WhatsApp</b></li>
+          <li><b>SEBRAE-RR</b> <span class="note">— programa de aceleração</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 2. Atividades-chave -->
+    <section class="block ka">
+      <div class="block-head"><span class="num">2</span><h3>Atividades-chave</h3></div>
+      <div class="block-body">
+        <ul class="items">
+          <li>Desenvolvimento do app, backend e painéis web</li>
+          <li>Motor de precificação e gestão da confeitaria</li>
+          <li>Operação da loja online e do marketplace</li>
+          <li>Aquisição, retenção e suporte às usuárias</li>
+          <li>Conteúdo e campanhas remotas (push, cupons, winback)</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 3. Recursos-chave -->
+    <section class="block kr">
+      <div class="block-head"><span class="num">3</span><h3>Recursos-chave</h3></div>
+      <div class="block-body">
+        <ul class="items">
+          <li>Plataforma proprietária multiplataforma (app + API)</li>
+          <li>Fundador técnico full-stack (execução solo, bootstrapped)</li>
+          <li>Base de ingredientes globais e receitas sugeridas</li>
+          <li>Base instalada de 870 confeiteiras e seus dados</li>
+          <li>Marca <b>Doce Preço</b></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 4. Proposta de valor -->
+    <section class="block vp">
+      <div class="block-head"><span class="num">4</span><h3>Proposta de valor</h3></div>
+      <div class="block-body">
+        <p class="hero-line">Da receita ao preço certo em minutos — e da venda ao lucro no mesmo app.</p>
+        <ul class="items">
+          <li><b>Precificação automática</b> incluindo mão de obra e a margem desejada</li>
+          <li><b>Ciclo fechado:</b> calcular → publicar → vender → acompanhar o lucro</li>
+          <li><b>Loja online própria com Pix</b>, sem comissão de marketplace</li>
+          <li><b>Feito para o nicho</b> — não é um ERP adaptado</li>
+          <li>Gestão completa: vendas, clientes, estoque, DRE e orçamento em PDF</li>
+          <li><b>Acessível</b> — a partir do plano gratuito</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 5. Relacionamento com clientes -->
+    <section class="block cr">
+      <div class="block-head"><span class="num">5</span><h3>Relacionamento</h3></div>
+      <div class="block-body">
+        <ul class="items">
+          <li>Self-service pelo app, com onboarding e modo demonstração</li>
+          <li>Suporte in-app (chat), FAQ e tutoriais de precificação</li>
+          <li>Engajamento por push, cupons, indicações e winback</li>
+          <li>Comunidade e atendimento por WhatsApp</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 6. Canais -->
+    <section class="block ch">
+      <div class="block-head"><span class="num">6</span><h3>Canais</h3></div>
+      <div class="block-body">
+        <ul class="items">
+          <li>App stores (iOS / Android) e web (landing + PWA)</li>
+          <li>Orgânico via WhatsApp e Instagram</li>
+          <li>Programa de indicações (referral)</li>
+          <li>Link compartilhável da loja + marketplace por cidade</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 7. Segmentos de clientes -->
+    <section class="block cs">
+      <div class="block-head"><span class="num">7</span><h3>Segmentos de clientes</h3></div>
+      <div class="block-body">
+        <ul class="items">
+          <li><b>Confeiteiras artesanais</b> — MEIs e informais da alimentação</li>
+          <li>Já digitalizadas por WhatsApp e Pix, presas a planilhas</li>
+          <li><b>Nichos vizinhos:</b> salgadeiras, boleiras, marmitas</li>
+          <li>Origem em Boa Vista/RR, com alcance nacional</li>
+          <li><span class="note">SOM: 2.500 usuárias até o fim de 2026</span></li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- 8. Estrutura de custos -->
+    <section class="block cost">
+      <div class="block-head"><span class="num">8</span><h3>Estrutura de custos</h3></div>
+      <div class="block-body">
+        <div class="foot-grid">
+          <ul class="items">
+            <li><b>Infraestrutura</b> (hosting/banco) — custo marginal próximo de zero</li>
+            <li><b>Taxas de terceiros</b> — RevenueCat, Stripe, Mercado Pago, Resend, Anthropic</li>
+            <li><b>Comissão das app stores</b> — 15–30% das assinaturas móveis</li>
+          </ul>
+          <ul class="items">
+            <li><b>Desenvolvimento</b> — fundador em dedicação (modelo bootstrapped)</li>
+            <li><b>Aquisição</b> — hoje ~R$ 0 (crescimento 100% orgânico)</li>
+            <li>Observabilidade e comunicação (Sentry, Telegram, push)</li>
+          </ul>
+        </div>
+        <div class="margin-note">A mesma infraestrutura que atende centenas de usuárias atende dezenas de milhares → <b>margem bruta ≈ 85%</b>.</div>
+      </div>
+    </section>
+
+    <!-- 9. Fontes de receita -->
+    <section class="block rev">
+      <div class="block-head"><span class="num">9</span><h3>Fontes de receita</h3></div>
+      <div class="block-body">
+        <div class="tier-row">
+          <div class="tier">
+            <div class="name">Grátis</div>
+            <div class="price">R$ 0</div>
+            <div class="desc">15 ingredientes, 5 receitas, vendas e PDF</div>
+          </div>
+          <div class="tier featured">
+            <div class="name">Premium · popular</div>
+            <div class="price">R$ 14,90<small>/mês</small></div>
+            <div class="desc">Ilimitado + relatórios, clientes e mão de obra</div>
+          </div>
+          <div class="tier">
+            <div class="name">Master</div>
+            <div class="price">R$ 20,00<small>/mês</small></div>
+            <div class="desc">Tudo + DRE, estoque e loja online com Pix</div>
+          </div>
+        </div>
+        <ul class="items" style="margin-top:12px">
+          <li><b>Assinatura SaaS</b> recorrente (App Store, Google Play, Stripe e Pix)</li>
+          <li>Pix recorrente e pagamentos avulsos via Mercado Pago</li>
+          <li>Planos de anúncio e banners para lojas se destacarem</li>
+          <li>Banners AdMob exibidos ao plano gratuito</li>
+        </ul>
+        <div class="margin-note">Hoje: <b>34 pagantes</b> · caixa de assinaturas ~R$ 535/mês (jul, parcial) · ticket médio ≈ R$ 15,70.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <footer class="colophon">
+    <span>Doce Preço — Business Model Canvas · modelo de Osterwalder (9 blocos)</span>
+    <span>Dados: métricas de produção (28/07/2026) e pitch DocePreço · valores de plano configuráveis no painel</span>
+  </footer>
+
+</div>
