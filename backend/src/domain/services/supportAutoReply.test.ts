@@ -34,4 +34,18 @@ describe('getAutomaticSupportReply', () => {
     const reply = getAutomaticSupportReply('Está ficando caro para mim', [adminCancellationPrompt]);
     expect(reply).toContain('Quer que eu ajude');
   });
+
+  it.each(['Não', 'não quero cancelar', 'desisti', 'pode deixar'])('closes the cancellation flow when the user declines: %s', message => {
+    const reply = getAutomaticSupportReply(message, [adminCancellationPrompt]);
+    expect(reply).toContain('encerrar esse assunto');
+  });
+
+  it('does not repeat the cancellation flow after it was closed', () => {
+    const closedFlow = {
+      ...adminCancellationPrompt,
+      message: 'Perfeito, vamos encerrar esse assunto por aqui. Fico feliz em continuar com você.',
+      createdAt: new Date(Date.now() + 1).toISOString(),
+    };
+    expect(getAutomaticSupportReply('Obrigada', [adminCancellationPrompt, closedFlow])).toBeNull();
+  });
 });
