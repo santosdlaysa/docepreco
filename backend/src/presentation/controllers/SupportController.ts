@@ -6,6 +6,7 @@ import { pool } from '../../infrastructure/database/connection';
 import { notifySupportMessage } from '../../infrastructure/services/telegramService';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { getActiveOffer } from '../../infrastructure/services/winbackService';
+import { getAutomaticSupportReply } from '../../domain/services/supportAutoReply';
 
 const repo = new PostgresSupportRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
@@ -95,6 +96,19 @@ export class SupportController {
         return;
       }
       const item = await repo.create({ userId: req.userId!, senderType: 'user', message: trimmed, imageUrl: imageUrl ?? null });
+
+      // Respostas rápidas para as dúvidas mais comuns. Elas são gravadas como
+      // mensagens do suporte para aparecerem em todos os clientes do chat e
+      // não substituem o atendimento humano.
+      if (trimmed) {
+        try {
+          const history = await repo.findByUserId(req.userId!);
+          const reply = getAutomaticSupportReply(trimmed, history);
+          if (reply) await repo.create({ userId: req.userId!, senderType: 'admin', message: reply });
+        } catch (autoReplyError) {
+          console.error('[Support] automatic reply error:', autoReplyError);
+        }
+      }
 
       // Telegram notification (fire-and-forget)
       pool.query('SELECT company_name, email FROM users WHERE id = $1', [req.userId!])

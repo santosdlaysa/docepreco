@@ -2,7 +2,12 @@
 // Mantê-lo no ambiente permite que o projeto continue configurável antes de a
 // credencial de produção ser criada, sem colocar um identificador falso no build.
 module.exports = ({ config }) => {
-  const iosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
+  // This is a public OAuth redirect identifier (not a secret).  Keep a
+  // production fallback because the URL scheme is compiled into Info.plist;
+  // an EAS build without the environment variable would otherwise ship an iOS
+  // binary that terminates when Google Sign-In opens.
+  const iosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME
+    || 'com.googleusercontent.apps.1075844701028-s8p6dmpb3knik9l36m7adiur39unt00e';
   const plugins = [...(config.plugins || [])];
 
   if (iosUrlScheme) {

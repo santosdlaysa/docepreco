@@ -110,7 +110,7 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
         </div>
         <div className="flex-1">
           <p className="font-bold text-gray-900 dark:text-white">{t('support.title')}</p>
-          <p className="text-xs text-green-600 dark:text-green-400">{t('support.subtitle')}</p>
+          <p className="text-xs text-green-600 dark:text-green-400">{t('support.subtitle')} · 08h às 18h</p>
         </div>
         <a
           href={`https://wa.me/${SUPPORT_WHATSAPP}?text=${encodeURIComponent(t('support.whatsappMessage'))}`}

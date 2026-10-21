@@ -153,8 +153,10 @@ export const SupportChatScreen: React.FC = () => {
     setNewMessage('');
     setSelectedImage(null);
     try {
-      const sent = await supportApi.sendMessage(text, imageToSend);
-      setMessages(prev => [...prev, sent]);
+      await supportApi.sendMessage(text, imageToSend);
+      // A API pode gravar uma resposta automática na mesma conversa. Recarrega
+      // para que ela apareça imediatamente, sem esperar o próximo polling.
+      await loadMessages();
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
       setNewMessage(text);
@@ -240,7 +242,7 @@ export const SupportChatScreen: React.FC = () => {
           <Text style={s.headerTitle}>Suporte DocePreço</Text>
           <View style={s.onlineRow}>
             <View style={s.onlineDot} />
-            <Text style={s.onlineText}>online agora</Text>
+            <Text style={s.onlineText}>Atendimento humano: 08h às 18h</Text>
           </View>
         </View>
       </View>
