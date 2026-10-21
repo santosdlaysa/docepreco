@@ -17,6 +17,7 @@ function formatTime(iso: string): string {
 // A equipe pode enviar [[assinar]] (ou [[assinar:master]]) numa mensagem; isso vira
 // um botão "Assinar agora" que abre a tela de planos aqui mesmo no app.
 const SUBSCRIBE_CTA_RE = /\[\[assinar(?::(master|premium))?\]\]/i;
+const QUICK_QUESTIONS = ['Como calcular o preço?', 'Como registrar meus gastos?', 'Quero cancelar meu plano'];
 
 function parseSubscribeCta(message: string): { text: string; cta: 'premium' | 'master' | null } {
   const match = message.match(SUBSCRIBE_CTA_RE);
@@ -101,6 +102,19 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
     }
   };
 
+  const sendQuickQuestion = async (question: string) => {
+    if (sending) return;
+    setSending(true);
+    try {
+      await userApi.sendSupportMessage(question);
+      await load();
+    } catch (err) {
+      toast.error((err as Error).message);
+    } finally {
+      setSending(false);
+    }
+  };
+
   return (
     <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-9rem)]">
       {/* Cabeçalho */}
@@ -178,6 +192,19 @@ export function SupportPage({ toast }: { toast: ToastFn }) {
             </div>
           </div>
         )}
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {QUICK_QUESTIONS.map(question => (
+          <button
+            key={question}
+            onClick={() => void sendQuickQuestion(question)}
+            disabled={sending}
+            className="shrink-0 rounded-full border border-primary-200 bg-primary-50 px-3 py-1.5 text-xs font-semibold text-primary-700 hover:bg-primary-100 disabled:opacity-50 dark:border-primary-900/50 dark:bg-primary-950/30 dark:text-primary-300"
+          >
+            {question}
+          </button>
+        ))}
       </div>
 
       {/* Prévia da imagem */}

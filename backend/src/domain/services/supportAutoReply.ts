@@ -47,16 +47,16 @@ export function getAutomaticSupportReply(message: string, history: SupportMessag
   }
 
   if (includesAny(text, [
-    'calcular preco', 'calcular o preco', 'calcular preço', 'preco de venda', 'preço de venda',
-    'precificar', 'quanto cobrar', 'margem', 'markup', 'lucro',
-  ])) {
-    return 'Para calcular o preço, cadastre os ingredientes, embalagens e custos da receita. Depois, em Receitas, informe o rendimento e a margem desejada: o DocePreço soma os custos e sugere o preço de venda. Quer ajuda em alguma dessas etapas?';
-  }
-
-  if (includesAny(text, [
     'gasto', 'gastei', 'despesa', 'despesas', 'custo fixo', 'custos fixos', 'financeiro',
   ])) {
     return 'Para acompanhar seus gastos, abra Gastos e registre cada despesa com categoria e valor. Na tela Financeiro, você vê o total do período e como ele afeta o resultado. Quer ajuda para cadastrar um gasto ou interpretar o resumo?';
+  }
+
+  if (includesAny(text, [
+    'como calcular', 'calcular preco', 'calcular o preco', 'calcular preço', 'preco de venda', 'preço de venda',
+    'precificar', 'quanto cobrar', 'margem', 'markup', 'lucro',
+  ])) {
+    return 'Para calcular o preço, cadastre os ingredientes, embalagens e custos da receita. Depois, em Receitas, informe o rendimento e a margem desejada: o DocePreço soma os custos e sugere o preço de venda. Quer ajuda em alguma dessas etapas?';
   }
 
   return null;

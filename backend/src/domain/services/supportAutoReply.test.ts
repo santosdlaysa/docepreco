@@ -11,6 +11,10 @@ describe('getAutomaticSupportReply', () => {
     expect(getAutomaticSupportReply('Como calculo meu preço de venda?')).toContain('ingredientes');
   });
 
+  it('also understands the short calculation question', () => {
+    expect(getAutomaticSupportReply('Como calcular?')).toContain('preço');
+  });
+
   it('explains where to record expenses', () => {
     expect(getAutomaticSupportReply('Onde vejo meus gastos do mês?')).toContain('Gastos');
   });

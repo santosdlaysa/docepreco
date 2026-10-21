@@ -14,6 +14,7 @@ import {
   Image,
   Alert,
   Modal,
+  ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -29,6 +30,11 @@ import { useTranslation } from 'react-i18next';
 // A equipe pode enviar [[assinar]] (ou [[assinar:master]]) numa mensagem; isso vira
 // um botão "Assinar agora" que abre a tela de planos (Paywall) dentro do app.
 const SUBSCRIBE_CTA_RE = /\[\[assinar(?::(master|premium))?\]\]/i;
+const QUICK_QUESTIONS = [
+  'Como calcular o preço?',
+  'Como registrar meus gastos?',
+  'Quero cancelar meu plano',
+];
 
 function parseSubscribeCta(message: string): { text: string; cta: 'premium' | 'master' | null } {
   const match = message.match(SUBSCRIBE_CTA_RE);
@@ -166,6 +172,20 @@ export const SupportChatScreen: React.FC = () => {
     }
   };
 
+  const handleQuickQuestion = async (question: string) => {
+    if (sending) return;
+    setSending(true);
+    try {
+      await supportApi.sendMessage(question);
+      await loadMessages();
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+    } catch {
+      setNewMessage(question);
+    } finally {
+      setSending(false);
+    }
+  };
+
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -287,6 +307,25 @@ export const SupportChatScreen: React.FC = () => {
         )}
 
         {adminTyping && !sending && <TypingDots />}
+
+        {!loading && (
+          <View style={s.quickReplyArea}>
+            <Text style={s.quickReplyLabel}>Dúvidas rápidas</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.quickReplyList}>
+              {QUICK_QUESTIONS.map(question => (
+                <TouchableOpacity
+                  key={question}
+                  style={s.quickReply}
+                  onPress={() => void handleQuickQuestion(question)}
+                  disabled={sending}
+                  activeOpacity={0.75}
+                >
+                  <Text style={s.quickReplyText}>{question}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
 
         <Modal visible={!!expandedImage} transparent animationType="fade" onRequestClose={() => setExpandedImage(null)}>
           <TouchableOpacity style={s.imageModal} activeOpacity={1} onPress={() => setExpandedImage(null)}>
@@ -532,6 +571,12 @@ const s = StyleSheet.create({
   },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: INK, marginBottom: 6 },
   emptySub: { fontSize: 13, color: INK2, fontWeight: '500', textAlign: 'center', lineHeight: 19, maxWidth: 240 },
+
+  quickReplyArea: { paddingTop: 8, paddingBottom: 6, borderTopWidth: 1, borderTopColor: LINE, backgroundColor: '#fff' },
+  quickReplyLabel: { fontSize: 12, fontWeight: '700', color: INK2, paddingHorizontal: 16, marginBottom: 7 },
+  quickReplyList: { paddingHorizontal: 16, gap: 8 },
+  quickReply: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: colors.pinkBg2, borderWidth: 1, borderColor: colors.pinkSoft },
+  quickReplyText: { fontSize: 12, fontWeight: '700', color: PINK },
 
   /* ── Skeleton ── */
   skeletonChat: { flex: 1, padding: 16, gap: 12, justifyContent: 'flex-end' },
