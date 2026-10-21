@@ -18,6 +18,9 @@ export const apiClient = axios.create({
 apiClient.interceptors.request.use(async config => {
   const token = await tokenStorage.getToken();
   if (token) config.headers.Authorization = `Bearer ${token}`;
+  // Guarda o token efetivamente usado nesta requisição. Uma resposta atrasada
+  // de uma sessão anterior não pode apagar o token de um login recém-concluído.
+  (config as typeof config & { _authToken?: string | null })._authToken = token;
   const method = config.method?.toUpperCase();
   const url = `${config.baseURL}${config.url}`;
   const loggedData = config.data && typeof config.data === 'object'
@@ -43,8 +46,18 @@ apiClient.interceptors.response.use(
     // Auto-logout: token inválido ou usuário não existe mais
     // Ignora 401 de rotas admin/settings e de sessões demo
     const isAdminRoute = url?.includes('/admin/');
-    if (!isDemoMode() && ((status === 401 && !isAdminRoute) || (status === 404 && url?.includes('/auth/me')))) {
-      tokenStorage.removeToken().then(() => onForceLogout?.()).catch(() => {});
+    const requestToken = (error.config as { _authToken?: string | null } | undefined)?._authToken;
+    if (
+      !isDemoMode()
+      && requestToken
+      && ((status === 401 && !isAdminRoute) || (status === 404 && url?.includes('/auth/me')))
+    ) {
+      tokenStorage.getToken().then((currentToken) => {
+        // Só encerra a sessão se a resposta inválida for do token atualmente
+        // ativo. Isto evita uma corrida durante login por Apple/Google.
+        if (currentToken !== requestToken) return;
+        return tokenStorage.removeToken().then(() => onForceLogout?.());
+      }).catch(() => {});
     }
     const rawMessage = error.response?.data?.error || error.response?.data?.message || error.message || 'Unknown error';
     const message = !error.response && (error.code === 'ECONNABORTED' || error.message?.includes('Network Error'))

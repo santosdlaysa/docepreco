@@ -144,10 +144,15 @@ export const PremiumProvider: React.FC<{ children: React.ReactNode }> = ({ child
     // chamar o servidor real com o token demo e disparar force-logout
     loadDemoMode().then(() => loadFromStorage()).then(() => {
       if (!isDemoMode()) {
-        authApi.me().then((fresh) => {
-          setUser(fresh);
-          void tokenStorage.saveUser(fresh);
-          void syncIfNeeded(fresh);
+        tokenStorage.getToken().then((token) => {
+          // Não há sessão antes do primeiro login; consultar /auth/me nesse
+          // momento gera um 401 que pode concorrer com o login social.
+          if (!token) return;
+          authApi.me().then((fresh) => {
+            setUser(fresh);
+            void tokenStorage.saveUser(fresh);
+            void syncIfNeeded(fresh);
+          }).catch(() => {});
         }).catch(() => {});
       }
     });

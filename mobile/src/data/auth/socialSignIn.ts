@@ -8,11 +8,23 @@ import {
 } from '@react-native-google-signin/google-signin';
 import { authApi } from '../api/authApi';
 
-export const googleSignInConfigured = Boolean(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
+const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
+const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
+// O plugin nativo usa o URL scheme, mas o SDK também precisa receber o Client
+// ID iOS em tempo de execução. Derivamos o ID do scheme já configurado para
+// evitar manter a mesma credencial em duas variáveis diferentes.
+const googleIosClientId = googleIosUrlScheme
+  ?.replace(/^com\.googleusercontent\.apps\./, '')
+  .replace(/^(.+)$/, '$1.apps.googleusercontent.com');
+
+export const googleSignInConfigured = Boolean(
+  googleWebClientId && (Platform.OS !== 'ios' || googleIosClientId),
+);
 
 if (googleSignInConfigured) {
   GoogleSignin.configure({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+    webClientId: googleWebClientId,
+    ...(googleIosClientId ? { iosClientId: googleIosClientId } : {}),
   });
 }
 
