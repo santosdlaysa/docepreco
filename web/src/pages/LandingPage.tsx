@@ -7,6 +7,14 @@ import {
   Store, ClipboardList, CalendarDays, Wallet, Package, Lightbulb,
   Link2, Bell, CreditCard, Truck, MessageCircle,
 } from 'lucide-react';
+import homeScreen from '../assets/demo-screens/mobile-screen-2.jpg';
+import storeScreen from '../assets/demo-screens/mobile-screen-loja.jpg';
+import menuScreen from '../assets/demo-screens/mobile-screen-cardapio.jpg';
+import recipesScreen from '../assets/demo-screens/mobile-screen-3.jpg';
+import ingredientsScreen from '../assets/demo-screens/mobile-screen-4.jpg';
+import salesScreen from '../assets/demo-screens/mobile-screen-5.jpg';
+import reportsScreen from '../assets/demo-screens/mobile-screen-1.jpg';
+import profileScreen from '../assets/demo-screens/mobile-screen-perfil.jpg';
 
 const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
 
@@ -74,14 +82,14 @@ function formatCount(n: number): string {
 }
 
 const DEMO_SCREENS = [
-  { title: 'Home', icon: Home, desc: 'Dashboard com resumo de vendas', image: '/mobile-screen-2.jpg' },
-  { title: 'Loja Online', icon: Store, desc: 'Catálogo com link compartilhável para pedidos', image: '/mobile-screen-loja.jpg' },
-  { title: 'Cardápio do Cliente', icon: Smartphone, desc: 'Cliente pede pelo navegador, sem instalar nada', image: '/mobile-screen-cardapio.jpg' },
-  { title: 'Receitas', icon: ChefHat, desc: 'Gerencie suas receitas', image: '/mobile-screen-3.jpg' },
-  { title: 'Ingredientes', icon: ShoppingBag, desc: 'Controle de ingredientes', image: '/mobile-screen-4.jpg' },
-  { title: 'Vendas', icon: TrendingUp, desc: 'Registre e acompanhe vendas', image: '/mobile-screen-5.jpg' },
-  { title: 'Relatórios', icon: BarChart3, desc: 'Análise detalhada de dados', image: '/mobile-screen-1.jpg' },
-  { title: 'Perfil', icon: Users, desc: 'Sua marca, contatos e plano em um só lugar', image: '/mobile-screen-perfil.jpg' },
+  { title: 'Home', icon: Home, desc: 'Dashboard com resumo de vendas', image: homeScreen },
+  { title: 'Loja Online', icon: Store, desc: 'Catálogo com link compartilhável para pedidos', image: storeScreen },
+  { title: 'Cardápio do Cliente', icon: Smartphone, desc: 'Cliente pede pelo navegador, sem instalar nada', image: menuScreen },
+  { title: 'Receitas', icon: ChefHat, desc: 'Gerencie suas receitas', image: recipesScreen },
+  { title: 'Ingredientes', icon: ShoppingBag, desc: 'Controle de ingredientes', image: ingredientsScreen },
+  { title: 'Vendas', icon: TrendingUp, desc: 'Registre e acompanhe vendas', image: salesScreen },
+  { title: 'Relatórios', icon: BarChart3, desc: 'Análise detalhada de dados', image: reportsScreen },
+  { title: 'Perfil', icon: Users, desc: 'Sua marca, contatos e plano em um só lugar', image: profileScreen },
 ];
 
 export function LandingPage() {
