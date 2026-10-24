@@ -28,8 +28,9 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Links de assinatura precisam da versão publicada, não do shell em cache.
-        navigateFallbackDenylist: [/^\/assinar\/?$/],
+        // A landing page e os links de assinatura precisam do HTML publicado,
+        // não do shell antigo em cache. O app instalado em /lojas mantém offline.
+        navigateFallbackDenylist: [/^\/$/, /^\/assinar\/?$/],
         // Recebe Web Push (notificações do confeiteiro) — handlers em public/push-sw.js.
         importScripts: ['/push-sw.js'],
         // Network-first for the public catalog/list reads, so the vitrine and last-viewed
