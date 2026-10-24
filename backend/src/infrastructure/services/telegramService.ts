@@ -6,15 +6,20 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const TELEGRAM_CHAT_ID = process.env.TELEGRAM_CHAT_ID;
 const alertRepo = new PostgresTelegramAlertRepository();
 
-function sendTelegramMessage(text: string): void {
-  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
-  fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
-  }).catch((err) => {
-    console.error('Telegram notification failed:', err.message);
-  });
+async function sendTelegramMessage(text: string): Promise<boolean> {
+  if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return false;
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: TELEGRAM_CHAT_ID, text }),
+    });
+    if (!response.ok) console.error('Telegram notification failed:', response.status);
+    return response.ok;
+  } catch (err) {
+    console.error('Telegram notification failed:', err);
+    return false;
+  }
 }
 
 async function isAlertEnabled(key: string): Promise<boolean> {
@@ -200,10 +205,11 @@ export async function sendDailyGoalProgress(opts: { silentIfMet?: boolean } = {}
  * Health check periódico enviado ao Telegram. Verifica banco (SELECT 1) e a
  * camada HTTP (self-ping em /api/health) e reporta uptime/memória.
  *
- * @param opts.alertOnly quando true, só envia mensagem se algo estiver com
- *   problema (modo silencioso — não manda o "tudo ok" a cada intervalo).
+ * @param opts.alertOnly quando true, só envia mensagem se algo estiver com problema.
+ * @param opts.deployCommit quando presente, envia o sucesso apenas uma vez por
+ *   commit implantado; não envia se o diagnóstico falhar.
  */
-export async function sendHealthReport(opts: { alertOnly?: boolean } = {}): Promise<void> {
+export async function sendHealthReport(opts: { alertOnly?: boolean; deployCommit?: string } = {}): Promise<void> {
   if (!await isAlertEnabled('health_check')) return;
 
   // 1) Banco: ping + latência
@@ -237,6 +243,24 @@ export async function sendHealthReport(opts: { alertOnly?: boolean } = {}): Prom
 
   const healthy = dbOk && httpOk;
   if (opts.alertOnly && healthy) return;
+  if (opts.deployCommit && !healthy) return;
+
+  // A chave por commit faz a confirmação sobreviver a reinícios e evita
+  // duplicatas quando mais de uma instância sobe no mesmo deploy.
+  const deployKey = opts.deployCommit ? `health_deploy:${opts.deployCommit}` : null;
+  if (deployKey) {
+    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+    try {
+      const claimed = await pool.query(
+        'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO NOTHING RETURNING key',
+        [deployKey, opts.deployCommit]
+      );
+      if (claimed.rowCount === 0) return;
+    } catch (error) {
+      console.error('Failed to claim deploy health notification:', error);
+      return;
+    }
+  }
 
   const uptime = process.uptime();
   const uptimeStr = uptime >= 3600
@@ -256,7 +280,12 @@ export async function sendHealthReport(opts: { alertOnly?: boolean } = {}): Prom
   const text = tpl
     ? applyTemplate(tpl, { icon, title, db: dbLine, http: httpLine, uptime: uptimeStr, mem, time: brNow() })
     : fallback;
-  sendTelegramMessage(text);
+  const sent = await sendTelegramMessage(text);
+  if (deployKey && !sent) {
+    await pool.query('DELETE FROM app_settings WHERE key = $1', [deployKey]).catch(error => {
+      console.error('Failed to release deploy health notification:', error);
+    });
+  }
 }
 
 // ── Segurança ───────────────────────────────────────────────────────

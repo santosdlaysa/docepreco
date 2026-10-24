@@ -296,11 +296,12 @@ async function bootstrap() {
       cron.schedule('0 12,15,18,21 * * *', () => sendDailyGoalProgress({ silentIfMet: true }), { timezone: 'America/Sao_Paulo' });
     }
 
-    // Diagnóstico da API a cada 3h → Telegram (banco + HTTP + uptime).
-    // Primeiro disparo ~15s após o boot (confirma que subiu ok e que o Telegram
-    // está funcionando). Para virar modo silencioso (só avisa em falha), troque
-    // por sendHealthReport({ alertOnly: true }).
-    setTimeout(() => { void sendHealthReport(); }, 15000);
+    // Um aviso de sucesso por commit implantado; reinícios do mesmo commit não repetem.
+    // Sem o identificador de deploy da Render, não envia aviso na inicialização.
+    if (process.env.RENDER_GIT_COMMIT) {
+      setTimeout(() => { void sendHealthReport({ deployCommit: process.env.RENDER_GIT_COMMIT }); }, 15000);
+    }
+    // Diagnóstico periódico independente do deploy, a cada 3h.
     cron.schedule('0 */3 * * *', () => { void sendHealthReport(); }, { timezone: 'America/Sao_Paulo' });
 
     // Varredura de segurança: analisa o request_logs em busca de acesso suspeito
