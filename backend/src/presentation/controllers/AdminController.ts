@@ -59,7 +59,7 @@ export class AdminController {
     try {
       const [count, users] = await Promise.all([
         pool.query('SELECT COUNT(*)::int AS total FROM deleted_users'),
-        pool.query('SELECT user_id AS "userId", deleted_at AS "deletedAt" FROM deleted_users ORDER BY deleted_at DESC, user_id LIMIT $1 OFFSET $2', [limit, (page - 1) * limit]),
+        pool.query('SELECT user_id AS "userId", company_name AS "companyName", deleted_at AS "deletedAt" FROM deleted_users ORDER BY deleted_at DESC, user_id LIMIT $1 OFFSET $2', [limit, (page - 1) * limit]),
       ]);
       res.json({ success: true, data: { users: users.rows, total: count.rows[0].total, page, limit } });
     } catch (error) {

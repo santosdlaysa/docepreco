@@ -271,9 +271,9 @@ export class PostgresUserRepository {
       await client.query('DELETE FROM store_payment_accounts WHERE user_id = $1', [userId]);
       await client.query('DELETE FROM banners WHERE company_id = $1', [userId]);
       // Now delete the user — remaining FKs all use ON DELETE CASCADE
-      const result = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+      const result = await client.query('DELETE FROM users WHERE id = $1 RETURNING company_name', [userId]);
       if ((result.rowCount ?? 0) > 0) {
-        await client.query('INSERT INTO deleted_users (user_id) VALUES ($1)', [userId]);
+        await client.query('INSERT INTO deleted_users (user_id, company_name) VALUES ($1, $2)', [userId, result.rows[0].company_name]);
       }
       await client.query('COMMIT');
       return (result.rowCount ?? 0) > 0;

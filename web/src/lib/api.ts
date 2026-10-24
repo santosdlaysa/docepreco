@@ -232,6 +232,7 @@ export interface InactiveUser {
 
 export interface DeletedUser {
   userId: string;
+  companyName: string | null;
   deletedAt: string;
 }
 

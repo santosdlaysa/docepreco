@@ -97,7 +97,7 @@ export function UserLifecyclePage({ toast }: Props) {
           <button type="submit" className="inline-flex items-center gap-2 rounded-lg bg-primary-500 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-600"><Search size={15} /> Buscar</button>
         </form>
       ) : (
-        <p className="text-sm text-gray-500 dark:text-gray-400">Este histórico guarda somente o ID e a data. Exclusões anteriores à implantação desta tela não podem ser recuperadas.</p>
+        <p className="text-sm text-gray-500 dark:text-gray-400">Este histórico guarda o nome, o ID e a data da exclusão. O nome pode estar indisponível em registros anteriores a esta atualização.</p>
       )}
 
       {error && <p role="alert" className="rounded-lg bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">{error}</p>}
@@ -106,10 +106,10 @@ export function UserLifecyclePage({ toast }: Props) {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 dark:bg-gray-700/50 text-left text-xs uppercase text-gray-500 dark:text-gray-400">
             {tab === 'inactive' ? <tr><th className="px-4 py-3">Usuário</th><th className="px-4 py-3">Último acesso</th><th className="px-4 py-3">Dados</th><th className="px-4 py-3">Plano</th><th className="px-4 py-3 text-right">Ação</th></tr>
-              : <tr><th className="px-4 py-3">ID do usuário</th><th className="px-4 py-3">Excluído em</th></tr>}
+              : <tr><th className="px-4 py-3">Nome</th><th className="px-4 py-3">ID do usuário</th><th className="px-4 py-3">Excluído em</th></tr>}
           </thead>
           <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-            {loading ? <tr><td colSpan={tab === 'inactive' ? 5 : 2} className="px-4 py-8 text-center text-gray-500">Carregando...</td></tr>
+            {loading ? <tr><td colSpan={tab === 'inactive' ? 5 : 3} className="px-4 py-8 text-center text-gray-500">Carregando...</td></tr>
               : tab === 'inactive' ? inactiveUsers.map(user => (
                 <tr key={user.id} className="text-gray-700 dark:text-gray-200">
                   <td className="px-4 py-3"><p className="font-semibold">{user.companyName}</p><p className="text-xs text-gray-500">{user.email}</p><p className="text-[11px] font-mono text-gray-400">{user.id}</p></td>
@@ -119,9 +119,9 @@ export function UserLifecyclePage({ toast }: Props) {
                   <td className="px-4 py-3 text-right"><button type="button" disabled={hasActiveSubscription(user)} onClick={() => { setTarget(user); setConfirmation(''); }} title={hasActiveSubscription(user) ? 'Assinatura ativa: exclusão bloqueada' : 'Excluir conta e dados'} className="inline-flex items-center gap-1 rounded-lg border border-red-200 dark:border-red-800 px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:cursor-not-allowed disabled:opacity-40"><Trash2 size={13} /> Excluir</button></td>
                 </tr>
               )) : deletedUsers.map(user => (
-                <tr key={user.userId} className="text-gray-700 dark:text-gray-200"><td className="px-4 py-3 font-mono text-xs">{user.userId}</td><td className="px-4 py-3">{formatDate(user.deletedAt)}</td></tr>
+                <tr key={user.userId} className="text-gray-700 dark:text-gray-200"><td className="px-4 py-3 font-semibold">{user.companyName || 'Nome indisponível'}</td><td className="px-4 py-3 font-mono text-xs">{user.userId}</td><td className="px-4 py-3">{formatDate(user.deletedAt)}</td></tr>
               ))}
-            {!loading && !error && (tab === 'inactive' ? inactiveUsers.length === 0 : deletedUsers.length === 0) && <tr><td colSpan={tab === 'inactive' ? 5 : 2} className="px-4 py-8 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>}
+            {!loading && !error && (tab === 'inactive' ? inactiveUsers.length === 0 : deletedUsers.length === 0) && <tr><td colSpan={tab === 'inactive' ? 5 : 3} className="px-4 py-8 text-center text-gray-500">Nenhum usuário encontrado.</td></tr>}
           </tbody>
         </table>
       </div>
@@ -138,7 +138,7 @@ export function UserLifecyclePage({ toast }: Props) {
       {target && <ModalOverlay onClose={() => { if (!deleting) setTarget(null); }}>
         <div className="w-full max-w-md rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl space-y-4">
           <div className="flex items-center gap-2 text-red-600 dark:text-red-400"><AlertTriangle size={22} /><h3 className="text-lg font-bold">Excluir conta permanentemente</h3></div>
-          <p className="text-sm text-gray-600 dark:text-gray-300">A conta de <strong>{target.companyName}</strong> e os dados associados serão removidos permanentemente. O histórico guardará apenas o ID e a data da exclusão.</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300">A conta de <strong>{target.companyName}</strong> e os dados associados serão removidos permanentemente. O histórico guardará o nome, o ID e a data da exclusão.</p>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">Digite o e-mail <strong>{target.email}</strong> para confirmar
             <input value={confirmation} onChange={e => setConfirmation(e.target.value)} autoComplete="off" className="mt-2 w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-300" />
           </label>
