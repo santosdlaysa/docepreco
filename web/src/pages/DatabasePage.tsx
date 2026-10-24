@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { api } from '../lib/api';
 import { ToastFn } from '../components';
-import { Play, Clock, Database, ChevronDown, ChevronUp, Trash2, Copy, AlertTriangle } from 'lucide-react';
+import { Play, Clock, Database, ChevronDown, ChevronUp, Trash2, Copy, AlertTriangle, ExternalLink, RefreshCw } from 'lucide-react';
 
 interface Props {
   toast: ToastFn;
@@ -27,16 +27,16 @@ interface HistoryEntry {
 
 const QUICK_COMMANDS = [
   {
-    label: 'Adicionar image_url em support_messages',
-    sql: 'ALTER TABLE support_messages ADD COLUMN IF NOT EXISTS image_url TEXT NULL;',
+    label: 'Banco e schema atuais',
+    sql: 'SELECT current_database() AS banco, current_schema() AS schema;',
   },
   {
     label: 'Listar tabelas',
-    sql: "SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;",
+    sql: "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;",
   },
   {
-    label: 'Colunas de support_messages',
-    sql: "SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = 'support_messages' ORDER BY ordinal_position;",
+    label: 'Tamanho das tabelas',
+    sql: "SELECT relname AS tabela, pg_size_pretty(pg_total_relation_size(relid)) AS tamanho FROM pg_catalog.pg_statio_user_tables ORDER BY pg_total_relation_size(relid) DESC LIMIT 20;",
   },
   {
     label: 'Contar usuários',
@@ -51,6 +51,16 @@ const QUICK_COMMANDS = [
     sql: 'SELECT company_name, email, premium_until FROM users WHERE is_premium = true ORDER BY premium_until DESC LIMIT 20;',
   },
 ];
+
+const TABLES_SQL = "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE' ORDER BY table_name;";
+
+function quoteIdentifier(name: string): string {
+  return `"${name.replace(/"/g, '""')}"`;
+}
+
+function quoteLiteral(value: string): string {
+  return `'${value.replace(/'/g, "''")}'`;
+}
 
 const HISTORY_KEY = 'db_query_history';
 const MAX_HISTORY = 20;
@@ -79,11 +89,59 @@ export function DatabasePage({ toast }: Props) {
   const [history, setHistory] = useState<HistoryEntry[]>(loadHistory);
   const [showHistory, setShowHistory] = useState(false);
   const [showQuick, setShowQuick] = useState(true);
+  const [tables, setTables] = useState<string[]>([]);
+  const [tablesLoading, setTablesLoading] = useState(false);
+  const [tablesError, setTablesError] = useState<string | null>(null);
+  const [tableFilter, setTableFilter] = useState('');
+  const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [columns, setColumns] = useState<{ name: string; type: string; nullable: string }[]>([]);
+  const [columnsLoading, setColumnsLoading] = useState(false);
+  const [columnsError, setColumnsError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     textareaRef.current?.focus();
   }, []);
+
+  const loadTables = async () => {
+    setTablesLoading(true);
+    setTablesError(null);
+    try {
+      const res = await api.executeDbQuery(TABLES_SQL);
+      setTables(res.rows.map(row => row.table_name).filter((name): name is string => typeof name === 'string'));
+    } catch (e: any) {
+      setTablesError(e?.message ?? 'Não foi possível listar as tabelas.');
+    } finally {
+      setTablesLoading(false);
+    }
+  };
+
+  useEffect(() => { void loadTables(); }, []);
+
+  useEffect(() => {
+    if (!selectedTable) return;
+    let active = true;
+    setColumns([]);
+    setColumnsLoading(true);
+    setColumnsError(false);
+    const query = `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${quoteLiteral(selectedTable)} ORDER BY ordinal_position;`;
+    api.executeDbQuery(query)
+      .then(res => {
+        if (active) setColumns(res.rows.map(row => ({
+          name: String(row.column_name),
+          type: String(row.data_type),
+          nullable: String(row.is_nullable),
+        })));
+      })
+      .catch(() => { if (active) setColumnsError(true); })
+      .finally(() => { if (active) setColumnsLoading(false); });
+    return () => { active = false; };
+  }, [selectedTable]);
+
+  const suggest = (query: string) => {
+    setSql(query);
+    textareaRef.current?.focus();
+  };
 
   const run = async () => {
     const trimmed = sql.trim();
@@ -143,6 +201,13 @@ export function DatabasePage({ toast }: Props) {
         </div>
       </div>
 
+      {/* Access information */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+        <h3 className="font-semibold text-gray-900 dark:text-white">Onde acessar o banco</h3>
+        <p><strong>Neste painel:</strong> Administração → Sistema → Console SQL. As consultas usam o PostgreSQL configurado no backend de produção.</p>
+        <p><strong>Acesso externo:</strong> abra o serviço PostgreSQL no <a href="https://dashboard.render.com/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary-600 dark:text-primary-400 hover:underline">painel da Render <ExternalLink size={12} /></a> e consulte a seção Connect. A conexão do backend é definida pela variável <code className="font-mono text-xs">DATABASE_URL</code>; credenciais não são exibidas aqui.</p>
+      </div>
+
       {/* Warning */}
       <div className="flex items-start gap-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-xl p-4">
         <AlertTriangle size={18} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
@@ -151,13 +216,66 @@ export function DatabasePage({ toast }: Props) {
         </p>
       </div>
 
+      {/* Live database tables */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Tabelas do banco</h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Schema public · {tables.length} tabela(s) encontradas</p>
+          </div>
+          <button type="button" onClick={() => void loadTables()} disabled={tablesLoading} className="flex items-center gap-1.5 text-xs text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50">
+            <RefreshCw size={13} className={tablesLoading ? 'animate-spin' : ''} /> Atualizar
+          </button>
+        </div>
+        <div className="p-4 space-y-3">
+          <input
+            value={tableFilter}
+            onChange={e => setTableFilter(e.target.value)}
+            placeholder="Buscar tabela pelo nome"
+            aria-label="Buscar tabela pelo nome"
+            className="w-full rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-900 px-3 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-300"
+          />
+          {tablesError && <p className="text-sm text-red-600 dark:text-red-400">{tablesError}</p>}
+          {tablesLoading && tables.length === 0 && <p className="text-sm text-gray-500">Carregando tabelas...</p>}
+          {!tablesLoading && !tablesError && tables.length === 0 && <p className="text-sm text-gray-500">Nenhuma tabela encontrada.</p>}
+          <div className="flex flex-wrap gap-2 max-h-56 overflow-y-auto">
+            {tables.filter(name => name.toLowerCase().includes(tableFilter.toLowerCase())).map(name => (
+              <button key={name} type="button" onClick={() => setSelectedTable(name)} aria-pressed={selectedTable === name}
+                className={`rounded-lg px-2.5 py-1.5 text-xs font-mono border transition-colors ${selectedTable === name ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-300 dark:border-primary-700 text-primary-700 dark:text-primary-300' : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 hover:border-primary-300'}`}>
+                {name}
+              </button>
+            ))}
+          </div>
+          {tables.length > 0 && !tables.some(name => name.toLowerCase().includes(tableFilter.toLowerCase())) && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">Nenhuma tabela corresponde à busca.</p>
+          )}
+          {selectedTable && (
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-3 space-y-3">
+              <p className="text-sm font-semibold text-gray-900 dark:text-white font-mono">{selectedTable}</p>
+              {columnsLoading ? <p className="text-xs text-gray-500">Carregando colunas...</p> : (
+                <div className="flex flex-wrap gap-1.5">
+                  {columns.map(column => <span key={column.name} title={`${column.type} · ${column.nullable === 'YES' ? 'aceita NULL' : 'obrigatória'}`} className="rounded bg-gray-100 dark:bg-gray-700 px-2 py-1 text-xs font-mono text-gray-700 dark:text-gray-300">{column.name} <span className="text-gray-400">{column.type}</span></span>)}
+                </div>
+              )}
+              {columnsError && <p className="text-xs text-red-600 dark:text-red-400">Não foi possível carregar as colunas desta tabela.</p>}
+              <div className="flex flex-wrap gap-2">
+                <button type="button" onClick={() => suggest(`SELECT COUNT(*) AS total FROM ${quoteIdentifier(selectedTable)};`)} className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Contar registros</button>
+                <button type="button" onClick={() => suggest(`SELECT * FROM ${quoteIdentifier(selectedTable)} LIMIT 20;`)} className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Ver 20 registros</button>
+                <button type="button" onClick={() => suggest(`SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ${quoteLiteral(selectedTable)} ORDER BY ordinal_position;`)} className="rounded-lg border border-gray-200 dark:border-gray-600 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700">Listar colunas</button>
+              </div>
+              <p className="text-xs text-gray-500 dark:text-gray-400">As sugestões apenas preenchem o editor. Revise o SQL antes de executar.</p>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Quick commands */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
         <button
           onClick={() => setShowQuick(v => !v)}
           className="w-full flex items-center justify-between px-4 py-3 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
         >
-          <span>Comandos rápidos</span>
+          <span>Comandos sugeridos</span>
           {showQuick ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
         {showQuick && (
@@ -186,7 +304,7 @@ export function DatabasePage({ toast }: Props) {
           value={sql}
           onChange={e => setSql(e.target.value)}
           onKeyDown={handleKey}
-          placeholder="SELECT * FROM users LIMIT 10;"
+          placeholder="SELECT COUNT(*) AS total FROM users;"
           rows={6}
           className="w-full px-4 py-3 font-mono text-sm text-gray-900 dark:text-gray-100 bg-transparent placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none resize-y"
           spellCheck={false}
