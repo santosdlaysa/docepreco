@@ -14,10 +14,12 @@ import { processReferralActivation } from '../../infrastructure/services/referra
 
 import { recordConversion } from '../../infrastructure/services/conversionService';
 import { getInactiveRecipeIds } from '../../domain/services/recipeAccess';
+import { PostgresRewardedAdRepository } from '../../infrastructure/repositories/PostgresRewardedAdRepository';
 
 const recipeRepo = new PostgresRecipeRepository();
 const ingredientRepo = new PostgresIngredientRepository();
 const userRepo = new PostgresUserRepository();
+const rewardedAdRepo = new PostgresRewardedAdRepository();
 
 export class RecipeController {
   private async allowRecipes(userId: string, ids: string[], res: Response): Promise<boolean> {
@@ -60,6 +62,8 @@ export class RecipeController {
   }
 
   async create(req: AuthRequest, res: Response): Promise<void> {
+    let rewardedCreditId: string | null = null;
+    let rewardedCreditAttached = false;
     try {
       // Premium gate: enforce free tier limit
       const user = await userRepo.findById(req.userId!);
@@ -70,21 +74,22 @@ export class RecipeController {
       const count = await userRepo.countRecipes(req.userId!);
       const freeRecipeLimit = await getFreeRecipeLimit();
       if (!canCreateMore(user, 'recipes', count, freeRecipeLimit)) {
-        void recordConversion(req.userId!, 'blocked', 'recipe_limit', 'premium');
-        res.status(403).json({
-          success: false,
-          error: `Você atingiu o limite de ${freeRecipeLimit} receitas do plano gratuito. Assine o Premium para criar mais.`,
-          code: PREMIUM_ERROR_CODES.recipes,
-          limit: freeRecipeLimit,
-          current: count,
-        });
-        return;
+        rewardedCreditId = await rewardedAdRepo.claimRecipeCredit(req.userId!);
+        if (!rewardedCreditId) {
+          void recordConversion(req.userId!, 'blocked', 'recipe_limit', 'premium');
+          res.status(403).json({ success: false, error: `Você atingiu o limite de ${freeRecipeLimit} receitas do plano gratuito. Assine o Premium para criar mais.`, code: PREMIUM_ERROR_CODES.recipes, limit: freeRecipeLimit, current: count });
+          return;
+        }
       }
 
       const subIds = (req.body.subRecipes ?? []).map((sub: { subRecipeId: string }) => sub.subRecipeId);
       if (subIds.length && !await this.allowRecipes(req.userId!, subIds, res)) return;
       const useCase = new CreateRecipeUseCase(recipeRepo);
       const recipe = await useCase.execute(req.body, req.userId!);
+      if (rewardedCreditId) {
+        await rewardedAdRepo.attachCreditToRecipe(rewardedCreditId, req.userId!, recipe.id);
+        rewardedCreditAttached = true;
+      }
       // Programa de indicação: a 1ª receita (count era 0 antes de criar) valida
       // a indicação do usuário, se houver. Fire-and-forget.
       if (count === 0) {
@@ -92,6 +97,10 @@ export class RecipeController {
       }
       res.status(201).json({ success: true, data: recipe });
     } catch (error) {
+      // Se o salvamento falhar antes de associar a receita, o crédito volta a ficar disponível.
+      if (rewardedCreditId && !rewardedCreditAttached) {
+        rewardedAdRepo.returnRecipeCredit(rewardedCreditId, req.userId!).catch(() => {});
+      }
       if (error instanceof Error) {
         const status = error.message.includes('already exists') ? 409 : 400;
         res.status(status).json({ success: false, error: error.message });

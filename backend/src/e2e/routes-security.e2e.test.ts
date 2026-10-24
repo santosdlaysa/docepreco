@@ -63,6 +63,7 @@ import statsRoutes from '../presentation/routes/statsRoutes';
 import stripeRoutes from '../presentation/routes/stripeRoutes';
 import suggestionRoutes from '../presentation/routes/suggestionRoutes';
 import supportRoutes from '../presentation/routes/supportRoutes';
+import rewardedAdRoutes from '../presentation/routes/rewardedAdRoutes';
 import telegramAlertRoutes from '../presentation/routes/telegramAlertRoutes';
 import tipRoutes from '../presentation/routes/tipRoutes';
 import whatsappRoutes from '../presentation/routes/whatsappRoutes';
@@ -133,6 +134,8 @@ const USER_ROUTES: ProtectedRoute[] = [
   ['post', '/api/support/human-assistance'],
   ['get', '/api/support/unread'],
   ['get', '/api/support/typing'],
+  ['post', '/api/rewarded-ads/recipes/start'],
+  ['get', '/api/rewarded-ads/recipes/session'],
 ];
 
 const ADMIN_ROUTES: ProtectedRoute[] = [
@@ -267,6 +270,7 @@ function createApp() {
   app.use('/api/admin/onboarding', onboardingRoutes);
   app.use('/api/admin/telegram-alerts', telegramAlertRoutes);
   app.use('/api/support', supportRoutes);
+  app.use('/api/rewarded-ads', rewardedAdRoutes);
   return app;
 }
 

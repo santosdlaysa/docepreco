@@ -36,6 +36,7 @@ import { Card } from '../components/Card';
 import { Header } from '../components/Header';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
+import { useRewardedRecipeAd } from '../ads/useRewardedRecipeAd';
 import { usePremium } from '../context/PremiumContext';
 import { SUGGESTED_RECIPES, SuggestedRecipe } from '../../data/recipes/suggestedRecipes';
 import { useTranslation } from 'react-i18next';
@@ -96,6 +97,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const route = useRoute<RouteProps>();
   const recipeId = (route.params as any)?.recipeId as string | undefined;
   const isEditing = !!recipeId;
+  const { loadingReward, available: rewardedAdAvailable, watchToUnlockRecipe } = useRewardedRecipeAd();
 
   const localizedAdditionalCosts = DEFAULT_ADDITIONAL_COSTS.map(cost => ({
     ...cost,
@@ -664,8 +666,29 @@ export const CreateRecipeScreen: React.FC = () => {
 
   const handleShowConfirmation = async () => {
     if (!validate()) return;
-    if (!isEditing && !checkLimit('recipes', recipeCount, await planConfigApi.getFreeRecipeLimit())) return;
+    if (!isEditing && !isPremium && recipeCount >= await planConfigApi.getFreeRecipeLimit()) {
+      Alert.alert(
+        'Limite gratuito atingido',
+        'Assista a um vídeo curto para liberar 1 receita extra. Essa liberação vale para uma receita e expira em 24 horas.',
+        [
+          { text: 'Ver planos', onPress: () => openPaywall({ kind: 'limit', feature: 'recipes', current: recipeCount, blocked: true }) },
+          { text: 'Agora não', style: 'cancel' },
+          ...(rewardedAdAvailable ? [{ text: loadingReward ? 'Carregando…' : 'Assistir e liberar', onPress: () => void handleRewardedRecipe() }] : []),
+        ]
+      );
+      return;
+    }
     setShowConfirmModal(true);
+  };
+
+  const handleRewardedRecipe = async () => {
+    try {
+      const rewarded = await watchToUnlockRecipe();
+      if (rewarded) setShowConfirmModal(true);
+      else Alert.alert('Recompensa pendente', 'Não foi possível confirmar a recompensa ainda. Tente novamente em alguns instantes.');
+    } catch {
+      Alert.alert('Anúncio indisponível', 'Não há vídeo disponível agora. Você pode tentar novamente ou ver os planos.');
+    }
   };
 
   const getFinalCosts = () => {

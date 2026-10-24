@@ -82,7 +82,7 @@ describe('CRUD e cálculo de receitas', () => {
   function expiredPlan() {
     userRepo.findById.mockResolvedValue({ isPremium: true, premiumUntil: '2020-01-01' });
     poolQuery.mockImplementation((sql: string) => Promise.resolve({ rows:
-      sql.includes('OFFSET $2') ? [{ id: 'r4' }] :
+      sql.includes('ROW_NUMBER()') ? [{ id: 'r4' }] :
       sql.includes('plan_free_recipe_limit') ? [{ value: '3' }] : []
     }));
   }
@@ -94,7 +94,7 @@ describe('CRUD e cálculo de receitas', () => {
     expect(res.status).toBe(200);
     expect(res.body.data[0].isActive).toBe(true);
     expect(res.body.data[1]).toMatchObject({ id: 'r4', isActive: false, ingredients: [] });
-    expect(poolQuery).toHaveBeenCalledWith(expect.stringContaining('ORDER BY created_at ASC, id ASC OFFSET $2'), [USER_ID, 3]);
+    expect(poolQuery).toHaveBeenCalledWith(expect.stringContaining('ROW_NUMBER() OVER (ORDER BY r.created_at ASC, r.id ASC)'), [USER_ID, 3]);
   });
 
   it.each(['get', 'put', 'post'] as const)('bloqueia acesso direto a receita inativa: %s', async method => {
@@ -121,7 +121,7 @@ describe('CRUD e cálculo de receitas', () => {
     const list = await api('get', '/recipes');
     expect(list.body.data[0].isActive).toBe(true);
     expect((await api('get', '/recipes/r4')).status).toBe(200);
-    expect(poolQuery.mock.calls.some(([sql]) => sql.includes('OFFSET $2'))).toBe(false);
+    expect(poolQuery.mock.calls.some(([sql]) => sql.includes('ROW_NUMBER()'))).toBe(false);
   });
 
   it('lista e busca receita', async () => {

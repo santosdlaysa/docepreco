@@ -377,6 +377,31 @@ CREATE TABLE IF NOT EXISTS support_messages (
 
 CREATE INDEX IF NOT EXISTS idx_support_messages_user ON support_messages (user_id, created_at);
 
+-- Créditos individuais ganhos em anúncios recompensados. Cada crédito libera
+-- somente uma receita além do limite free e nunca vira acesso Premium.
+CREATE TABLE IF NOT EXISTS rewarded_ad_sessions (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  feature VARCHAR(30) NOT NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  expires_at TIMESTAMP NOT NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_rewarded_ad_sessions_user ON rewarded_ad_sessions (user_id, feature, status);
+
+CREATE TABLE IF NOT EXISTS rewarded_ad_credits (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  feature VARCHAR(30) NOT NULL,
+  session_id UUID UNIQUE REFERENCES rewarded_ad_sessions(id) ON DELETE SET NULL,
+  ad_transaction_id VARCHAR(255) UNIQUE NOT NULL,
+  consumed_for_recipe_id UUID NULL,
+  expires_at TIMESTAMP NOT NULL,
+  consumed_at TIMESTAMP NULL,
+  created_at TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_rewarded_ad_credits_available ON rewarded_ad_credits (user_id, feature, expires_at) WHERE consumed_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS premium_events (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

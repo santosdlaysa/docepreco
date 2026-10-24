@@ -41,6 +41,7 @@ import changelogRoutes from './presentation/routes/changelogRoutes';
 import onboardingRoutes from './presentation/routes/onboardingRoutes';
 import telegramAlertRoutes from './presentation/routes/telegramAlertRoutes';
 import supportRoutes from './presentation/routes/supportRoutes';
+import rewardedAdRoutes from './presentation/routes/rewardedAdRoutes';
 import whatsappRoutes from './presentation/routes/whatsappRoutes';
 import metaWebhookRoutes from './presentation/routes/metaWebhookRoutes';
 import pixRoutes from './presentation/routes/pixRoutes';
@@ -247,6 +248,7 @@ app.use('/api/admin/changelog', changelogRoutes);
 app.use('/api/admin/onboarding', onboardingRoutes);
 app.use('/api/admin/telegram-alerts', telegramAlertRoutes);
 app.use('/api/support', supportRoutes);
+app.use('/api/rewarded-ads', rewardedAdRoutes);
 app.use('/api', storePaymentRoutes);
 app.use('/api/store', authMiddleware, storeRoutes);
 
