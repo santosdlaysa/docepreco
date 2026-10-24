@@ -704,22 +704,22 @@ export function LandingPage() {
         </section>
 
         <section id="baixar" className="scroll-mt-24 px-4 py-6 sm:px-6">
-          <div className="mx-auto max-w-[1500px] overflow-hidden rounded-[2rem] bg-primary-500 px-6 py-20 text-center text-white sm:py-28">
-            <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-primary-500 px-6 py-14 text-center text-white sm:py-16">
+            <div className="mx-auto max-w-2xl">
               <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/80">
                 Seu próximo passo
               </p>
-              <h2 className="mt-5 text-4xl font-black leading-tight tracking-[-0.045em] sm:text-6xl">
+              <h2 className="mt-4 text-3xl font-black leading-tight tracking-[-0.045em] sm:text-5xl">
                 Seu talento merece um negócio que dá lucro.
               </h2>
-              <p className="mx-auto mt-6 max-w-xl text-lg text-white/85">
+              <p className="mx-auto mt-4 max-w-xl text-base text-white/85">
                 Baixe o DocePreço e comece a organizar preços, receitas e vendas
                 hoje.
               </p>
-              <div className="mt-9">
+              <div className="mt-7">
                 <StoreLinks light />
               </div>
-              <p className="mt-6 text-sm text-white/80">
+              <p className="mt-4 text-sm text-white/80">
                 Grátis para começar · Sem cartão de crédito
               </p>
             </div>
