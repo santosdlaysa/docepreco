@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import {
   ArrowRight,
   BarChart3,
-  Cake,
   Calculator,
   Check,
   ChefHat,
@@ -28,6 +27,7 @@ import salesScreen from "../assets/demo-screens/mobile-screen-5.jpg";
 import reportsScreen from "../assets/demo-screens/mobile-screen-1.jpg";
 import brigadeiroDecor from "../assets/hero-brigadeiros.png";
 import strawberryCakeDecor from "../assets/hero-strawberry-cake.png";
+import brandLogo from "../assets/docepreco-logo.png";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 const APP_STORE_URL =
@@ -217,14 +217,9 @@ export function LandingPage() {
           <a
             href="#inicio"
             aria-label="DocePreço, voltar ao início"
-            className="flex items-center gap-2.5"
+            className="flex items-center"
           >
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500 text-white shadow-md shadow-primary-500/20">
-              <Cake size={20} />
-            </span>
-            <span className="text-lg font-extrabold tracking-tight">
-              DocePreço
-            </span>
+            <img src={brandLogo} alt="DocePreço" className="h-16 w-auto sm:h-20" />
           </a>
           <nav
             aria-label="Navegação principal"
@@ -733,9 +728,7 @@ export function LandingPage() {
       </main>
       <footer className="px-5 py-10 sm:px-8">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 border-t border-gray-200 pt-8 text-sm text-gray-500 dark:border-gray-800 sm:flex-row">
-          <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
-            <Cake size={18} className="text-primary-500" /> DocePreço
-          </div>
+          <img src={brandLogo} alt="DocePreço" className="h-20 w-auto" loading="lazy" />
           <p>
             © {new Date().getFullYear()} DocePreço. Todos os direitos
             reservados.
