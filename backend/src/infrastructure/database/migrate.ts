@@ -1,5 +1,6 @@
 import { migrateConversions } from './conversionMigration';
 import { migrateStorePayments } from './storePaymentsMigration';
+import { migrateDeletedUsers } from './deletedUsersMigration';
 import { pool } from './connection';
 import dotenv from 'dotenv';
 
@@ -1159,6 +1160,10 @@ export async function runMigrations() {
 
     await addColumnIfMissing(client, 'support_messages', 'image_url', 'TEXT NULL');
 
+    // Quando a confeiteira pede atendimento humano, as próximas mensagens dela
+    // deixam de receber respostas automáticas e passam a avisar a equipe no Telegram.
+    await addColumnIfMissing(client, 'users', 'support_human_requested_at', 'TIMESTAMP NULL');
+
     // Cliente do Stripe, para abrir o portal de cobrança sem depender de busca por e-mail.
     await addColumnIfMissing(client, 'users', 'stripe_customer_id', 'VARCHAR(100) NULL');
     // Preferências sincronizadas entre app e web (moeda, unidades, idioma, PDF)
@@ -1443,6 +1448,7 @@ export async function runMigrations() {
 
     await migrateConversions(client);
     await migrateStorePayments(client);
+    await migrateDeletedUsers(client);
     await client.query('COMMIT');
     console.log('\n✨ Migrations applied successfully');
   } catch (error) {

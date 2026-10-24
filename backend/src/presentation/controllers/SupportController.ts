@@ -96,12 +96,13 @@ export class SupportController {
         return;
       }
       const item = await repo.create({ userId: req.userId!, senderType: 'user', message: trimmed, imageUrl: imageUrl ?? null });
+      const wantsHumanAssistance = await repo.hasHumanAssistanceRequest(req.userId!);
       let answeredAutomatically = false;
 
       // Respostas rápidas para as dúvidas mais comuns. Elas são gravadas como
       // mensagens do suporte para aparecerem em todos os clientes do chat e
       // não substituem o atendimento humano.
-      if (trimmed) {
+      if (trimmed && !wantsHumanAssistance) {
         try {
           const history = await repo.findByUserId(req.userId!);
           const reply = getAutomaticSupportReply(trimmed, history);
@@ -136,6 +137,42 @@ export class SupportController {
       }
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro ao enviar mensagem' });
+    }
+  }
+
+  async getHumanAssistanceStatus(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const requested = await repo.hasHumanAssistanceRequest(req.userId!);
+      res.json({ success: true, data: { requested } });
+    } catch {
+      res.status(500).json({ success: false, error: 'Erro ao consultar atendimento humano.' });
+    }
+  }
+
+  async requestHumanAssistance(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const userId = req.userId!;
+      const alreadyRequested = await repo.hasHumanAssistanceRequest(userId);
+      await repo.requestHumanAssistance(userId);
+
+      if (!alreadyRequested) {
+        pool.query('SELECT company_name, email FROM users WHERE id = $1', [userId])
+          .then(({ rows }) => {
+            if (rows.length > 0) {
+              notifySupportMessage(
+                rows[0].company_name ?? 'Sem nome',
+                rows[0].email,
+                'Solicitou falar com um atendente.'
+              );
+            }
+          })
+          .catch(() => {});
+      }
+
+      res.status(201).json({ success: true, data: { requested: true } });
+    } catch (error) {
+      console.error('[Support] human assistance request error:', error);
+      res.status(500).json({ success: false, error: 'Erro ao solicitar atendimento humano.' });
     }
   }
 

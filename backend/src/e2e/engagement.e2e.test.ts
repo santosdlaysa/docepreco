@@ -9,6 +9,7 @@ const suggestionRepo = { findAll: jest.fn(), create: jest.fn(), updateStatus: je
 const supportRepo = {
   markAsRead: jest.fn(), findByUserId: jest.fn(), create: jest.fn(),
   getUnreadCountForUser: jest.fn(), getConversations: jest.fn(), getTotalUnreadCount: jest.fn(),
+  hasHumanAssistanceRequest: jest.fn(), requestHumanAssistance: jest.fn(),
 };
 const pushRepo = { findByUserId: jest.fn() };
 class mockWhatsAppCloudApiError extends Error {}
@@ -157,12 +158,21 @@ describe('Suporte', () => {
     expect((await user(request(createApp()).get('/support/messages'))).status).toBe(200);
 
     supportRepo.create.mockResolvedValue({ id: 'm2' });
+    supportRepo.hasHumanAssistanceRequest.mockResolvedValue(false);
     expect((await user(request(createApp()).post('/support/messages')).send({ message: ' Ajuda ' })).status).toBe(201);
     expect((await user(request(createApp()).post('/support/messages')).send({ message: ' ' })).status).toBe(400);
 
     supportRepo.getUnreadCountForUser.mockResolvedValue(2);
     expect((await user(request(createApp()).get('/support/unread'))).body.data.unreadCount).toBe(2);
     expect((await user(request(createApp()).get('/support/typing'))).status).toBe(200);
+  });
+
+  it('encaminha conversa para atendimento humano', async () => {
+    supportRepo.hasHumanAssistanceRequest.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    supportRepo.requestHumanAssistance.mockResolvedValue(undefined);
+    expect((await user(request(createApp()).get('/support/human-assistance'))).status).toBe(200);
+    expect((await user(request(createApp()).post('/support/human-assistance')).send({})).status).toBe(201);
+    expect(supportRepo.requestHumanAssistance).toHaveBeenCalledWith(USER_ID);
   });
 
   it('admin gerencia conversas, resposta e digitação', async () => {

@@ -10,6 +10,8 @@ const controller = new SupportController();
 router.get('/messages', authMiddleware, (req, res) => controller.getMessages(req, res));
 router.get('/discount-offer', authMiddleware, (req, res) => controller.getDiscountOffer(req, res));
 router.post('/messages', authMiddleware, (req, res) => controller.sendMessage(req, res));
+router.get('/human-assistance', authMiddleware, (req, res) => controller.getHumanAssistanceStatus(req, res));
+router.post('/human-assistance', authMiddleware, (req, res) => controller.requestHumanAssistance(req, res));
 router.get('/unread', authMiddleware, (req, res) => controller.getUnreadCount(req, res));
 router.get('/typing', authMiddleware, (req, res) => controller.getAdminTyping(req, res));
 

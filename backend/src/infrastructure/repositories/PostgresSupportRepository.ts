@@ -27,6 +27,23 @@ export interface ConversationSummary {
 }
 
 export class PostgresSupportRepository {
+  async hasHumanAssistanceRequest(userId: string): Promise<boolean> {
+    const result = await pool.query(
+      'SELECT support_human_requested_at FROM users WHERE id = $1',
+      [userId]
+    );
+    return !!result.rows[0]?.support_human_requested_at;
+  }
+
+  async requestHumanAssistance(userId: string): Promise<void> {
+    await pool.query(
+      `UPDATE users
+       SET support_human_requested_at = COALESCE(support_human_requested_at, NOW())
+       WHERE id = $1`,
+      [userId]
+    );
+  }
+
   async findByUserId(userId: string): Promise<SupportMessage[]> {
     const result = await pool.query(
       'SELECT * FROM support_messages WHERE user_id = $1 ORDER BY created_at ASC',

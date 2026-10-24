@@ -103,6 +103,7 @@ export const SupportChatScreen: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [adminTyping, setAdminTyping] = useState(false);
+  const [humanAssistanceRequested, setHumanAssistanceRequested] = useState(false);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const flatListRef = useRef<FlatList>(null);
 
@@ -127,6 +128,12 @@ export const SupportChatScreen: React.FC = () => {
     const interval = setInterval(loadMessages, 10000);
     return () => clearInterval(interval);
   }, [loadMessages]);
+
+  useEffect(() => {
+    supportApi.getHumanAssistanceStatus()
+      .then(setHumanAssistanceRequested)
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     checkAdminTyping();
@@ -181,6 +188,19 @@ export const SupportChatScreen: React.FC = () => {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
     } catch {
       setNewMessage(question);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleHumanAssistance = async () => {
+    if (sending || humanAssistanceRequested) return;
+    setSending(true);
+    try {
+      await supportApi.requestHumanAssistance();
+      setHumanAssistanceRequested(true);
+    } catch {
+      Alert.alert('Não foi possível solicitar atendimento', 'Tente novamente em instantes.');
     } finally {
       setSending(false);
     }
@@ -323,6 +343,17 @@ export const SupportChatScreen: React.FC = () => {
                   <Text style={s.quickReplyText}>{question}</Text>
                 </TouchableOpacity>
               ))}
+              <TouchableOpacity
+                style={[s.quickReply, s.humanReply, humanAssistanceRequested && s.humanReplyRequested]}
+                onPress={() => void handleHumanAssistance()}
+                disabled={sending || humanAssistanceRequested}
+                activeOpacity={0.75}
+              >
+                <Ionicons name={humanAssistanceRequested ? 'checkmark-circle' : 'headset-outline'} size={15} color={humanAssistanceRequested ? GREEN : PINK} />
+                <Text style={[s.quickReplyText, humanAssistanceRequested && s.humanReplyTextRequested]}>
+                  {humanAssistanceRequested ? 'Atendente solicitado' : 'Falar com atendente'}
+                </Text>
+              </TouchableOpacity>
             </ScrollView>
           </View>
         )}
@@ -577,6 +608,9 @@ const s = StyleSheet.create({
   quickReplyList: { paddingHorizontal: 16, gap: 8 },
   quickReply: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 16, backgroundColor: colors.pinkBg2, borderWidth: 1, borderColor: colors.pinkSoft },
   quickReplyText: { fontSize: 12, fontWeight: '700', color: PINK },
+  humanReply: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  humanReplyRequested: { backgroundColor: '#EAF8F0', borderColor: '#B8E7CB' },
+  humanReplyTextRequested: { color: GREEN },
 
   /* ── Skeleton ── */
   skeletonChat: { flex: 1, padding: 16, gap: 12, justifyContent: 'flex-end' },

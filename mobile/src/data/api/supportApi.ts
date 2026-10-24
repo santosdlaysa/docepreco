@@ -21,6 +21,15 @@ export const supportApi = {
     return response.data.data;
   },
 
+  getHumanAssistanceStatus: async (): Promise<boolean> => {
+    const response = await apiClient.get('/support/human-assistance');
+    return response.data.data.requested;
+  },
+
+  requestHumanAssistance: async (): Promise<void> => {
+    await apiClient.post('/support/human-assistance');
+  },
+
   getUnreadCount: async (): Promise<number> => {
     const response = await apiClient.get('/support/unread');
     return response.data.data.unreadCount;

@@ -129,6 +129,8 @@ const USER_ROUTES: ProtectedRoute[] = [
   ['post', '/api/admin/suggestions'],
   ['get', '/api/support/messages'],
   ['post', '/api/support/messages'],
+  ['get', '/api/support/human-assistance'],
+  ['post', '/api/support/human-assistance'],
   ['get', '/api/support/unread'],
   ['get', '/api/support/typing'],
 ];
