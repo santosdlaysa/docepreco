@@ -216,6 +216,32 @@ export interface AdminUserDetail extends AdminUser {
   storeProductCount: number;
 }
 
+export interface InactiveUser {
+  id: string;
+  companyName: string;
+  email: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+  isPremium: boolean;
+  planTier: 'free' | 'premium' | 'master';
+  premiumUntil: string | null;
+  recipeCount: number;
+  ingredientCount: number;
+  saleCount: number;
+}
+
+export interface DeletedUser {
+  userId: string;
+  deletedAt: string;
+}
+
+export interface UserLifecycleResponse<T> {
+  users: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface UsersResponse {
   users: AdminUser[];
   total: number;
@@ -501,6 +527,21 @@ export const api = {
     if (params.createdDays != null) q.set('createdDays', String(params.createdDays));
     return req<UsersResponse>(`/admin/users?${q}`);
   },
+
+  listInactiveUsers: (params: { page?: number; limit?: number; search?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', String(params.page));
+    if (params.limit) q.set('limit', String(params.limit));
+    if (params.search) q.set('search', params.search);
+    return req<UserLifecycleResponse<InactiveUser>>(`/admin/users/inactive?${q}`);
+  },
+  listDeletedUsers: (params: { page?: number; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (params.page) q.set('page', String(params.page));
+    if (params.limit) q.set('limit', String(params.limit));
+    return req<UserLifecycleResponse<DeletedUser>>(`/admin/users/deleted?${q}`);
+  },
+  deleteInactiveUser: (id: string) => req<{ userId: string }>(`/admin/users/${id}`, { method: 'DELETE' }),
 
   listStores: (params: { search?: string; page?: number; limit?: number; active?: boolean | null; hasOnlineOrders?: boolean } = {}) => {
     const q = new URLSearchParams();

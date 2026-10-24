@@ -229,10 +229,21 @@ export class PostgresUserRepository {
     );
   }
 
-  async delete(userId: string): Promise<boolean> {
+  async delete(userId: string, requireInactive = false): Promise<boolean> {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      if (requireInactive) {
+        const eligibility = await client.query(`
+          SELECT COALESCE(last_seen_at, created_at) < NOW() - INTERVAL '30 days' AS inactive,
+                 is_premium AND (premium_until IS NULL OR premium_until > NOW()) AS "activeSubscription"
+          FROM users WHERE id = $1 FOR UPDATE
+        `, [userId]);
+        if (eligibility.rowCount === 0 || !eligibility.rows[0].inactive || eligibility.rows[0].activeSubscription) {
+          await client.query('ROLLBACK');
+          return false;
+        }
+      }
       // Delete rows with ON DELETE RESTRICT before the CASCADE reaches recipes
       await client.query(
         `DELETE FROM recipe_sub_recipes
@@ -253,8 +264,17 @@ export class PostgresUserRepository {
          WHERE ingredient_id IN (SELECT id FROM ingredients WHERE user_id = $1)`,
         [userId]
       );
+      // Estas tabelas de pagamento têm FKs sem CASCADE. Apaga os tokens e
+      // pagamentos vinculados antes da conta para não bloquear a exclusão.
+      await client.query('DELETE FROM store_order_payments WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM store_payment_oauth_states WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM store_payment_accounts WHERE user_id = $1', [userId]);
+      await client.query('DELETE FROM banners WHERE company_id = $1', [userId]);
       // Now delete the user — remaining FKs all use ON DELETE CASCADE
       const result = await client.query('DELETE FROM users WHERE id = $1', [userId]);
+      if ((result.rowCount ?? 0) > 0) {
+        await client.query('INSERT INTO deleted_users (user_id) VALUES ($1)', [userId]);
+      }
       await client.query('COMMIT');
       return (result.rowCount ?? 0) > 0;
     } catch (error) {

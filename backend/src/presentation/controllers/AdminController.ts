@@ -19,6 +19,91 @@ const userRepo = new PostgresUserRepository();
 const storeRepo = new PostgresStoreRepository();
 
 export class AdminController {
+  async listInactiveUsers(req: Request, res: Response): Promise<void> {
+    const page = Math.max(1, Number.parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(String(req.query.limit ?? '20'), 10) || 20));
+    const search = String(req.query.search ?? '').trim();
+    const params: unknown[] = [];
+    const conditions = [`COALESCE(u.last_seen_at, u.created_at) < NOW() - INTERVAL '30 days'`];
+    if (search) {
+      params.push(`%${search}%`);
+      conditions.push(`(u.id::text ILIKE $1 OR u.company_name ILIKE $1 OR u.email ILIKE $1)`);
+    }
+    const where = `WHERE ${conditions.join(' AND ')}`;
+    try {
+      const [count, users] = await Promise.all([
+        pool.query(`SELECT COUNT(*)::int AS total FROM users u ${where}`, params),
+        pool.query(`
+          SELECT u.id, u.company_name AS "companyName", u.email,
+                 u.created_at AS "createdAt", u.last_seen_at AS "lastSeenAt",
+                 u.is_premium AS "isPremium", u.plan_tier AS "planTier",
+                 u.premium_until AS "premiumUntil",
+                 (SELECT COUNT(*)::int FROM recipes r WHERE r.user_id = u.id) AS "recipeCount",
+                 (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
+                 (SELECT COUNT(*)::int FROM sales s WHERE s.user_id = u.id) AS "saleCount"
+          FROM users u ${where}
+          ORDER BY COALESCE(u.last_seen_at, u.created_at) ASC, u.id
+          LIMIT $${params.length + 1} OFFSET $${params.length + 2}
+        `, [...params, limit, (page - 1) * limit]),
+      ]);
+      res.json({ success: true, data: { users: users.rows, total: count.rows[0].total, page, limit } });
+    } catch (error) {
+      console.error('[Admin] listInactiveUsers error:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar usuários inativos' });
+    }
+  }
+
+  async listDeletedUsers(req: Request, res: Response): Promise<void> {
+    const page = Math.max(1, Number.parseInt(String(req.query.page ?? '1'), 10) || 1);
+    const limit = Math.min(50, Math.max(1, Number.parseInt(String(req.query.limit ?? '20'), 10) || 20));
+    try {
+      const [count, users] = await Promise.all([
+        pool.query('SELECT COUNT(*)::int AS total FROM deleted_users'),
+        pool.query('SELECT user_id AS "userId", deleted_at AS "deletedAt" FROM deleted_users ORDER BY deleted_at DESC, user_id LIMIT $1 OFFSET $2', [limit, (page - 1) * limit]),
+      ]);
+      res.json({ success: true, data: { users: users.rows, total: count.rows[0].total, page, limit } });
+    } catch (error) {
+      console.error('[Admin] listDeletedUsers error:', error);
+      res.status(500).json({ success: false, error: 'Erro ao listar usuários excluídos' });
+    }
+  }
+
+  async deleteInactiveUser(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      res.status(400).json({ success: false, error: 'ID de usuário inválido' });
+      return;
+    }
+    try {
+      const user = await pool.query(`
+        SELECT COALESCE(last_seen_at, created_at) < NOW() - INTERVAL '30 days' AS inactive,
+               is_premium AND (premium_until IS NULL OR premium_until > NOW()) AS "activeSubscription"
+        FROM users WHERE id = $1
+      `, [id]);
+      if (user.rowCount === 0) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      if (!user.rows[0].inactive) {
+        res.status(409).json({ success: false, error: 'A conta não está inativa há mais de 30 dias' });
+        return;
+      }
+      if (user.rows[0].activeSubscription) {
+        res.status(409).json({ success: false, error: 'Conta com assinatura ativa não pode ser excluída por esta tela' });
+        return;
+      }
+      const deleted = await userRepo.delete(id, true);
+      if (!deleted) {
+        res.status(409).json({ success: false, error: 'A conta mudou e não pode mais ser excluída por esta tela' });
+        return;
+      }
+      res.json({ success: true, data: { userId: id } });
+    } catch (error) {
+      console.error('[Admin] deleteInactiveUser error:', error);
+      res.status(500).json({ success: false, error: 'Erro ao excluir usuário' });
+    }
+  }
+
   async getStats(req: Request, res: Response): Promise<void> {
     try {
       const [statsRes, topRevenueRes, topActivityRes, premiumSubsRes, recentUsersRes] = await Promise.all([

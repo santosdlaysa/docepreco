@@ -33,6 +33,7 @@ import { PixRequestsPage } from '../pages/PixRequestsPage';
 import { ReferralsPage } from '../pages/ReferralsPage';
 import { DatabasePage } from '../pages/DatabasePage';
 import { ActivityUsersPage } from '../pages/ActivityUsersPage';
+import { UserLifecyclePage } from '../pages/UserLifecyclePage';
 import { useToast, ToastContainer, PageTransition } from '../components';
 import {
   LayoutDashboard,
@@ -74,11 +75,12 @@ import {
   Store,
   ShieldAlert,
   Activity,
+  UserX,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'subscriptions' | 'metrics' | 'activity' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads' | 'security';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads' | 'security' | 'user-lifecycle';
 
 interface NavItem {
   id: Page;
@@ -93,6 +95,7 @@ const NAV: NavItem[] = [
   { id: 'metrics', label: 'Métricas de Negócio', icon: Activity },
   { id: 'activity', label: 'Cadastros ativos', icon: UserRoundPlus },
   { id: 'users', label: 'Usuários', icon: Users },
+  { id: 'user-lifecycle', label: 'Inativos e excluídos', icon: UserX },
   { id: 'stores', label: 'Lojas', icon: Store },
 
   { id: 'ingredients', label: 'Ingredientes', icon: Package, section: 'Conteúdo' },
@@ -455,6 +458,7 @@ export default function AdminApp() {
             {page === 'metrics' && <BusinessMetricsPage toast={toast} />}
             {page === 'activity' && <ActivityUsersPage />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
+            {page === 'user-lifecycle' && <UserLifecyclePage toast={toast} />}
             {page === 'users' && impersonateUserId && <UserDataPage userId={impersonateUserId} onBack={() => setImpersonateUserId(null)} toast={toast} />}
             {page === 'stores' && <StoresPage toast={toast} />}
             {page === 'banners' && <BannersPage toast={toast} />}
