@@ -1,710 +1,757 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
-  Cake, ChefHat, Calculator, FileText, BarChart3, Users,
-  ShoppingBag, Check, Smartphone, Star, Sparkles, Heart,
-  TrendingUp, Shield, Zap, ArrowRight, Play, LogIn, Home,
-  Store, ClipboardList, CalendarDays, Wallet, Package, Lightbulb,
-  Link2, Bell, CreditCard, Truck, MessageCircle,
-} from 'lucide-react';
-import homeScreen from '../assets/demo-screens/mobile-screen-2.jpg';
-import storeScreen from '../assets/demo-screens/mobile-screen-loja.jpg';
-import menuScreen from '../assets/demo-screens/mobile-screen-cardapio.jpg';
-import recipesScreen from '../assets/demo-screens/mobile-screen-3.jpg';
-import ingredientsScreen from '../assets/demo-screens/mobile-screen-4.jpg';
-import salesScreen from '../assets/demo-screens/mobile-screen-5.jpg';
-import reportsScreen from '../assets/demo-screens/mobile-screen-1.jpg';
-import profileScreen from '../assets/demo-screens/mobile-screen-perfil.jpg';
+  ArrowRight,
+  BarChart3,
+  Cake,
+  Calculator,
+  Check,
+  ChefHat,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Heart,
+  Menu,
+  ShoppingBag,
+  Smartphone,
+  Sparkles,
+  Store,
+  TrendingUp,
+  X,
+} from "lucide-react";
+import homeScreen from "../assets/demo-screens/mobile-screen-2.jpg";
+import storeScreen from "../assets/demo-screens/mobile-screen-loja.jpg";
+import menuScreen from "../assets/demo-screens/mobile-screen-cardapio.jpg";
+import recipesScreen from "../assets/demo-screens/mobile-screen-3.jpg";
+import ingredientsScreen from "../assets/demo-screens/mobile-screen-4.jpg";
+import salesScreen from "../assets/demo-screens/mobile-screen-5.jpg";
+import reportsScreen from "../assets/demo-screens/mobile-screen-1.jpg";
 
-const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:3000/api';
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
+const APP_STORE_URL =
+  "https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172";
+const PLAY_STORE_URL =
+  "https://play.google.com/store/apps/details?id=com.orgenyx";
 
-const FEATURES = [
-  { icon: ShoppingBag, title: 'Ingredientes', desc: 'Cadastre ingredientes com preços atualizados, unidades de medida e histórico de preços.', iconColor: '#ec4899', bg: 'bg-pink-50 dark:bg-pink-900/10', master: false },
-  { icon: ChefHat, title: 'Receitas', desc: 'Monte receitas com cálculo automático do custo por unidade.', iconColor: '#8b5cf6', bg: 'bg-violet-50 dark:bg-violet-900/10', master: false },
-  { icon: Calculator, title: 'Precificação', desc: 'Defina margens, mão de obra e embalagem para o preço ideal.', iconColor: '#f59e0b', bg: 'bg-amber-50 dark:bg-amber-900/10', master: false },
-  { icon: FileText, title: 'PDF Profissional', desc: 'Gere fichas técnicas e orçamentos em PDF com seu logo, prontos para enviar.', iconColor: '#10b981', bg: 'bg-emerald-50 dark:bg-emerald-900/10', master: false },
-  { icon: BarChart3, title: 'Relatórios', desc: 'Acompanhe vendas, lucro e produtos mais rentáveis com gráficos e análises.', iconColor: '#3b82f6', bg: 'bg-blue-50 dark:bg-blue-900/10', master: false },
-  { icon: Users, title: 'Clientes', desc: 'Gerencie sua carteira de clientes, aniversários e histórico de pedidos.', iconColor: '#e91e8c', bg: 'bg-primary-50 dark:bg-primary-900/10', master: false },
-  { icon: ClipboardList, title: 'Encomendas', desc: 'Controle entregas com número de pedido, status de acompanhamento e pagamento.', iconColor: '#22c55e', bg: 'bg-green-50 dark:bg-green-900/10', master: false },
-  { icon: CalendarDays, title: 'Épocas', desc: 'Ajuste sazonal de preços para datas especiais como Páscoa e Natal.', iconColor: '#c8870b', bg: 'bg-yellow-50 dark:bg-yellow-900/10', master: false },
-  { icon: Store, title: 'Loja Online', desc: 'Cardápio digital com link compartilhável para receber pedidos dos seus clientes.', iconColor: '#7c3aed', bg: 'bg-violet-50 dark:bg-violet-900/10', master: true },
-  { icon: Package, title: 'Estoque', desc: 'Controle de estoque com baixa automática a cada venda registrada.', iconColor: '#2ba7dd', bg: 'bg-sky-50 dark:bg-sky-900/10', master: true },
-  { icon: Wallet, title: 'Financeiro', desc: 'Resultado do negócio e DRE completa com receitas e despesas.', iconColor: '#7c3aed', bg: 'bg-purple-50 dark:bg-purple-900/10', master: true },
-  { icon: Lightbulb, title: 'Dicas de vendas', desc: 'Precificação inteligente e modelos de story prontos para o Instagram.', iconColor: '#d99a00', bg: 'bg-amber-50 dark:bg-amber-900/10', master: true },
+const SCREENS = [
+  {
+    title: "Visão geral",
+    description: "Veja o que acontece no seu negócio em um só lugar.",
+    image: homeScreen,
+    icon: BarChart3,
+  },
+  {
+    title: "Receitas",
+    description: "Organize ingredientes, rendimentos e custos de cada receita.",
+    image: recipesScreen,
+    icon: ChefHat,
+  },
+  {
+    title: "Ingredientes",
+    description: "Acompanhe o preço de compra e o custo de cada ingrediente.",
+    image: ingredientsScreen,
+    icon: ShoppingBag,
+  },
+  {
+    title: "Vendas",
+    description: "Registre suas vendas e saiba o que realmente dá resultado.",
+    image: salesScreen,
+    icon: TrendingUp,
+  },
+  {
+    title: "Relatórios",
+    description: "Entenda faturamento, lucro e produtos mais rentáveis.",
+    image: reportsScreen,
+    icon: BarChart3,
+  },
+  {
+    title: "Loja online",
+    description: "Compartilhe o cardápio e receba pedidos pelo navegador.",
+    image: storeScreen,
+    icon: Store,
+  },
+  {
+    title: "Cardápio",
+    description: "Seu cliente escolhe e faz o pedido pelo celular.",
+    image: menuScreen,
+    icon: Smartphone,
+  },
 ];
 
-const STORE_HIGHLIGHTS = [
-  { icon: Link2, title: 'Link compartilhável', desc: 'Sua loja com endereço próprio para divulgar no WhatsApp e Instagram.' },
-  { icon: Smartphone, title: 'Pedido pelo navegador', desc: 'Cliente escolhe os produtos e pede direto do celular, sem instalar nada.' },
-  { icon: Bell, title: 'Notificação na hora', desc: 'Você recebe um push no app assim que um novo pedido chega.' },
-  { icon: Truck, title: 'Acompanhamento de entrega', desc: 'Timeline do pedido: recebido, em preparo, saiu para entrega e entregue.' },
-  { icon: CreditCard, title: 'Pagamento na entrega', desc: 'Dinheiro com troco, PIX ou cartão — o cliente escolhe ao fechar o pedido.' },
-  { icon: TrendingUp, title: 'Venda automática', desc: 'Pedido entregue e pago vira venda registrada, com baixa no estoque.' },
-];
-
-const STEPS = [
-  { num: '01', title: 'Cadastre seus ingredientes', desc: 'Adicione os ingredientes que voce usa com o preco de compra.', icon: ShoppingBag },
-  { num: '02', title: 'Monte suas receitas', desc: 'Selecione os ingredientes e quantidades de cada receita.', icon: ChefHat },
-  { num: '03', title: 'Veja o preco ideal', desc: 'O app calcula o custo e sugere o preco de venda com sua margem.', icon: TrendingUp },
-];
-
-const TESTIMONIALS = [
-  { name: 'Ana Paula', role: 'Confeiteira em Sao Paulo', text: 'Eu nao sabia que estava vendendo meus brigadeiros com prejuizo. O DocePreco mudou meu negocio.', initials: 'AP', color: 'from-primary-400 to-pink-500' },
-  { name: 'Mariana Costa', role: 'Cake Designer no Rio', text: 'Finalmente consigo precificar meus bolos com confianca. O calculo automatico e perfeito.', initials: 'MC', color: 'from-violet-400 to-purple-500' },
-  { name: 'Julia Santos', role: 'Doceira em BH', text: 'O PDF de orcamento impressiona minhas clientes. Parece super profissional.', initials: 'JS', color: 'from-amber-400 to-orange-500' },
+const JOURNEY = [
+  {
+    number: "01",
+    icon: ShoppingBag,
+    title: "Conheça seu custo",
+    description:
+      "Cadastre ingredientes e monte receitas com o custo calculado por unidade.",
+    details: "Ingredientes · Receitas · Fichas técnicas",
+  },
+  {
+    number: "02",
+    icon: Calculator,
+    title: "Defina seu preço",
+    description:
+      "Considere mão de obra, embalagem e margem antes de decidir quanto cobrar.",
+    details: "Precificação · Margem · Orçamentos",
+  },
+  {
+    number: "03",
+    icon: ClipboardList,
+    title: "Venda com organização",
+    description:
+      "Acompanhe clientes, encomendas, entregas e vendas no mesmo fluxo.",
+    details: "Clientes · Pedidos · Loja online",
+  },
+  {
+    number: "04",
+    icon: BarChart3,
+    title: "Enxergue o resultado",
+    description: "Veja o que vende, o que dá lucro e onde ajustar a operação.",
+    details: "Relatórios · Estoque · Financeiro",
+  },
 ];
 
 const PLANS = [
   {
-    name: 'Gratuito', price: 'R$ 0', priceAnnual: 'R$ 0', period: '/mes', desc: 'Para quem esta comecando',
-    features: ['Ate 10 receitas', 'Ingredientes ilimitados', 'Calculo de custo', 'Geracao de PDF'],
-    highlighted: false,
-    cta: 'Baixar grátis',
+    name: "Gratuito",
+    description: "Para começar",
+    price: "R$ 0",
+    annualPrice: "R$ 0",
+    features: [
+      "Até 10 receitas",
+      "Ingredientes ilimitados",
+      "Cálculo de custo",
+      "Geração de PDF",
+    ],
   },
   {
-    name: 'Premium', price: 'R$ 19,99', priceAnnual: 'R$ 120,00', period: '/mes', desc: 'Para quem quer crescer',
-    features: ['Receitas e ingredientes ilimitados', 'Seu logo personalizado no PDF', 'Relatórios avançados com gráficos', 'Gestão de clientes e aniversários', 'Sistema de encomendas e entregas', 'Precificação sazonal avançada', 'Histórico de preços de ingredientes', 'Suporte prioritário'],
-    highlighted: true,
-    cta: 'Assinar Premium',
+    name: "Premium",
+    description: "Para crescer",
+    price: "R$ 19,99",
+    annualPrice: "R$ 120,00",
+    features: [
+      "Receitas ilimitadas",
+      "Relatórios avançados",
+      "Clientes e encomendas",
+      "Precificação sazonal",
+      "Seu logo nos PDFs",
+    ],
   },
   {
-    name: 'Master', price: 'R$ 39,99', priceAnnual: 'R$ 200,00', period: '/mes', desc: 'Solucao completa para seu negocio',
-    features: ['Tudo do Premium', 'Loja online com link compartilhável', 'Pedidos com notificação em tempo real', 'Controle de estoque com baixa automática', 'Gestão financeira completa (DRE)', 'Dicas de vendas e precificação', 'Suporte premium'],
-    highlighted: false,
-    cta: 'Assinar Master',
-    master: true,
+    name: "Master",
+    description: "Para ir mais longe",
+    price: "R$ 39,99",
+    annualPrice: "R$ 200,00",
+    features: [
+      "Tudo do Premium",
+      "Loja online e cardápio",
+      "Pedidos em tempo real",
+      "Estoque automático",
+      "Gestão financeira",
+    ],
   },
 ];
 
-function formatCount(n: number): string {
-  if (n >= 1000) return `${(n / 1000).toFixed(1).replace('.0', '')}k+`;
-  return `${n}+`;
+function StoreLinks({ light = false }: { light?: boolean }) {
+  return (
+    <div className="flex flex-col justify-center gap-3 sm:flex-row">
+      <a
+        href={APP_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-transform hover:-translate-y-0.5 ${light ? "bg-white text-gray-950" : "bg-gray-950 text-white"}`}
+      >
+        <Smartphone size={17} /> App Store <ArrowRight size={15} />
+      </a>
+      <a
+        href={PLAY_STORE_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={`inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold transition-transform hover:-translate-y-0.5 ${light ? "border border-white/40 text-white hover:bg-white/10" : "border border-gray-200 bg-white text-gray-900 hover:border-gray-400"}`}
+      >
+        <Smartphone size={17} /> Google Play <ArrowRight size={15} />
+      </a>
+    </div>
+  );
 }
 
-const DEMO_SCREENS = [
-  { title: 'Home', icon: Home, desc: 'Dashboard com resumo de vendas', image: homeScreen },
-  { title: 'Loja Online', icon: Store, desc: 'Catálogo com link compartilhável para pedidos', image: storeScreen },
-  { title: 'Cardápio do Cliente', icon: Smartphone, desc: 'Cliente pede pelo navegador, sem instalar nada', image: menuScreen },
-  { title: 'Receitas', icon: ChefHat, desc: 'Gerencie suas receitas', image: recipesScreen },
-  { title: 'Ingredientes', icon: ShoppingBag, desc: 'Controle de ingredientes', image: ingredientsScreen },
-  { title: 'Vendas', icon: TrendingUp, desc: 'Registre e acompanhe vendas', image: salesScreen },
-  { title: 'Relatórios', icon: BarChart3, desc: 'Análise detalhada de dados', image: reportsScreen },
-  { title: 'Perfil', icon: Users, desc: 'Sua marca, contatos e plano em um só lugar', image: profileScreen },
-];
-
 export function LandingPage() {
-  const [apiStats, setApiStats] = useState<{ totalUsers: number; totalRecipes: number } | null>(null);
-  const [isAnnual, setIsAnnual] = useState(false);
-  const [demoScreenIndex, setDemoScreenIndex] = useState(0);
+  const [stats, setStats] = useState<{
+    totalUsers: number;
+    totalRecipes: number;
+  } | null>(null);
+  const [screenIndex, setScreenIndex] = useState(0);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [annual, setAnnual] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_BASE}/public/stats`)
-      .then(r => r.json())
-      .then(json => { if (json.data) setApiStats(json.data); })
+    const controller = new AbortController();
+    fetch(`${API_BASE}/public/stats`, { signal: controller.signal })
+      .then((response) => response.json())
+      .then((json) => {
+        if (
+          Number.isFinite(json?.data?.totalUsers) &&
+          Number.isFinite(json?.data?.totalRecipes)
+        )
+          setStats(json.data);
+      })
       .catch(() => {});
+    return () => controller.abort();
   }, []);
 
-  useEffect(() => {
-    DEMO_SCREENS.forEach(({ image }) => {
-      const preload = new Image();
-      preload.src = image;
-    });
-  }, []);
-
-  const userCount = apiStats ? formatCount(apiStats.totalUsers) : '100+';
-  const recipeCount = apiStats ? formatCount(apiStats.totalRecipes) : '500+';
+  const currentScreen = SCREENS[screenIndex];
+  const nav = [
+    ["Como funciona", "#como-funciona"],
+    ["O aplicativo", "#produto"],
+    ["Loja online", "#loja-online"],
+    ["Planos", "#planos"],
+  ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 overflow-x-hidden">
-      {/* ── Header ── */}
-      <header className="fixed top-0 left-0 right-0 z-50 bg-white/70 dark:bg-gray-950/70 backdrop-blur-xl border-b border-gray-100/80 dark:border-gray-800/50">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-pink-600 flex items-center justify-center shadow-lg shadow-primary-500/25">
-              <Cake size={18} className="text-white" />
-            </div>
-            <span className="font-bold text-gray-900 dark:text-white text-lg tracking-tight">DocePreço</span>
-          </div>
-          <nav className="flex items-center gap-3 sm:gap-6">
-            <a href="#funcionalidades" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Funcionalidades</a>
-            <a href="#loja-online" className="hidden md:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Loja Online</a>
-            <a href="#planos" className="hidden sm:block text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors">Planos</a>
-            <a href="#baixar" className="sm:hidden inline-flex items-center gap-2 bg-primary-500 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm">
-              Baixar grátis
-            </a>
-            <Link to="/app"
-              className="hidden sm:inline-flex items-center gap-2 border border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-              <LogIn size={14} />
+    <div className="min-h-screen overflow-x-hidden bg-[#fbfaf9] text-gray-950 dark:bg-gray-950 dark:text-white">
+      <header className="sticky top-0 z-50 border-b border-gray-200/70 bg-[#fbfaf9]/90 backdrop-blur-xl dark:border-gray-800 dark:bg-gray-950/90">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-3 sm:px-8">
+          <a
+            href="#inicio"
+            aria-label="DocePreço, voltar ao início"
+            className="flex items-center gap-2.5"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-500 text-white shadow-md shadow-primary-500/20">
+              <Cake size={20} />
+            </span>
+            <span className="text-lg font-extrabold tracking-tight">
+              DocePreço
+            </span>
+          </a>
+          <nav
+            aria-label="Navegação principal"
+            className="hidden items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-300 md:flex"
+          >
+            {nav.map(([label, href]) => (
+              <a key={href} className="hover:text-primary-600" href={href}>
+                {label}
+              </a>
+            ))}
+          </nav>
+          <div className="hidden items-center gap-3 md:flex">
+            <Link
+              to="/app"
+              className="rounded-xl px-4 py-2.5 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-gray-800"
+            >
               Entrar
             </Link>
-            <div className="hidden sm:flex items-center gap-2">
-              <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-800 dark:hover:bg-gray-100 transition-colors shadow-sm">
-                <Smartphone size={14} />
-                iOS
-              </a>
-              <a href="https://play.google.com/store/apps/details?id=com.orgenyx" target="_blank" rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 bg-emerald-600 dark:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-colors shadow-sm">
-                <Smartphone size={14} />
-                Android
-              </a>
-            </div>
-          </nav>
+            <a
+              href="#baixar"
+              className="inline-flex items-center gap-2 rounded-xl bg-primary-500 px-5 py-2.5 text-sm font-bold text-white hover:bg-primary-600"
+            >
+              Começar grátis <ArrowRight size={15} />
+            </a>
+          </div>
+          <button
+            type="button"
+            aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+            aria-expanded={menuOpen}
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="rounded-xl border border-gray-200 p-2.5 dark:border-gray-700 md:hidden"
+          >
+            {menuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
+        {menuOpen && (
+          <nav
+            aria-label="Navegação móvel"
+            className="grid gap-1 border-t border-gray-100 bg-[#fbfaf9] px-5 py-3 text-sm font-semibold dark:border-gray-800 dark:bg-gray-950 md:hidden"
+          >
+            {[...nav, ["Baixar grátis", "#baixar"]].map(([label, href]) => (
+              <a
+                key={href}
+                href={href}
+                onClick={() => setMenuOpen(false)}
+                className="rounded-lg px-3 py-2.5 hover:bg-primary-50 dark:hover:bg-gray-800"
+              >
+                {label}
+              </a>
+            ))}
+            <Link
+              to="/app"
+              onClick={() => setMenuOpen(false)}
+              className="rounded-lg px-3 py-2.5"
+            >
+              Entrar
+            </Link>
+          </nav>
+        )}
       </header>
-
-      {/* ── Hero ── */}
-      <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-28">
-        {/* Blurs */}
-        <div className="absolute top-20 left-[-10%] w-[500px] h-[500px] bg-primary-200/40 dark:bg-primary-500/10 rounded-full blur-[120px]" />
-        <div className="absolute top-40 right-[-5%] w-[400px] h-[400px] bg-pink-200/30 dark:bg-pink-500/10 rounded-full blur-[100px]" />
-        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-violet-100/30 dark:bg-violet-500/5 rounded-full blur-[120px]" />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col lg:flex-row items-center gap-16">
-            {/* Text */}
-            <div className="flex-1 text-center lg:text-left">
-              <div className="inline-flex items-center gap-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 text-xs font-semibold px-4 py-2 rounded-full mb-8 shadow-sm">
-                <Sparkles size={14} className="text-primary-500" />
-                O app que toda confeiteira precisa
-              </div>
-
-              <h1 className="text-4xl sm:text-5xl lg:text-[3.5rem] font-black text-gray-900 dark:text-white tracking-tight leading-[1.08]">
-                Pare de vender{' '}
-                <br className="hidden sm:block" />
-                seus doces{' '}
-                <span className="relative">
-                  <span className="bg-gradient-to-r from-primary-500 via-pink-500 to-rose-500 bg-clip-text text-transparent">no prejuizo</span>
-                  <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 8" fill="none"><path d="M1 5.5C40 2 80 1 100 3C120 5 160 6 199 3" stroke="#e91e8c" strokeWidth="2.5" strokeLinecap="round" opacity="0.4" /></svg>
+      <main>
+        <section id="inicio" className="px-4 pt-5 sm:px-6 sm:pt-7">
+          <div className="relative mx-auto max-w-[1500px] overflow-hidden rounded-[2rem] border border-primary-100 bg-[radial-gradient(ellipse_at_50%_35%,#fff_25%,#fff0f6_75%,#f4ecff_100%)] px-5 pt-16 text-center dark:border-primary-900/40 dark:bg-[radial-gradient(ellipse_at_50%_35%,#2b1830_0%,#16131c_75%,#111015_100%)] sm:pt-20">
+            <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:radial-gradient(#e8aecf_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(to_bottom,transparent,black_70%)]" />
+            <div className="relative mx-auto max-w-5xl">
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-700 dark:border-primary-800 dark:bg-gray-900/70 dark:text-primary-300">
+                <Sparkles size={14} /> Sua confeitaria, mais rentável
+              </span>
+              <h1 className="mx-auto mt-7 max-w-4xl text-[clamp(2.75rem,6.6vw,6rem)] font-black leading-[1.03] tracking-[-0.065em]">
+                Mais clareza no preço.
+                <br />
+                <span className="text-primary-500">
+                  Mais lucro em cada doce.
                 </span>
               </h1>
-
-              <p className="mt-6 text-lg text-gray-500 dark:text-gray-400 max-w-lg leading-relaxed lg:mx-0 mx-auto">
-                Calcule o custo real de cada receita e descubra quanto cobrar para ter lucro de verdade.
+              <p className="mx-auto mt-6 max-w-2xl text-base leading-relaxed text-gray-600 dark:text-gray-300 sm:text-xl">
+                Do custo da receita à venda final, organize sua confeitaria e
+                tome decisões com números que fazem sentido.
               </p>
-
-              <div className="mt-10 flex flex-col sm:flex-row items-center lg:justify-start justify-center gap-4">
-                <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-3 bg-gray-900 dark:bg-white text-white dark:text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-800 dark:hover:bg-gray-100 transition-all shadow-xl shadow-gray-900/20 hover:shadow-2xl hover:-translate-y-0.5">
-                  <Smartphone size={18} />
-                  Baixar na App Store
-                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <a
+                  href="#baixar"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary-500 px-7 py-4 text-sm font-bold text-white shadow-lg shadow-primary-500/20 hover:bg-primary-600 sm:w-auto"
+                >
+                  Começar gratuitamente <ArrowRight size={17} />
                 </a>
-                <a href="https://play.google.com/store/apps/details?id=com.orgenyx" target="_blank" rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-3 bg-emerald-600 dark:bg-emerald-500 text-white px-8 py-4 rounded-2xl text-sm font-bold hover:bg-emerald-700 dark:hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-600/20 hover:shadow-2xl hover:-translate-y-0.5">
-                  <Smartphone size={18} />
-                  Baixar no Google Play
-                  <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                <a
+                  href="#produto"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white/75 px-7 py-4 text-sm font-bold text-gray-900 hover:bg-white dark:border-gray-700 dark:bg-gray-900 dark:text-white sm:w-auto"
+                >
+                  Ver o aplicativo
                 </a>
               </div>
-
-              {/* Mini social proof */}
-              <div className="mt-10 flex items-center lg:justify-start justify-center gap-4">
-                <div className="flex -space-x-2">
-                  {['AP', 'MC', 'JS', 'LR'].map((initials, i) => (
-                    <div key={i} className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-pink-500 border-2 border-white dark:border-gray-950 flex items-center justify-center text-white text-[10px] font-bold">
-                      {initials}
-                    </div>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex items-center gap-0.5">
-                    {[...Array(5)].map((_, i) => <Star key={i} size={12} className="text-yellow-400 fill-yellow-400" />)}
-                  </div>
-                  <p className="text-xs text-gray-400 mt-0.5">{userCount} confeiteiras usam</p>
-                </div>
+              <p className="mt-5 text-xs font-medium text-gray-500 dark:text-gray-400">
+                Grátis para começar · Disponível para iOS e Android
+              </p>
+            </div>
+            <div className="relative mx-auto mt-10 max-w-4xl sm:mt-14">
+              <div className="absolute bottom-7 left-1/2 h-28 w-3/4 -translate-x-1/2 rounded-full bg-primary-400/30 blur-3xl" />
+              <img
+                src="/app-preview.png"
+                alt="Prévia das telas do aplicativo DocePreço"
+                fetchPriority="high"
+                className="relative mx-auto max-h-[390px] w-auto max-w-[95%] object-contain drop-shadow-[0_25px_30px_rgba(80,34,66,0.2)] sm:max-h-[520px]"
+              />
+              <div className="absolute bottom-10 left-0 hidden rounded-2xl border border-white/80 bg-white/90 p-4 text-left shadow-xl backdrop-blur-sm md:block dark:border-gray-700 dark:bg-gray-900/90">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                  Custo por receita
+                </p>
+                <p className="mt-1 text-lg font-extrabold">Tudo calculado</p>
+              </div>
+              <div className="absolute right-0 top-14 hidden rounded-2xl border border-white/80 bg-white/90 p-4 text-left shadow-xl backdrop-blur-sm md:block dark:border-gray-700 dark:bg-gray-900/90">
+                <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
+                  Preço de venda
+                </p>
+                <p className="mt-1 text-lg font-extrabold text-primary-500">
+                  Com sua margem
+                </p>
               </div>
             </div>
-
-            {/* App Preview */}
-            <div className="flex-1 relative max-w-sm sm:max-w-md">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary-500/20 to-pink-500/20 rounded-[3rem] blur-3xl scale-90" />
-              <img src="/app-preview.png" alt="DocePreço - Telas do aplicativo" className="relative w-full drop-shadow-2xl" />
-            </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── Stats ── */}
-      <section className="py-16 sm:py-20 border-y border-gray-100 dark:border-gray-800/50 bg-gray-50/80 dark:bg-gray-900/50">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { value: userCount, label: 'Confeiteiras', icon: Heart, color: 'text-pink-500' },
-              { value: recipeCount, label: 'Receitas criadas', icon: ChefHat, color: 'text-violet-500' },
-              { value: '5.0', label: 'Nota na App Store', icon: Star, color: 'text-yellow-500' },
-              { value: '100%', label: 'Gratuito para comecar', icon: Zap, color: 'text-emerald-500' },
-            ].map((s, i) => (
-              <div key={i} className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-700/50 text-center hover:shadow-md transition-shadow">
-                <s.icon size={22} className={`${s.color} mx-auto mb-3`} />
-                <p className="text-3xl font-extrabold text-gray-900 dark:text-white tracking-tight">{s.value}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{s.label}</p>
-              </div>
-            ))}
+        </section>
+        <section
+          aria-label="Benefícios do DocePreço"
+          className="border-b border-gray-200/70 py-8 dark:border-gray-800"
+        >
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-4 px-5 text-center text-sm font-semibold text-gray-700 dark:text-gray-300 sm:justify-between sm:px-8">
+            <span className="inline-flex items-center gap-2">
+              <Calculator size={18} className="text-primary-500" /> Preços com
+              margem
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <ChefHat size={18} className="text-primary-500" /> Receitas
+              organizadas
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <Store size={18} className="text-primary-500" /> Pedidos no mesmo
+              lugar
+            </span>
+            {stats && stats.totalUsers > 0 && (
+              <span className="inline-flex items-center gap-2">
+                <Heart size={18} className="text-primary-500" />{" "}
+                {stats.totalUsers.toLocaleString("pt-BR")} pessoas cadastradas
+              </span>
+            )}
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* ── App Demo ── */}
-      <section className="py-24 sm:py-32 relative bg-white dark:bg-gray-950">
-        <div className="pointer-events-none absolute top-20 right-0 w-[300px] h-[300px] bg-primary-100/20 dark:bg-primary-500/5 rounded-full blur-[100px]" />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Demonstração</span>
-            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Veja na prática como funciona
-            </h2>
-            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
-              Explore o aplicativo e conheça todas as funcionalidades.
-            </p>
-          </div>
-
-          <div className="flex flex-col lg:flex-row items-center gap-12 justify-center">
-            {/* Mockup do Celular */}
-            <div className="relative">
-              {/* Glow */}
-              <div className="pointer-events-none absolute -inset-4 bg-gradient-to-r from-primary-500/20 to-pink-500/20 rounded-[2rem] blur-2xl" />
-
-              {/* Celular */}
-              <div className="relative w-72 bg-black rounded-[3rem] p-3 shadow-2xl" style={{ aspectRatio: '9/19' }}>
-                {/* Notch */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-40 h-8 bg-black rounded-b-3xl z-10" />
-
-                {/* Tela */}
-                <div className="relative w-full h-full bg-white dark:bg-gray-950 rounded-[2.5rem] overflow-hidden">
-                  {/* Conteúdo da tela */}
-                  {DEMO_SCREENS.map((screen, index) => (
-                    <img
-                      key={screen.title}
-                      src={screen.image}
-                      alt={`Tela de ${screen.title} do DocePreco`}
-                      aria-hidden={demoScreenIndex !== index}
-                      className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-                        demoScreenIndex === index ? 'opacity-100' : 'pointer-events-none opacity-0'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Controles */}
-            <div className="flex flex-col gap-6">
+        <section
+          id="como-funciona"
+          className="scroll-mt-24 px-5 py-24 sm:px-8 sm:py-32"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
               <div>
-                <p className="text-sm font-semibold text-gray-600 dark:text-gray-300 mb-4">Explore as funcionalidades:</p>
-                <div className="flex flex-col gap-3">
-                  {DEMO_SCREENS.map((screen, i) => (
-                    <button
-                      key={screen.title}
-                      type="button"
-                      onClick={() => setDemoScreenIndex(i)}
-                      aria-pressed={demoScreenIndex === i}
-                      className={`px-6 py-3 rounded-xl font-semibold transition-all text-left ${
-                        demoScreenIndex === i
-                          ? 'bg-primary-500 text-white shadow-lg shadow-primary-500/30'
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700'
-                      }`}
-                    >
-                      <screen.icon size={18} className="inline mr-2" />
-                      {screen.title}
-                    </button>
-                  ))}
-                </div>
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-600">
+                  Uma jornada completa
+                </p>
+                <h2 className="mt-4 max-w-xl text-4xl font-black leading-tight tracking-[-0.045em] sm:text-5xl">
+                  Tudo se conecta para o seu negócio crescer.
+                </h2>
               </div>
+              <p className="max-w-xl text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+                O DocePreço acompanha o caminho inteiro: você entende o custo,
+                define o preço, organiza os pedidos e acompanha o resultado.
+              </p>
+            </div>
+            <div className="mt-14 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {JOURNEY.map((step) => (
+                <div
+                  key={step.number}
+                  className="group flex min-h-72 flex-col rounded-3xl border border-gray-200 bg-white p-7 transition-all hover:-translate-y-1 hover:border-primary-200 hover:shadow-xl hover:shadow-primary-900/5 dark:border-gray-800 dark:bg-gray-900 dark:hover:border-primary-900"
+                >
+                  <div className="flex items-start justify-between">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300">
+                      <step.icon size={23} />
+                    </span>
+                    <span className="text-xs font-bold tracking-widest text-gray-400">
+                      {step.number} / 04
+                    </span>
+                  </div>
+                  <h3 className="mt-8 text-xl font-extrabold tracking-tight">
+                    {step.title}
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-gray-600 dark:text-gray-300">
+                    {step.description}
+                  </p>
+                  <p className="mt-auto pt-7 text-xs font-semibold text-primary-600 dark:text-primary-300">
+                    {step.details}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
 
-              {/* Navegação de telas */}
-              <div className="flex gap-2 justify-center lg:justify-start">
+        <section
+          id="produto"
+          className="scroll-mt-24 bg-white px-5 py-24 dark:bg-gray-900 sm:px-8 sm:py-32"
+        >
+          <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-600">
+                Veja por dentro
+              </p>
+              <h2 className="mt-4 max-w-lg text-4xl font-black leading-tight tracking-[-0.045em] sm:text-5xl">
+                Seu trabalho mais simples, tela por tela.
+              </h2>
+              <p className="mt-5 max-w-lg text-lg leading-relaxed text-gray-600 dark:text-gray-300">
+                Explore as telas reais do aplicativo e descubra como cada parte
+                ajuda na rotina da confeitaria.
+              </p>
+              <div
+                role="group"
+                aria-label="Telas do aplicativo"
+                className="mt-8 flex flex-wrap gap-2"
+              >
+                {SCREENS.map((screen, index) => (
+                  <button
+                    key={screen.title}
+                    type="button"
+                    onClick={() => setScreenIndex(index)}
+                    aria-pressed={screenIndex === index}
+                    className={`rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${screenIndex === index ? "border-primary-500 bg-primary-500 text-white" : "border-gray-200 bg-white text-gray-600 hover:border-primary-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300"}`}
+                  >
+                    {screen.title}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-8 flex items-center gap-4">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary-50 text-primary-600 dark:bg-primary-900/30">
+                  <currentScreen.icon size={20} />
+                </span>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  {currentScreen.description}
+                </p>
+              </div>
+              <div className="mt-7 flex gap-2">
                 <button
                   type="button"
                   aria-label="Tela anterior"
-                  onClick={() => setDemoScreenIndex((prev) => (prev === 0 ? DEMO_SCREENS.length - 1 : prev - 1))}
-                  className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                  onClick={() =>
+                    setScreenIndex(
+                      (screenIndex + SCREENS.length - 1) % SCREENS.length,
+                    )
+                  }
+                  className="rounded-full border border-gray-200 p-2.5 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
                 >
-                  ←
+                  <ChevronLeft size={19} />
                 </button>
-                <div className="flex gap-1 flex-1 items-center justify-center">
-                  {DEMO_SCREENS.map((_, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      aria-label={`Abrir tela ${DEMO_SCREENS[i].title}`}
-                      onClick={() => setDemoScreenIndex(i)}
-                      className={`h-2 rounded-full transition-all ${
-                        demoScreenIndex === i ? 'w-6 bg-primary-500' : 'w-2 bg-gray-300 dark:bg-gray-600'
-                      }`}
-                    />
-                  ))}
-                </div>
                 <button
                   type="button"
                   aria-label="Próxima tela"
-                  onClick={() => setDemoScreenIndex((prev) => (prev === DEMO_SCREENS.length - 1 ? 0 : prev + 1))}
-                  className="w-10 h-10 rounded-lg bg-gray-200 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors flex items-center justify-center"
+                  onClick={() =>
+                    setScreenIndex((screenIndex + 1) % SCREENS.length)
+                  }
+                  className="rounded-full border border-gray-200 p-2.5 hover:bg-gray-100 dark:border-gray-700 dark:hover:bg-gray-800"
                 >
-                  →
+                  <ChevronRight size={19} />
+                </button>
+                <span className="self-center pl-2 text-xs font-bold tracking-widest text-gray-400">
+                  {String(screenIndex + 1).padStart(2, "0")} /{" "}
+                  {String(SCREENS.length).padStart(2, "0")}
+                </span>
+              </div>
+            </div>
+            <div className="relative flex min-h-[580px] items-center justify-center overflow-hidden rounded-[2rem] bg-[radial-gradient(circle_at_50%_45%,#ffe5f1,#f8f0fa_65%,#f4f0f7)] p-8 dark:bg-[radial-gradient(circle_at_50%_45%,#4a203e,#1e1724_70%)]">
+              <div className="absolute inset-0 opacity-30 [background-image:radial-gradient(#e9aaca_1px,transparent_1px)] [background-size:20px_20px]" />
+              <div className="relative w-[285px] rounded-[3rem] border-[9px] border-gray-950 bg-gray-950 p-1 shadow-[0_35px_70px_rgba(40,20,37,0.28)]">
+                <div className="absolute left-1/2 top-3 z-10 h-5 w-24 -translate-x-1/2 rounded-full bg-gray-950" />
+                <div className="aspect-[9/19] overflow-hidden rounded-[2.2rem] bg-white">
+                  <img
+                    key={currentScreen.image}
+                    src={currentScreen.image}
+                    alt={`Tela de ${currentScreen.title} do aplicativo DocePreço`}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              </div>
+              <div className="absolute bottom-6 right-6 rounded-xl border border-white/80 bg-white/90 px-4 py-2 text-xs font-bold text-gray-700 shadow-lg dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
+                {currentScreen.title}
+              </div>
+            </div>
+          </div>
+        </section>
+        <section className="px-5 py-24 sm:px-8 sm:py-32">
+          <div className="mx-auto grid max-w-7xl gap-5 md:grid-cols-2">
+            <div className="rounded-[2rem] border border-gray-200 bg-white p-8 dark:border-gray-800 dark:bg-gray-900 sm:p-12">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-gray-400">
+                Sem organização
+              </p>
+              <h2 className="mt-5 text-3xl font-black tracking-tight">
+                O preço vira um palpite.
+              </h2>
+              <p className="mt-5 max-w-md text-gray-600 dark:text-gray-300">
+                O custo fica espalhado, a embalagem passa despercebida e só no
+                fim do mês aparece a dúvida: sobrou lucro?
+              </p>
+              <div className="mt-12 space-y-4 text-sm text-gray-500">
+                <p>— Anotações em vários lugares</p>
+                <p>— Margem difícil de acompanhar</p>
+                <p>— Vendas sem visão do resultado</p>
+              </div>
+            </div>
+            <div className="rounded-[2rem] bg-gray-950 p-8 text-white dark:bg-primary-950 sm:p-12">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-300">
+                Com DocePreço
+              </p>
+              <h2 className="mt-5 text-3xl font-black tracking-tight">
+                Cada decisão tem contexto.
+              </h2>
+              <p className="mt-5 max-w-md text-gray-300">
+                Ingredientes, receitas, preço e vendas se conectam para você
+                trabalhar com mais segurança.
+              </p>
+              <div className="mt-12 space-y-4 text-sm text-gray-200">
+                <p className="flex gap-3">
+                  <Check size={18} className="shrink-0 text-primary-300" />{" "}
+                  Custo da receita calculado
+                </p>
+                <p className="flex gap-3">
+                  <Check size={18} className="shrink-0 text-primary-300" />{" "}
+                  Margem definida antes da venda
+                </p>
+                <p className="flex gap-3">
+                  <Check size={18} className="shrink-0 text-primary-300" />{" "}
+                  Resultado acompanhado em relatórios
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="loja-online"
+          className="scroll-mt-24 px-5 pb-24 sm:px-8 sm:pb-32"
+        >
+          <div className="mx-auto grid max-w-7xl overflow-hidden rounded-[2rem] bg-[#231328] text-white lg:grid-cols-2">
+            <div className="p-8 sm:p-12 lg:p-16">
+              <span className="inline-flex items-center gap-2 rounded-full border border-primary-300/30 bg-primary-400/10 px-4 py-2 text-xs font-bold text-primary-200">
+                <Sparkles size={14} /> Plano Master
+              </span>
+              <h2 className="mt-7 max-w-lg text-4xl font-black leading-tight tracking-[-0.045em] sm:text-5xl">
+                Sua vitrine aberta para novos pedidos.
+              </h2>
+              <p className="mt-5 max-w-lg text-lg leading-relaxed text-gray-300">
+                Crie seu cardápio online, compartilhe o link no WhatsApp ou
+                Instagram e acompanhe cada pedido até a entrega.
+              </p>
+              <div className="mt-9 grid gap-4 text-sm sm:grid-cols-2">
+                <p className="flex gap-2">
+                  <Check size={17} className="shrink-0 text-primary-300" />{" "}
+                  Pedido pelo navegador
+                </p>
+                <p className="flex gap-2">
+                  <Check size={17} className="shrink-0 text-primary-300" />{" "}
+                  Notificação no app
+                </p>
+                <p className="flex gap-2">
+                  <Check size={17} className="shrink-0 text-primary-300" />{" "}
+                  Acompanhamento de entrega
+                </p>
+                <p className="flex gap-2">
+                  <Check size={17} className="shrink-0 text-primary-300" />{" "}
+                  Venda integrada ao estoque
+                </p>
+              </div>
+              <a
+                href="#baixar"
+                className="mt-10 inline-flex items-center gap-2 font-bold text-primary-200 hover:text-white"
+              >
+                Conhecer o DocePreço <ArrowRight size={17} />
+              </a>
+            </div>
+            <div className="relative flex min-h-[420px] items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_50%_50%,#aa3e83,#4a2048_55%,#241627)] p-10">
+              <div className="absolute h-96 w-96 rounded-full border border-white/10" />
+              <div className="absolute h-[550px] w-[550px] rounded-full border border-white/10" />
+              <img
+                src={storeScreen}
+                loading="lazy"
+                alt="Tela da loja online no DocePreço"
+                className="relative z-10 h-[420px] w-auto rounded-[2rem] shadow-2xl shadow-black/40"
+              />
+              <img
+                src={menuScreen}
+                loading="lazy"
+                alt="Cardápio digital visto pelo cliente"
+                className="absolute bottom-[-40px] right-[8%] z-20 hidden h-[320px] w-auto rotate-12 rounded-[1.5rem] shadow-2xl shadow-black/40 sm:block"
+              />
+            </div>
+          </div>
+        </section>
+
+        <section
+          id="planos"
+          className="scroll-mt-24 bg-white px-5 py-24 dark:bg-gray-900 sm:px-8 sm:py-32"
+        >
+          <div className="mx-auto max-w-7xl">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary-600">
+                Planos
+              </p>
+              <h2 className="mt-4 text-4xl font-black tracking-[-0.045em] sm:text-5xl">
+                Comece no seu ritmo.
+              </h2>
+              <p className="mt-5 text-lg text-gray-600 dark:text-gray-300">
+                O plano gratuito já ajuda você a entender seus custos. Quando o
+                negócio crescer, o DocePreço cresce junto.
+              </p>
+              <div className="mt-8 inline-flex rounded-full border border-gray-200 p-1 dark:border-gray-700">
+                <button
+                  type="button"
+                  aria-pressed={!annual}
+                  onClick={() => setAnnual(false)}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold ${!annual ? "bg-primary-500 text-white" : "text-gray-600 dark:text-gray-300"}`}
+                >
+                  Mensal
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={annual}
+                  onClick={() => setAnnual(true)}
+                  className={`rounded-full px-5 py-2 text-sm font-semibold ${annual ? "bg-primary-500 text-white" : "text-gray-600 dark:text-gray-300"}`}
+                >
+                  Anual
                 </button>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── How it works ── */}
-      <section className="py-24 sm:py-32">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Como funciona</span>
-            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Simples como fazer um bolo
-            </h2>
-            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-md mx-auto">
-              Em tres passos voce descobre o preco certo dos seus produtos.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-3 gap-8">
-            {STEPS.map((step, i) => (
-              <div key={i} className="relative">
-                {/* Connector line */}
-                {i < STEPS.length - 1 && (
-                  <div className="hidden sm:block absolute top-12 left-[60%] w-[80%] border-t-2 border-dashed border-gray-200 dark:border-gray-700" />
-                )}
-                <div className="relative bg-white dark:bg-gray-800 rounded-2xl p-8 border border-gray-100 dark:border-gray-700/50 shadow-sm hover:shadow-lg transition-all text-center group hover:-translate-y-1">
-                  <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-pink-600 text-white mb-5 shadow-lg shadow-primary-500/20 group-hover:scale-110 transition-transform">
-                    <step.icon size={24} />
-                  </div>
-                  <span className="block text-xs font-bold text-primary-500 mb-2">{step.num}</span>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-lg">{step.title}</h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{step.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Resultado visível */}
-      <section className="py-24 sm:py-32 bg-rose-50/70 dark:bg-gray-900/40">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Na prática</span>
-            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Troque o achismo por um preço que faz sentido
-            </h2>
-            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg">
-              Um caminho visual para enxergar o custo completo antes de definir quanto cobrar.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-[1fr_auto_1fr] items-stretch gap-5">
-            <div className="rounded-3xl bg-white dark:bg-gray-800 p-7 sm:p-8 border border-rose-100 dark:border-gray-700 shadow-sm">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-rose-500">Sem organização</p>
-              <h3 className="mt-3 text-xl font-bold text-gray-900 dark:text-white">Preço no improviso</h3>
-              <ul className="mt-6 space-y-4 text-sm text-gray-600 dark:text-gray-300">
-                <li className="flex gap-3"><span className="mt-0.5 text-rose-500">×</span> Ingredientes anotados de memória</li>
-                <li className="flex gap-3"><span className="mt-0.5 text-rose-500">×</span> Mão de obra e embalagem esquecidas</li>
-                <li className="flex gap-3"><span className="mt-0.5 text-rose-500">×</span> Lucro incerto a cada encomenda</li>
-              </ul>
-            </div>
-
-            <div className="hidden md:flex items-center justify-center" aria-hidden="true">
-              <div className="w-14 h-14 rounded-full bg-primary-500 text-white flex items-center justify-center shadow-lg shadow-primary-500/30">
-                <ArrowRight size={24} />
-              </div>
-            </div>
-
-            <div className="rounded-3xl bg-gray-950 dark:bg-primary-950 p-7 sm:p-8 text-white shadow-xl shadow-gray-900/20">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary-300">Com DocePreço</p>
-              <h3 className="mt-3 text-xl font-bold">Preço com segurança</h3>
-              <ul className="mt-6 space-y-4 text-sm text-gray-300">
-                <li className="flex gap-3"><Check size={18} className="shrink-0 text-primary-300" /> Custo de ingredientes calculado por receita</li>
-                <li className="flex gap-3"><Check size={18} className="shrink-0 text-primary-300" /> Margem, embalagem e mão de obra considerados</li>
-                <li className="flex gap-3"><Check size={18} className="shrink-0 text-primary-300" /> Preço sugerido para vender com lucro</li>
-              </ul>
-              <p className="mt-8 text-xs text-gray-500">Exemplo ilustrativo do fluxo de precificação.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Features ── */}
-      <section id="funcionalidades" className="py-24 sm:py-32 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-gray-50/80 dark:from-gray-900/50 to-white dark:to-gray-950" />
-        <div className="absolute top-20 right-0 w-[400px] h-[400px] bg-primary-100/30 dark:bg-primary-500/5 rounded-full blur-[100px]" />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Funcionalidades</span>
-            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Tudo para sua confeitaria crescer
-            </h2>
-            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
-              Ferramentas profissionais pensadas para quem produz doces artesanais.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f, i) => {
-              const Icon = f.icon;
-              return (
-                <div key={i} className="relative bg-white dark:bg-gray-800/80 rounded-2xl p-7 border border-gray-100 dark:border-gray-700/50 hover:shadow-xl hover:shadow-gray-200/40 dark:hover:shadow-none transition-all duration-300 group hover:-translate-y-1 hover:border-gray-200 dark:hover:border-gray-600">
-                  {f.master && (
-                    <span className="absolute top-5 right-5 inline-flex items-center gap-1 bg-violet-50 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wide">
-                      <Sparkles size={10} />
-                      Master
+            <div className="mt-14 grid gap-5 lg:grid-cols-3">
+              {PLANS.map((plan) => (
+                <div
+                  key={plan.name}
+                  className={`relative flex flex-col rounded-3xl border p-8 ${plan.name === "Premium" ? "border-primary-500 bg-primary-50 shadow-xl shadow-primary-500/10 dark:bg-primary-950/20" : "border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900"}`}
+                >
+                  {plan.name === "Premium" && (
+                    <span className="absolute -top-3 left-8 rounded-full bg-primary-500 px-4 py-1 text-xs font-bold text-white">
+                      Mais escolhido
                     </span>
                   )}
-                  <div className={`w-12 h-12 rounded-2xl ${f.bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300`}>
-                    <Icon size={22} style={{ color: f.iconColor }} />
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary-600">
+                    {plan.description}
+                  </p>
+                  <h3 className="mt-2 text-2xl font-extrabold">{plan.name}</h3>
+                  <div className="mt-7 flex items-baseline gap-1">
+                    <strong className="text-4xl tracking-tight">
+                      {annual ? plan.annualPrice : plan.price}
+                    </strong>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
+                      /{annual ? "ano" : "mês"}
+                    </span>
                   </div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-base">{f.title}</h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{f.desc}</p>
+                  <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">
+                    Assinatura disponível no aplicativo.
+                  </p>
+                  <div className="my-7 h-px bg-gray-200 dark:bg-gray-700" />
+                  <ul className="flex-1 space-y-3">
+                    {plan.features.map((feature) => (
+                      <li
+                        key={feature}
+                        className="flex gap-2 text-sm text-gray-700 dark:text-gray-300"
+                      >
+                        <Check
+                          size={17}
+                          className="shrink-0 text-primary-500"
+                        />{" "}
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
+                  <a
+                    href="#baixar"
+                    className={`mt-9 inline-flex items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-bold ${plan.name === "Premium" ? "bg-primary-500 text-white hover:bg-primary-600" : "border border-gray-200 text-gray-900 hover:border-primary-300 dark:border-gray-700 dark:text-white"}`}
+                  >
+                    Começar com {plan.name} <ArrowRight size={16} />
+                  </a>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Loja Online ── */}
-      <section id="loja-online" className="py-24 sm:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-white dark:from-gray-950 to-violet-50/60 dark:to-violet-950/20" />
-        <div className="absolute top-40 left-[-5%] w-[400px] h-[400px] bg-violet-200/30 dark:bg-violet-500/10 rounded-full blur-[120px]" />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <span className="inline-flex items-center gap-2 bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-300 text-xs font-bold px-4 py-2 rounded-full uppercase tracking-wide">
-              <Sparkles size={14} />
-              Novidade · Plano Master
-            </span>
-            <h2 className="mt-6 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Sua loja online com pedidos direto no app
-            </h2>
-            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-2xl mx-auto">
-              Monte seu cardápio digital, compartilhe o link com seus clientes e gerencie os pedidos
-              do recebimento até a entrega — tudo pelo DocePreço.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {STORE_HIGHLIGHTS.map((h, i) => {
-              const Icon = h.icon;
-              return (
-                <div key={i} className="bg-white dark:bg-gray-800/80 rounded-2xl p-7 border border-violet-100 dark:border-violet-900/40 hover:shadow-xl hover:shadow-violet-100/50 dark:hover:shadow-none transition-all duration-300 group hover:-translate-y-1">
-                  <div className="w-12 h-12 rounded-2xl bg-violet-50 dark:bg-violet-900/30 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300">
-                    <Icon size={22} className="text-violet-600 dark:text-violet-400" />
-                  </div>
-                  <h3 className="font-bold text-gray-900 dark:text-white text-base">{h.title}</h3>
-                  <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">{h.desc}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Testimonials ── */}
-      <section className="py-24 sm:py-32 bg-gray-950 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(233,30,140,0.08),transparent_60%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(139,92,246,0.08),transparent_60%)]" />
-
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-400 uppercase tracking-[0.2em]">Depoimentos</span>
-            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
-              Histórias de quem usa
-            </h2>
-            <p className="mt-4 max-w-xl mx-auto text-gray-400 text-lg">
-              Confeiteiras que encontraram mais clareza para precificar, organizar e vender.
-            </p>
-          </div>
-
-          <div className="grid sm:grid-cols-3 gap-6">
-            {TESTIMONIALS.map((t, i) => (
-              <div key={i} className="bg-gray-900/80 backdrop-blur-sm border border-gray-800 rounded-2xl p-7 hover:border-gray-700 transition-colors">
-                <div className="flex items-center gap-0.5 mb-4">
-                  {[...Array(5)].map((_, j) => <Star key={j} size={14} className="text-yellow-400 fill-yellow-400" />)}
-                </div>
-                <p className="text-gray-300 text-sm leading-relaxed mb-6">"{t.text}"</p>
-                <div className="flex items-center gap-3 pt-4 border-t border-gray-800">
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center text-white text-xs font-bold`}>
-                    {t.initials}
-                  </div>
-                  <div>
-                    <p className="text-white font-semibold text-sm">{t.name}</p>
-                    <p className="text-gray-500 text-xs">{t.role}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Plans ── */}
-      <section id="planos" className="py-24 sm:py-32 relative">
-        <div className="absolute top-20 left-0 w-[300px] h-[300px] bg-primary-100/20 dark:bg-primary-500/5 rounded-full blur-[100px]" />
-
-        <div className="relative max-w-5xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-16">
-            <span className="text-xs font-bold text-primary-500 uppercase tracking-[0.2em]">Planos</span>
-            <h2 className="mt-4 text-3xl sm:text-4xl font-extrabold text-gray-900 dark:text-white tracking-tight">
-              Simples, sem surpresa
-            </h2>
-            <p className="mt-4 text-gray-500 dark:text-gray-400 text-lg max-w-xl mx-auto">
-              Comece de graca e faca upgrade quando quiser, direto pelo app.
-            </p>
-
-            <div className="mt-8 flex items-center justify-center gap-4">
-              <span className={`text-sm font-semibold ${!isAnnual ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Mensal</span>
-              <button
-                onClick={() => setIsAnnual(!isAnnual)}
-                className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
-                  isAnnual ? 'bg-primary-500' : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
-                    isAnnual ? 'translate-x-7' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-              <span className={`text-sm font-semibold ${isAnnual ? 'text-gray-900 dark:text-white' : 'text-gray-400'}`}>Anual</span>
+              ))}
             </div>
           </div>
+        </section>
 
-          <div className="grid sm:grid-cols-3 gap-4 max-w-6xl mx-auto">
-            {PLANS.map((plan, i) => (
-              <div key={i} className={`rounded-2xl p-6 sm:p-7 transition-all relative ${
-                plan.highlighted
-                  ? 'bg-gray-950 dark:bg-white/5 text-white ring-1 ring-gray-800 dark:ring-gray-700 shadow-2xl shadow-gray-900/30'
-                  : plan.master
-                    ? 'bg-violet-50/80 dark:bg-violet-950/20 border border-violet-200 dark:border-violet-800 hover:shadow-lg hover:border-violet-300 dark:hover:border-violet-700'
-                  : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-gray-300 dark:hover:border-gray-600'
-              }`}>
-                {plan.highlighted && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary-500 to-pink-500 text-white text-[11px] font-bold px-5 py-1 rounded-full shadow-lg shadow-primary-500/25">
-                    Mais popular
-                  </div>
-                )}
-                {plan.master && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-violet-600 text-white text-[11px] font-bold px-5 py-1 rounded-full shadow-lg shadow-violet-500/25">
-                    Mais completo
-                  </div>
-                )}
-                <div className="flex items-center gap-2 mb-1">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${plan.highlighted ? 'bg-white/10' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
-                    {plan.highlighted ? <Sparkles size={16} className="text-primary-400" /> : <Shield size={16} className="text-primary-500" />}
-                  </div>
-                  <h3 className={`font-bold text-base ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>{plan.name}</h3>
-                </div>
-                <p className={`text-xs mb-4 ${plan.highlighted ? 'text-gray-400' : 'text-gray-500'}`}>{plan.desc}</p>
-
-                <div className="flex items-baseline gap-1 mb-6">
-                  <span className={`text-4xl font-extrabold tracking-tight ${plan.highlighted ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-                    {isAnnual ? plan.priceAnnual : plan.price}
-                  </span>
-                  <span className={`text-xs ${plan.highlighted ? 'text-gray-400' : 'text-gray-400'}`}>
-                    {isAnnual ? '/ano' : plan.period}
-                  </span>
-                </div>
-                {plan.highlighted && (
-                  <div className={`text-xs mb-2 ${isAnnual ? 'text-gray-400' : 'text-gray-400'}`}>
-                    {isAnnual ? `ou ${plan.price} por mês` : `ou ${plan.priceAnnual} por ano`}
-                  </div>
-                )}
-
-                <div className={`h-px mb-6 ${plan.highlighted ? 'bg-gray-800' : 'bg-gray-100 dark:bg-gray-700'}`} />
-
-                <ul className="space-y-2.5">
-                  {plan.features.map((feat, j) => (
-                    <li key={j} className={`flex items-center gap-2 text-xs ${plan.highlighted ? 'text-gray-300' : 'text-gray-600 dark:text-gray-300'}`}>
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 ${plan.highlighted ? 'bg-primary-500/20' : 'bg-primary-50 dark:bg-primary-900/20'}`}>
-                        <Check size={12} className={plan.highlighted ? 'text-primary-400' : 'text-primary-500'} />
-                      </div>
-                      {feat}
-                    </li>
-                  ))}
-                </ul>
-
-                <a
-                  href="#baixar"
-                  className={`mt-8 w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-all hover:-translate-y-0.5 ${
-                    plan.highlighted
-                      ? 'bg-primary-500 hover:bg-primary-400 text-white shadow-lg shadow-primary-500/25'
-                      : plan.master
-                        ? 'bg-violet-600 hover:bg-violet-500 text-white shadow-lg shadow-violet-500/20'
-                        : 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 hover:bg-gray-800 dark:hover:bg-gray-100'
-                  }`}
-                >
-                  {plan.cta}
-                  <ArrowRight size={15} />
-                </a>
-
-                <p className={`mt-4 text-xs text-center ${plan.highlighted ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {plan.highlighted ? 'Disponivel para assinatura dentro do app' : 'Incluso ao baixar o app'}
-                </p>
+        <section id="baixar" className="scroll-mt-24 px-4 py-6 sm:px-6">
+          <div className="mx-auto max-w-[1500px] overflow-hidden rounded-[2rem] bg-primary-500 px-6 py-20 text-center text-white sm:py-28">
+            <div className="mx-auto max-w-3xl">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/80">
+                Seu próximo passo
+              </p>
+              <h2 className="mt-5 text-4xl font-black leading-tight tracking-[-0.045em] sm:text-6xl">
+                Seu talento merece um negócio que dá lucro.
+              </h2>
+              <p className="mx-auto mt-6 max-w-xl text-lg text-white/85">
+                Baixe o DocePreço e comece a organizar preços, receitas e vendas
+                hoje.
+              </p>
+              <div className="mt-9">
+                <StoreLinks light />
               </div>
-            ))}
+              <p className="mt-6 text-sm text-white/80">
+                Grátis para começar · Sem cartão de crédito
+              </p>
+            </div>
           </div>
-        </div>
-      </section>
-
-      {/* ── CTA Final ── */}
-      <section id="baixar" className="py-24 sm:py-32 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary-500 via-pink-500 to-rose-600" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.15),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_80%,rgba(255,255,255,0.1),transparent_50%)]" />
-
-        <div className="relative max-w-3xl mx-auto px-4 sm:px-6 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm mb-8">
-            <Cake size={28} className="text-white" />
+        </section>
+      </main>
+      <footer className="px-5 py-10 sm:px-8">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 border-t border-gray-200 pt-8 text-sm text-gray-500 dark:border-gray-800 sm:flex-row">
+          <div className="flex items-center gap-2 font-bold text-gray-900 dark:text-white">
+            <Cake size={18} className="text-primary-500" /> DocePreço
           </div>
-          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white tracking-tight leading-tight">
-            Pronta para lucrar<br />com seus doces?
-          </h2>
-          <p className="mt-6 text-lg text-white/80 max-w-lg mx-auto">
-            Baixe o DocePreço agora e descubra em minutos quanto realmente cobrar.
+          <p>
+            © {new Date().getFullYear()} DocePreço. Todos os direitos
+            reservados.
           </p>
-          <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a href="https://apps.apple.com/us/app/docepre%C3%A7o/id6761034172" target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5">
-              <Smartphone size={18} />
-              App Store
-              <ArrowRight size={16} />
+          <nav aria-label="Links do rodapé" className="flex gap-5">
+            <a
+              href="https://www.instagram.com/doceprecoapp/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-primary-500"
+            >
+              Instagram
             </a>
-            <a href="https://play.google.com/store/apps/details?id=com.orgenyx" target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 bg-white text-gray-900 px-8 py-4 rounded-2xl text-sm font-bold hover:bg-gray-50 transition-all shadow-xl hover:shadow-2xl hover:-translate-y-0.5">
-              <Smartphone size={18} />
-              Google Play
-              <ArrowRight size={16} />
+            <a href="/privacy.html" className="hover:text-primary-500">
+              Privacidade
             </a>
-          </div>
-          <p className="mt-5 text-sm text-white/60">Gratis para comecar. Sem cartao de credito.</p>
-        </div>
-      </section>
-
-      {/* ── Footer ── */}
-      <footer className="border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-950">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-pink-600 flex items-center justify-center shadow-sm">
-                <Cake size={14} className="text-white" />
-              </div>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                &copy; {new Date().getFullYear()} DocePreço. Todos os direitos reservados.
-              </span>
-            </div>
-            <nav aria-label="Links do rodapé" className="flex flex-wrap items-center justify-center gap-x-5 gap-y-3 text-sm">
-              <a href="https://www.instagram.com/doceprecoapp/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 text-gray-500 hover:text-primary-500 transition-colors">
-                <MessageCircle size={15} /> Instagram
-              </a>
-              <a href="/privacy.html" className="text-gray-500 hover:text-primary-500 transition-colors">Privacidade</a>
-              <a href="#baixar" className="text-gray-500 hover:text-primary-500 transition-colors">Baixar o app</a>
-            </nav>
-          </div>
+            <Link to="/app" className="hover:text-primary-500">
+              Entrar
+            </Link>
+          </nav>
         </div>
       </footer>
     </div>
