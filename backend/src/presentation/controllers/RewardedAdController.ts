@@ -57,7 +57,10 @@ export class RewardedAdController {
       const params = new URLSearchParams(rawQuery);
       const sessionId = params.get('custom_data');
       const transactionId = params.get('transaction_id');
-      if (!sessionId || !transactionId) { res.status(400).send('missing reward data'); return; }
+      // O botão de teste do painel AdMob pode validar apenas a conectividade,
+      // sem uma sessão criada pelo app. A assinatura já foi validada acima;
+      // respondemos sucesso, mas nunca concedemos crédito sem os dois dados.
+      if (!sessionId || !transactionId) { res.status(200).send('ok'); return; }
       await repo.grantVerifiedRecipeCredit(sessionId, transactionId);
       res.status(200).send('ok');
     } catch (error) { console.error('[RewardedAd] SSV error:', error); res.status(500).send('retry'); }
