@@ -49,6 +49,9 @@ export class RewardedAdController {
       const rawQuery = req.originalUrl.split('?')[1] ?? '';
       const signatureAt = rawQuery.indexOf('&signature=');
       const signatureMatch = rawQuery.match(/(?:^|&)signature=([^&]+)&key_id=([^&]+)$/);
+      // A verificação inicial feita no painel AdMob é somente um health check e
+      // não inclui os parâmetros assinados de uma recompensa real.
+      if (!rawQuery || (signatureAt < 0 && !signatureMatch)) { res.status(200).send('ok'); return; }
       if (signatureAt < 0 || !signatureMatch) { res.status(400).send('invalid callback'); return; }
       const key = await getAdMobKey(decodeURIComponent(signatureMatch[2]));
       if (!key) { res.status(400).send('unknown key'); return; }
