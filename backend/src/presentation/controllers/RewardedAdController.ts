@@ -47,6 +47,11 @@ export class RewardedAdController {
   async verifySsv(req: Request, res: Response): Promise<void> {
     try {
       const rawQuery = req.originalUrl.split('?')[1] ?? '';
+      const callbackParams = new URLSearchParams(rawQuery);
+      const requestedSessionId = callbackParams.get('custom_data');
+      // O verificador do painel pode enviar parâmetros de diagnóstico próprios,
+      // mas não tem uma sessão emitida pelo app. Isso é apenas conectividade.
+      if (!requestedSessionId) { res.status(200).send('ok'); return; }
       const signatureAt = rawQuery.indexOf('&signature=');
       const signatureMatch = rawQuery.match(/(?:^|&)signature=([^&]+)&key_id=([^&]+)$/);
       // A verificação inicial feita no painel AdMob é somente um health check e
@@ -57,9 +62,8 @@ export class RewardedAdController {
       if (!key) { res.status(400).send('unknown key'); return; }
       const valid = crypto.verify('sha256', Buffer.from(rawQuery.slice(0, signatureAt)), key, Buffer.from(decodeURIComponent(signatureMatch[1]), 'base64url'));
       if (!valid) { res.status(400).send('invalid signature'); return; }
-      const params = new URLSearchParams(rawQuery);
-      const sessionId = params.get('custom_data');
-      const transactionId = params.get('transaction_id');
+      const sessionId = requestedSessionId;
+      const transactionId = callbackParams.get('transaction_id');
       // O botão de teste do painel AdMob pode validar apenas a conectividade,
       // sem uma sessão criada pelo app. A assinatura já foi validada acima;
       // respondemos sucesso, mas nunca concedemos crédito sem os dois dados.
