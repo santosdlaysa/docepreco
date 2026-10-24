@@ -220,6 +220,7 @@ export interface InactiveUser {
   id: string;
   companyName: string;
   email: string;
+  isActive: boolean;
   createdAt: string;
   lastSeenAt: string | null;
   isPremium: boolean;
@@ -543,6 +544,10 @@ export const api = {
     return req<UserLifecycleResponse<DeletedUser>>(`/admin/users/deleted?${q}`);
   },
   deleteInactiveUser: (id: string) => req<{ userId: string }>(`/admin/users/${id}`, { method: 'DELETE' }),
+  sendReturnAccess: (id: string, deleted = false, email?: string) =>
+    req<{ email: string; reactivated?: boolean }>(`/admin/users/${id}/return-access`, {
+      method: 'POST', body: JSON.stringify({ deleted, email }),
+    }),
 
   listStores: (params: { search?: string; page?: number; limit?: number; active?: boolean | null; hasOnlineOrders?: boolean } = {}) => {
     const q = new URLSearchParams();

@@ -4,7 +4,8 @@ import jwt from 'jsonwebtoken';
 import { pool } from '../../infrastructure/database/connection';
 import { MASTER_PLAN_ACTIVE_SQL } from '../../domain/services/premium';
 import { getJwtSecret } from '../../config/secrets';
-import { sendBulkUpdateEmail } from '../../infrastructure/services/emailService';
+import { sendBulkUpdateEmail, sendReturnAccessEmail } from '../../infrastructure/services/emailService';
+import { isValidEmail } from '../../domain/services/email';
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { UpdateIngredientUseCase } from '../../application/use-cases/ingredient/UpdateIngredientUseCase';
@@ -37,7 +38,7 @@ export class AdminController {
           SELECT u.id, u.company_name AS "companyName", u.email,
                  u.created_at AS "createdAt", u.last_seen_at AS "lastSeenAt",
                  u.is_premium AS "isPremium", u.plan_tier AS "planTier",
-                 u.premium_until AS "premiumUntil",
+                 u.premium_until AS "premiumUntil", COALESCE(u.is_active, TRUE) AS "isActive",
                  (SELECT COUNT(*)::int FROM recipes r WHERE r.user_id = u.id) AS "recipeCount",
                  (SELECT COUNT(*)::int FROM ingredients i WHERE i.user_id = u.id) AS "ingredientCount",
                  (SELECT COUNT(*)::int FROM sales s WHERE s.user_id = u.id) AS "saleCount"
@@ -101,6 +102,53 @@ export class AdminController {
     } catch (error) {
       console.error('[Admin] deleteInactiveUser error:', error);
       res.status(500).json({ success: false, error: 'Erro ao excluir usuário' });
+    }
+  }
+
+  async sendReturnAccess(req: Request, res: Response): Promise<void> {
+    const { id } = req.params;
+    const deleted = req.body?.deleted === true;
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      res.status(400).json({ success: false, error: 'ID de usuário inválido' });
+      return;
+    }
+    try {
+      if (deleted) {
+        const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+        if (!isValidEmail(email)) {
+          res.status(400).json({ success: false, error: 'Informe um e-mail válido' });
+          return;
+        }
+        const record = await pool.query('SELECT company_name FROM deleted_users WHERE user_id = $1', [id]);
+        if (record.rowCount === 0) {
+          res.status(404).json({ success: false, error: 'Registro de exclusão não encontrado' });
+          return;
+        }
+        await sendReturnAccessEmail(email, record.rows[0].company_name || 'cliente', true);
+        res.json({ success: true, data: { email } });
+        return;
+      }
+      const user = await pool.query('SELECT email, company_name, COALESCE(is_active, TRUE) AS "isActive" FROM users WHERE id = $1', [id]);
+      if (user.rowCount === 0) {
+        res.status(404).json({ success: false, error: 'Usuário não encontrado' });
+        return;
+      }
+      const { email, company_name: companyName, isActive } = user.rows[0];
+      if (!isValidEmail(email)) {
+        res.status(409).json({ success: false, error: 'O e-mail da conta é inválido; corrija-o antes de enviar o convite' });
+        return;
+      }
+      if (!isActive) await pool.query('UPDATE users SET is_active = TRUE WHERE id = $1', [id]);
+      try {
+        await sendReturnAccessEmail(email, companyName, false);
+      } catch (error) {
+        res.status(502).json({ success: false, error: isActive ? 'Não foi possível enviar o e-mail' : 'Conta reativada, mas não foi possível enviar o e-mail' });
+        return;
+      }
+      res.json({ success: true, data: { email, reactivated: !isActive } });
+    } catch (error) {
+      console.error('[Admin] sendReturnAccess error:', error);
+      res.status(500).json({ success: false, error: 'Erro ao liberar o acesso' });
     }
   }
 

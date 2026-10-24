@@ -3,6 +3,22 @@ import { pool } from '../database/connection';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+export async function sendReturnAccessEmail(email: string, companyName: string, deleted: boolean): Promise<void> {
+  const safeName = companyName.replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character] ?? character);
+  const action = deleted ? 'Criar uma nova conta' : 'Entrar na minha conta';
+  const explanation = deleted
+    ? 'Sua conta anterior foi excluída e os dados antigos não podem ser recuperados. Você pode criar uma nova conta com este e-mail.'
+    : 'Sua conta está disponível novamente. Entre com seu e-mail e senha. Se não lembrar a senha, use a opção “Esqueci minha senha” na tela de acesso.';
+  const link = deleted ? 'https://docepreco.site/app?register=1' : 'https://docepreco.site/app';
+  const { error } = await resend.emails.send({
+    from: 'Precifica Doces <noreply@docepreco.site>',
+    to: email,
+    subject: deleted ? 'Crie uma nova conta no Precifica Doces' : 'Volte a acessar o Precifica Doces',
+    html: `<div style="font-family:Arial,sans-serif;max-width:520px;margin:auto;padding:24px;color:#2D1B14"><h2>Olá, ${safeName}!</h2><p>${explanation}</p><p><a href="${link}" style="display:inline-block;background:#E91E8C;color:white;padding:12px 20px;border-radius:8px;text-decoration:none">${action}</a></p><p>Se você não esperava este e-mail, pode ignorá-lo.</p></div>`,
+  });
+  if (error) throw new Error(error.message);
+}
+
 export async function sendPasswordResetCode(email: string, code: string): Promise<void> {
   const digits = code.split('').map(d =>
     `<td style="width:44px;height:52px;background:#FFF0F3;border:2px solid #F8BBD9;border-radius:10px;text-align:center;font-size:28px;font-weight:700;color:#E91E8C;font-family:Arial,sans-serif;">${d}</td>`

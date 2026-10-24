@@ -2,9 +2,10 @@ import { Request, Response } from 'express';
 import { pool } from '../../infrastructure/database/connection';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { AdminController } from './AdminController';
+import { sendReturnAccessEmail } from '../../infrastructure/services/emailService';
 
 jest.mock('../../infrastructure/database/connection', () => ({ pool: { query: jest.fn() } }));
-jest.mock('../../infrastructure/services/emailService', () => ({ sendBulkUpdateEmail: jest.fn() }));
+jest.mock('../../infrastructure/services/emailService', () => ({ sendBulkUpdateEmail: jest.fn(), sendReturnAccessEmail: jest.fn() }));
 jest.mock('../../infrastructure/services/pushService', () => ({ sendPushNotifications: jest.fn() }));
 jest.mock('../../infrastructure/repositories/PostgresUserRepository', () => ({
   PostgresUserRepository: jest.fn().mockImplementation(() => ({ delete: jest.fn() })),
@@ -51,5 +52,38 @@ describe('AdminController.deleteInactiveUser', () => {
     await controller.deleteInactiveUser(req, res);
     expect(deleteUser).toHaveBeenCalledWith(userId, true);
     expect(res.json).toHaveBeenCalledWith({ success: true, data: { userId } });
+  });
+});
+
+describe('AdminController.sendReturnAccess', () => {
+  const controller = new AdminController();
+  const send = sendReturnAccessEmail as jest.Mock;
+
+  beforeEach(() => { query.mockReset(); send.mockReset(); send.mockResolvedValue(undefined); });
+
+  it('reativa a conta antes de enviar as instruções de acesso', async () => {
+    query.mockResolvedValueOnce({ rowCount: 1, rows: [{ email: 'cliente@example.com', company_name: 'Doces', isActive: false }] });
+    query.mockResolvedValueOnce({ rowCount: 1 });
+    const res = response();
+    await controller.sendReturnAccess({ params: { id: userId }, body: {} } as unknown as Request, res);
+    expect(query).toHaveBeenNthCalledWith(2, 'UPDATE users SET is_active = TRUE WHERE id = $1', [userId]);
+    expect(send).toHaveBeenCalledWith('cliente@example.com', 'Doces', false);
+    expect(res.json).toHaveBeenCalledWith({ success: true, data: { email: 'cliente@example.com', reactivated: true } });
+  });
+
+  it('exige e-mail para o registro excluído', async () => {
+    const res = response();
+    await controller.sendReturnAccess({ params: { id: userId }, body: { deleted: true, email: 'inválido' } } as unknown as Request, res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(query).not.toHaveBeenCalled();
+    expect(send).not.toHaveBeenCalled();
+  });
+
+  it('envia convite para novo cadastro sem recriar os dados excluídos', async () => {
+    query.mockResolvedValue({ rowCount: 1, rows: [{ company_name: 'Doces' }] });
+    const res = response();
+    await controller.sendReturnAccess({ params: { id: userId }, body: { deleted: true, email: 'cliente@example.com' } } as unknown as Request, res);
+    expect(send).toHaveBeenCalledWith('cliente@example.com', 'Doces', true);
+    expect(query).toHaveBeenCalledTimes(1);
   });
 });

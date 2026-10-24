@@ -28,6 +28,7 @@ router.get('/business-metrics', (req, res) => controller.getBusinessMetrics(req,
 router.get('/users', (req, res) => controller.listUsers(req, res));
 router.get('/users/inactive', (req, res) => controller.listInactiveUsers(req, res));
 router.get('/users/deleted', (req, res) => controller.listDeletedUsers(req, res));
+router.post('/users/:id/return-access', (req, res) => controller.sendReturnAccess(req, res));
 router.get('/stores', (req, res) => controller.listStores(req, res));
 router.get('/users/:id', (req, res) => controller.getUser(req, res));
 router.delete('/users/:id', (req, res) => controller.deleteInactiveUser(req, res));

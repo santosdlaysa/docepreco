@@ -18,7 +18,7 @@ export function UserLoginPage() {
   const { login, register, startDemo } = useAuth();
   const { t } = useTranslation('account');
   // Vindo do "Criar conta grátis" da demonstração, abre direto no cadastro.
-  const [mode, setMode] = useState<Mode>(() => (REF_FROM_URL || wantsOpenRegister() ? 'register' : 'login'));
+  const [mode, setMode] = useState<Mode>(() => (REF_FROM_URL || new URLSearchParams(window.location.search).get('register') === '1' || wantsOpenRegister() ? 'register' : 'login'));
   useEffect(() => { clearOpenRegister(); }, []);
   const [startingDemo, setStartingDemo] = useState(false);
 
