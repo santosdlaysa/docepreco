@@ -26,6 +26,8 @@ import recipesScreen from "../assets/demo-screens/mobile-screen-3.jpg";
 import ingredientsScreen from "../assets/demo-screens/mobile-screen-4.jpg";
 import salesScreen from "../assets/demo-screens/mobile-screen-5.jpg";
 import reportsScreen from "../assets/demo-screens/mobile-screen-1.jpg";
+import brigadeiroDecor from "../assets/hero-brigadeiros.png";
+import strawberryCakeDecor from "../assets/hero-strawberry-cake.png";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:3000/api";
 const APP_STORE_URL =
@@ -287,6 +289,8 @@ export function LandingPage() {
         <section id="inicio" className="px-4 pt-5 sm:px-6 sm:pt-7">
           <div className="relative mx-auto max-w-[1500px] overflow-hidden rounded-[2rem] border border-primary-100 bg-[radial-gradient(ellipse_at_50%_35%,#fff_25%,#fff0f6_75%,#f4ecff_100%)] px-5 pt-16 text-center dark:border-primary-900/40 dark:bg-[radial-gradient(ellipse_at_50%_35%,#2b1830_0%,#16131c_75%,#111015_100%)] sm:pt-20">
             <div className="pointer-events-none absolute inset-0 opacity-35 [background-image:radial-gradient(#e8aecf_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(to_bottom,transparent,black_70%)]" />
+            <img src={brigadeiroDecor} alt="" aria-hidden="true" className="pointer-events-none absolute -left-24 bottom-0 w-64 rotate-[-12deg] opacity-[0.10] md:-left-44 md:top-52 md:bottom-auto md:w-[440px] md:opacity-[0.16] xl:-left-40 xl:w-[510px]" />
+            <img src={strawberryCakeDecor} alt="" aria-hidden="true" className="pointer-events-none absolute -right-40 top-24 hidden w-[440px] rotate-[12deg] opacity-[0.14] md:-right-52 md:block xl:-right-40 xl:w-[500px]" />
             <div className="relative mx-auto max-w-5xl">
               <span className="inline-flex items-center gap-2 rounded-full border border-primary-200 bg-white/80 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-primary-700 dark:border-primary-800 dark:bg-gray-900/70 dark:text-primary-300">
                 <Sparkles size={14} /> Sua confeitaria, mais rentável
