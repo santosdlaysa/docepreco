@@ -1,5 +1,5 @@
 import { colors } from '../theme/colors';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as WebBrowser from 'expo-web-browser';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { useAuth } from '../../context/AuthContext';
@@ -83,7 +83,9 @@ export const HomeScreen: React.FC = () => {
   const [showGuide, setShowGuide] = useState(false);
   const [banners, setBanners] = useState<Banner[]>([]);
   const [hasMandatoryAlert, setHasMandatoryAlert] = useState(false);
-  const [hasUnreadOrders, setHasUnreadOrders] = useState(false);
+  // Ids ("order:x") dos pedidos online mostrados na tela de Notificações (mesmo recorte: 20 mais recentes).
+  const [onlineOrderNotifIds, setOnlineOrderNotifIds] = useState<string[]>([]);
+  const [readNotifIds, setReadNotifIds] = useState<string[]>([]);
   const [carouselBanners, setCarouselBanners] = useState<CarouselBanner[]>([]);
   const [planBanners, setPlanBanners] = useState<PlanBanner[]>([]);
   const [planBannerIndex, setPlanBannerIndex] = useState(0);
@@ -163,14 +165,16 @@ export const HomeScreen: React.FC = () => {
           if (!isDemoMode() && s.active && !s.city?.trim()) setShowCityModal(true);
         })
         .catch(() => setHasMandatoryAlert(false));
-      orderApi.getAll().then(async all => {
-        const readIds = await notificationReadStorage.getReadIds();
-        const unread = all.some(o => o.source === 'online' && !readIds.includes(`order:${o.id}`));
-        setHasUnreadOrders(unread);
-      }).catch(() => setHasUnreadOrders(false));
+      orderApi.getAll().then(all => {
+        setOnlineOrderNotifIds(all
+          .filter(o => o.source === 'online')
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(0, 20)
+          .map(o => `order:${o.id}`));
+      }).catch(() => setOnlineOrderNotifIds([]));
     } else {
       setHasMandatoryAlert(false);
-      setHasUnreadOrders(false);
+      setOnlineOrderNotifIds([]);
     }
     await Promise.all([
       stApi.getStats().then(setStats).catch(() => {}),
@@ -220,6 +224,13 @@ export const HomeScreen: React.FC = () => {
     const targets = b.targetPlans;
     return !targets?.length || targets.includes('all') || targets.includes(planTier);
   });
+  // Relê o que foi marcado como lido sempre que a Home volta ao foco (ex: saindo de Notificações).
+  useFocusEffect(useCallback(() => {
+    notificationReadStorage.getReadIds().then(setReadNotifIds).catch(() => {});
+  }, []));
+  const hasUnreadNotifs =
+    visibleBanners.some(b => !readNotifIds.includes(`banner:${b.id}`)) ||
+    onlineOrderNotifIds.some(id => !readNotifIds.includes(id));
 
   // Nº de slides do carrossel = planos (só p/ não-premium) + institucionais
   // (Loja Online, por público) + patrocinados + slide "anuncie".
@@ -329,7 +340,7 @@ export const HomeScreen: React.FC = () => {
               activeOpacity={0.7}
             >
               <Ionicons name="notifications-outline" size={22} color={INK} />
-              {(visibleBanners.length > 0 || hasMandatoryAlert || hasUnreadOrders) && (
+              {(hasUnreadNotifs || hasMandatoryAlert) && (
                 <View style={[s.bellDot, hasMandatoryAlert && { backgroundColor: colors.redDark }]} />
               )}
             </TouchableOpacity>
