@@ -12,6 +12,7 @@ const userRepo = {
 const suggestionRepo = { create: jest.fn() };
 const socialRepo = {
   createAppleNonce: jest.fn(), consumeAppleNonce: jest.fn(), findOrCreateUser: jest.fn(),
+  linkIdentityToUser: jest.fn(),
 };
 const mockVerifySocialToken = jest.fn();
 const sendReset = jest.fn();
@@ -27,6 +28,7 @@ jest.mock('../infrastructure/repositories/PostgresSuggestionRepository', () => (
 }));
 jest.mock('../infrastructure/repositories/PostgresSocialIdentityRepository', () => ({
   PostgresSocialIdentityRepository: jest.fn(() => socialRepo),
+  SocialIdentityConflictError: class SocialIdentityConflictError extends Error {},
 }));
 jest.mock('../infrastructure/services/socialTokenVerifier', () => ({
   verifySocialToken: (...args: unknown[]) => mockVerifySocialToken(...args),
@@ -164,6 +166,89 @@ describe('Todas as rotas de autenticação', () => {
     expect(response.body.data.user.email).toBe(user.email);
     expect(response.body.data.token).toEqual(expect.any(String));
     expect(response.body.data.user.passwordHash).toBeUndefined();
+  });
+
+  describe('Apple com email oculto', () => {
+    const relayEmail = 'abc123@privaterelay.appleid.com';
+    // IP distinto por requisição para não esbarrar no loginLimiter compartilhado.
+    let ipSeq = 0;
+    const post = (path: string) => request(createApp()).post(path).set('X-Forwarded-For', `10.9.0.${++ipSeq}`);
+    const appleLogin = () => post('/auth/social').send({
+      provider: 'apple', idToken: 'id-token-apple-com-tamanho-valido', nonce: 'n', platform: 'ios', allowLinking: true,
+    });
+
+    beforeEach(() => {
+      mockVerifySocialToken.mockResolvedValue({
+        provider: 'apple', subject: 'apple-sub-1', email: relayEmail, displayName: null,
+      });
+      socialRepo.consumeAppleNonce.mockResolvedValue(true);
+    });
+
+    it('não cria conta nova: devolve cadastro pendente para vincular', async () => {
+      socialRepo.findOrCreateUser.mockResolvedValue({ userId: null, isNew: false });
+      const response = await appleLogin();
+      expect(response.status).toBe(200);
+      expect(response.body.data.linkRequired).toBe(true);
+      expect(response.body.data.token).toBeUndefined();
+      expect(socialRepo.findOrCreateUser).toHaveBeenCalledWith(expect.objectContaining({ createIfMissing: false }));
+    });
+
+    it('entra direto quando o Apple ID já está vinculado', async () => {
+      socialRepo.findOrCreateUser.mockResolvedValue({ userId: USER_ID, isNew: false });
+      userRepo.findById.mockResolvedValue(user);
+      const response = await appleLogin();
+      expect(response.body.data.linkRequired).toBeUndefined();
+      expect(response.body.data.token).toEqual(expect.any(String));
+    });
+
+    it('vincula à conta existente com email e senha', async () => {
+      socialRepo.findOrCreateUser.mockResolvedValue({ userId: null, isNew: false });
+      const { pendingToken } = (await appleLogin()).body.data;
+      userRepo.findByEmail.mockResolvedValue(user);
+      userRepo.verifyPassword.mockResolvedValue(true);
+      userRepo.findById.mockResolvedValue(user);
+
+      const response = await post('/auth/social/complete').send({
+        pendingToken, email: user.email, password: 'senha123',
+      });
+      expect(response.status).toBe(200);
+      expect(response.body.data.user.id).toBe(USER_ID);
+      expect(socialRepo.linkIdentityToUser).toHaveBeenCalledWith(USER_ID, 'apple', 'apple-sub-1', relayEmail);
+    });
+
+    it('recusa vínculo com senha errada', async () => {
+      socialRepo.findOrCreateUser.mockResolvedValue({ userId: null, isNew: false });
+      const { pendingToken } = (await appleLogin()).body.data;
+      userRepo.findByEmail.mockResolvedValue(user);
+      userRepo.verifyPassword.mockResolvedValue(false);
+
+      const response = await post('/auth/social/complete').send({
+        pendingToken, email: user.email, password: 'errada',
+      });
+      expect(response.status).toBe(401);
+      expect(socialRepo.linkIdentityToUser).not.toHaveBeenCalled();
+    });
+
+    it('cria a conta quando a pessoa confirma que é nova', async () => {
+      socialRepo.findOrCreateUser.mockResolvedValueOnce({ userId: null, isNew: false });
+      const { pendingToken } = (await appleLogin()).body.data;
+      socialRepo.findOrCreateUser.mockResolvedValueOnce({ userId: USER_ID, isNew: true });
+      userRepo.findById.mockResolvedValue(user);
+      userRepo.countAll.mockResolvedValue({ total: 10 });
+
+      const response = await post('/auth/social/complete').send({ pendingToken });
+      expect(response.status).toBe(200);
+      expect(response.body.data.isNew).toBe(true);
+      expect(socialRepo.findOrCreateUser).toHaveBeenLastCalledWith(expect.objectContaining({
+        subject: 'apple-sub-1', email: relayEmail,
+      }));
+    });
+
+    it('rejeita token pendente forjado', async () => {
+      const forged = jwt.sign({ userId: USER_ID }, JWT_SECRET);
+      const response = await post('/auth/social/complete').send({ pendingToken: forged });
+      expect(response.status).toBe(401);
+    });
   });
 
   it('emite nonce Apple de uso único', async () => {

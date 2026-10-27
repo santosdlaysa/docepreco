@@ -5,8 +5,8 @@ import { PostgresUserRepository } from '../../infrastructure/repositories/Postgr
 import { PostgresSuggestionRepository } from '../../infrastructure/repositories/PostgresSuggestionRepository';
 import { PostgresReferralRepository } from '../../infrastructure/repositories/PostgresReferralRepository';
 import { PostgresSupportRepository } from '../../infrastructure/repositories/PostgresSupportRepository';
-import { PostgresSocialIdentityRepository } from '../../infrastructure/repositories/PostgresSocialIdentityRepository';
-import { SocialAuthError, verifySocialToken } from '../../infrastructure/services/socialTokenVerifier';
+import { PostgresSocialIdentityRepository, SocialIdentityConflictError } from '../../infrastructure/repositories/PostgresSocialIdentityRepository';
+import { SocialAuthError, SocialProvider, verifySocialToken } from '../../infrastructure/services/socialTokenVerifier';
 import { sendPasswordResetCode } from '../../infrastructure/services/emailService';
 import { notifyNewUser, notifyUserMilestone, notifyAccountLockout } from '../../infrastructure/services/telegramService';
 import { recordLoginFailure, resetLoginFailures, LOCK_MINUTES } from '../middleware/loginLockout';
@@ -37,6 +37,20 @@ Para quem quer mais recursos e uma gestão completa, incluindo o Catálogo da Lo
 👉 Assine agora e comece a cuidar do seu negócio de forma mais simples e profissional. 💜
 
 [[assinar]]`;
+
+// Email descartável do "Ocultar meu email" da Apple: não casa com nenhuma conta
+// existente, então o app pergunta se a pessoa já tem conta antes de criar outra.
+const APPLE_RELAY_DOMAIN = '@privaterelay.appleid.com';
+const PENDING_SOCIAL_PURPOSE = 'social-pending';
+
+interface PendingSocialSignup {
+  purpose: typeof PENDING_SOCIAL_PURPOSE;
+  provider: SocialProvider;
+  subject: string;
+  email: string;
+  displayName: string | null;
+  platform: 'ios' | 'android' | 'web' | null;
+}
 
 const TYPO_MAP: Record<string, string> = {
   'gamil.com': 'gmail.com', 'gmal.com': 'gmail.com', 'gmial.com': 'gmail.com',
@@ -198,7 +212,7 @@ export class AuthController {
    */
   async socialLogin(req: Request, res: Response): Promise<void> {
     try {
-      const { provider, idToken, nonce, displayName, platform } = req.body;
+      const { provider, idToken, nonce, displayName, platform, allowLinking } = req.body;
       if (provider !== 'google' && provider !== 'apple') {
         res.status(400).json({ success: false, error: 'Provedor deve ser google ou apple' });
         return;
@@ -223,32 +237,31 @@ export class AuthController {
       }
       const providerName = identity.displayName
         || (typeof displayName === 'string' ? displayName.trim().slice(0, 255) : null);
-      const { userId, isNew } = await socialIdentityRepo.findOrCreateUser({
-        ...identity,
-        displayName: providerName,
-        platform: platform || null,
-      });
-      const user = await userRepo.findById(userId);
-      if (!user) {
-        res.status(500).json({ success: false, error: 'Não foi possível carregar a conta' });
-        return;
-      }
-      if (user.isActive === false) {
-        res.status(403).json({ success: false, error: 'Sua conta foi desativada. Entre em contato com o suporte.' });
+      const input = { ...identity, displayName: providerName, platform: platform || null };
+
+      // Apps que sabem vincular contas (allowLinking) recebem um cadastro
+      // pendente em vez de uma conta nova quando o email é o relay da Apple.
+      if (allowLinking === true && identity.email?.endsWith(APPLE_RELAY_DOMAIN)) {
+        const found = await socialIdentityRepo.findOrCreateUser({ ...input, createIfMissing: false });
+        if (!found.userId) {
+          const pending: PendingSocialSignup = {
+            purpose: PENDING_SOCIAL_PURPOSE,
+            provider: identity.provider,
+            subject: identity.subject,
+            email: identity.email,
+            displayName: providerName,
+            platform: input.platform,
+          };
+          const pendingToken = jwt.sign(pending, getJwtSecret(), { algorithm: 'HS256', expiresIn: '15m' });
+          res.json({ success: true, data: { linkRequired: true, pendingToken } });
+          return;
+        }
+        await this.respondSocialSession(res, found.userId, false, platform);
         return;
       }
 
-      if (isNew) {
-        supportRepo.create({ userId: user.id, senderType: 'admin', message: WELCOME_MESSAGE })
-          .catch(e => console.error('[Support] Falha ao enviar mensagem de boas-vindas:', e));
-        notifyNewUser(user.companyName, user.email, platform || undefined);
-        userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
-      }
-
-      const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
-      const { passwordHash, ...safeUser } = user as User & { passwordHash?: string };
-      void passwordHash;
-      res.json({ success: true, data: { user: safeUser, token, isNew } });
+      const { userId, isNew } = await socialIdentityRepo.findOrCreateUser(input);
+      await this.respondSocialSession(res, userId, isNew, platform);
     } catch (error) {
       if (error instanceof SocialAuthError) {
         const status = error.kind === 'configuration' ? 503 : 401;
@@ -265,6 +278,97 @@ export class AuthController {
       res.locals.errorMessage = error instanceof Error ? error.message : String(error);
       res.status(500).json({ success: false, error: 'Erro interno' });
     }
+  }
+
+  /**
+   * Conclui um cadastro social pendente (email oculto da Apple): ou vincula a
+   * identidade a uma conta existente — provando a posse com email e senha — ou
+   * cria a conta nova, se a pessoa confirmar que é a primeira vez.
+   */
+  async completeSocialSignup(req: Request, res: Response): Promise<void> {
+    try {
+      const { pendingToken, email, password } = req.body;
+      let pending: PendingSocialSignup;
+      try {
+        pending = jwt.verify(String(pendingToken ?? ''), getJwtSecret(), { algorithms: ['HS256'] }) as PendingSocialSignup;
+      } catch {
+        res.status(401).json({ success: false, error: 'O tempo para concluir o login expirou. Entre com a Apple novamente.' });
+        return;
+      }
+      if (pending.purpose !== PENDING_SOCIAL_PURPOSE || !pending.subject) {
+        res.status(401).json({ success: false, error: 'Cadastro inválido' });
+        return;
+      }
+
+      if (email === undefined && password === undefined) {
+        const { userId, isNew } = await socialIdentityRepo.findOrCreateUser({
+          provider: pending.provider,
+          subject: pending.subject,
+          email: pending.email,
+          displayName: pending.displayName,
+          platform: pending.platform,
+        });
+        await this.respondSocialSession(res, userId, isNew, pending.platform ?? undefined);
+        return;
+      }
+
+      if (typeof email !== 'string' || typeof password !== 'string' || !email.trim() || !password) {
+        res.status(400).json({ success: false, error: 'Email e senha são obrigatórios' });
+        return;
+      }
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket.remoteAddress ?? null;
+      const user = await userRepo.findByEmail(email.trim());
+      if (!user || !(await userRepo.verifyPassword(password, user.passwordHash))) {
+        this.onLoginFailure(email.trim(), ip);
+        res.status(401).json({ success: false, error: 'Email ou senha incorretos' });
+        return;
+      }
+      resetLoginFailures(email.trim());
+      try {
+        await socialIdentityRepo.linkIdentityToUser(user.id, pending.provider, pending.subject, pending.email);
+      } catch (error) {
+        if (error instanceof SocialIdentityConflictError) {
+          res.status(409).json({
+            success: false,
+            error: error.reason === 'user_has_other_identity'
+              ? 'Essa conta já está vinculada a outro Apple ID. Entre com email e senha.'
+              : 'Este Apple ID já está vinculado a outra conta do Doce Preço.',
+          });
+          return;
+        }
+        throw error;
+      }
+      console.log(`[Auth] Apple vinculada a conta existente: ${user.email}`);
+      await this.respondSocialSession(res, user.id, false, pending.platform ?? undefined);
+    } catch (error) {
+      res.locals.errorMessage = error instanceof Error ? error.message : String(error);
+      res.status(500).json({ success: false, error: 'Erro interno' });
+    }
+  }
+
+  /** Emite a sessão (mesmo JWT do login tradicional) após um login social. */
+  private async respondSocialSession(res: Response, userId: string, isNew: boolean, platform?: string): Promise<void> {
+    const user = await userRepo.findById(userId);
+    if (!user) {
+      res.status(500).json({ success: false, error: 'Não foi possível carregar a conta' });
+      return;
+    }
+    if (user.isActive === false) {
+      res.status(403).json({ success: false, error: 'Sua conta foi desativada. Entre em contato com o suporte.' });
+      return;
+    }
+
+    if (isNew) {
+      supportRepo.create({ userId: user.id, senderType: 'admin', message: WELCOME_MESSAGE })
+        .catch(e => console.error('[Support] Falha ao enviar mensagem de boas-vindas:', e));
+      notifyNewUser(user.companyName, user.email, platform || undefined);
+      userRepo.countAll().then(({ total }) => notifyUserMilestone(total)).catch(() => {});
+    }
+
+    const token = jwt.sign({ userId: user.id }, getJwtSecret(), { algorithm: 'HS256', expiresIn: '30d' });
+    const { passwordHash, ...safeUser } = user as User & { passwordHash?: string };
+    void passwordHash;
+    res.json({ success: true, data: { user: safeUser, token, isNew } });
   }
 
   /**

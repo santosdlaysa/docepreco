@@ -38,6 +38,17 @@ const normalizeUser = (raw: any): AuthUser => ({
   lgpdAcceptedAt: raw.lgpdAcceptedAt ?? null,
 });
 
+export interface SocialSession { user: AuthUser; isNew: boolean; linkRequired?: false }
+export type SocialLoginResult = SocialSession | { linkRequired: true; pendingToken: string };
+
+const saveSocialSession = async (data: any): Promise<SocialSession> => {
+  const normalized = normalizeUser(data.user);
+  await tokenStorage.saveToken(data.token);
+  await tokenStorage.saveUser(normalized);
+  if (data.isNew) await accountEngagementStorage.markAccountCreated();
+  return { user: normalized, isNew: Boolean(data.isNew) };
+};
+
 export const authApi = {
   register: async (companyName: string, email: string, password: string, phone?: string, referralCode?: string, instagramHandle?: string): Promise<AuthUser> => {
     const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : undefined;
@@ -68,7 +79,7 @@ export const authApi = {
     provider: SocialProvider,
     idToken: string,
     options?: { nonce?: string; displayName?: string | null },
-  ): Promise<{ user: AuthUser; isNew: boolean }> => {
+  ): Promise<SocialLoginResult> => {
     const platform = Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
     const response = await apiClient.post('/auth/social', {
       provider,
@@ -76,13 +87,22 @@ export const authApi = {
       nonce: options?.nonce,
       displayName: options?.displayName,
       platform,
+      // Email oculto da Apple: o servidor pergunta antes de criar outra conta.
+      allowLinking: true,
     });
-    const { user, token, isNew } = response.data.data;
-    const normalized = normalizeUser(user);
-    await tokenStorage.saveToken(token);
-    await tokenStorage.saveUser(normalized);
-    if (isNew) await accountEngagementStorage.markAccountCreated();
-    return { user: normalized, isNew: Boolean(isNew) };
+    if (response.data.data.linkRequired) {
+      return { linkRequired: true, pendingToken: response.data.data.pendingToken };
+    }
+    return saveSocialSession(response.data.data);
+  },
+
+  /** Conclui o cadastro social pendente: vincula a uma conta existente (email+senha) ou cria uma nova. */
+  completeSocialSignup: async (
+    pendingToken: string,
+    credentials?: { email: string; password: string },
+  ): Promise<SocialSession> => {
+    const response = await apiClient.post('/auth/social/complete', { pendingToken, ...credentials });
+    return saveSocialSession(response.data.data);
   },
 
   me: async (): Promise<AuthUser> => {

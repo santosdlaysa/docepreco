@@ -60,7 +60,11 @@
     "emailTypo": "Você quis dizer {{suggestion}}?",
     "passwordRequired": "Senha obrigatória",
     "loginError": "Erro ao entrar",
-    "socialLoginError": "Erro ao entrar com a conta social"
+    "socialLoginError": "Erro ao entrar com a conta social",
+    "linkTitle": "Você já tem conta no Doce Preço?",
+    "linkDescription": "Você escolheu ocultar seu e-mail na Apple, por isso não conseguimos encontrar sua conta sozinhos. Se já usa o Doce Preço, entre com seu e-mail e senha para vincular. Depois disso, é só entrar com a Apple.",
+    "linkButton": "Vincular e entrar",
+    "linkCreateNew": "Sou novo, criar conta"
   },
   "register": {
     "instagramLabel": "Instagram (opcional)",

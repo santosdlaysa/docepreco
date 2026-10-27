@@ -60,7 +60,11 @@
     "emailTypo": "Did you mean {{suggestion}}?",
     "passwordRequired": "Password is required",
     "loginError": "Error signing in",
-    "socialLoginError": "Error signing in with the social account"
+    "socialLoginError": "Error signing in with the social account",
+    "linkTitle": "Already have a Doce Preço account?",
+    "linkDescription": "You chose to hide your email with Apple, so we couldn’t find your account automatically. If you already use Doce Preço, sign in with your email and password to link it. After that, just sign in with Apple.",
+    "linkButton": "Link and sign in",
+    "linkCreateNew": "I’m new, create account"
   },
   "register": {
     "instagramLabel": "Instagram (optional)",

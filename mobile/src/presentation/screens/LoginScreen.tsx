@@ -17,7 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
-import { authApi } from '../../data/api/authApi';
+import { authApi, SocialLoginResult } from '../../data/api/authApi';
 import { googleSignInConfigured, signInWithApple, signInWithGoogle } from '../../data/auth/socialSignIn';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { Input } from '../components/Input';
@@ -43,6 +43,9 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  // Cadastro Apple com email oculto aguardando a pessoa dizer se já tem conta.
+  const [pendingLink, setPendingLink] = useState<string | null>(null);
+  const [linkLoading, setLinkLoading] = useState<'link' | 'create' | null>(null);
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(60)).current;
@@ -94,8 +97,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
     }
   };
 
-  const finishSocialLogin = async (result: Awaited<ReturnType<typeof signInWithGoogle>>) => {
+  const finishSocialLogin = async (result: SocialLoginResult | null) => {
     if (!result) return;
+    if (result.linkRequired) {
+      setPendingLink(result.pendingToken);
+      return;
+    }
     await identifyRevenueCatUser(result.user.id);
     void setRevenueCatLocationAttributes();
     if (onSocialLogin) await onSocialLogin(result.isNew);
@@ -128,6 +135,119 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
     }
   };
 
+  const handleLinkExisting = async () => {
+    if (!pendingLink || !validate()) return;
+    setLinkLoading('link');
+    try {
+      await finishSocialLogin(await authApi.completeSocialSignup(pendingLink, { email: email.trim(), password }));
+    } catch (error) {
+      setErrors({ general: error instanceof Error ? error.message : t('login.socialLoginError') });
+      setLinkLoading(null);
+    }
+  };
+
+  const handleCreateNew = async () => {
+    if (!pendingLink) return;
+    setLinkLoading('create');
+    setErrors({});
+    try {
+      await finishSocialLogin(await authApi.completeSocialSignup(pendingLink));
+    } catch (error) {
+      setErrors({ general: error instanceof Error ? error.message : t('login.socialLoginError') });
+      setLinkLoading(null);
+    }
+  };
+
+  const cancelLink = () => {
+    setPendingLink(null);
+    setErrors({});
+  };
+
+  const errorBanner = errors.general ? (
+    <View style={styles.errorBanner}>
+      <Ionicons name="alert-circle" size={16} color={colors.error} />
+      <Text style={styles.errorText}>{errors.general}</Text>
+    </View>
+  ) : null;
+
+  const credentialFields = (
+    <>
+      <Input
+        label={t('login.email')}
+        placeholder={t('login.emailPlaceholder')}
+        value={email}
+        onChangeText={(v) => { setEmail(v); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        error={errors.email}
+        containerStyle={{ marginBottom: L.fieldGap }}
+      />
+
+      <Input
+        label={t('login.password')}
+        placeholder={t('login.passwordPlaceholder')}
+        value={password}
+        onChangeText={(v) => { setPassword(v); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
+        secureTextEntry={!showPassword}
+        error={errors.password}
+        containerStyle={{ marginBottom: L.fieldGap }}
+        rightElement={
+          <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 6 }}>
+            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
+          </TouchableOpacity>
+        }
+      />
+
+      {onGoToForgotPassword && (
+        <TouchableOpacity onPress={onGoToForgotPassword} style={[styles.forgotRow, { marginBottom: L.fieldGap }]}>
+          <Text style={styles.forgotText}>{t('login.forgotPassword')}</Text>
+        </TouchableOpacity>
+      )}
+    </>
+  );
+
+  const linkCard = (
+    <>
+      <Text style={[styles.cardTitle, { marginBottom: 8 }]}>{t('login.linkTitle')}</Text>
+      <Text style={[styles.linkDescription, { marginBottom: L.cardTitleGap }]}>{t('login.linkDescription')}</Text>
+
+      {errorBanner}
+      {credentialFields}
+
+      <TouchableOpacity
+        style={[styles.loginBtn, linkLoading && { opacity: 0.6 }]}
+        onPress={handleLinkExisting}
+        disabled={Boolean(linkLoading)}
+        activeOpacity={0.85}
+      >
+        {linkLoading === 'link' && <ActivityIndicator size="small" color="#fff" />}
+        <Text style={styles.loginBtnText}>{t('login.linkButton')}</Text>
+      </TouchableOpacity>
+
+      <View style={[styles.orRow, { marginTop: L.blockGap, marginBottom: L.fieldGap }]}>
+        <View style={styles.orLine} />
+        <Text style={styles.orText}>{t('common.or')}</Text>
+        <View style={styles.orLine} />
+      </View>
+
+      <TouchableOpacity
+        onPress={handleCreateNew}
+        style={[styles.demoBtn, linkLoading && { opacity: 0.6 }]}
+        disabled={Boolean(linkLoading)}
+        activeOpacity={0.7}
+      >
+        {linkLoading === 'create'
+          ? <ActivityIndicator size="small" color={colors.primary} />
+          : <Ionicons name="person-add-outline" size={20} color={colors.primary} />}
+        <Text style={styles.demoBtnText}>{t('login.linkCreateNew')}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={cancelLink} disabled={Boolean(linkLoading)} style={[styles.registerRow, { marginTop: L.smallGap }]}>
+        <Text style={styles.registerLabel}>{t('common.cancel')}</Text>
+      </TouchableOpacity>
+    </>
+  );
+
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
@@ -155,46 +275,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 
           {/* Card sobreposto */}
           <Animated.View style={[styles.card, { padding: L.cardPad, marginBottom: L.cardMarginBottom, opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
+            {pendingLink ? linkCard : (
+            <>
             <Text style={[styles.cardTitle, { marginBottom: L.cardTitleGap }]}>{t('login.title')}</Text>
 
-            {errors.general && (
-              <View style={styles.errorBanner}>
-                <Ionicons name="alert-circle" size={16} color={colors.error} />
-                <Text style={styles.errorText}>{errors.general}</Text>
-              </View>
-            )}
-
-            <Input
-              label={t('login.email')}
-              placeholder={t('login.emailPlaceholder')}
-              value={email}
-              onChangeText={(v) => { setEmail(v); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={errors.email}
-              containerStyle={{ marginBottom: L.fieldGap }}
-            />
-
-            <Input
-              label={t('login.password')}
-              placeholder={t('login.passwordPlaceholder')}
-              value={password}
-              onChangeText={(v) => { setPassword(v); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
-              secureTextEntry={!showPassword}
-              error={errors.password}
-              containerStyle={{ marginBottom: L.fieldGap }}
-              rightElement={
-                <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 6 }}>
-                  <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
-                </TouchableOpacity>
-              }
-            />
-
-            {onGoToForgotPassword && (
-              <TouchableOpacity onPress={onGoToForgotPassword} style={[styles.forgotRow, { marginBottom: L.fieldGap }]}>
-                <Text style={styles.forgotText}>{t('login.forgotPassword')}</Text>
-              </TouchableOpacity>
-            )}
+            {errorBanner}
+            {credentialFields}
 
             <TouchableOpacity
               style={[styles.loginBtn, loading && { opacity: 0.6 }]}
@@ -263,6 +349,8 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
                   <Text style={styles.demoBtnText}>{t('login.tryWithoutAccount')}</Text>
                 </TouchableOpacity>
               </>
+            )}
+            </>
             )}
 
             <Text style={[styles.version, { marginTop: L.blockGap }]}>v{Constants.expoConfig?.version ?? '?'}</Text>
@@ -342,6 +430,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: { fontSize: 13, color: colors.error, flex: 1, fontWeight: '500' },
+  linkDescription: { fontSize: 14, lineHeight: 20, color: colors.textSecondary },
 
   // Forgot
   forgotRow: { alignSelf: 'flex-end', marginTop: -8, marginBottom: 16 },
