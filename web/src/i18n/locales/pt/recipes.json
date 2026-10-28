@@ -206,5 +206,23 @@
   "pdfSubCost": "Custo das sub-receitas",
   "pdfCostPerUnit": "Custo por unidade",
   "pdfTotalCost": "Custo total",
-  "pdfFooter": "Orçamento gerado por DocePreço"
+  "pdfFooter": "Orçamento gerado por DocePreço",
+  "kind": {
+    "products": "Produtos ({{count}})",
+    "bases": "Bases ({{count}})",
+    "emptyProducts": "Nenhum produto ainda. Produtos são o que você vende — crie um ou marque uma receita como produto.",
+    "emptyBases": "Nenhuma receita-base ainda. Bases são massas, recheios e coberturas — usadas dentro dos produtos, não aparecem para vender.",
+    "typeLabel": "Tipo",
+    "typeProduct": "Produto para vender",
+    "typeProductHint": "Aparece em vendas, encomendas e na loja",
+    "typeBase": "Receita-base",
+    "typeBaseHint": "Só usada dentro de outras (massa, recheio…)",
+    "baseBadge": "Base",
+    "markBase": "Marcar como base",
+    "markProduct": "Marcar como produto",
+    "markedBase": "Agora é uma receita-base.",
+    "markedProduct": "Agora é um produto para vender.",
+    "subGroupBases": "Bases",
+    "subGroupProducts": "Produtos"
+  }
 }

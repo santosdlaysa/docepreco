@@ -1,5 +1,5 @@
 import { Platform } from 'react-native';
-import * as Crypto from 'expo-crypto';
+import { getCryptoModule } from '../native/optionalNative';
 import { apiClient } from './client';
 import { isDemoMode } from '../demo/demoMode';
 import type { PaywallTrigger } from '../../presentation/navigation/types';
@@ -11,7 +11,13 @@ export function conversionSource(trigger?: PaywallTrigger): string {
   return 'manual';
 }
 
+function newEventId(): string {
+  const Crypto = getCryptoModule();
+  if (Crypto) return Crypto.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function trackConversion(event: 'blocked' | 'offer_viewed' | 'offer_clicked' | 'checkout_started', source: string, tier: 'premium' | 'master'): void {
   if (isDemoMode()) return;
-  void apiClient.post('/conversion-events', { event, source, tier, eventId: Crypto.randomUUID(), platform: Platform.OS }, { timeout: 5000 }).catch(() => {});
+  void apiClient.post('/conversion-events', { event, source, tier, eventId: newEventId(), platform: Platform.OS }, { timeout: 5000 }).catch(() => {});
 }

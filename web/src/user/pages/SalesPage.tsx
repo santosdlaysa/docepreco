@@ -135,12 +135,13 @@ export function SalesPage({ toast }: { toast: ToastFn }) {
 }
 
 export function SaleForm({
-  recipes,
+  recipes: allRecipes,
   sale,
   onClose,
   onSaved,
   toast,
 }: {
+  /** Todas as receitas; o formulário oferece só os produtos (bases não se vendem). */
   recipes: Recipe[];
   /** Quando presente, o formulário edita esta venda em vez de criar uma nova. */
   sale?: Sale;
@@ -150,6 +151,9 @@ export function SaleForm({
 }) {
   const { t } = useTranslation('ops');
   const editing = !!sale;
+  // Bases (massas, recheios…) não aparecem para vender — exceto a receita de uma
+  // venda antiga em edição que depois virou base.
+  const recipes = allRecipes.filter(r => r.isProduct !== false || r.id === sale?.recipeId);
   // Venda nova: receita ou produto avulso (sem ficha técnica), igual ao app.
   // Venda existente sem receita: a identidade não é editável, preservamos productName.
   const [mode, setMode] = useState<'recipe' | 'custom'>(editing && !sale!.recipeId ? 'custom' : 'recipe');

@@ -138,6 +138,19 @@ export const RecipeDetailScreen: React.FC = () => {
     }
   };
 
+  // Produto para vender x receita-base (só usada dentro de outras receitas).
+  const toggleIsProduct = async () => {
+    if (!recipe || !guardAction()) return;
+    const next = recipe.isProduct === false;
+    try {
+      await api.update(recipeId, { isProduct: next });
+      setRecipe(prev => prev ? { ...prev, isProduct: next } : prev);
+      showToast(next ? 'Agora é um produto: aparece para vender.' : 'Agora é uma receita-base: não aparece para vender.', 'success');
+    } catch {
+      showToast('Não foi possível alterar o tipo da receita.', 'error');
+    }
+  };
+
   const handleDeleteRecipe = () => {
     if (!guardAction()) return;
     Alert.alert(
@@ -361,6 +374,18 @@ export const RecipeDetailScreen: React.FC = () => {
           <Text style={s.subtitle}>
             Rendimento: {recipe.yield} {recipe.yield === 1 ? 'unidade' : 'unidades'}
           </Text>
+          <View style={s.kindRow}>
+            <View style={[s.kindBadge, recipe.isProduct === false && s.kindBadgeBase]}>
+              <Text style={[s.kindBadgeText, recipe.isProduct === false && s.kindBadgeTextBase]}>
+                {recipe.isProduct === false ? 'Receita-base' : 'Produto'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={toggleIsProduct} activeOpacity={0.7}>
+              <Text style={s.kindToggle}>
+                {recipe.isProduct === false ? 'Tornar produto' : 'Tornar receita-base'}
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={s.body}>
@@ -750,6 +775,12 @@ const s = StyleSheet.create({
   titleWrap: { paddingHorizontal: 18, paddingTop: 14, paddingBottom: 2 },
   title: { fontSize: 25, fontWeight: '700', color: INK, lineHeight: 28 },
   subtitle: { fontSize: 13, color: INK2, fontWeight: '600', marginTop: 3 },
+  kindRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
+  kindBadge: { backgroundColor: '#E6F6EC', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  kindBadgeBase: { backgroundColor: '#EEE9FB' },
+  kindBadgeText: { fontSize: 11.5, fontWeight: '700', color: '#1E8E4E' },
+  kindBadgeTextBase: { color: '#6B4FD8' },
+  kindToggle: { fontSize: 12.5, fontWeight: '600', color: colors.primary },
 
   /* ── Body ── */
   body: { paddingHorizontal: 18, paddingTop: 14, gap: 14 },

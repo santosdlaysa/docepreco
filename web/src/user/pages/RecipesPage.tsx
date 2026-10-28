@@ -73,6 +73,17 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
   };
   const viewing = viewingId ? recipes.find(r => r.id === viewingId) ?? null : null;
   const [scaleRecipe, setScaleRecipe] = useState<Recipe | null>(null);
+  // Produtos (vendem) x Bases (massas, recheios… usadas só dentro de outras)
+  const [kind, setKindState] = useState<'products' | 'bases'>(() => {
+    try { return localStorage.getItem(KIND_KEY) === 'bases' ? 'bases' : 'products'; } catch { return 'products'; }
+  });
+  const setKind = (k: 'products' | 'bases') => {
+    setKindState(k);
+    try { localStorage.setItem(KIND_KEY, k); } catch { /* ignora */ }
+  };
+  const productCount = recipes.filter(isProductRecipe).length;
+  const baseCount = recipes.length - productCount;
+  const shownRecipes = recipes.filter(r => (kind === 'bases' ? !isProductRecipe(r) : isProductRecipe(r)));
   const { user } = useAuth();
   const [freeLimit, setFreeLimit] = useState<number | null>(null);
   const [offerSource, setOfferSource] = useState<string | null>(null);
@@ -131,6 +142,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
     try {
       await userApi.createRecipe({
         name: `${r.name} ${t('copySuffix')}`,
+        isProduct: isProductRecipe(r),
         yield: r.yield,
         profitMargin: r.profitMargin,
         ingredients: r.ingredients.map(i => ({
@@ -168,6 +180,16 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
           onScale={() => setScaleRecipe(viewing)}
           onDuplicate={() => handleDuplicate(viewing)}
           onDelete={() => setConfirmId(viewing.id)}
+          onToggleKind={async () => {
+            const next = !isProductRecipe(viewing);
+            try {
+              await userApi.updateRecipe(viewing.id, { isProduct: next });
+              setRecipes(list => list.map(x => (x.id === viewing.id ? { ...x, isProduct: next } : x)));
+              toast.success(next ? t('kind.markedProduct') : t('kind.markedBase'));
+            } catch (err) {
+              toast.error((err as Error).message);
+            }
+          }}
           toast={toast}
           onPhotoChange={async photoUrl => {
             try {
@@ -200,9 +222,26 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
         </div>
       ) : recipes.length === 0 ? (
         <EmptyState icon={ChefHat} text={t('empty')} />
-      ) : (
+      ) : (<>
+        <div className="mb-4 inline-flex rounded-xl bg-gray-100 dark:bg-gray-700/50 p-1">
+          {([['products', t('kind.products', { count: productCount })], ['bases', t('kind.bases', { count: baseCount })]] as const).map(([k, label]) => (
+            <button
+              key={k}
+              type="button"
+              onClick={() => setKind(k)}
+              className={`rounded-lg px-4 py-1.5 text-sm font-semibold transition-colors ${
+                kind === k ? 'bg-white dark:bg-gray-800 text-primary-600 shadow-sm' : 'text-gray-500 dark:text-gray-400'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {shownRecipes.length === 0 ? (
+          <EmptyState icon={kind === 'bases' ? Layers : ChefHat} text={kind === 'bases' ? t('kind.emptyBases') : t('kind.emptyProducts')} />
+        ) : (
         <div className="grid gap-3 sm:grid-cols-2 items-start">
-          {recipes.map(r => {
+          {shownRecipes.map(r => {
             if (r.isActive === false) return (
               <div key={r.id} className="bg-gray-50 dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 flex items-start gap-2">
                 <button onClick={() => openOffer('recipe_inactive')} className="flex-1 min-w-0 text-left">
@@ -271,12 +310,14 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
             );
           })}
         </div>
-      )}
+        )}
+      </>)}
       </>)}
 
       {(creating || editing) && (
         <RecipeForm
           initial={editing}
+          defaultIsProduct={kind !== 'bases'}
           ingredients={ingredients}
           allRecipes={recipes}
           onClose={() => {
@@ -315,6 +356,10 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
 
 /** Locale de datas/números conforme o idioma da web. */
 const uiLocale = () => (getLang() === 'en' ? 'en-US' : 'pt-BR');
+
+const KIND_KEY = 'docepreco_recipes_kind';
+/** Receita sem o campo (antigas) conta como produto. */
+const isProductRecipe = (r: Recipe) => r.isProduct !== false;
 
 function fmtQty(v: number): string {
   const r = Math.abs(v);
@@ -502,6 +547,7 @@ function getCompatibleUnits(ingredient: Pick<Ingredient, 'unit' | 'purchaseUnitW
 
 function RecipeForm({
   initial,
+  defaultIsProduct = true,
   ingredients: ingredientsProp,
   allRecipes,
   onClose,
@@ -509,6 +555,7 @@ function RecipeForm({
   toast,
 }: {
   initial: Recipe | null;
+  defaultIsProduct?: boolean;
   ingredients: Ingredient[];
   allRecipes: Recipe[];
   onClose: () => void;
@@ -516,6 +563,7 @@ function RecipeForm({
   toast: ToastFn;
 }) {
   const { t } = useTranslation('recipes');
+  const [isProduct, setIsProduct] = useState<boolean>(initial ? isProductRecipe(initial) : defaultIsProduct);
   // Separa os custos existentes em presets x personalizados (mão de obra
   // profissional é recalculada pela calculadora, igual ao app)
   const presetInit: Record<string, string> = {};
@@ -649,7 +697,12 @@ function RecipeForm({
     }
   };
 
-  const availableSubRecipes = allRecipes.filter(r => r.isActive !== false && r.id !== initial?.id);
+  // Todas podem ser sub-receita (híbrido: brigadeiro vende e recheia); bases primeiro.
+  const availableSubRecipes = allRecipes
+    .filter(r => r.isActive !== false && r.id !== initial?.id)
+    .sort((a, b) => Number(isProductRecipe(a)) - Number(isProductRecipe(b)));
+  const subBases = availableSubRecipes.filter(r => !isProductRecipe(r));
+  const subProducts = availableSubRecipes.filter(isProductRecipe);
 
   // ── Ingredientes ──
   const addRow = () => {
@@ -750,6 +803,7 @@ function RecipeForm({
     setSaving(true);
     const data: CreateRecipeDTO = {
       name: name.trim(),
+      isProduct,
       yield: parseLocaleNumber(yieldValue) || 1,
       yieldMode,
       yieldTotalWeight: yieldMode === 'estimated' ? parseLocaleNumber(totalReadyWeight) : null,
@@ -869,6 +923,25 @@ function RecipeForm({
             autoFocus
           />
         </FormField>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">{t('kind.typeLabel')}</label>
+          <div className="grid grid-cols-2 gap-2">
+            {([[true, t('kind.typeProduct'), t('kind.typeProductHint')], [false, t('kind.typeBase'), t('kind.typeBaseHint')]] as const).map(([val, title, hint]) => (
+              <button
+                key={String(val)}
+                type="button"
+                onClick={() => setIsProduct(val)}
+                className={`rounded-xl border-2 p-2.5 text-left transition-colors ${
+                  isProduct === val ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/30' : 'border-gray-200 dark:border-gray-600'
+                }`}
+              >
+                <span className="block text-sm font-semibold text-gray-900 dark:text-white">{title}</span>
+                <span className="block text-[11px] text-gray-500 dark:text-gray-400">{hint}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <div>
           <label className="flex items-center gap-1.5 text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
@@ -1232,11 +1305,16 @@ function RecipeForm({
                     }}
                     className={inputClass + ' w-full'}
                   >
-                    {availableSubRecipes.map(r => (
-                      <option key={r.id} value={r.id}>
-                        {r.name}
-                      </option>
-                    ))}
+                    {subBases.length > 0 && (
+                      <optgroup label={t('kind.subGroupBases')}>
+                        {subBases.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </optgroup>
+                    )}
+                    {subProducts.length > 0 && (
+                      <optgroup label={t('kind.subGroupProducts')}>
+                        {subProducts.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+                      </optgroup>
+                    )}
                   </select>
                   <div className="flex items-center gap-2">
                     <input
@@ -1536,6 +1614,7 @@ function RecipeDetail({
   onScale,
   onDuplicate,
   onDelete,
+  onToggleKind,
   onPhotoChange,
   toast,
 }: {
@@ -1549,6 +1628,7 @@ function RecipeDetail({
   onScale: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onToggleKind: () => void;
   onPhotoChange: (photoUrl: string) => Promise<void>;
   toast: ToastFn;
 }) {
@@ -1605,7 +1685,12 @@ function RecipeDetail({
           </div>
         </div>
         <div className="flex-1 min-w-0">
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">{r.name}</h2>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight flex flex-wrap items-center gap-2">
+            {r.name}
+            {!isProductRecipe(r) && (
+              <span className="rounded-md bg-amber-100 dark:bg-amber-900/40 px-2 py-0.5 text-xs font-bold text-amber-700 dark:text-amber-300">{t('kind.baseBadge')}</span>
+            )}
+          </h2>
           <p className="text-sm text-gray-500 dark:text-gray-400">
             {t(r.ingredients.length !== 1 ? 'detailMetaMany' : 'detailMetaOne', { yield: fmtQty(r.yield), margin: r.profitMargin, count: r.ingredients.length })}
           </p>
@@ -1613,6 +1698,9 @@ function RecipeDetail({
         <div className="flex gap-1">
           <button onClick={onEdit} className="inline-flex items-center gap-1.5 bg-primary-500 hover:bg-primary-600 text-white text-sm font-semibold px-3 py-2 rounded-lg">
             <Pencil size={15} /> {t('edit')}
+          </button>
+          <button onClick={onToggleKind} className="text-xs font-semibold rounded-lg px-2.5 py-2 border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+            {isProductRecipe(r) ? t('kind.markBase') : t('kind.markProduct')}
           </button>
           <button onClick={onScale} className={iconBtn} title={t('scaleQuote')} disabled={!c}><Calculator size={16} /></button>
           <button onClick={onDuplicate} className={iconBtn} title={t('duplicate')}><Copy size={16} /></button>

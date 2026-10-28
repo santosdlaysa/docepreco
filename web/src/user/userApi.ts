@@ -169,6 +169,8 @@ export interface SubRecipe {
 }
 export interface Recipe {
   isActive?: boolean;
+  /** Produto final (vende) ou receita-base (só sub-receita). Ausente = produto. */
+  isProduct?: boolean;
   id: string;
   name: string;
   yield: number;
@@ -187,6 +189,7 @@ export interface Recipe {
 }
 export interface CreateRecipeDTO {
   name: string;
+  isProduct?: boolean;
   yield: number;
   yieldMode?: 'manual' | 'estimated';
   yieldTotalWeight?: number | null;

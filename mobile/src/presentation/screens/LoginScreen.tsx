@@ -15,15 +15,17 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { GoogleSigninButton } from '@react-native-google-signin/google-signin';
 import { authApi, SocialLoginResult } from '../../data/api/authApi';
 import { googleSignInConfigured, signInWithApple, signInWithGoogle } from '../../data/auth/socialSignIn';
+import { getAppleAuthModule, getGoogleSigninModule } from '../../data/native/optionalNative';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
 import { useAuthLayout } from '../hooks/useAuthLayout';
+
+const AppleAuthentication = getAppleAuthModule();
+const GoogleSigninButton = getGoogleSigninModule()?.GoogleSigninButton;
 
 interface Props {
   onLogin: () => void | Promise<void>;
@@ -60,7 +62,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   }, []);
 
   useEffect(() => {
-    if (Platform.OS === 'ios') {
+    if (Platform.OS === 'ios' && AppleAuthentication) {
       AppleAuthentication.isAvailableAsync().then(setAppleAvailable).catch(() => setAppleAvailable(false));
     }
   }, []);
@@ -308,7 +310,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
                   <View style={styles.orLine} />
                 </View>
 
-                {googleSignInConfigured && (
+                {googleSignInConfigured && GoogleSigninButton && (
                   <View style={styles.socialButtonWrap} pointerEvents={socialLoading ? 'none' : 'auto'}>
                     <GoogleSigninButton
                       style={styles.googleButton}
@@ -321,7 +323,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
                   </View>
                 )}
 
-                {appleAvailable && (
+                {appleAvailable && AppleAuthentication && (
                   <View style={styles.socialButtonWrap} pointerEvents={socialLoading ? 'none' : 'auto'}>
                     <AppleAuthentication.AppleAuthenticationButton
                       buttonType={AppleAuthentication.AppleAuthenticationButtonType.CONTINUE}

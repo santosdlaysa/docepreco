@@ -1,8 +1,9 @@
 import { colors } from '../theme/colors';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Linking,
   Platform,
   ScrollView,
@@ -18,7 +19,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { usePremium } from '../context/PremiumContext';
 import { RootStackParamList } from '../navigation/types';
-import { stripeApi } from '../../data/api/stripeApi';
+import { stripeApi, StripeSubscription } from '../../data/api/stripeApi';
 import { pixApi, PixSubscription } from '../../data/api/pixApi';
 import { useToast } from '../context/ToastContext';
 
@@ -76,6 +77,20 @@ export const MyPlanScreen: React.FC = () => {
     pixApi.getSubscription().then(setPixSub).catch(() => setPixSub(null));
   }, [premiumPlatform]);
 
+  // Cancelar no portal do Stripe não muda o plano local (o acesso segue até o fim
+  // do período), então consultamos a assinatura — inclusive ao voltar do navegador.
+  const [cardSub, setCardSub] = useState<StripeSubscription | null>(null);
+  const loadCardSub = useCallback(() => {
+    if (premiumPlatform !== 'card') return;
+    stripeApi.getSubscription().then(setCardSub).catch(() => {});
+  }, [premiumPlatform]);
+  useEffect(() => {
+    loadCardSub();
+    const sub = AppState.addEventListener('change', state => { if (state === 'active') loadCardSub(); });
+    return () => sub.remove();
+  }, [loadCardSub]);
+  const renewalCancelled = premiumPlatform === 'card' && !!cardSub?.cancelScheduled;
+
   const untilLabel = premiumUntil
     ? new Date(premiumUntil).toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })
     : null;
@@ -92,15 +107,18 @@ export const MyPlanScreen: React.FC = () => {
   };
   const source = origin[premiumPlatform ?? ''] ?? { label: 'Não identificada', icon: 'help-circle-outline' };
 
-  const openStripePortal = async () => {
-    setBusy(true);
+  const [portalBusy, setPortalBusy] = useState<'cancel' | 'manage' | null>(null);
+  const openStripePortal = async (flow?: 'cancel') => {
+    setPortalBusy(flow ?? 'manage');
     try {
-      const url = await stripeApi.openPortal();
+      const url = await stripeApi.openPortal(flow);
       await Linking.openURL(url);
-    } catch {
-      showToast('Não foi possível abrir o gerenciamento da assinatura.', 'error');
+    } catch (e: any) {
+      showToast(e?.response?.data?.error ?? 'Não foi possível abrir o gerenciamento da assinatura.', 'error');
+      // Ex.: a renovação já estava cancelada — atualiza a tela.
+      loadCardSub();
     } finally {
-      setBusy(false);
+      setPortalBusy(null);
     }
   };
 
@@ -141,13 +159,29 @@ export const MyPlanScreen: React.FC = () => {
   const renderCancelAction = () => {
     if (premiumPlatform === 'card') {
       return (
-        <Action
-          icon="card-outline"
-          title="Gerenciar assinatura"
-          subtitle="Trocar o cartão ou cancelar no Stripe"
-          onPress={openStripePortal}
-          busy={busy}
-        />
+        <>
+          {!renewalCancelled && (
+            <Action
+              icon="close-circle-outline"
+              title="Cancelar renovação automática"
+              subtitle="O acesso continua até o fim do período pago"
+              onPress={() => openStripePortal('cancel')}
+              busy={portalBusy === 'cancel'}
+              danger
+            />
+          )}
+          <View style={!renewalCancelled && s.featBorder}>
+            <Action
+              icon="card-outline"
+              title="Gerenciar assinatura"
+              subtitle={renewalCancelled
+                ? 'Renovação cancelada — sem novas cobranças. Toque para reativar'
+                : 'Trocar o cartão e ver faturas no Stripe'}
+              onPress={() => openStripePortal()}
+              busy={portalBusy === 'manage'}
+            />
+          </View>
+        </>
       );
     }
 
@@ -239,7 +273,9 @@ export const MyPlanScreen: React.FC = () => {
           <Text style={s.heroTitle}>Plano {planName} ativo</Text>
           {untilLabel && (
             <Text style={s.heroSub}>
-              {daysLeft === 0 ? 'Expira hoje' : `Renova em ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}`} · {untilLabel}
+              {renewalCancelled
+                ? `Renovação cancelada · acesso até ${untilLabel}`
+                : `${daysLeft === 0 ? 'Expira hoje' : `Renova em ${daysLeft} ${daysLeft === 1 ? 'dia' : 'dias'}`} · ${untilLabel}`}
             </Text>
           )}
         </LinearGradient>
@@ -298,7 +334,9 @@ export const MyPlanScreen: React.FC = () => {
         <Text style={s.footNote}>
           {planTier === 'free'
             ? ''
-            : 'Ao cancelar, você continua com acesso até o fim do período já pago.'}
+            : renewalCancelled
+              ? 'Você não será mais cobrado. O plano termina no fim do período já pago.'
+              : 'Ao cancelar, você continua com acesso até o fim do período já pago.'}
         </Text>
       </ScrollView>
     </SafeAreaView>

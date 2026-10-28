@@ -20,7 +20,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { OrderStatus, OrderPayment, OrderItem, PaymentMethodType } from '../../domain/entities/Order';
-import { Recipe } from '../../domain/entities/Recipe';
+import { Recipe, isSellable } from '../../domain/entities/Recipe';
 import { Client } from '../../domain/entities/Client';
 import { orderApi as orderStorage } from '../../data/api/orderApi';
 import { clientApi } from '../../data/api/clientApi';
@@ -769,7 +769,8 @@ export const CreateOrderScreen: React.FC = () => {
             <Text style={st.modalTitle}>Escolher receita</Text>
             <TouchableOpacity onPress={() => setPickingItemIdx(null)}><Ionicons name="close" size={24} color={INK} /></TouchableOpacity>
           </View>
-          <FlatList data={recipes} keyExtractor={item => item.id} contentContainerStyle={{ padding: 18 }}
+          {/* Só produtos (receitas-base não são vendidas); mantém as já usadas na encomenda. */}
+          <FlatList data={recipes.filter(r => isSellable(r) || items.some(i => i.recipeId === r.id))} keyExtractor={item => item.id} contentContainerStyle={{ padding: 18 }}
             renderItem={({ item, index }) => {
               const bg = THUMB_COLORS[index % THUMB_COLORS.length];
               return (

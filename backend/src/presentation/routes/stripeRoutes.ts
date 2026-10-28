@@ -14,11 +14,15 @@ router.get('/stripe/has-payment-method', authMiddleware, (req, res) => controlle
 // Mobile: open the Stripe billing portal (view subscription, change card, cancel)
 router.post('/stripe/portal', authMiddleware, (req, res) => controller.portal(req as any, res));
 
+// Mobile/web: card subscription status (e.g. renewal cancelled in the portal)
+router.get('/stripe/subscription', authMiddleware, (req, res) => controller.subscription(req as any, res));
+
 // Stripe calls this after payment — needs raw body (registered before express.json in server.ts)
 router.post('/stripe/webhook', (req, res) => controller.webhook(req, res));
 
 // Browser redirect pages after checkout
 router.get('/stripe/success', (req, res) => controller.success(req, res));
 router.get('/stripe/cancel', (req, res) => controller.cancel(req, res));
+router.get('/stripe/portal-return', (req, res) => controller.portalReturn(req, res));
 
 export default router;

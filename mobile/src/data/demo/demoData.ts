@@ -116,6 +116,23 @@ export const demoRecipes: Recipe[] = [
     createdAt: now,
     updatedAt: now,
   },
+  {
+    // Receita-base: recheio usado dentro dos produtos, não aparece para vender.
+    id: 'demo-rec-4',
+    name: 'Recheio de Brigadeiro',
+    yield: 1,
+    profitMargin: 0,
+    isProduct: false,
+    ingredients: [
+      { ingredientId: 'demo-ing-2', ingredientName: 'Chocolate em pó', quantityUsed: 100, unit: 'g' },
+      { ingredientId: 'demo-ing-3', ingredientName: 'Leite condensado', quantityUsed: 395, unit: 'g' },
+      { ingredientId: 'demo-ing-6', ingredientName: 'Creme de leite', quantityUsed: 200, unit: 'g' },
+    ],
+    additionalCosts: [],
+    subRecipes: [],
+    createdAt: now,
+    updatedAt: now,
+  },
 ];
 
 // ── Cálculos ──

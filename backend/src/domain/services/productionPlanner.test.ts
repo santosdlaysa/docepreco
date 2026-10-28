@@ -4,7 +4,7 @@ import { Ingredient } from '../entities/Ingredient';
 import { StockItem } from '../entities/StockItem';
 import type { Order } from '../../infrastructure/repositories/PostgresOrderRepository';
 
-const recipe = (overrides: Partial<Recipe> = {}): Recipe => ({ id: 'brigadeiro', name: 'Brigadeiro', yield: 50, profitMargin: 30, ingredients: [{ ingredientId: 'chocolate', quantityUsed: 200, unit: 'g' }], additionalCosts: [], subRecipes: [], createdAt: new Date(), updatedAt: new Date(), ...overrides });
+const recipe = (overrides: Partial<Recipe> = {}): Recipe => ({ id: 'brigadeiro', name: 'Brigadeiro', yield: 50, profitMargin: 30, isProduct: true, ingredients: [{ ingredientId: 'chocolate', quantityUsed: 200, unit: 'g' }], additionalCosts: [], subRecipes: [], createdAt: new Date(), updatedAt: new Date(), ...overrides });
 const ingredient = (overrides: Partial<Ingredient> = {}): Ingredient => ({ id: 'chocolate', name: 'Chocolate', purchaseQuantity: 1, purchasePrice: 20, unit: 'kg', createdAt: new Date(), updatedAt: new Date(), ...overrides });
 const order = (overrides: Partial<Order> = {}): Order => ({ id: 'order', userId: 'owner', clientName: 'Ana', recipeId: 'brigadeiro', recipeName: 'Brigadeiro', quantity: 100, unitPrice: 2, totalPrice: 200, deliveryDate: '2026-09-19', status: 'pending', paid: false, paidAmount: 0, payments: [], items: [], source: 'manual', createdAt: '', ...overrides });
 const stock = (overrides: Partial<StockItem> = {}): StockItem => ({ id: 'stock', userId: 'owner', ingredientId: 'chocolate', quantity: 300, unit: 'g', minQuantity: 0, updatedAt: '', ...overrides });

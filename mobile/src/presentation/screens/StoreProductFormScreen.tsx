@@ -25,7 +25,7 @@ import { storeApi } from '../../data/api/storeApi';
 import { demoStoreApi } from '../../data/demo/demoApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { recipeApi } from '../../data/api/recipeApi';
-import { Recipe } from '../../domain/entities/Recipe';
+import { Recipe, isSellable } from '../../domain/entities/Recipe';
 import { useToast } from '../context/ToastContext';
 import { usePaywall } from '../premium/usePaywall';
 import { DiscountType } from '../utils/discount';
@@ -288,12 +288,13 @@ export const StoreProductFormScreen: React.FC = () => {
                   <Ionicons name="close" size={22} color={INK} />
                 </TouchableOpacity>
               </View>
-              {recipes.length === 0 ? (
+              {/* Só produtos (receitas-base não vão para a loja); mantém a já vinculada. */}
+              {recipes.filter(r => isSellable(r) || r.id === recipeId).length === 0 ? (
                 <Text style={{ color: INK2, textAlign: 'center', paddingVertical: 16 }}>
                   Nenhuma receita cadastrada
                 </Text>
               ) : (
-                recipes.map(r => (
+                recipes.filter(r => isSellable(r) || r.id === recipeId).map(r => (
                   <TouchableOpacity
                     key={r.id}
                     style={st.recipePickerItem}

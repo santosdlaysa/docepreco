@@ -123,6 +123,55 @@ function subscriptionIdOf(invoice: any): string | null {
 /** Só liberamos acesso enquanto a assinatura está de fato valendo. */
 const ACTIVE_STATUSES = ['active', 'trialing'];
 
+/**
+ * Renovação desligada? O portal marca `cancel_at_period_end` — e, em versões
+ * mais novas da API, pode marcar `cancel_at` com a data do fim do período.
+ */
+export function isCancelScheduled(subscription: any): boolean {
+  return !!subscription?.cancel_at_period_end || typeof subscription?.cancel_at === 'number';
+}
+
+/** Cliente do Stripe da conta: o salvo no webhook ou, na falta, o achado pelo e-mail. */
+async function stripeCustomerIdOf(stripe: any, userId: string, email?: string | null): Promise<string | null> {
+  const saved = await pool.query(`SELECT stripe_customer_id FROM users WHERE id = $1`, [userId]);
+  let customerId: string | null = saved.rows[0]?.stripe_customer_id ?? null;
+  if (!customerId && email) {
+    const found = await stripe.customers.list({ email, limit: 1 });
+    customerId = found.data[0]?.id ?? null;
+    if (customerId) {
+      await pool.query(`UPDATE users SET stripe_customer_id = $2 WHERE id = $1`, [userId, customerId]);
+    }
+  }
+  return customerId;
+}
+
+/** Assinatura que está valendo agora para o cliente, se houver. */
+async function activeSubscriptionOf(stripe: any, customerId: string): Promise<any | null> {
+  const subs = await stripe.subscriptions.list({ customer: customerId, status: 'all', limit: 10 });
+  return subs.data.find((s: any) => ACTIVE_STATUSES.includes(s.status)) ?? null;
+}
+
+/** Push confirmando que a renovação foi cancelada ou reativada no portal. */
+async function notifyRenewalChange(userId: string, cancelled: boolean, subscription: any): Promise<void> {
+  try {
+    const tokens = await pushTokenRepo.findByUserId(userId);
+    if (tokens.length === 0) return;
+    const end = typeof subscription.cancel_at === 'number' ? new Date(subscription.cancel_at * 1000) : periodEndOf(subscription);
+    const until = end ? end.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : null;
+    await sendPushNotifications(
+      tokens.map((t: any) => t.token),
+      cancelled ? 'Renovação cancelada' : 'Renovação reativada ✨',
+      cancelled
+        ? `Você não será mais cobrado.${until ? ` Seu acesso continua até ${until}.` : ''}`
+        : 'Sua assinatura voltará a ser renovada automaticamente.',
+      { screen: 'MyPlan' }
+    );
+    console.log(`[Stripe] Renovação ${cancelled ? 'cancelada' : 'reativada'} por ${userId} (${subscription.id})`);
+  } catch (e: any) {
+    console.warn('[Stripe] Falha ao avisar mudança de renovação:', e?.message ?? e);
+  }
+}
+
 export class StripeController {
   /**
    * Creates a Stripe Checkout Session and returns the URL.
@@ -235,18 +284,7 @@ export class StripeController {
       }
 
       const stripe = getStripe();
-
-      let customerId: string | null = null;
-      const saved = await pool.query(`SELECT stripe_customer_id FROM users WHERE id = $1`, [userId]);
-      customerId = saved.rows[0]?.stripe_customer_id ?? null;
-
-      if (!customerId && user.email) {
-        const found = await stripe.customers.list({ email: user.email, limit: 1 });
-        customerId = found.data[0]?.id ?? null;
-        if (customerId) {
-          await pool.query(`UPDATE users SET stripe_customer_id = $2 WHERE id = $1`, [userId, customerId]);
-        }
-      }
+      const customerId = await stripeCustomerIdOf(stripe, userId, user.email);
 
       if (!customerId) {
         res.status(404).json({ success: false, error: 'Não encontramos uma assinatura de cartão nesta conta.' });
@@ -254,16 +292,82 @@ export class StripeController {
       }
 
       const baseUrl = process.env.APP_BASE_URL ?? 'https://docepreco.onrender.com';
+      // Web volta para a própria página; app usa a página do backend. Não é a
+      // página de "pagamento confirmado": quem acabou de cancelar via aquilo.
+      const returnUrl = safeWebReturnUrl(req.body?.returnUrl)?.toString() ?? `${baseUrl}/api/stripe/portal-return`;
+
+      // flow 'cancel': abre direto na confirmação do cancelamento, em vez da
+      // página inicial do portal (onde a pessoa ainda teria de achar o botão).
+      let flowData: any;
+      if (req.body?.flow === 'cancel') {
+        const current = await activeSubscriptionOf(stripe, customerId);
+        if (!current) {
+          res.status(404).json({ success: false, error: 'Não encontramos uma assinatura ativa para cancelar.' });
+          return;
+        }
+        if (isCancelScheduled(current)) {
+          res.status(409).json({ success: false, error: 'A renovação desta assinatura já está cancelada.' });
+          return;
+        }
+        flowData = {
+          type: 'subscription_cancel',
+          subscription_cancel: { subscription: current.id },
+          after_completion: { type: 'redirect', redirect: { return_url: returnUrl } },
+        };
+      }
+
       const session = await stripe.billingPortal.sessions.create({
         customer: customerId,
-        // Web volta para a própria página; app usa a página do backend.
-        return_url: safeWebReturnUrl(req.body?.returnUrl)?.toString() ?? `${baseUrl}/api/stripe/success`,
+        return_url: returnUrl,
+        ...(flowData && { flow_data: flowData }),
       });
 
       res.json({ success: true, data: { url: session.url } });
     } catch (error: any) {
       console.error('[Stripe] portal error:', error?.message ?? error);
       res.status(500).json({ success: false, error: 'Não foi possível abrir o gerenciamento da assinatura.' });
+    }
+  }
+
+  /**
+   * Situação da assinatura de cartão — sobretudo se a renovação foi cancelada no
+   * portal, que não muda o plano local (o acesso segue até o fim do período).
+   * GET /api/stripe/subscription
+   */
+  async subscription(req: AuthRequest, res: Response): Promise<void> {
+    const userId = req.userId;
+    if (!userId) {
+      res.status(401).json({ success: false, error: 'Unauthorized' });
+      return;
+    }
+
+    try {
+      const user = await userRepo.findById(userId);
+      const stripe = getStripe();
+      const customerId = await stripeCustomerIdOf(stripe, userId, user?.email);
+      if (!customerId) {
+        res.json({ success: true, data: null });
+        return;
+      }
+
+      const current = await activeSubscriptionOf(stripe, customerId);
+      if (!current) {
+        res.json({ success: true, data: null });
+        return;
+      }
+
+      const cancelAt = typeof current.cancel_at === 'number' ? new Date(current.cancel_at * 1000) : periodEndOf(current);
+      res.json({
+        success: true,
+        data: {
+          status: current.status,
+          cancelScheduled: isCancelScheduled(current),
+          periodEnd: (isCancelScheduled(current) ? cancelAt : periodEndOf(current))?.toISOString() ?? null,
+        },
+      });
+    } catch (error: any) {
+      console.error('[Stripe] subscription status error:', error?.message ?? error);
+      res.status(500).json({ success: false, error: 'Não foi possível consultar a assinatura.' });
     }
   }
 
@@ -352,6 +456,16 @@ export class StripeController {
           console.warn('[Stripe] Subscription webhook missing metadata:', metadata);
           res.json({ received: true });
           return;
+        }
+
+        // Cancelar (ou reativar) a renovação no portal só muda essa marca — o plano
+        // local não muda, então avisamos a pessoa de que o pedido foi recebido.
+        const prev = event.data.previous_attributes ?? {};
+        if (event.type === 'customer.subscription.updated' && ('cancel_at_period_end' in prev || 'cancel_at' in prev)) {
+          const cancelled = isCancelScheduled(subscription);
+          if (cancelled !== isCancelScheduled({ ...subscription, ...prev })) {
+            await notifyRenewalChange(userId, cancelled, subscription);
+          }
         }
 
         // 'updated' também chega em cancelamento/inadimplência — aí não se libera nada.
@@ -571,6 +685,29 @@ export class StripeController {
   <p>Sua assinatura está ativa.</p>
   <p style="font-size:14px;color:#9A7E8C;margin-bottom:32px">Feche esta aba e volte ao app — seu acesso será ativado automaticamente.</p>
   <div class="tip">Feche esta aba do navegador</div>
+</body>
+</html>`);
+  }
+
+  /** Volta do portal de cobrança (app): neutra, pois a pessoa pode ter cancelado. */
+  portalReturn(_req: Request, res: Response): void {
+    res.send(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Assinatura atualizada</title>
+<style>
+  body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#FFF6F0;color:#3D2233;text-align:center;padding:24px}
+  .icon{font-size:64px;margin-bottom:16px}
+  h1{font-size:24px;margin:0 0 8px}
+  p{color:#9A7E8C;font-size:16px;margin:0 0 32px}
+  .tip{background:#F0FDF4;border:1.5px solid #86EFAC;border-radius:12px;padding:14px 20px;font-size:15px;font-weight:600;color:#15803D}
+</style>
+</head>
+<body>
+  <div class="icon">✅</div>
+  <h1>Tudo certo!</h1>
+  <p>As alterações na sua assinatura foram salvas. Se você cancelou a renovação, não haverá novas cobranças e o acesso continua até o fim do período já pago.</p>
+  <div class="tip">Feche esta aba e volte ao app</div>
 </body>
 </html>`);
   }

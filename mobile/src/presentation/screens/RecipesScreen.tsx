@@ -1,5 +1,5 @@
 import { colors } from '../theme/colors';
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useRef, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -20,7 +20,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
-import { Recipe } from '../../domain/entities/Recipe';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Recipe, isSellable } from '../../domain/entities/Recipe';
 import { CalculationResult } from '../../domain/entities/Calculation';
 import { recipeApi } from '../../data/api/recipeApi';
 import { isDemoMode } from '../../data/demo/demoMode';
@@ -42,6 +43,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const CARD_COLORS = ['#5D3A1A', '#E91E8C', '#F9C74F', '#90BE6D', '#7B68EE', '#FF6B6B', '#4ECDC4', '#FF9F43'];
 const CATEGORIES = ['Todas', 'Bolos', 'Docinhos', 'Tortas', 'Cupcakes', 'Chocolates'];
+const KIND_KEY = '@docepreco_recipes_kind';
 
 function getCardColor(index: number) {
   return CARD_COLORS[index % CARD_COLORS.length];
@@ -56,6 +58,15 @@ export const RecipesScreen: React.FC = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todas');
+  // Produtos (para vender) x Bases (massas, recheios… usadas dentro dos produtos)
+  const [kind, setKindState] = useState<'products' | 'bases'>('products');
+  useEffect(() => {
+    AsyncStorage.getItem(KIND_KEY).then(v => { if (v === 'bases') setKindState('bases'); }).catch(() => {});
+  }, []);
+  const setKind = (k: 'products' | 'bases') => {
+    setKindState(k);
+    AsyncStorage.setItem(KIND_KEY, k).catch(() => {});
+  };
   const { showToast } = useToast();
   const { isPremium, refresh: refreshPremium } = usePremium();
   const { requirePremium, openPaywall } = usePaywall();
@@ -108,8 +119,11 @@ export const RecipesScreen: React.FC = () => {
     }, [])
   );
 
+  const productCount = useMemo(() => recipes.filter(isSellable).length, [recipes]);
+  const baseCount = recipes.length - productCount;
+
   const filteredRecipes = useMemo(() => {
-    let filtered = recipes;
+    let filtered = recipes.filter(r => (kind === 'bases' ? !isSellable(r) : isSellable(r)));
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(r => r.name.toLowerCase().includes(query));
@@ -119,7 +133,9 @@ export const RecipesScreen: React.FC = () => {
       filtered = filtered.filter(r => r.name.toLowerCase().includes(cat.slice(0, -1).toLowerCase()));
     }
     return filtered;
-  }, [recipes, searchQuery, selectedCategory]);
+  }, [recipes, searchQuery, selectedCategory, kind]);
+
+  const openCreate = () => guardAction(() => navigation.navigate('CreateRecipe', kind === 'bases' ? { asBase: true } : undefined));
 
   const handleDelete = (recipe: Recipe) => {
     if (!guardAction()) return;
@@ -182,6 +198,7 @@ export const RecipesScreen: React.FC = () => {
         name,
         yield: recipe.yield,
         profitMargin: recipe.profitMargin,
+        isProduct: isSellable(recipe),
         ingredients: recipe.ingredients.map(ing => ({
           ingredientId: ing.ingredientId,
           quantityUsed: ing.quantityUsed,
@@ -412,12 +429,31 @@ export const RecipesScreen: React.FC = () => {
             <Text style={styles.addIngredientText}>+ Ingrediente</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))}
+            onPress={openCreate}
             style={styles.addButton}
           >
             <Ionicons name="add" size={24} color="#fff" />
           </TouchableOpacity>
         </View>
+      </View>
+
+      {/* Produtos | Bases */}
+      <View style={styles.kindTabs}>
+        {([
+          ['products', t('recipes.kindProducts'), productCount],
+          ['bases', t('recipes.kindBases'), baseCount],
+        ] as const).map(([k, label, count]) => (
+          <TouchableOpacity
+            key={k}
+            onPress={() => setKind(k)}
+            style={[styles.kindTab, kind === k && styles.kindTabActive]}
+            activeOpacity={0.8}
+          >
+            <Text style={[styles.kindTabText, kind === k && styles.kindTabTextActive]}>
+              {label} ({count})
+            </Text>
+          </TouchableOpacity>
+        ))}
       </View>
 
       <FlatList
@@ -440,13 +476,21 @@ export const RecipesScreen: React.FC = () => {
               <Ionicons name="search-outline" size={48} color={colors.textMuted} />
               <Text style={styles.noResultsText}>Nenhuma receita encontrada</Text>
             </View>
+          ) : kind === 'bases' ? (
+            <EmptyState
+              icon="layers-outline"
+              title={t('recipes.basesEmptyTitle')}
+              description={t('recipes.basesEmptyDescription')}
+              actionLabel={t('recipes.createBaseButton')}
+              onAction={openCreate}
+            />
           ) : (
             <EmptyState
               icon="book-outline"
               title={t('recipes.emptyTitle')}
               description={t('recipes.emptyDescription')}
               actionLabel={t('recipes.createButton')}
-              onAction={() => guardAction(() => navigation.navigate('CreateRecipe'))}
+              onAction={openCreate}
             />
           )
         }
@@ -499,6 +543,18 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 20, flexGrow: 1 },
+  kindTabs: {
+    flexDirection: 'row',
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: colors.border,
+    borderRadius: 12,
+    padding: 3,
+  },
+  kindTab: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
+  kindTabActive: { backgroundColor: '#fff', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 4, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
+  kindTabText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  kindTabTextActive: { color: colors.primary },
 
   // Header
   header: {

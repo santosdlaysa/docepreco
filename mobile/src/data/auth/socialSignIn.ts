@@ -1,12 +1,8 @@
 import { Platform } from 'react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import * as Crypto from 'expo-crypto';
-import {
-  GoogleSignin,
-  isCancelledResponse,
-  isSuccessResponse,
-} from '@react-native-google-signin/google-signin';
 import { authApi } from '../api/authApi';
+import { getAppleAuthModule, getCryptoModule, getGoogleSigninModule } from '../native/optionalNative';
+
+const googleModule = getGoogleSigninModule();
 
 const googleWebClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
@@ -18,20 +14,21 @@ const googleIosClientId = googleIosUrlScheme
   .replace(/^(.+)$/, '$1.apps.googleusercontent.com');
 
 export const googleSignInConfigured = Boolean(
-  googleWebClientId && (Platform.OS !== 'ios' || googleIosClientId),
+  googleModule && googleWebClientId && (Platform.OS !== 'ios' || googleIosClientId),
 );
 
-if (googleSignInConfigured) {
-  GoogleSignin.configure({
+if (googleSignInConfigured && googleModule) {
+  googleModule.GoogleSignin.configure({
     webClientId: googleWebClientId,
     ...(googleIosClientId ? { iosClientId: googleIosClientId } : {}),
   });
 }
 
 export async function signInWithGoogle() {
-  if (!googleSignInConfigured) {
+  if (!googleSignInConfigured || !googleModule) {
     throw new Error('Login Google ainda não foi configurado neste aplicativo');
   }
+  const { GoogleSignin, isCancelledResponse, isSuccessResponse } = googleModule;
   if (Platform.OS === 'android') {
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
   }
@@ -44,6 +41,11 @@ export async function signInWithGoogle() {
 }
 
 export async function signInWithApple() {
+  const AppleAuthentication = getAppleAuthModule();
+  const Crypto = getCryptoModule();
+  if (!AppleAuthentication || !Crypto) {
+    throw new Error('Login Apple indisponível nesta versão do aplicativo');
+  }
   const nonce = await authApi.getSocialNonce();
   const nonceHash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, nonce);
   const credential = await AppleAuthentication.signInAsync({

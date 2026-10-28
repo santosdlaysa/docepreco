@@ -101,14 +101,24 @@ export function createDemoDb(): DemoDb {
         additionalCosts: [], subRecipes: [], createdAt: now, updatedAt: now,
       },
       {
+        // Produto montado a partir da base "Massa de chocolate" + recheio.
         id: 'demo-rec-2', name: 'Bolo de Pote de Chocolate', yield: 10, profitMargin: 70,
         ingredients: [
-          { ingredientId: 'demo-ing-1', ingredientName: 'Farinha de trigo', quantityUsed: 500, unit: 'g' },
-          { ingredientId: 'demo-ing-2', ingredientName: 'Chocolate em pó', quantityUsed: 200, unit: 'g' },
           { ingredientId: 'demo-ing-3', ingredientName: 'Leite condensado', quantityUsed: 395, unit: 'g' },
           { ingredientId: 'demo-ing-6', ingredientName: 'Creme de leite', quantityUsed: 200, unit: 'g' },
         ],
-        additionalCosts: [{ name: 'Embalagem', value: 1.5, costType: 'unit' }], subRecipes: [], createdAt: now, updatedAt: now,
+        additionalCosts: [{ name: 'Embalagem', value: 1.5, costType: 'unit' }],
+        subRecipes: [{ subRecipeId: 'demo-rec-5', subRecipeName: 'Massa de chocolate', quantityUsed: 1, unit: 'unit' }],
+        createdAt: now, updatedAt: now,
+      },
+      {
+        // Receita-base: não aparece para vender, só dentro do Bolo de Pote.
+        id: 'demo-rec-5', name: 'Massa de chocolate', yield: 1, profitMargin: 0, isProduct: false,
+        ingredients: [
+          { ingredientId: 'demo-ing-1', ingredientName: 'Farinha de trigo', quantityUsed: 500, unit: 'g' },
+          { ingredientId: 'demo-ing-2', ingredientName: 'Chocolate em pó', quantityUsed: 200, unit: 'g' },
+        ],
+        additionalCosts: [], subRecipes: [], createdAt: now, updatedAt: now,
       },
       {
         id: 'demo-rec-3', name: 'Beijinho', yield: 30, profitMargin: 80,

@@ -24,7 +24,7 @@ import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoSaleApi, demoIngredientApi } from '../../data/demo/demoApi';
 import { applySaleDeduction, reverseSaleDeduction } from '../../data/api/stockApi';
 import { customProductStorage } from '../../data/storage/customProductStorage';
-import { Recipe } from '../../domain/entities/Recipe';
+import { Recipe, isSellable } from '../../domain/entities/Recipe';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { PaymentMethod } from '../../domain/entities/Sale';
 import { RootStackParamList } from '../navigation/types';
@@ -464,7 +464,8 @@ export const CreateSaleScreen: React.FC = () => {
             </TouchableOpacity>
           </View>
           <FlatList
-            data={recipes}
+            // Só produtos (receitas-base não são vendidas); na edição mantém a atual.
+            data={recipes.filter(r => isSellable(r) || r.id === selectedRecipe?.id)}
             keyExtractor={item => item.id}
             contentContainerStyle={{ padding: 18 }}
             renderItem={({ item, index }) => {

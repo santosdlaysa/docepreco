@@ -282,6 +282,11 @@
     }
   },
   "recipes": {
+    "kindProducts": "Products",
+    "kindBases": "Bases",
+    "basesEmptyTitle": "No base recipes yet",
+    "basesEmptyDescription": "Doughs, fillings, frostings — used inside products, not listed for sale.",
+    "createBaseButton": "Create base recipe",
     "title": "My Recipes",
     "subtitle": "{{count}} recipe{{plural}} · Tap + to add",
     "infoText": "Here are all your recipes. Each one automatically calculates the selling price based on ingredients, costs and profit margin.",

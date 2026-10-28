@@ -100,8 +100,8 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       const recipeResult = await client.query(
         `INSERT INTO recipes (
           user_id, name, yield, yield_mode, yield_total_weight, yield_total_unit,
-          yield_unit_weight, yield_unit_weight_unit, profit_margin, photo_url
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+          yield_unit_weight, yield_unit_weight_unit, profit_margin, photo_url, is_product
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
         [
           userId,
           data.name,
@@ -113,6 +113,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
           data.yieldUnitWeightUnit || null,
           data.profitMargin,
           data.photoUrl || null,
+          data.isProduct !== false,
         ]
       );
       const recipe = recipeResult.rows[0];
@@ -168,6 +169,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       if (data.yieldUnitWeightUnit !== undefined) { fields.push(`yield_unit_weight_unit = $${idx++}`); values.push(data.yieldUnitWeightUnit || null); }
       if (data.profitMargin !== undefined) { fields.push(`profit_margin = $${idx++}`); values.push(data.profitMargin); }
       if (data.photoUrl !== undefined) { fields.push(`photo_url = $${idx++}`); values.push(data.photoUrl || null); }
+      if (typeof data.isProduct === 'boolean') { fields.push(`is_product = $${idx++}`); values.push(data.isProduct); }
 
       if (fields.length > 0) {
         fields.push(`updated_at = NOW()`);
@@ -304,6 +306,7 @@ export class PostgresRecipeRepository implements IRecipeRepository {
       yieldUnitWeightUnit: (row.yield_unit_weight_unit as 'g' | 'kg' | null) || undefined,
       profitMargin: parseFloat(row.profit_margin as string),
       photoUrl: (row.photo_url as string) || undefined,
+      isProduct: row.is_product !== false,
       ingredients,
       additionalCosts,
       subRecipes,

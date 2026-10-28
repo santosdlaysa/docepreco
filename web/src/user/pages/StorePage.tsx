@@ -499,7 +499,7 @@ export function StorePage({ toast }: { toast: ToastFn }) {
 
 function StoreProductForm({
   initial,
-  recipes,
+  recipes: allRecipes,
   knownCategories,
   onClose,
   onSaved,
@@ -514,6 +514,8 @@ function StoreProductForm({
 }) {
   const { t } = useTranslation('store');
   const editingId = initial?.id ?? null;
+  // Vincula só a produtos (bases não se vendem); mantém o vínculo existente.
+  const recipes = allRecipes.filter(r => r.isProduct !== false || r.id === initial?.recipeId);
   const [name, setName] = useState(initial?.name ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [price, setPrice] = useState(initial ? Number(initial.publicPrice).toFixed(2).replace('.', ',') : '');

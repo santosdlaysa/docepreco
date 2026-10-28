@@ -29,6 +29,11 @@ export interface Recipe {
   yieldUnitWeightUnit?: 'g' | 'kg' | null;
   profitMargin: number;
   photoUrl?: string;
+  /**
+   * Produto final (aparece no catálogo e para vender) ou receita-base
+   * (massa, recheio…) usada só como sub-receita. Padrão: produto.
+   */
+  isProduct: boolean;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
   subRecipes: SubRecipe[];
@@ -46,6 +51,7 @@ export interface CreateRecipeDTO {
   yieldUnitWeightUnit?: 'g' | 'kg' | null;
   profitMargin: number;
   photoUrl?: string;
+  isProduct?: boolean;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
   subRecipes: SubRecipe[];

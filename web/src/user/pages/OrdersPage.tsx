@@ -403,7 +403,7 @@ const emptyItem = (): ItemDraft => ({
 
 function OrderForm({
   initial,
-  recipes,
+  recipes: allRecipes,
   clients,
   onClose,
   onSaved,
@@ -417,6 +417,9 @@ function OrderForm({
   toast: ToastFn;
 }) {
   const { t } = useTranslation('orders');
+  // Só produtos para vender; receitas de itens já salvos continuam disponíveis.
+  const keptIds = new Set(initial ? orderItems(initial).map(i => i.recipeId).filter(Boolean) : []);
+  const recipes = allRecipes.filter(r => r.isProduct !== false || keptIds.has(r.id));
   const [clientName, setClientName] = useState(initial?.clientName ?? '');
   const [clientPhone, setClientPhone] = useState(maskPhone(initial?.clientPhone ?? ''));
   const [items, setItems] = useState<ItemDraft[]>(() =>

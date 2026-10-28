@@ -282,6 +282,11 @@
     }
   },
   "recipes": {
+    "kindProducts": "Produtos",
+    "kindBases": "Bases",
+    "basesEmptyTitle": "Nenhuma receita-base ainda",
+    "basesEmptyDescription": "Massas, recheios, coberturas — usadas dentro dos produtos, não aparecem para vender.",
+    "createBaseButton": "Criar receita-base",
     "title": "Minhas Receitas",
     "subtitle": "{{count}} receita{{plural}} · Toque no + para adicionar",
     "infoText": "Aqui ficam todas as suas receitas. Cada uma calcula automaticamente o preco de venda com base nos ingredientes, custos e acréscimo sobre o custo.",

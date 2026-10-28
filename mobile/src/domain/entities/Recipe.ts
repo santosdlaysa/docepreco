@@ -30,6 +30,11 @@ export interface Recipe {
   yieldUnitWeightUnit?: 'g' | 'kg' | null;
   profitMargin: number;
   photoUrl?: string;
+  /**
+   * Produto final (aparece para vender) ou receita-base (massa, recheio…)
+   * usada só dentro de outras. Ausente/true = produto (receitas antigas).
+   */
+  isProduct?: boolean;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
   subRecipes: SubRecipe[];
@@ -47,7 +52,11 @@ export interface CreateRecipeDTO {
   yieldUnitWeightUnit?: 'g' | 'kg' | null;
   profitMargin: number;
   photoUrl?: string;
+  isProduct?: boolean;
   ingredients: RecipeIngredient[];
   additionalCosts: AdditionalCost[];
   subRecipes: SubRecipe[];
 }
+
+/** Receita aparece onde se escolhe o que vender (venda, encomenda, loja)? */
+export const isSellable = (r: Pick<Recipe, 'isProduct'>): boolean => r.isProduct !== false;

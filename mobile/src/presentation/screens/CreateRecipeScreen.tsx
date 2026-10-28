@@ -98,6 +98,9 @@ export const CreateRecipeScreen: React.FC = () => {
   const recipeId = (route.params as any)?.recipeId as string | undefined;
   const isEditing = !!recipeId;
   const { loadingReward, available: rewardedAdAvailable, watchToUnlockRecipe } = useRewardedRecipeAd();
+  // Produto para vender x receita-base (só usada dentro de outras). Nova
+  // receita aberta pela aba Bases já vem como base.
+  const [isProduct, setIsProduct] = useState<boolean>(!(route.params as any)?.asBase);
 
   const localizedAdditionalCosts = DEFAULT_ADDITIONAL_COSTS.map(cost => ({
     ...cost,
@@ -196,6 +199,7 @@ export const CreateRecipeScreen: React.FC = () => {
   // ─── Draft auto-save (only for new recipes, not editing) ───
   interface RecipeDraft {
     name: string;
+    isProduct?: boolean;
     yieldAmount: string;
     yieldMode: 'manual' | 'estimated';
     totalReadyWeight: string;
@@ -253,6 +257,7 @@ export const CreateRecipeScreen: React.FC = () => {
     rApi.getById(recipeId)
       .then(recipe => {
         setName(recipe.name);
+        setIsProduct(recipe.isProduct !== false);
         setYieldAmount(String(recipe.yield));
         setYieldMode(recipe.yieldMode ?? 'manual');
         setTotalReadyWeight(recipe.yieldTotalWeight ? String(recipe.yieldTotalWeight).replace('.', ',') : '');
@@ -304,6 +309,7 @@ export const CreateRecipeScreen: React.FC = () => {
           text: 'Restaurar',
           onPress: () => {
             setName(recipeDraft.name);
+            if (typeof recipeDraft.isProduct === 'boolean') setIsProduct(recipeDraft.isProduct);
             setYieldAmount(recipeDraft.yieldAmount);
             setYieldMode(recipeDraft.yieldMode ?? 'manual');
             setTotalReadyWeight(recipeDraft.totalReadyWeight ?? '');
@@ -330,8 +336,8 @@ export const CreateRecipeScreen: React.FC = () => {
   // Auto-save form state whenever it changes
   useEffect(() => {
     if (isEditing || isDraftLoading) return;
-    saveDraft({ name, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek });
-  }, [name, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek]);
+    saveDraft({ name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek });
+  }, [name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek]);
 
   const toGrams = (value: number, unit: 'g' | 'kg') => unit === 'kg' ? value * 1000 : value;
 
@@ -739,6 +745,7 @@ export const CreateRecipeScreen: React.FC = () => {
         yieldUnitWeight: yieldMode === 'estimated' ? parseLocaleNumber(weightPerUnit) : null,
         yieldUnitWeightUnit: yieldMode === 'estimated' ? weightPerUnitUnit : null,
         profitMargin: parseLocaleNumber(profitMargin),
+        isProduct,
         ingredients,
         additionalCosts: getFinalCostsFromInputs(),
         subRecipes,
@@ -972,6 +979,23 @@ export const CreateRecipeScreen: React.FC = () => {
                 placeholder="Ex: Bolo de Chocolate" placeholderTextColor={INK3} />
             </View>
             {errors.name && <Text style={{ fontSize: 12, color: colors.error, marginLeft: 2 }}>{errors.name}</Text>}
+
+            {/* ── Produto x Receita-base ── */}
+            <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
+              {([
+                [true, 'Produto para vender', 'Aparece em vendas, encomendas e loja'],
+                [false, 'Receita-base', 'Massa, recheio, cobertura — usada dentro de outras'],
+              ] as const).map(([value, title, sub]) => {
+                const on = isProduct === value;
+                return (
+                  <TouchableOpacity key={String(value)} onPress={() => setIsProduct(value)} activeOpacity={0.8}
+                    style={{ flex: 1, backgroundColor: on ? '#FFF0F6' : '#fff', borderWidth: 1.5, borderColor: on ? PINK : 'transparent', borderRadius: 14, padding: 11, ...SH }}>
+                    <Text style={{ fontSize: 13.5, fontWeight: '700', color: on ? PINK : INK }}>{title}</Text>
+                    <Text style={{ fontSize: 11.5, color: INK3, marginTop: 2 }}>{sub}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
 
             {/* ── Sugestões de receitas ── */}
             {!isEditing && (
@@ -1659,7 +1683,9 @@ export const CreateRecipeScreen: React.FC = () => {
             </View>
           ) : (
             <FlatList
-              data={availableRecipes.filter(r => r.isActive !== false && r.id !== recipeId && !subRecipes.some(s => s.subRecipeId === r.id))}
+              data={availableRecipes
+                .filter(r => r.isActive !== false && r.id !== recipeId && !subRecipes.some(s => s.subRecipeId === r.id))
+                .sort((a, b) => Number(a.isProduct !== false) - Number(b.isProduct !== false))}
               keyExtractor={item => item.id}
               contentContainerStyle={{ padding: 20 }}
               renderItem={({ item }) => (
@@ -1669,7 +1695,9 @@ export const CreateRecipeScreen: React.FC = () => {
                 >
                   <Card style={styles.modalIngCard}>
                     <View>
-                      <Text style={styles.modalIngName}>{item.name}</Text>
+                      <Text style={styles.modalIngName}>
+                        {item.name}{item.isProduct === false ? '  · Base' : ''}
+                      </Text>
                       <Text style={styles.modalIngInfo}>
                         {t('createRecipe.yield')}: {item.yield} un · {item.ingredients.length} ingr.
                       </Text>

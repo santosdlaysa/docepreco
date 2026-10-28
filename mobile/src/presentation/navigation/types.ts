@@ -11,7 +11,8 @@ export type RootStackParamList = {
   Main: undefined;
   Recipes: undefined;
   RecipeDetail: { recipeId: string };
-  CreateRecipe: undefined;
+  /** asBase: nova receita já vem como receita-base (aberta pela aba Bases). */
+  CreateRecipe: { asBase?: boolean } | undefined;
   EditRecipe: { recipeId: string };
   Ingredients: undefined;
   CreateIngredient: undefined;

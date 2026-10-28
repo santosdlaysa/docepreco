@@ -684,6 +684,8 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'ingredient_price_history', 'purchase_unit_weight', 'DECIMAL(10,3)');
 
     await addColumnIfMissing(client, 'recipes', 'photo_url', 'TEXT NULL');
+    // Produto final x receita-base (só sub-receita). Existentes viram produto.
+    await addColumnIfMissing(client, 'recipes', 'is_product', 'BOOLEAN NOT NULL DEFAULT TRUE');
 
     // Recreate featured_recipes with correct schema if it has the old columns
     const hasOldSchema = await client.query(
