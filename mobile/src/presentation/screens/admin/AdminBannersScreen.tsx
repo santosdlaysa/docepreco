@@ -110,7 +110,7 @@ export const AdminBannersScreen: React.FC = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Banners</Text>
+        <Text style={styles.title}>Avisos</Text>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{banners.length}</Text>
         </View>

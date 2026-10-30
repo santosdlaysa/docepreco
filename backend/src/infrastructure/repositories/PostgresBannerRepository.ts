@@ -33,10 +33,10 @@ export interface Banner {
 }
 
 export class PostgresBannerRepository {
-  async findAll(): Promise<Banner[]> {
-    const result = await pool.query(
-      'SELECT * FROM banners ORDER BY created_at DESC'
-    );
+  async findAll(placement?: Banner['placement']): Promise<Banner[]> {
+    const result = placement
+      ? await pool.query('SELECT * FROM banners WHERE placement = $1 ORDER BY created_at DESC', [placement])
+      : await pool.query('SELECT * FROM banners ORDER BY created_at DESC');
     return result.rows.map(this.mapRow);
   }
 

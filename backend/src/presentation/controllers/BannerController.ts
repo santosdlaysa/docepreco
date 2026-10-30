@@ -25,9 +25,13 @@ function normalizePlanAction(v: unknown): string | null {
 const userRepo = new PostgresUserRepository();
 
 export class BannerController {
-  async getAll(_req: Request, res: Response): Promise<void> {
+  async getAll(req: Request, res: Response): Promise<void> {
     try {
-      const banners = await repo.findAll();
+      // ?placement=notification evita baixar as artes base64 do carrossel (app admin).
+      const placement = req.query.placement;
+      const banners = await repo.findAll(
+        placement === 'notification' || placement === 'carousel' || placement === 'plan' ? placement : undefined,
+      );
       res.json({ success: true, data: banners });
     } catch {
       res.status(500).json({ success: false, error: 'Erro ao buscar banners' });

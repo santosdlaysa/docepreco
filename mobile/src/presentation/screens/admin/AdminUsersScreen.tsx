@@ -1,7 +1,7 @@
 import { colors } from '../../theme/colors';
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity,
+  View, Text, FlatList, TouchableOpacity, ScrollView,
   StyleSheet, ActivityIndicator, TextInput, RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -86,13 +86,20 @@ export const AdminUsersScreen: React.FC = () => {
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
 
-  // Debounce search — envia para API após 400ms
+  // Debounce search — envia para API após 400ms. Pula a 1ª execução: o carregamento
+  // inicial já é feito acima (antes a lista inteira era baixada duas vezes ao abrir).
+  const firstSearchRun = useRef(true);
   useEffect(() => {
+    if (firstSearchRun.current) { firstSearchRun.current = false; return; }
     const t = setTimeout(() => load(search || undefined), 400);
     return () => clearTimeout(t);
   }, [search]);
 
-  const onRefresh = async () => { setRefreshing(true); await load(); setRefreshing(false); };
+  const renderUser = useCallback(({ item: u }: { item: AdminUser }) => (
+    <UserRow user={u} onPress={() => navigation.navigate('AdminUserDetail', { userId: u.id })} />
+  ), [navigation]);
+
+  const onRefresh = async () => { setRefreshing(true); await load(search || undefined); setRefreshing(false); };
 
   return (
     <SafeAreaView style={styles.root}>
@@ -122,7 +129,7 @@ export const AdminUsersScreen: React.FC = () => {
         )}
       </View>
 
-      <View style={styles.chipsRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
           <TouchableOpacity
             onPress={() => setPlatform(null)}
             style={[styles.chip, platform === null && styles.chipActive]}
@@ -146,9 +153,9 @@ export const AdminUsersScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
           ))}
-      </View>
+      </ScrollView>
 
-      <View style={styles.chipsRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
           <TouchableOpacity
             onPress={() => setPlanTier(null)}
             style={[styles.chip, planTier === null && styles.chipActive]}
@@ -172,9 +179,9 @@ export const AdminUsersScreen: React.FC = () => {
               </Text>
             </TouchableOpacity>
           ))}
-      </View>
+      </ScrollView>
 
-      <View style={styles.chipsRow}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
         {SORT_OPTIONS.map(opt => (
           <TouchableOpacity
             key={opt.key}
@@ -191,7 +198,7 @@ export const AdminUsersScreen: React.FC = () => {
             <Text style={[styles.chipText, sortBy === opt.key && styles.chipTextActive]}>{opt.label}</Text>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
@@ -201,27 +208,13 @@ export const AdminUsersScreen: React.FC = () => {
           keyExtractor={u => u.id}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
           contentContainerStyle={{ paddingBottom: 40 }}
-          ItemSeparatorComponent={() => <View style={styles.divider} />}
-          renderItem={({ item: u }) => (
-            <TouchableOpacity
-              onPress={() => navigation.navigate('AdminUserDetail', { userId: u.id })}
-              activeOpacity={0.75}
-              style={styles.row}
-            >
-              <View style={[styles.avatar, !u.isActive && { opacity: 0.4 }]}>
-                <Text style={styles.avatarText}>{(u.companyName?.[0] ?? '?').toUpperCase()}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                  <Text style={styles.name} numberOfLines={1}>{u.companyName}</Text>
-                  {u.isPremium && <Ionicons name="star" size={12} color={colors.primary} />}
-                  {!u.isActive && <Text style={styles.inactiveTag}>inativo</Text>}
-                </View>
-                <Text style={styles.email} numberOfLines={1}>{u.email}</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
-            </TouchableOpacity>
-          )}
+          ItemSeparatorComponent={Separator}
+          renderItem={renderUser}
+          initialNumToRender={15}
+          maxToRenderPerBatch={20}
+          windowSize={7}
+          removeClippedSubviews
+          keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
             <View style={{ padding: 40, alignItems: 'center' }}>
               <Text style={{ color: colors.textMuted }}>Nenhum usuário encontrado</Text>
@@ -233,6 +226,26 @@ export const AdminUsersScreen: React.FC = () => {
   );
 };
 
+const Separator = () => <View style={styles.divider} />;
+
+// Linha memoizada: filtrar/ordenar não re-renderiza as linhas que não mudaram.
+const UserRow = React.memo(({ user: u, onPress }: { user: AdminUser; onPress: () => void }) => (
+  <TouchableOpacity onPress={onPress} activeOpacity={0.75} style={styles.row}>
+    <View style={[styles.avatar, !u.isActive && { opacity: 0.4 }]}>
+      <Text style={styles.avatarText}>{(u.companyName?.[0] ?? '?').toUpperCase()}</Text>
+    </View>
+    <View style={{ flex: 1 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text style={styles.name} numberOfLines={1}>{u.companyName}</Text>
+        {u.isPremium && <Ionicons name="star" size={12} color={colors.primary} />}
+        {!u.isActive && <Text style={styles.inactiveTag}>inativo</Text>}
+      </View>
+      <Text style={styles.email} numberOfLines={1}>{u.email}</Text>
+    </View>
+    <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+  </TouchableOpacity>
+), (a, b) => a.user === b.user);
+
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingBottom: 12, gap: 12 },
@@ -241,8 +254,11 @@ const styles = StyleSheet.create({
   countText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   searchWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, height: 44, fontSize: 14, color: colors.text },
-  chipsRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 20, paddingBottom: 8, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', maxWidth: '100%', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  // Cada grupo de filtros numa linha rolável: antes quebravam em várias linhas e
+  // ocupavam metade da tela antes da lista.
+  chipsScroll: { flexGrow: 0, marginBottom: 8 },
+  chipsRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8 },
+  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { flexShrink: 1, maxWidth: 180, fontSize: 13, fontWeight: '600', color: colors.textMuted },
   chipTextActive: { color: '#fff' },

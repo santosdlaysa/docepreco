@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { adminApi, AdminStats, SubscriptionDashboard, AdminLogEntry } from '../../../data/api/adminApi';
@@ -105,11 +105,13 @@ const NotificationBell: React.FC = () => {
     } catch { /* silencioso, igual ao web */ }
   }, []);
 
-  useEffect(() => {
+  // Só consulta enquanto o painel está em foco — antes seguia rodando a cada 30s
+  // mesmo com o admin em outras telas.
+  useFocusEffect(useCallback(() => {
     fetchLogs();
     const interval = setInterval(fetchLogs, 30000);
     return () => clearInterval(interval);
-  }, [fetchLogs]);
+  }, [fetchLogs]));
 
   const handleOpen = () => {
     setSeenAtOpen(lastSeenRef.current || null);
@@ -238,17 +240,17 @@ function NavTile({ icon, label, sub, badge, color, onPress }: {
   badge?: number; color: string; onPress: () => void;
 }) {
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={{ flex: 1 }}>
-      <View style={[tile.card, { borderTopColor: color, borderTopWidth: 3 }]}>
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={tile.cell}>
+      <View style={tile.card}>
         <View style={[tile.iconWrap, { backgroundColor: color + '18' }]}>
-          <Ionicons name={icon} size={22} color={color} />
+          <Ionicons name={icon} size={20} color={color} />
           {!!badge && (
             <View style={tile.badge}>
               <Text style={tile.badgeText}>{badge > 99 ? '99+' : badge}</Text>
             </View>
           )}
         </View>
-        <Text style={tile.label}>{label}</Text>
+        <Text style={tile.label} numberOfLines={1}>{label}</Text>
         <Text style={tile.sub} numberOfLines={1}>{sub}</Text>
       </View>
     </TouchableOpacity>
@@ -256,10 +258,11 @@ function NavTile({ icon, label, sub, badge, color, onPress }: {
 }
 
 const tile = StyleSheet.create({
-  card:      { backgroundColor: colors.surface, borderRadius: 16, padding: 14, gap: 6, borderWidth: 1, borderColor: colors.border, minHeight: 100 },
-  iconWrap:  { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-  label:     { fontSize: 14, fontWeight: '700', color: INK },
-  sub:       { fontSize: 11, color: INK2 },
+  cell:      { width: '31.5%' },
+  card:      { backgroundColor: colors.surface, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 8, gap: 4, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  iconWrap:  { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  label:     { fontSize: 13, fontWeight: '700', color: INK },
+  sub:       { fontSize: 10, color: INK2, textAlign: 'center' },
   badge:     { position: 'absolute', top: -4, right: -4, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: PINK, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
 });
@@ -271,19 +274,25 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
   const navigation = useNavigation<Nav>();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [subDash, setSubDash] = useState<SubscriptionDashboard | null>(null);
-  const [installedPlatforms, setInstalledPlatforms] = useState({ ios: 0, android: 0, unknown: 0 });
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // As chamadas são independentes: rodam em paralelo e uma falha não zera as outras.
+  // (Antes eram sequenciais e baixavam a lista inteira de usuários só para contar
+  // iOS/Android — era isso que travava o painel.)
   const load = useCallback(async () => {
-    // Stats, subDash e unread são independentes: uma falha não pode zerar as outras
-    try {
-      const s = await adminApi.getStats();
-      setStats(s);
+    const [statsRes, subRes, unreadRes] = await Promise.allSettled([
+      adminApi.getStats(),
+      adminApi.getSubscriptionDashboard(),
+      adminApi.getUnreadCount(),
+    ]);
+    if (statsRes.status === 'fulfilled') {
+      setStats(statsRes.value);
       setError(null);
-    } catch (e: any) {
+    } else {
+      const e: any = statsRes.reason;
       const status = e?.response?.status;
       if (status === 401 || status === 403) {
         setError('Acesso negado ao admin (verifique o ADMIN_SECRET).');
@@ -291,20 +300,8 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
         setError(e?.response?.data?.error || e?.message || 'Falha ao carregar dados do admin.');
       }
     }
-    try {
-      setSubDash(await adminApi.getSubscriptionDashboard());
-    } catch {}
-    try {
-      const users = await adminApi.listUsers();
-      setInstalledPlatforms({
-        ios: users.filter(user => user.signupPlatform === 'ios').length,
-        android: users.filter(user => user.signupPlatform === 'android').length,
-        unknown: users.filter(user => !user.signupPlatform).length,
-      });
-    } catch {}
-    try {
-      setUnread(await adminApi.getUnreadCount());
-    } catch {}
+    if (subRes.status === 'fulfilled') setSubDash(subRes.value);
+    if (unreadRes.status === 'fulfilled') setUnread(unreadRes.value);
   }, []);
 
   useEffect(() => { load().finally(() => setLoading(false)); }, [load]);
@@ -364,9 +361,52 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
           </View>
         )}
 
-        {/* ── Mini stats ── */}
+        {/* ── Atalhos (primeiro, para não precisar rolar o painel inteiro) ── */}
+        <Text style={st.sectionLabel}>Gerenciar</Text>
+        <View style={st.tilesGrid}>
+          <NavTile
+            icon="people-outline" label="Usuários"
+            sub={`${stats?.totalUsers ?? '—'} cadastrados`}
+            color="#6366F1"
+            onPress={() => navigation.navigate('AdminUsers')}
+          />
+          <NavTile
+            icon="qr-code-outline" label="PIX"
+            sub="Aprovar"
+            color="#16A34A"
+            onPress={() => navigation.navigate('AdminPix')}
+          />
+          <NavTile
+            icon="chatbubbles-outline" label="Suporte"
+            sub="Conversas"
+            color={PINK} badge={unread}
+            onPress={() => navigation.navigate('AdminSupport')}
+          />
+          <NavTile
+            icon="megaphone-outline" label="Avisos"
+            sub="Mensagens na Home"
+            color="#F59E0B"
+            onPress={() => navigation.navigate('AdminBanners')}
+          />
+          <NavTile
+            icon="notifications-outline" label="Push"
+            sub="Notificações"
+            color="#0EA5E9"
+            onPress={() => navigation.navigate('AdminNotifications')}
+          />
+          <NavTile
+            icon="pricetag-outline" label="Cupons"
+            sub="Descontos"
+            color={colors.purple}
+            onPress={() => navigation.navigate('AdminCoupons')}
+          />
+        </View>
+
+        {/* ── Novos cadastros ── */}
         {!loading && (
-          <View style={st.miniRow}>
+          <>
+          <Text style={st.sectionLabel}>Novos cadastros</Text>
+          <View style={[st.miniRow, { marginTop: 0 }]}>
             <MiniCard
               label="Hoje" value={stats?.newUsersToday ?? 0}
               icon="person-add-outline" bg="#F0FDF4" iconColor="#16A34A"
@@ -380,26 +420,6 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
               icon="calendar-outline" bg="#FFF7ED" iconColor="#EA580C"
             />
           </View>
-        )}
-
-        {/* ── Instalações do app ── */}
-        {!loading && (
-          <>
-            <Text style={st.sectionLabel}>Instalações do app</Text>
-            <View style={st.miniRow}>
-              <MiniCard
-                label="iOS" value={installedPlatforms.ios}
-                icon="logo-apple" bg="#F3F4F6" iconColor="#111827"
-              />
-              <MiniCard
-                label="Android" value={installedPlatforms.android}
-                icon="logo-google-playstore" bg="#F0FDF4" iconColor="#16A34A"
-              />
-              <MiniCard
-                label="Não identificado" value={installedPlatforms.unknown}
-                icon="help-circle-outline" bg="#FFF7ED" iconColor="#EA580C"
-              />
-            </View>
           </>
         )}
 
@@ -504,57 +524,12 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
           </>
         )}
 
-        {/* ── Nav tiles ── */}
-        <Text style={st.sectionLabel}>Gerenciar</Text>
-        <View style={st.tilesRow}>
-          <NavTile
-            icon="people-outline" label="Usuários"
-            sub={`${stats?.totalUsers ?? '—'} cadastrados`}
-            color="#6366F1"
-            onPress={() => navigation.navigate('AdminUsers')}
-          />
-          <NavTile
-            icon="qr-code-outline" label="PIX"
-            sub="Aprovar pagamentos"
-            color="#16A34A"
-            onPress={() => navigation.navigate('AdminPix')}
-          />
-        </View>
-        <View style={[st.tilesRow, { marginTop: 10 }]}>
-          <NavTile
-            icon="chatbubbles-outline" label="Suporte"
-            sub="Conversas abertas"
-            color={PINK} badge={unread}
-            onPress={() => navigation.navigate('AdminSupport')}
-          />
-          <NavTile
-            icon="megaphone-outline" label="Banners"
-            sub="Avisos no app"
-            color="#F59E0B"
-            onPress={() => navigation.navigate('AdminBanners')}
-          />
-        </View>
-        <View style={[st.tilesRow, { marginTop: 10 }]}>
-          <NavTile
-            icon="notifications-outline" label="Notificações"
-            sub="Push para usuários"
-            color="#0EA5E9"
-            onPress={() => navigation.navigate('AdminNotifications')}
-          />
-          <NavTile
-            icon="pricetag-outline" label="Cupons"
-            sub="Descontos promocionais"
-            color={colors.purple}
-            onPress={() => navigation.navigate('AdminCoupons')}
-          />
-        </View>
-
         {/* ── Últimos cadastros ── */}
         {(stats?.recentUsers?.length ?? 0) > 0 && (
           <>
             <Text style={st.sectionLabel}>Últimos cadastros</Text>
             <View style={st.listCard}>
-              {stats!.recentUsers.map((u, i) => (
+              {stats!.recentUsers.slice(0, 5).map((u, i) => (
                 <React.Fragment key={u.id}>
                   {i > 0 && <View style={st.divider} />}
                   <TouchableOpacity
@@ -607,6 +582,31 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
           </>
         )}
 
+        {/* ── Cadastros por plataforma (contagem vem pronta do /admin/stats) ── */}
+        {!loading && stats?.iosUsers !== undefined && (
+          <>
+            <Text style={st.sectionLabel}>Cadastros por plataforma</Text>
+            <View style={[st.miniRow, { marginTop: 0 }]}>
+              <MiniCard
+                label="iOS" value={stats.iosUsers ?? 0}
+                icon="logo-apple" bg="#F3F4F6" iconColor="#111827"
+              />
+              <MiniCard
+                label="Android" value={stats.androidUsers ?? 0}
+                icon="logo-google-playstore" bg="#F0FDF4" iconColor="#16A34A"
+              />
+              <MiniCard
+                label="Web" value={stats.webUsers ?? 0}
+                icon="globe-outline" bg="#EFF6FF" iconColor={colors.indigo}
+              />
+              <MiniCard
+                label="Sem info" value={stats.unknownPlatformUsers ?? 0}
+                icon="help-circle-outline" bg="#FFF7ED" iconColor="#EA580C"
+              />
+            </View>
+          </>
+        )}
+
         <View style={{ height: 48 }} />
       </ScrollView>
     </SafeAreaView>
@@ -635,7 +635,7 @@ const st = StyleSheet.create({
 
   // tiles
   sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', color: INK2, marginHorizontal: 16, marginTop: 20, marginBottom: 10 },
-  tilesRow:     { flexDirection: 'row', gap: 10, paddingHorizontal: 16 },
+  tilesGrid:    { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 10, paddingHorizontal: 16 },
 
   // list card
   listCard:  { marginHorizontal: 16, backgroundColor: colors.surface, borderRadius: 18, overflow: 'hidden', borderWidth: 1, borderColor: colors.border, marginBottom: 4 },

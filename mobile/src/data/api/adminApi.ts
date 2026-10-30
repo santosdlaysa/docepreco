@@ -24,6 +24,11 @@ export interface AdminStats {
   newUsersToday: number;
   newUsersWeek: number;
   newUsersMonth: number;
+  /** Cadastros por plataforma (backend novo; ausentes em versões antigas). */
+  iosUsers?: number;
+  androidUsers?: number;
+  webUsers?: number;
+  unknownPlatformUsers?: number;
   totalRecipes: number;
   totalSales: number;
   totalRevenue: number;
@@ -393,9 +398,12 @@ export const adminApi = {
   },
 
   // ── Banners ── (rota NÃO é /admin/banners, apenas /banners)
+  /** Só os avisos (placement 'notification'); carrossel e anúncios são geridos no painel web. */
   async listBanners(): Promise<Banner[]> {
-    const { data } = await adminClient.get('/banners');
-    return data.data ?? [];
+    const { data } = await adminClient.get('/banners', { params: { placement: 'notification' } });
+    // Backend antigo ignora o filtro: garante no cliente também.
+    return ((data.data ?? []) as Array<Banner & { placement?: string }>)
+      .filter(b => !b.placement || b.placement === 'notification');
   },
 
   async createBanner(payload: {
