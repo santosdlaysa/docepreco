@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { api, Banner } from '../lib/api';
 import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
-import { Info, AlertTriangle, Gift, RefreshCw, Pencil, Trash2, Power, Plus } from 'lucide-react';
+import { Info, AlertTriangle, Gift, RefreshCw, Pencil, Trash2, Power, Plus, ImagePlus, X } from 'lucide-react';
+import { imageFileToJpegDataUrl } from '../lib/image';
 import type { LucideIcon } from 'lucide-react';
 
 interface Props {
@@ -63,6 +64,9 @@ const EMPTY_PLAN = {
   ctaLabel: '',
   audience: 'non_master' as Audience,
   isActive: true,
+  imageUrl: null as string | null,
+  /** Link ao tocar (https://...). Vazio = abre a Loja Online. */
+  actionUrl: '',
 };
 
 export function BannersPage({ toast }: Props) {
@@ -161,8 +165,21 @@ export function BannersPage({ toast }: Props) {
       ctaLabel: b.ctaLabel ?? '',
       audience: b.audience ?? 'non_master',
       isActive: b.isActive,
+      imageUrl: b.imageUrl ?? null,
+      actionUrl: b.actionUrl && b.actionUrl !== 'app://Store' ? b.actionUrl : '',
     });
     setShowPlanModal(true);
+  };
+
+  const pickPlanImage = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      // 1200px de largura máx. mantém a arte nítida no celular sem pesar o carrossel.
+      const dataUrl = await imageFileToJpegDataUrl(file, 1200, 0.85);
+      setPlanForm(f => ({ ...f, imageUrl: dataUrl }));
+    } catch (e: any) {
+      toast.error(e.message);
+    }
   };
 
   const savePlan = async () => {
@@ -175,6 +192,8 @@ export function BannersPage({ toast }: Props) {
           ctaLabel: planForm.ctaLabel || null,
           audience: planForm.audience,
           isActive: planForm.isActive,
+          imageUrl: planForm.imageUrl,
+          actionUrl: planForm.actionUrl.trim(),
         });
         toast.success('Banner do carrossel atualizado!');
       } else {
@@ -187,6 +206,8 @@ export function BannersPage({ toast }: Props) {
           audience: planForm.audience,
           placement: 'plan',
           isActive: planForm.isActive,
+          imageUrl: planForm.imageUrl,
+          actionUrl: planForm.actionUrl.trim(),
         } as any);
         toast.success('Banner do carrossel criado!');
       }
@@ -290,7 +311,7 @@ export function BannersPage({ toast }: Props) {
       <div className="flex items-center justify-between flex-wrap gap-2 pt-4">
         <div>
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Banners do carrossel</h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">Aparecem no carrossel da Home do app, por público. Ao tocar, abrem a Loja Online.</p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">Passam no carrossel da Home do app, por público. Podem ter imagem própria e link; sem link, abrem a Loja Online.</p>
         </div>
         <button
           onClick={openNewPlan}
@@ -322,8 +343,13 @@ export function BannersPage({ toast }: Props) {
                 return (
                   <tr key={b.id} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <td className="px-5 py-3">
-                      <div className="font-medium text-gray-900 dark:text-white">{b.title}</div>
-                      {b.eyebrow && <div className="text-[11px] uppercase tracking-wide text-gray-400">{b.eyebrow}</div>}
+                      <div className="flex items-center gap-3">
+                        {b.imageUrl && <img src={b.imageUrl} alt="" className="w-20 h-10 rounded object-cover border border-gray-200 dark:border-gray-600 shrink-0" />}
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{b.title}</div>
+                          {b.eyebrow && <div className="text-[11px] uppercase tracking-wide text-gray-400">{b.eyebrow}</div>}
+                        </div>
+                      </div>
                     </td>
                     <td className="px-3 py-3">
                       <span className="text-xs font-semibold px-2 py-0.5 rounded bg-teal-50 dark:bg-teal-900/20 text-teal-700 border border-teal-200">
@@ -499,6 +525,38 @@ export function BannersPage({ toast }: Props) {
             </h3>
             <div className="space-y-3">
               <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Imagem (opcional)</label>
+                {planForm.imageUrl ? (
+                  <div className="relative">
+                    <img src={planForm.imageUrl} alt="Prévia do banner" className="w-full aspect-[2/1] object-cover rounded-xl border border-gray-200 dark:border-gray-600" />
+                    <button
+                      type="button"
+                      onClick={() => setPlanForm({ ...planForm, imageUrl: null })}
+                      className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs bg-black/60 hover:bg-black/75 text-white px-2 py-1 rounded"
+                    >
+                      <X size={12} /> Remover
+                    </button>
+                  </div>
+                ) : (
+                  <label className="flex flex-col items-center justify-center gap-1 w-full aspect-[2/1] border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl cursor-pointer text-gray-500 dark:text-gray-400 hover:border-primary-400 hover:text-primary-500 transition-colors">
+                    <ImagePlus size={24} />
+                    <span className="text-sm font-medium">Escolher imagem</span>
+                    <span className="text-xs">Formato horizontal, ex: 1200 × 600 px</span>
+                    <input type="file" accept="image/*" className="hidden" onChange={e => { void pickPlanImage(e.target.files?.[0]); e.target.value = ''; }} />
+                  </label>
+                )}
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Com imagem, o app mostra só a arte (os textos abaixo ficam como identificação no painel).</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Link ao tocar (opcional)</label>
+                <input
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                  value={planForm.actionUrl}
+                  onChange={e => setPlanForm({ ...planForm, actionUrl: e.target.value })}
+                  placeholder="https://... (vazio = abre a Loja Online)"
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Chamada (texto pequeno acima)</label>
                 <input
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
@@ -567,7 +625,7 @@ export function BannersPage({ toast }: Props) {
               </button>
               <button
                 onClick={savePlan}
-                disabled={!planForm.title || !planForm.message}
+                disabled={!planForm.title || (!planForm.message && !planForm.imageUrl) || (!!planForm.actionUrl.trim() && !/^(https|app):\/\//i.test(planForm.actionUrl.trim()))}
                 className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium"
               >
                 {editingPlan ? 'Salvar' : 'Criar'}

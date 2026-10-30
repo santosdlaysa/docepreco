@@ -8,6 +8,20 @@ import { createMpPixPayment } from '../../infrastructure/services/mercadoPagoSer
 import { notifyPixRequest } from '../../infrastructure/services/telegramService';
 
 const repo = new PostgresBannerRepository();
+
+/** Arte de banner aceita: data URI de imagem (até ~2,5 MB) ou URL https. */
+function isValidBannerImage(v: unknown): v is string {
+  if (typeof v !== 'string') return false;
+  if (/^https:\/\//i.test(v)) return v.length <= 2048;
+  return /^data:image\/(png|jpe?g|webp);base64,/i.test(v) && v.length <= 3_500_000;
+}
+
+/** Destino do toque: link https ou tela do app (app://Tela). Vazio = Loja Online. */
+function normalizePlanAction(v: unknown): string | null {
+  const url = typeof v === 'string' ? v.trim() : '';
+  if (!url) return 'app://Store';
+  return /^(https:\/\/|app:\/\/)/i.test(url) ? url.slice(0, 2048) : null;
+}
 const userRepo = new PostgresUserRepository();
 
 export class BannerController {
@@ -174,12 +188,23 @@ export class BannerController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { title, message, type, actionUrl, startsAt, endsAt, placement, audience, targetPlans, eyebrow, ctaLabel } = req.body;
-      if (!title || !message) {
+      const { title, message, type, actionUrl, startsAt, endsAt, placement, audience, targetPlans, eyebrow, ctaLabel, imageUrl, isActive } = req.body;
+      const isPlan = placement === 'plan';
+      // Banner do carrossel com imagem dispensa a descrição (a arte já fala por si).
+      const hasImage = isPlan && imageUrl != null && imageUrl !== '';
+      if (!title || (!message && !hasImage)) {
         res.status(400).json({ success: false, error: 'title e message são obrigatórios' });
         return;
       }
-      const isPlan = placement === 'plan';
+      if (hasImage && !isValidBannerImage(imageUrl)) {
+        res.status(400).json({ success: false, error: 'Imagem inválida (use JPG/PNG/WebP até ~2,5 MB)' });
+        return;
+      }
+      const planAction = isPlan ? normalizePlanAction(actionUrl) : null;
+      if (isPlan && !planAction) {
+        res.status(400).json({ success: false, error: 'Link inválido (use https://...)' });
+        return;
+      }
       // Banners de plano são sempre 'promo' e levam à Loja Online (ação fixa).
       const finalType = type || (isPlan ? 'promo' : undefined);
       if (!finalType || !['info', 'warning', 'promo', 'update'].includes(finalType)) {
@@ -196,9 +221,9 @@ export class BannerController {
       }
       const banner = await repo.create({
         title,
-        message,
+        message: message ?? '',
         type: finalType,
-        actionUrl: isPlan ? 'app://Store' : actionUrl,
+        actionUrl: isPlan ? planAction! : actionUrl,
         startsAt,
         endsAt,
         placement: isPlan ? 'plan' : undefined,
@@ -206,6 +231,8 @@ export class BannerController {
         targetPlans: !isPlan ? targetPlans : undefined,
         eyebrow: isPlan ? (eyebrow ?? null) : undefined,
         ctaLabel: isPlan ? (ctaLabel ?? null) : undefined,
+        imageUrl: hasImage ? imageUrl : null,
+        isActive: typeof isActive === 'boolean' ? isActive : undefined,
       });
       res.status(201).json({ success: true, data: banner });
     } catch {
@@ -216,7 +243,25 @@ export class BannerController {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel } = req.body;
+      const { title, message, type, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel } = req.body;
+      let { actionUrl, imageUrl } = req.body;
+      if (imageUrl === '') imageUrl = null;
+      if (imageUrl != null && !isValidBannerImage(imageUrl)) {
+        res.status(400).json({ success: false, error: 'Imagem inválida (use JPG/PNG/WebP até ~2,5 MB)' });
+        return;
+      }
+      const existing = await repo.findById(id);
+      if (!existing) {
+        res.status(404).json({ success: false, error: 'Banner não encontrado' });
+        return;
+      }
+      if (existing.placement === 'plan' && actionUrl !== undefined) {
+        actionUrl = normalizePlanAction(actionUrl);
+        if (!actionUrl) {
+          res.status(400).json({ success: false, error: 'Link inválido (use https://...)' });
+          return;
+        }
+      }
       if (audience && !['all', 'non_master', 'master'].includes(audience)) {
         res.status(400).json({ success: false, error: 'audience inválido' });
         return;
@@ -225,7 +270,7 @@ export class BannerController {
         res.status(400).json({ success: false, error: 'targetPlans inválido' });
         return;
       }
-      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel });
+      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel, imageUrl });
       if (!banner) {
         res.status(404).json({ success: false, error: 'Banner não encontrado' });
         return;

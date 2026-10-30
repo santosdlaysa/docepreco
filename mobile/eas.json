@@ -29,10 +29,10 @@
         "EXPO_PUBLIC_ADMOB_BANNER2_IOS": "ca-app-pub-6632812168210069/5076932355"
       },
       "ios": {
-        "image": "latest"
+        "image": "sdk-55"
       },
       "android": {
-        "image": "latest"
+        "image": "sdk-55"
       }
     }
   },

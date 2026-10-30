@@ -30,6 +30,10 @@ export interface PlanBanner {
   message: string;
   ctaLabel: string | null;
   audience: 'all' | 'non_master' | 'master';
+  /** Arte própria (data URI ou https); quando presente, substitui o layout padrão. */
+  imageUrl?: string | null;
+  /** 'app://Tela' navega no app; https abre o link. Padrão: Loja Online. */
+  actionUrl?: string | null;
 }
 
 export interface BannerPurchase {

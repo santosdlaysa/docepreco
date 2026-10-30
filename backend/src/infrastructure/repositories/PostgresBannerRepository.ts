@@ -96,10 +96,12 @@ export class PostgresBannerRepository {
     targetPlans?: string[];
     eyebrow?: string | null;
     ctaLabel?: string | null;
+    imageUrl?: string | null;
+    isActive?: boolean;
   }): Promise<Banner> {
     const result = await pool.query(
-      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at, placement, audience, target_plans, eyebrow, cta_label)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at, placement, audience, target_plans, eyebrow, cta_label, image_url, is_active)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
        RETURNING *`,
       [
         data.title,
@@ -113,6 +115,8 @@ export class PostgresBannerRepository {
         data.targetPlans?.length ? data.targetPlans : ['all'],
         data.eyebrow ?? null,
         data.ctaLabel ?? null,
+        data.imageUrl ?? null,
+        data.isActive ?? true,
       ]
     );
     return this.mapRow(result.rows[0]);
@@ -175,6 +179,8 @@ export class PostgresBannerRepository {
       targetPlans?: string[];
       eyebrow?: string | null;
       ctaLabel?: string | null;
+      /** undefined = mantém; null = remove a imagem. */
+      imageUrl?: string | null;
     }
   ): Promise<Banner | null> {
     const result = await pool.query(
@@ -190,6 +196,7 @@ export class PostgresBannerRepository {
         target_plans = COALESCE($10, target_plans),
         eyebrow = COALESCE($11, eyebrow),
         cta_label = COALESCE($12, cta_label),
+        image_url = CASE WHEN $13::boolean THEN $14::text ELSE image_url END,
         updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -206,6 +213,8 @@ export class PostgresBannerRepository {
         data.targetPlans !== undefined ? (data.targetPlans.length ? data.targetPlans : ['all']) : null,
         data.eyebrow !== undefined ? data.eyebrow : null,
         data.ctaLabel !== undefined ? data.ctaLabel : null,
+        data.imageUrl !== undefined,
+        data.imageUrl ?? null,
       ]
     );
     if (result.rows.length === 0) return null;

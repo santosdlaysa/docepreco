@@ -213,6 +213,17 @@ export const HomeScreen: React.FC = () => {
     }).catch(() => {});
   }, [isPremium, isAdmin]);
 
+  // Destino do toque no banner institucional: tela do app (app://Tela), link https ou Loja Online.
+  const openPlanBannerAction = (pb: PlanBanner) => {
+    const url = pb.actionUrl?.trim();
+    if (url && /^https?:\/\//i.test(url)) {
+      Linking.openURL(url).catch(() => {});
+      return;
+    }
+    const screen = url?.startsWith('app://') ? url.slice('app://'.length) : 'Store';
+    navigation.navigate((screen || 'Store') as never);
+  };
+
   // Banners institucionais do carrossel visíveis conforme o plano do usuário.
   const visiblePlanBanners = planBanners.filter(b => {
     if (isAdmin) return true;
@@ -455,8 +466,11 @@ export const HomeScreen: React.FC = () => {
                   key={pb.id}
                   style={{ width: PLAN_BANNER_WIDTH }}
                   activeOpacity={0.9}
-                  onPress={() => navigation.navigate('Store' as never)}
+                  onPress={() => openPlanBannerAction(pb)}
                 >
+                  {pb.imageUrl ? (
+                    <Image source={{ uri: pb.imageUrl }} style={s.sponsoredBanner} resizeMode="cover" accessibilityLabel={pb.title} />
+                  ) : (
                   <LinearGradient
                     colors={['#2DD4BF', '#0D9488', '#0F766E']}
                     start={{ x: 0, y: 0 }}
@@ -481,6 +495,7 @@ export const HomeScreen: React.FC = () => {
                       </View>
                     </View>
                   </LinearGradient>
+                  )}
                 </TouchableOpacity>
               ))}
 
