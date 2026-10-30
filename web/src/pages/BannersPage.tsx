@@ -57,6 +57,31 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
   master: 'Master',
 };
 
+/** Telas do app que o banner do carrossel pode abrir (nomes das rotas do mobile). */
+const APP_SCREENS: { value: string; label: string }[] = [
+  { value: 'app://Store', label: 'Loja Online' },
+  { value: 'app://Paywall', label: 'Planos (assinar)' },
+  { value: 'app://MyPlan', label: 'Meu plano' },
+  { value: 'app://Recipes', label: 'Receitas' },
+  { value: 'app://CreateRecipe', label: 'Nova receita' },
+  { value: 'app://Ingredients', label: 'Ingredientes' },
+  { value: 'app://Sales', label: 'Vendas' },
+  { value: 'app://Orders', label: 'Encomendas' },
+  { value: 'app://Clients', label: 'Clientes' },
+  { value: 'app://Reports', label: 'Relatórios' },
+  { value: 'app://Finance', label: 'Financeiro (Master)' },
+  { value: 'app://Stock', label: 'Estoque (Master)' },
+  { value: 'app://SalesTips', label: 'Dicas de vendas (Master)' },
+  { value: 'app://Production', label: 'Produção' },
+  { value: 'app://Seasons', label: 'Datas comemorativas' },
+  { value: 'app://BeginnerGuide', label: 'Guia do iniciante' },
+  { value: 'app://PricingTutorial', label: 'Tutorial de precificação' },
+  { value: 'app://Referral', label: 'Indique e ganhe' },
+  { value: 'app://AnnounceBanner', label: 'Anunciar no carrossel' },
+  { value: 'app://SupportChat', label: 'Suporte' },
+];
+const EXTERNAL_LINK = '__link';
+
 const EMPTY_PLAN = {
   eyebrow: '',
   title: '',
@@ -65,8 +90,8 @@ const EMPTY_PLAN = {
   audience: 'non_master' as Audience,
   isActive: true,
   imageUrl: null as string | null,
-  /** Link ao tocar (https://...). Vazio = abre a Loja Online. */
-  actionUrl: '',
+  /** Destino ao tocar: 'app://Tela' ou link https. */
+  actionUrl: 'app://Store',
 };
 
 export function BannersPage({ toast }: Props) {
@@ -166,7 +191,7 @@ export function BannersPage({ toast }: Props) {
       audience: b.audience ?? 'non_master',
       isActive: b.isActive,
       imageUrl: b.imageUrl ?? null,
-      actionUrl: b.actionUrl && b.actionUrl !== 'app://Store' ? b.actionUrl : '',
+      actionUrl: b.actionUrl || 'app://Store',
     });
     setShowPlanModal(true);
   };
@@ -548,15 +573,6 @@ export function BannersPage({ toast }: Props) {
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Com imagem, o app mostra só a arte (os textos abaixo ficam como identificação no painel).</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Link ao tocar (opcional)</label>
-                <input
-                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
-                  value={planForm.actionUrl}
-                  onChange={e => setPlanForm({ ...planForm, actionUrl: e.target.value })}
-                  placeholder="https://... (vazio = abre a Loja Online)"
-                />
-              </div>
-              <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Chamada (texto pequeno acima)</label>
                 <input
                   className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 focus:ring-1 focus:ring-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
@@ -594,6 +610,31 @@ export function BannersPage({ toast }: Props) {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Para onde vai ao tocar</label>
+                  <select
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
+                    value={planForm.actionUrl.startsWith('app://') ? planForm.actionUrl : EXTERNAL_LINK}
+                    onChange={e => setPlanForm({ ...planForm, actionUrl: e.target.value === EXTERNAL_LINK ? 'https://' : e.target.value })}
+                  >
+                    {APP_SCREENS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    {planForm.actionUrl.startsWith('app://') && !APP_SCREENS.some(o => o.value === planForm.actionUrl) && (
+                      <option value={planForm.actionUrl}>{planForm.actionUrl.slice('app://'.length)}</option>
+                    )}
+                    <option value={EXTERNAL_LINK}>Link externo (site, WhatsApp, Instagram…)</option>
+                  </select>
+                </div>
+                {!planForm.actionUrl.startsWith('app://') && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Link externo</label>
+                    <input
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white dark:placeholder-gray-400"
+                      value={planForm.actionUrl}
+                      onChange={e => setPlanForm({ ...planForm, actionUrl: e.target.value })}
+                      placeholder="https://wa.me/55..."
+                    />
+                  </div>
+                )}
+                <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Público</label>
                   <select
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
@@ -625,7 +666,7 @@ export function BannersPage({ toast }: Props) {
               </button>
               <button
                 onClick={savePlan}
-                disabled={!planForm.title || (!planForm.message && !planForm.imageUrl) || (!!planForm.actionUrl.trim() && !/^(https|app):\/\//i.test(planForm.actionUrl.trim()))}
+                disabled={!planForm.title || (!planForm.message && !planForm.imageUrl) || (!planForm.actionUrl.startsWith('app://') && !/^https:\/\/\S+\.\S+/i.test(planForm.actionUrl.trim()))}
                 className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium"
               >
                 {editingPlan ? 'Salvar' : 'Criar'}
