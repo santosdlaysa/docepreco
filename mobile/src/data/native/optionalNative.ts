@@ -12,16 +12,8 @@ function tryRequire<T>(load: () => T): T | null {
   }
 }
 
-let googleSignin: typeof import('@react-native-google-signin/google-signin') | null | undefined;
 let appleAuth: typeof import('expo-apple-authentication') | null | undefined;
 let crypto: typeof import('expo-crypto') | null | undefined;
-
-export function getGoogleSigninModule() {
-  if (googleSignin === undefined) {
-    googleSignin = tryRequire(() => require('@react-native-google-signin/google-signin'));
-  }
-  return googleSignin;
-}
 
 export function getAppleAuthModule() {
   if (appleAuth === undefined) {

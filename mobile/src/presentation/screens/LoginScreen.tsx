@@ -16,8 +16,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
 import { authApi, SocialLoginResult } from '../../data/api/authApi';
-import { googleSignInConfigured, signInWithApple, signInWithGoogle } from '../../data/auth/socialSignIn';
-import { getAppleAuthModule, getGoogleSigninModule } from '../../data/native/optionalNative';
+import { signInWithApple } from '../../data/auth/socialSignIn';
+import { getAppleAuthModule } from '../../data/native/optionalNative';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
@@ -25,7 +25,6 @@ import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
 import { useAuthLayout } from '../hooks/useAuthLayout';
 
 const AppleAuthentication = getAppleAuthModule();
-const GoogleSigninButton = getGoogleSigninModule()?.GoogleSigninButton;
 
 interface Props {
   onLogin: () => void | Promise<void>;
@@ -42,7 +41,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [socialLoading, setSocialLoading] = useState<'google' | 'apple' | null>(null);
+  const [socialLoading, setSocialLoading] = useState<'apple' | null>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   // Cadastro Apple com email oculto aguardando a pessoa dizer se já tem conta.
@@ -109,18 +108,6 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
     void setRevenueCatLocationAttributes();
     if (onSocialLogin) await onSocialLogin(result.isNew);
     else await onLogin();
-  };
-
-  const handleGoogleLogin = async () => {
-    setSocialLoading('google');
-    setErrors({});
-    try {
-      await finishSocialLogin(await signInWithGoogle());
-    } catch (error) {
-      setErrors({ general: error instanceof Error ? error.message : t('login.socialLoginError') });
-    } finally {
-      setSocialLoading(null);
-    }
   };
 
   const handleAppleLogin = async () => {
@@ -302,26 +289,13 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               </TouchableOpacity>
             </View>
 
-            {(googleSignInConfigured || appleAvailable) && (
+            {appleAvailable && (
               <>
                 <View style={[styles.orRow, { marginTop: L.blockGap, marginBottom: L.fieldGap }]}>
                   <View style={styles.orLine} />
                   <Text style={styles.orText}>{t('common.or')}</Text>
                   <View style={styles.orLine} />
                 </View>
-
-                {googleSignInConfigured && GoogleSigninButton && (
-                  <View style={styles.socialButtonWrap} pointerEvents={socialLoading ? 'none' : 'auto'}>
-                    <GoogleSigninButton
-                      style={styles.googleButton}
-                      size={GoogleSigninButton.Size.Wide}
-                      color={GoogleSigninButton.Color.Light}
-                      disabled={Boolean(socialLoading)}
-                      onPress={() => void handleGoogleLogin()}
-                    />
-                    {socialLoading === 'google' && <ActivityIndicator style={styles.socialSpinner} color={colors.primary} />}
-                  </View>
-                )}
 
                 {appleAvailable && AppleAuthentication && (
                   <View style={styles.socialButtonWrap} pointerEvents={socialLoading ? 'none' : 'auto'}>
@@ -487,7 +461,6 @@ const styles = StyleSheet.create({
   },
   demoBtnText: { fontSize: 14, fontWeight: '600', color: colors.text },
   socialButtonWrap: { position: 'relative', marginBottom: 10 },
-  googleButton: { width: '100%', height: 48 },
   appleButton: { width: '100%', height: 48 },
   socialSpinner: { position: 'absolute', right: 18, top: 14 },
 

@@ -5,7 +5,6 @@ import { wantsOpenRegister, clearOpenRegister } from './demo/demoMode';
 import { useAuth } from './UserAuthContext';
 import { userApi, ApiError } from './userApi';
 import { LgpdModal } from './lgpd';
-import { GoogleSignInButton, googleSignInEnabled } from './GoogleSignInButton';
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
 
@@ -260,15 +259,6 @@ export function UserLoginPage() {
             )}
           </button>
         </form>
-
-        {googleSignInEnabled && (mode === 'login' || mode === 'register') && (
-          <div className="mt-4 space-y-3">
-            <div className="flex items-center gap-3 text-xs text-gray-400">
-              <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" /> {t('login.or')} <span className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-            </div>
-            <GoogleSignInButton onError={msg => setError(msg)} />
-          </div>
-        )}
 
         {mode === 'login' && (
           <button
