@@ -10,11 +10,13 @@ import request from 'supertest';
  */
 
 const subscriptions = { retrieve: jest.fn() };
+const invoices = { retrieve: jest.fn() };
 const constructEvent = jest.fn();
 
 jest.mock('stripe', () => jest.fn(() => ({
   webhooks: { constructEvent },
   subscriptions,
+  invoices,
 })), { virtual: true });
 
 const query = jest.fn().mockResolvedValue({ rows: [], rowCount: 0 });
@@ -102,6 +104,24 @@ describe('Stripe webhook — renovação de assinatura', () => {
 
     expect(res.status).toBe(200);
     expect(updatePlanTier).not.toHaveBeenCalled();
+  });
+
+  it('não renova nem registra receita quando a fatura do novo ciclo ainda não foi paga', async () => {
+    // Fim do teste grátis: o Stripe avança o período antes de cobrar, e a cobrança falha.
+    constructEvent.mockReturnValue({
+      type: 'customer.subscription.updated',
+      data: { object: {
+        id: 'sub_1', status: 'active', metadata: META, latest_invoice: 'in_1',
+        items: { data: [{ current_period_end: PERIOD_END }] },
+      } },
+    });
+    invoices.retrieve.mockResolvedValue({ id: 'in_1', status: 'open' });
+
+    const res = await post();
+
+    expect(res.status).toBe(200);
+    expect(updatePlanTier).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalledWith(expect.stringContaining('INSERT INTO premium_events'), expect.anything());
   });
 
   it('não duplica histórico nem aviso quando o mesmo ciclo chega em dois eventos', async () => {

@@ -151,6 +151,21 @@ async function activeSubscriptionOf(stripe: any, customerId: string): Promise<an
   return subs.data.find((s: any) => ACTIVE_STATUSES.includes(s.status)) ?? null;
 }
 
+/** Se a última fatura da assinatura já foi paga (fatura de teste grátis conta como paga). */
+async function latestInvoicePaid(subscription: any): Promise<boolean> {
+  const latest = subscription?.latest_invoice;
+  if (!latest) return true;
+  if (typeof latest === 'object') return latest.status === 'paid';
+  try {
+    const invoice = await getStripe().invoices.retrieve(latest);
+    return invoice.status === 'paid';
+  } catch (e: any) {
+    console.warn(`[Stripe] Falha ao buscar fatura ${latest}:`, e?.message ?? e);
+    // Sem confirmação não liberamos; o invoice.paid cobre o caso quando o pagamento entrar.
+    return false;
+  }
+}
+
 /** Push confirmando que a renovação foi cancelada ou reativada no portal. */
 async function notifyRenewalChange(userId: string, cancelled: boolean, subscription: any): Promise<void> {
   try {
@@ -471,6 +486,15 @@ export class StripeController {
         // 'updated' também chega em cancelamento/inadimplência — aí não se libera nada.
         if (!ACTIVE_STATUSES.includes(subscription.status)) {
           console.log(`[Stripe] Subscription ${subscription.id} em status '${subscription.status}' — sem liberar acesso`);
+          res.json({ received: true });
+          return;
+        }
+
+        // Na virada do ciclo (fim do teste ou renovação) o Stripe avança o período e
+        // manda 'updated' ainda como 'active' antes de cobrar. Se a cobrança falhar,
+        // nada foi pago — quem libera o novo ciclo é a fatura paga (invoice.paid).
+        if (!(await latestInvoicePaid(subscription))) {
+          console.log(`[Stripe] Assinatura ${subscription.id} com fatura em aberto — aguardando pagamento`);
           res.json({ received: true });
           return;
         }

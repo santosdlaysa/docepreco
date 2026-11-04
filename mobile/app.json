@@ -36,7 +36,7 @@
         "android.permission.DETECT_SCREEN_CAPTURE"
       ],
       "package": "com.orgenyx",
-      "versionCode": 99,
+      "versionCode": 100,
       "googleServicesFile": "./google-services.json"
     },
     "web": {
@@ -49,7 +49,10 @@
     },
     "runtimeVersion": "2.0.1",
     "updates": {
-      "url": "https://u.expo.dev/2e86f353-1d41-47cc-b552-3e242b8430f4"
+      "url": "https://u.expo.dev/2e86f353-1d41-47cc-b552-3e242b8430f4",
+      "requestHeaders": {
+        "expo-channel-name": "production"
+      }
     },
     "plugins": [
       [
