@@ -111,5 +111,23 @@
     "cashAlreadyOpen": "Já existe um caixa aberto.",
     "noCashOpen": "Nenhum caixa aberto.",
     "supportReply": "Essa mensagem ficou só na demonstração. Crie sua conta grátis para falar com o suporte de verdade. 💜"
+  },
+  "checkin": {
+    "progress": "{{progress}}/{{total}} dias",
+    "doneToday": "Feito hoje",
+    "action": "Check-in",
+    "reward": "Prêmio:",
+    "rewardWeek": "1 semana de {{tier}} grátis",
+    "rewardDays": "{{count}} dias de {{tier}} grátis",
+    "rewardDays_one": "{{count}} dia de {{tier}} grátis",
+    "consecutiveHint": "Faça check-in todo dia: se pular um dia, a contagem recomeça.",
+    "checkInToday": "Fazer check-in de hoje",
+    "doneComeBack": "Check-in de hoje feito · volte amanhã",
+    "close": "Fechar",
+    "congrats": "Parabéns! 🎉",
+    "congratsText": "Você completou {{total}} dias de check-in e ganhou {{days}} dias de {{tier}}. Aproveite até {{until}}!",
+    "enjoy": "Aproveitar",
+    "daysOf": "{{progress}} de {{total}} dias",
+    "error": "Não foi possível fazer o check-in. Tente novamente."
   }
 }

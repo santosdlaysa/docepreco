@@ -42,6 +42,7 @@ import onboardingRoutes from './presentation/routes/onboardingRoutes';
 import telegramAlertRoutes from './presentation/routes/telegramAlertRoutes';
 import supportRoutes from './presentation/routes/supportRoutes';
 import rewardedAdRoutes from './presentation/routes/rewardedAdRoutes';
+import checkinRoutes from './presentation/routes/checkinRoutes';
 import whatsappRoutes from './presentation/routes/whatsappRoutes';
 import metaWebhookRoutes from './presentation/routes/metaWebhookRoutes';
 import pixRoutes from './presentation/routes/pixRoutes';
@@ -213,6 +214,7 @@ app.use('/api/ingredients/:ingredientId/price-history', authMiddleware, priceHis
 app.use('/api', premiumRoutes);
 app.use('/api', pixRoutes);
 app.use('/api', referralRoutes);
+app.use('/api', checkinRoutes);
 app.use('/api', stripeRoutes);
 app.use('/api', expenseRoutes);
 app.use('/api', purchaseInvoiceRoutes);

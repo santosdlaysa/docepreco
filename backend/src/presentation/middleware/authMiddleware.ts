@@ -5,6 +5,8 @@ import { getJwtSecret } from '../../config/secrets';
 
 export interface AuthRequest extends Request {
   userId?: string;
+  /** Sessão aberta pelo admin "vendo como empresa". */
+  impersonated?: boolean;
 }
 
 export function authMiddleware(req: AuthRequest, res: Response, next: NextFunction): void {
@@ -18,6 +20,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   try {
     const payload = jwt.verify(token, getJwtSecret(), { algorithms: ['HS256'] }) as { userId: string; imp?: boolean };
     req.userId = payload.userId;
+    req.impersonated = !!payload.imp;
 
     // Fire-and-forget: update last_seen_at (sessões impersonadas pelo admin não contam)
     if (!payload.imp) {

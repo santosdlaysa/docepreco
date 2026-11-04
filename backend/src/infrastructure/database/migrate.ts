@@ -1,6 +1,7 @@
 import { migrateConversions } from './conversionMigration';
 import { migrateStorePayments } from './storePaymentsMigration';
 import { migrateDeletedUsers } from './deletedUsersMigration';
+import { migrateCheckins } from './checkinMigration';
 import { pool } from './connection';
 import dotenv from 'dotenv';
 
@@ -1476,6 +1477,7 @@ export async function runMigrations() {
     await migrateConversions(client);
     await migrateStorePayments(client);
     await migrateDeletedUsers(client);
+    await migrateCheckins(client);
     await client.query('COMMIT');
     console.log('\n✨ Migrations applied successfully');
   } catch (error) {

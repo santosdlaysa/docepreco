@@ -61,6 +61,7 @@ import { AnnounceBannerPage } from './pages/AnnounceBannerPage';
 import { NotificationsBell } from './NotificationsBell';
 import { BeginnerGuide, SponsoredCarousel } from './HomeExtras';
 import { SubscriptionExpiringModal, SatisfactionSurveyModal } from './EngagementModals';
+import { DailyCheckin } from './DailyCheckin';
 import { SubscribeModal } from './SubscribeModal';
 import { pullPreferences } from './prefsSync';
 
@@ -115,6 +116,7 @@ function Shell() {
   // Renovação aberta pelo aviso de assinatura vencendo.
   const [renewOpen, setRenewOpen] = useState(false);
   const [expiringVisible, setExpiringVisible] = useState(false);
+  const [checkinVisible, setCheckinVisible] = useState(false);
   const { toasts, toast, removeToast } = useToast();
   const { dark, toggle: toggleDark } = useDarkMode();
   const routerNavigate = useNavigate();
@@ -309,6 +311,7 @@ function Shell() {
                 <>
                   {page === 'reports' && (
                     <>
+                      {!!user.lgpdAcceptedAt && <DailyCheckin onVisibleChange={setCheckinVisible} />}
                       <BeginnerGuide onNavigate={navigate} />
                       <SponsoredCarousel onAnnounce={() => navigate('announce')} />
                       <ReportsPage toast={toast} />
@@ -349,7 +352,7 @@ function Shell() {
         onRenew={() => setRenewOpen(true)}
         onVisibleChange={setExpiringVisible}
       />
-      <SatisfactionSurveyModal enabled={!!user.lgpdAcceptedAt && !expiringVisible && !renewOpen} />
+      <SatisfactionSurveyModal enabled={!!user.lgpdAcceptedAt && !expiringVisible && !checkinVisible && !renewOpen} />
       {renewOpen && tier !== 'free' && (
         <SubscribeModal initialTier={tier} source="expiring_modal" onClose={() => setRenewOpen(false)} toast={toast} />
       )}

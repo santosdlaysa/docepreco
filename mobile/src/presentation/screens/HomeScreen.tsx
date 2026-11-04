@@ -37,6 +37,7 @@ import { AdBanner, AdBanner2 } from '../ads';
 import { SupportFab } from '../components/SupportFab';
 import { StoreCityRequiredModal } from '../components/StoreCityRequiredModal';
 import { SubscriptionExpiringModal } from '../components/SubscriptionExpiringModal';
+import { CheckinWidget } from '../components/CheckinWidget';
 import { subscriptionAlertStorage } from '../../data/storage/subscriptionAlertStorage';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { bannerApi, Banner, CarouselBanner, PlanBanner } from '../../data/api/bannerApi';
@@ -381,6 +382,9 @@ export const HomeScreen: React.FC = () => {
             </View>
           </View>
         )}
+
+        {/* ═══════ CHECK-IN DIÁRIO ═══════ */}
+        <CheckinWidget />
 
         {/* ═══════ SUBSCRIPTION PLANS + SPONSORED ═══════ */}
         {totalSlides > 0 && (

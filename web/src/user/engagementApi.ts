@@ -2,7 +2,7 @@ import { req, AuthUser } from './userApi';
 
 /**
  * Chamadas de engajamento (indicação, avisos/banners, anúncio, sugestão) —
- * mesmas rotas do app (mobile/src/data/api/{referralApi,bannerApi,authApi}.ts).
+ * mesmas rotas do app (mobile/src/data/api/{referralApi,bannerApi,authApi,checkinApi}.ts).
  */
 
 export type ReferralStatus = 'pending' | 'valid' | 'rewarded' | 'invalid';
@@ -55,6 +55,29 @@ export interface BannerPurchase {
   mp_qr_code_base64: string | null;
 }
 
+export interface CheckinStatus {
+  enabled: boolean;
+  eligible: boolean;
+  title: string;
+  message: string;
+  daysRequired: number;
+  rewardDays: number;
+  rewardTier: 'premium' | 'master';
+  consecutive: boolean;
+  maxRewardsPerUser: number;
+  today: string;
+  checkedInToday: boolean;
+  progress: number;
+  rewardsEarned: number;
+  canEarnMore: boolean;
+}
+
+export interface CheckinResult {
+  status: CheckinStatus;
+  reward: { tier: 'premium' | 'master'; days: number; premiumUntil: string } | null;
+  alreadyCheckedIn: boolean;
+}
+
 /** Mesmo número do suporte usado no app (ProfileScreen). */
 export const SUPPORT_WHATSAPP = '5595981273912';
 
@@ -68,6 +91,8 @@ export const engagementApi = {
       }),
     }),
   getReferrals: () => req<ReferralData>('/referrals/me'),
+  getCheckin: () => req<CheckinStatus>('/checkin'),
+  checkIn: () => req<CheckinResult>('/checkin', { method: 'POST' }),
   getActiveBanners: () => req<Banner[]>('/banners/active'),
   getCarousel: () => req<CarouselBanner[]>('/banners/carousel'),
   getAdBannerConfig: () =>

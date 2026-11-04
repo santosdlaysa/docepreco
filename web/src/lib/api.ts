@@ -829,6 +829,12 @@ export const api = {
   forceValidReferral: (id: string) =>
     req<void>(`/admin/referrals/${id}/force-valid`, { method: 'POST' }),
 
+  // ── Check-in diário ──
+  getCheckinConfig: () => req<CheckinConfig>('/admin/checkin/config'),
+  updateCheckinConfig: (data: Partial<CheckinConfig>) =>
+    req<CheckinConfig>('/admin/checkin/config', { method: 'PUT', body: JSON.stringify(data) }),
+  checkinStats: () => req<CheckinStats>('/admin/checkin/stats'),
+
   // ── Onboarding ──
   listOnboarding: () => req<OnboardingStep[]>('/admin/onboarding'),
   createOnboarding: (data: Omit<OnboardingStep, 'id' | 'createdAt'>) =>
@@ -1232,6 +1238,40 @@ export interface ReferralItem {
   referrerEmail: string;
   referredName: string;
   referredEmail: string;
+}
+
+// ── Check-in diário ──
+
+export interface CheckinConfig {
+  enabled: boolean;
+  daysRequired: number;
+  rewardDays: number;
+  rewardTier: 'premium' | 'master';
+  consecutive: boolean;
+  maxRewardsPerUser: number;
+  title: string;
+  message: string;
+}
+
+export interface CheckinRewardItem {
+  id: string;
+  day: string;
+  rewardDays: number;
+  tier: 'premium' | 'master';
+  premiumUntil: string;
+  createdAt: string;
+  companyName: string | null;
+  email: string;
+}
+
+export interface CheckinStats {
+  checkinsToday: number;
+  activeUsers7d: number;
+  totalCheckins: number;
+  totalRewards: number;
+  rewardedUsers: number;
+  daily: { day: string; count: number }[];
+  recentRewards: CheckinRewardItem[];
 }
 
 export interface ReferralStats {

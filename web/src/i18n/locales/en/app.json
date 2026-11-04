@@ -111,5 +111,23 @@
     "cashAlreadyOpen": "A cash register is already open.",
     "noCashOpen": "No cash register open.",
     "supportReply": "This message stayed in the demo only. Create your free account to talk to support for real. 💜"
+  },
+  "checkin": {
+    "progress": "{{progress}}/{{total}} days",
+    "doneToday": "Done today",
+    "action": "Check in",
+    "reward": "Reward:",
+    "rewardWeek": "1 free week of {{tier}}",
+    "rewardDays": "{{count}} free days of {{tier}}",
+    "rewardDays_one": "{{count}} free day of {{tier}}",
+    "consecutiveHint": "Check in every day: if you skip a day, the count restarts.",
+    "checkInToday": "Check in for today",
+    "doneComeBack": "Checked in today · come back tomorrow",
+    "close": "Close",
+    "congrats": "Congratulations! 🎉",
+    "congratsText": "You completed {{total}} days of check-in and earned {{days}} days of {{tier}}. Enjoy it until {{until}}!",
+    "enjoy": "Enjoy",
+    "daysOf": "{{progress}} of {{total}} days",
+    "error": "Could not check in. Please try again."
   }
 }

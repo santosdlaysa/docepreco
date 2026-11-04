@@ -31,6 +31,7 @@ import { SupportChatPage } from '../pages/SupportChatPage';
 import { WhatsAppPage } from '../pages/WhatsAppPage';
 import { PixRequestsPage } from '../pages/PixRequestsPage';
 import { ReferralsPage } from '../pages/ReferralsPage';
+import { CheckinPage } from '../pages/CheckinPage';
 import { DatabasePage } from '../pages/DatabasePage';
 import { ActivityUsersPage } from '../pages/ActivityUsersPage';
 import { UserLifecyclePage } from '../pages/UserLifecyclePage';
@@ -76,11 +77,12 @@ import {
   ShieldAlert,
   Activity,
   UserX,
+  CalendarCheck,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'subscriptions' | 'metrics' | 'activity' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'database' | 'ads' | 'security' | 'user-lifecycle';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'checkin' | 'database' | 'ads' | 'security' | 'user-lifecycle';
 
 interface NavItem {
   id: Page;
@@ -113,6 +115,7 @@ const NAV: NavItem[] = [
   { id: 'suggestions', label: 'Sugestões', icon: MessagesSquare },
   { id: 'support', label: 'Suporte Chat', icon: Headset },
   { id: 'referrals', label: 'Indicações', icon: Gift },
+  { id: 'checkin', label: 'Check-in diário', icon: CalendarCheck },
 
   { id: 'pix', label: 'PIX', icon: QrCode, section: 'Configuração' },
   { id: 'plans', label: 'Planos', icon: CreditCard },
@@ -473,6 +476,7 @@ export default function AdminApp() {
             {page === 'recipes' && <FeaturedRecipesPage toast={toast} />}
             {page === 'pix' && <PixRequestsPage toast={toast} />}
             {page === 'referrals' && <ReferralsPage toast={toast} />}
+            {page === 'checkin' && <CheckinPage toast={toast} />}
             {page === 'plans' && <PlanConfigPage toast={toast} />}
             {page === 'flags' && <FeatureFlagsPage toast={toast} />}
             {page === 'faq' && <FaqPage toast={toast} />}
