@@ -24,7 +24,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Precisamos acessar sua galeria para enviar fotos no suporte."
       },
-      "buildNumber": "49"
+      "buildNumber": "50"
     },
     "android": {
       "adaptiveIcon": {
