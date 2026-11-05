@@ -8,8 +8,8 @@ const SITE_URL = 'https://www.doceprecoapp.com.br';
 const SUPPORT_EMAIL = 'santosdlaysa@gmail.com';
 const PRIVACY_URL = `${SITE_URL}/privacy.html`;
 // Preencher com os dados do responsável legal; linhas vazias não são exibidas.
-const RESPONSIBLE_NAME = '';
-const RESPONSIBLE_DOCUMENT = '';
+const RESPONSIBLE_NAME = 'Laysa Diniz';
+const RESPONSIBLE_DOCUMENT = '033.810.532-80';
 
 type Section = { title: string; content: React.ReactNode };
 
