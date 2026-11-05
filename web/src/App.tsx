@@ -9,6 +9,7 @@ import { MeusPedidosPage } from './pages/MeusPedidosPage';
 import { ExplorarPage } from './pages/ExplorarPage';
 import { PerfilPage } from './pages/PerfilPage';
 import { SubscribeAppPage } from './pages/SubscribeAppPage';
+import { TermsPage } from './pages/TermsPage';
 
 export default function App() {
   return (
@@ -16,6 +17,7 @@ export default function App() {
       <Route path="/" element={<LandingPage />} />
       <Route path="/download" element={<DownloadPage />} />
       <Route path="/assinar" element={<SubscribeAppPage />} />
+      <Route path="/termos" element={<TermsPage />} />
       <Route path="/app" element={<UserApp />} />
       <Route path="/app/:slug" element={<UserApp />} />
       <Route path="/admin" element={<AdminApp />} />

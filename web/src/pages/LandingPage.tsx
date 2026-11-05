@@ -745,6 +745,9 @@ export function LandingPage() {
             <a href="/privacy.html" className="hover:text-primary-500">
               Privacidade
             </a>
+            <Link to="/termos" className="hover:text-primary-500">
+              Termos
+            </Link>
             <Link to="/app" className="hover:text-primary-500">
               Entrar
             </Link>
