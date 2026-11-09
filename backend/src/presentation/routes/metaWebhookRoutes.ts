@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { Request, Response, Router } from 'express';
 import { recordMessageUpdate } from '../../infrastructure/services/whatsappService';
 import { safeEqual } from '../../config/secrets';
+import { enqueueWhatsAppSales } from '../../infrastructure/services/whatsappSales';
 
 const router = Router();
 
@@ -24,12 +25,16 @@ router.post('/webhooks/whatsapp', async (req: Request, res: Response) => {
   if (!appSecret || !signature || !Buffer.isBuffer(body)) return void res.sendStatus(403);
   const expected = `sha256=${crypto.createHmac('sha256', appSecret).update(body).digest('hex')}`;
   if (!safeEqual(signature, expected)) return void res.sendStatus(403);
+  let payload: unknown;
+  try { payload = JSON.parse(body.toString('utf8')); }
+  catch { return void res.sendStatus(400); }
   try {
-    await recordMessageUpdate(JSON.parse(body.toString('utf8')));
+    await enqueueWhatsAppSales(payload);
+    await recordMessageUpdate(payload);
     res.sendStatus(200);
   } catch (error) {
-    console.error('[WhatsApp Cloud] Webhook inválido:', error);
-    res.sendStatus(400);
+    console.error('[WhatsApp Cloud] Falha ao persistir evento.');
+    res.sendStatus(500);
   }
 });
 

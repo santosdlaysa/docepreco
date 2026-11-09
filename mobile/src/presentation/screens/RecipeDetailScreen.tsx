@@ -1,3 +1,4 @@
+import { RecipeAssistant } from '../components/RecipeAssistant';
 import { colors } from '../theme/colors';
 import React, { useState, useCallback } from 'react';
 import {
@@ -696,6 +697,7 @@ export const RecipeDetailScreen: React.FC = () => {
             </View>
           )}
 
+          {calculation && !isDemoMode() && <RecipeAssistant key={`${recipeId}-${currency}`} recipeId={recipeId} currency={currency} formatCurrency={formatCurrency} />}
           <View style={{ height: 40 }} />
         </View>
       </ScrollView>

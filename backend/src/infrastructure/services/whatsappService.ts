@@ -112,6 +112,18 @@ export async function getMessageStatus(id: string): Promise<{ status: string; up
   return message ? { status: message.status, updatedAt: new Date(message.updated_at).getTime() } : null;
 }
 
+/** Only replies to a recent signed inbound event, never exposed as a broadcast endpoint. */
+export async function sendWhatsAppSessionReply(phone: string, text: string, inboundAt: Date): Promise<void> {
+  const age = Date.now() - inboundAt.getTime();
+  if (!Number.isFinite(age) || age < -60000 || age > 23 * 3600000) throw new Error('WhatsApp reply window expired');
+  if (!/^[1-9]\d{9,14}$/.test(phone) || text.length > 4096) throw new Error('Invalid WhatsApp reply');
+  const config = requireConfig();
+  const result = await cloudFetch(`${config.phoneNumberId}/messages`, {
+    messaging_product: 'whatsapp', to: phone, type: 'text', text: { body: text, preview_url: false },
+  });
+  if (!(result.messages as Array<{ id?: string }> | undefined)?.[0]?.id) throw new Error('Missing WhatsApp reply ID');
+}
+
 /** Processa atualizações de entrega/lida/falha da Cloud API. */
 export async function recordMessageUpdate(payload: unknown): Promise<void> {
   type Status = { id?: string; recipient_id?: string; status?: string };

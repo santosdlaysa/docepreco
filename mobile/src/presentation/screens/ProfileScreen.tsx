@@ -1,3 +1,4 @@
+import { WhatsAppSalesLink } from '../components/WhatsAppSalesLink';
 import { colors } from '../theme/colors';
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity, Linking, Platform, Switch, ScrollView, TextInput, ActivityIndicator, Image, RefreshControl } from 'react-native';
@@ -413,6 +414,8 @@ export const ProfileScreen: React.FC = () => {
                 trackColor={{ false: INK3, true: colors.greenBg }} thumbColor={notificationsOn ? GREEN : '#f4f3f4'} />
             </View>
           </View>
+
+          {!isDemoMode && <WhatsAppSalesLink />}
 
           {/* ── Ajuda ── */}
           <Text style={st.secLabel}>Ajuda</Text>
