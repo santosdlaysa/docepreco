@@ -7,7 +7,7 @@ import { NavigationContainer, NavigationContainerRef, useNavigationState } from 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { RootStackParamList } from './types';
+import { PaywallTrigger, RootStackParamList } from './types';
 import { HomeScreen } from '../screens/HomeScreen';
 import { RecipesScreen } from '../screens/RecipesScreen';
 import { IngredientsScreen } from '../screens/IngredientsScreen';
@@ -244,17 +244,19 @@ export function AppNavigator() {
   const [whatsNewVisible, setWhatsNewVisible] = useState<boolean | null>(null);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
-  const pendingSubscriptionLink = useRef(false);
+  const pendingSubscriptionLink = useRef<PaywallTrigger | null>(null);
   const { reset: resetPremium, refresh: refreshPremium } = usePremium();
 
   // Guarda o destino enquanto a pessoa faz login ou conclui o onboarding.
   useEffect(() => {
     const openSubscription = (url: string | null) => {
       if (!url || !/^docepreco:\/\/assinar\/?(?:[?#].*)?$/i.test(url)) return;
+      // Sem ?plano=master o link abre os planos em geral, não só o Master.
+      const trigger: PaywallTrigger = /[?&]plano=master(?:[&#]|$)/i.test(url) ? { kind: 'master' } : { kind: 'manual' };
       if (navigationRef.current?.isReady()) {
-        navigationRef.current.navigate('Paywall', { trigger: { kind: 'master' } });
+        navigationRef.current.navigate('Paywall', { trigger });
       } else {
-        pendingSubscriptionLink.current = true;
+        pendingSubscriptionLink.current = trigger;
       }
     };
     const listener = Linking.addEventListener('url', ({ url }) => openSubscription(url));
@@ -600,9 +602,10 @@ export function AppNavigator() {
         ref={navigationRef}
         onReady={() => {
           if (pendingSubscriptionLink.current) {
-            pendingSubscriptionLink.current = false;
+            const trigger = pendingSubscriptionLink.current;
+            pendingSubscriptionLink.current = null;
             pendingPaywall.current = false;
-            navigationRef.current?.navigate('Paywall', { trigger: { kind: 'master' } });
+            navigationRef.current?.navigate('Paywall', { trigger });
             return;
           }
           if (pendingPaywall.current) {
