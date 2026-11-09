@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { PostgresRewardedAdRepository, REWARDED_RECIPE_DAILY_LIMIT } from '../../infrastructure/repositories/PostgresRewardedAdRepository';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
-import { canCreateMore, getFreeRecipeLimit } from '../../domain/services/premium';
+import { canCreateMore, getUserRecipeLimit } from '../../domain/services/premium';
 
 const repo = new PostgresRewardedAdRepository();
 const users = new PostgresUserRepository();
@@ -25,7 +25,7 @@ export class RewardedAdController {
     try {
       const userId = req.userId!;
       const user = await users.findById(userId);
-      const limit = await getFreeRecipeLimit();
+      const limit = await getUserRecipeLimit(userId);
       const count = await users.countRecipes(userId);
       if (!user || canCreateMore(user, 'recipes', count, limit)) {
         res.status(400).json({ success: false, error: 'O anúncio só é necessário após atingir o limite gratuito.' }); return;

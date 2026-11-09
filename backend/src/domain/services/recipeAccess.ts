@@ -1,12 +1,12 @@
 import { pool } from '../../infrastructure/database/connection';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
-import { getFreeRecipeLimit, isActivePremium } from './premium';
+import { getUserRecipeLimit, isActivePremium } from './premium';
 
 /** Access is derived from the current plan; renewal never needs to restore data. */
 export async function getInactiveRecipeIds(userId: string): Promise<Set<string>> {
   const user = await new PostgresUserRepository().findById(userId);
   if (user && isActivePremium(user)) return new Set();
-  const limit = await getFreeRecipeLimit();
+  const limit = await getUserRecipeLimit(userId);
   const result = await pool.query(
     `WITH ordered AS (
        SELECT r.id, ROW_NUMBER() OVER (ORDER BY r.created_at ASC, r.id ASC) AS position

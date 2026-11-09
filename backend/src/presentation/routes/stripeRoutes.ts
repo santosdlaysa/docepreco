@@ -4,6 +4,8 @@ import { authMiddleware } from '../middleware/authMiddleware';
 
 const router = Router();
 const controller = new StripeController();
+router.post('/stripe/recipe-slot', authMiddleware, (req, res) => controller.createRecipeSlotCheckout(req as any, res));
+router.get('/stripe/recipe-capacity', authMiddleware, (req, res) => controller.recipeCapacity(req as any, res));
 
 // Mobile: authenticated user creates a checkout session
 router.post('/stripe/create-checkout', authMiddleware, (req, res) => controller.createCheckout(req as any, res));

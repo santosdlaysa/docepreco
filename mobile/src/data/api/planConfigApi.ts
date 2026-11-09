@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { apiClient } from './client';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
@@ -56,23 +57,11 @@ export interface TrialConfig {
   newUserTrialTier: 'free' | 'premium' | 'master';
 }
 
-let cachedLimit: number | null = null;
-let cachedLimitAt = 0;
 
 export const planConfigApi = {
   async getFreeRecipeLimit(): Promise<number> {
-    if (cachedLimit !== null && Date.now() - cachedLimitAt < 60000) return cachedLimit;
-    try {
-      const { data } = await axios.get<{ success: boolean; data: PlanConfig }>(
-        `${BASE_URL}/admin/settings/plans`,
-        { timeout: 10000 },
-      );
-      cachedLimit = Number.isInteger(data.data.freeRecipeLimit) && data.data.freeRecipeLimit > 0 ? data.data.freeRecipeLimit : 3;
-      cachedLimitAt = Date.now();
-      return cachedLimit;
-    } catch {
-      return 3; // fallback
-    }
+    const response = await apiClient.get('/stripe/recipe-capacity');
+    return response.data.data.limit;
   },
 
   /** Busca a config de PIX (valor, código e QR) gerenciada pelo painel web.
@@ -149,6 +138,6 @@ export const planConfigApi = {
   },
 
   clearCache() {
-    cachedLimit = null;
+    // Capacity is fetched per account without caching.
   },
 };

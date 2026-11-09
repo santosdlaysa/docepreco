@@ -87,7 +87,7 @@ export function RecipesPage({ toast }: { toast: ToastFn }) {
   const { user } = useAuth();
   const [freeLimit, setFreeLimit] = useState<number | null>(null);
   const [offerSource, setOfferSource] = useState<string | null>(null);
-  useEffect(() => { void userApi.getPlanConfig().then(c => setFreeLimit(c.freeRecipeLimit ?? 3)).catch(() => {}); }, []);
+  useEffect(() => { void userApi.getRecipeCapacity().then(c => setFreeLimit(c.limit)).catch(() => {}); }, []);
   const openOffer = (source: string) => {
     userApi.trackConversion('offer_clicked', source, 'premium');
     setOfferSource(source);

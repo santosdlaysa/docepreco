@@ -346,6 +346,17 @@ export const PaywallScreen: React.FC = () => {
     <SafeAreaView style={{ flex: 1, backgroundColor: '#FFFFFF' }} edges={['bottom']}>
       <ScrollView showsVerticalScrollIndicator={false}>
 
+        {trigger?.kind === 'limit' && trigger.feature === 'recipes' && (
+          <TouchableOpacity disabled={cardLoading} style={{ padding: 20, backgroundColor: '#FFF6F0' }} onPress={async () => {
+            setCardLoading(true);
+            try { await Linking.openURL(await stripeApi.createRecipeSlotCheckout()); }
+            catch { showToast('Não foi possível abrir o pagamento.', 'error'); }
+            finally { setCardLoading(false); }
+          }}>
+            <Text style={{ fontWeight: '700', color: INK }}>Comprar +1 espaço — R$ 10,99</Text>
+            <Text>Pagamento único. Espaço permanente, sem mensalidade. Ou assine abaixo.</Text>
+          </TouchableOpacity>
+        )}
         {/* ── Hero (pink gradient) ── */}
         <LinearGradient
           colors={[colors.pinkBright, PINK, '#B92C6B']}

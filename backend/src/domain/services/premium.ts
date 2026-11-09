@@ -104,3 +104,10 @@ export const PREMIUM_ERROR_CODES = {
   recipes: 'RECIPE_LIMIT',
   sales: 'SALE_LIMIT',
 } as const;
+
+/** Permanent purchased capacity remains available after subscription expiry. */
+export async function getUserRecipeLimit(userId: string): Promise<number> {
+  const base = await getFreeRecipeLimit();
+  const result = await pool.query('SELECT COUNT(*)::int AS count FROM recipe_slot_purchases WHERE user_id = $1', [userId]);
+  return base + Number(result.rows[0].count);
+}

@@ -72,6 +72,7 @@ export function SubscribeModal({
   }, [source, initialTier]);
 
   const [config, setConfig] = useState<PixConfig | null>(null);
+  const [slotLoading, setSlotLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [tier, setTier] = useState<'premium' | 'master'>(initialTier === 'master' ? 'master' : 'premium');
@@ -309,6 +310,16 @@ export function SubscribeModal({
           <Sparkles size={18} className="text-primary-500" /> {t('subscribe.title')}
         </h3>
 
+        {['recipe_limit', 'recipe_near_limit', 'recipe_inactive'].includes(source) && (
+          <button disabled={slotLoading} className="w-full rounded-xl border border-primary-300 p-4 text-left disabled:opacity-50" onClick={async () => {
+            setSlotLoading(true);
+            try { const checkout = await userApi.createRecipeSlotCheckout(window.location.href); window.location.assign(checkout.url); }
+            catch { toast('Não foi possível abrir o pagamento.'); setSlotLoading(false); }
+          }}>
+            <strong>Comprar +1 espaço — R$ 10,99</strong>
+            <span className="block text-sm">Pagamento único. Espaço permanente, sem mensalidade. Ou assine abaixo.</span>
+          </button>
+        )}
         {loading ? (
           <div className="py-10 flex justify-center">
             <Loader2 size={24} className="animate-spin-slow text-primary-500" />

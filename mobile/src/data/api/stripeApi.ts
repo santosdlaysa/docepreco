@@ -8,6 +8,10 @@ export interface StripeSubscription {
 }
 
 export const stripeApi = {
+  createRecipeSlotCheckout: async (): Promise<string> => {
+    const response = await apiClient.post('/stripe/recipe-slot');
+    return response.data.data.url;
+  },
   createCheckout: async (
     plan: 'monthly' | 'annual',
     tier: 'premium' | 'master',

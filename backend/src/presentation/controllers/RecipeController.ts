@@ -9,7 +9,7 @@ import { PostgresRecipeRepository } from '../../infrastructure/repositories/Post
 import { PostgresIngredientRepository } from '../../infrastructure/repositories/PostgresIngredientRepository';
 import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
-import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES, getFreeRecipeLimit } from '../../domain/services/premium';
+import { canCreateMore, FREE_LIMITS, PREMIUM_ERROR_CODES, getUserRecipeLimit } from '../../domain/services/premium';
 import { processReferralActivation } from '../../infrastructure/services/referralService';
 
 import { recordConversion } from '../../infrastructure/services/conversionService';
@@ -72,7 +72,7 @@ export class RecipeController {
         return;
       }
       const count = await userRepo.countRecipes(req.userId!);
-      const freeRecipeLimit = await getFreeRecipeLimit();
+      const freeRecipeLimit = await getUserRecipeLimit(req.userId!);
       if (!canCreateMore(user, 'recipes', count, freeRecipeLimit)) {
         rewardedCreditId = await rewardedAdRepo.claimRecipeCredit(req.userId!);
         if (!rewardedCreditId) {

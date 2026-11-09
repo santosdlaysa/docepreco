@@ -701,6 +701,8 @@ export interface StockMovement {
 /* ── Endpoints ─────────────────────────────────────────────────────────── */
 
 export const userApi = {
+  createRecipeSlotCheckout: (returnUrl?: string) => req<{ url: string }>('/stripe/recipe-slot', { method: 'POST', body: JSON.stringify({ returnUrl }) }),
+  getRecipeCapacity: () => req<{ limit: number }>('/stripe/recipe-capacity'),
   trackConversion: (event: 'blocked' | 'offer_viewed' | 'offer_clicked' | 'checkout_started', source: string, tier: 'premium' | 'master') => {
     if (!globalThis.crypto?.randomUUID) return;
     void req('/conversion-events', { method: 'POST', body: JSON.stringify({ event, source, tier, eventId: crypto.randomUUID() }) }).catch(() => {});

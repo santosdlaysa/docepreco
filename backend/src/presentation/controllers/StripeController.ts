@@ -10,6 +10,8 @@ import { pool } from '../../infrastructure/database/connection';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { isValidEmail, INVALID_ACCOUNT_EMAIL_ERROR } from '../../domain/services/email';
 
+import { getUserRecipeLimit } from '../../domain/services/premium';
+
 const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
 
@@ -188,6 +190,27 @@ async function notifyRenewalChange(userId: string, cancelled: boolean, subscript
 }
 
 export class StripeController {
+  async recipeCapacity(req: AuthRequest, res: Response): Promise<void> {
+    try { res.json({ success: true, data: { limit: await getUserRecipeLimit(req.userId!) } }); }
+    catch { res.status(500).json({ success: false, error: 'Não foi possível consultar o limite.' }); }
+  }
+
+  async createRecipeSlotCheckout(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      const user = await userRepo.findById(req.userId!);
+      if (!user) { res.status(404).json({ success: false, error: 'Conta não encontrada.' }); return; }
+      if (!isValidEmail(user.email)) { res.status(400).json({ success: false, error: INVALID_ACCOUNT_EMAIL_ERROR }); return; }
+      const session = await getStripe().checkout.sessions.create({
+        mode: 'payment', payment_method_types: ['card'], customer_email: user.email,
+        line_items: [{ price_data: { currency: 'brl', unit_amount: 1099,
+          product_data: { name: 'DocePreço — +1 espaço permanente para receita' } }, quantity: 1 }],
+        metadata: { userId: req.userId!, product: 'recipe_slot' },
+        ...checkoutReturnUrls(process.env.APP_BASE_URL ?? 'https://docepreco.onrender.com', safeWebReturnUrl(req.body?.returnUrl)),
+      });
+      res.json({ success: true, data: { url: session.url } });
+    } catch { res.status(500).json({ success: false, error: 'Não foi possível abrir o pagamento. Tente novamente.' }); }
+  }
+
   /**
    * Creates a Stripe Checkout Session and returns the URL.
    * POST /api/stripe/create-checkout
@@ -407,6 +430,22 @@ export class StripeController {
     } catch (err) {
       console.warn('[Stripe] Webhook signature verification failed:', err);
       res.status(400).json({ error: 'Invalid signature' });
+      return;
+    }
+
+    // Signed, paid checkout only; session primary key makes retries idempotent.
+    if (['checkout.session.completed', 'checkout.session.async_payment_succeeded'].includes(event.type)
+      && event.data.object?.metadata?.product === 'recipe_slot') {
+      const session = event.data.object;
+      if (session.mode !== 'payment' || session.payment_status !== 'paid'
+        || session.amount_total !== 1099 || session.currency !== 'brl' || !session.metadata.userId) {
+        res.json({ received: true }); return;
+      }
+      try {
+        await pool.query(`INSERT INTO recipe_slot_purchases (checkout_session_id, user_id, amount_cents)
+          VALUES ($1, $2, 1099) ON CONFLICT (checkout_session_id) DO NOTHING`, [session.id, session.metadata.userId]);
+        res.json({ received: true });
+      } catch { res.status(500).json({ error: 'Não foi possível liberar o espaço.' }); }
       return;
     }
 
@@ -706,7 +745,7 @@ export class StripeController {
 <body>
   <div class="icon">🎉</div>
   <h1>Pagamento confirmado!</h1>
-  <p>Sua assinatura está ativa.</p>
+  <p>O pagamento foi recebido. Seu acesso será atualizado após a confirmação.</p>
   <p style="font-size:14px;color:#9A7E8C;margin-bottom:32px">Feche esta aba e volte ao app — seu acesso será ativado automaticamente.</p>
   <div class="tip">Feche esta aba do navegador</div>
 </body>

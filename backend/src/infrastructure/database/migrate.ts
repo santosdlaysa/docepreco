@@ -1478,6 +1478,13 @@ export async function runMigrations() {
     await migrateStorePayments(client);
     await migrateDeletedUsers(client);
     await migrateCheckins(client);
+    await client.query(`CREATE TABLE IF NOT EXISTS recipe_slot_purchases (
+      checkout_session_id TEXT PRIMARY KEY,
+      user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      amount_cents INTEGER NOT NULL CHECK (amount_cents = 1099),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`);
+    await client.query('CREATE INDEX IF NOT EXISTS recipe_slot_purchases_user ON recipe_slot_purchases(user_id)');
     await client.query('COMMIT');
     console.log('\n✨ Migrations applied successfully');
   } catch (error) {
