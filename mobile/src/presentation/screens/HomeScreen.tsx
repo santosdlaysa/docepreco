@@ -473,7 +473,18 @@ export const HomeScreen: React.FC = () => {
                   onPress={() => openPlanBannerAction(pb)}
                 >
                   {pb.imageUrl ? (
-                    <Image source={{ uri: pb.imageUrl }} style={s.sponsoredBanner} resizeMode="cover" accessibilityLabel={pb.title} />
+                    <View style={s.sponsoredBanner}>
+                      <Image source={{ uri: pb.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={pb.title} />
+                      {!!pb.title && (
+                        <LinearGradient
+                          colors={['transparent', 'rgba(0,0,0,0.7)']}
+                          style={s.imageBannerCaption}
+                        >
+                          {!!pb.eyebrow && <Text style={[s.planBannerEyebrow, { color: 'rgba(255,255,255,0.85)' }]}>{pb.eyebrow}</Text>}
+                          <Text style={[s.planBannerTitle, { color: '#FFFFFF' }]} numberOfLines={2}>{pb.title}</Text>
+                        </LinearGradient>
+                      )}
+                    </View>
                   ) : (
                   <LinearGradient
                     colors={['#2DD4BF', '#0D9488', '#0F766E']}
@@ -1002,6 +1013,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.border,
     overflow: 'hidden',
   },
+  imageBannerCaption: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 28, paddingBottom: 14 },
   sponsoredFallback: { alignItems: 'flex-start', justifyContent: 'center', padding: 18 },
   sponsoredFallbackTitle: { fontSize: 17, fontWeight: '800', color: INK },
   sponsoredFallbackMsg: { fontSize: 12.5, color: INK2, fontWeight: '500', marginTop: 6, lineHeight: 17 },
