@@ -25,7 +25,6 @@ import { recipeApi } from '../../data/api/recipeApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
-import { laborSettingsStorage } from '../../data/storage/laborSettingsStorage';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { RecipeIngredient, AdditionalCost, SubRecipe } from '../../domain/entities/Recipe';
 import { Recipe } from '../../domain/entities/Recipe';
@@ -130,6 +129,18 @@ export const CreateRecipeScreen: React.FC = () => {
     normalizeCostName(name).includes('maodeobraprofissional') ||
     normalizeCostName(name).includes('laborprofessional');
 
+  const consolidateLaborCosts = (costs: AdditionalCost[], recipeYield: number) => {
+    const labor = costs.filter(c => isProfessionalLaborCost(c.name) ||
+      ['maodeobra', 'labor', normalizeCostName(t('createRecipe.labor'))].includes(normalizeCostName(c.name)));
+    if (!labor.length) return costs;
+    const costType = labor.every(c => c.costType === 'unit') ? 'unit' : 'recipe';
+    const value = labor.reduce((total, c) => total + c.value *
+      (costType === 'recipe' && c.costType === 'unit' ? recipeYield : 1), 0);
+    return [...costs.filter(c => !labor.includes(c)), {
+      name: t('createRecipe.labor'), value: Math.round(value * 100) / 100, costType,
+    } as AdditionalCost];
+  };
+
   const localizedMarginPresets = MARGIN_PRESETS.map(preset => ({
     ...preset,
     label: preset.value === 30 ? t('createRecipe.marginBasic')
@@ -168,17 +179,6 @@ export const CreateRecipeScreen: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [recipeCount, setRecipeCount] = useState(0);
-  const [laborExpanded, setLaborExpanded] = useState(false);
-  const [hourlyRate, setHourlyRate] = useState('');
-  const [prepTimeMinutes, setPrepTimeMinutes] = useState('');
-  // Assistente de custo por hora: deriva o R$/h a partir do salário desejado + jornada.
-  const [rateHelperOpen, setRateHelperOpen] = useState(false);
-  const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [hoursPerDay, setHoursPerDay] = useState('');
-  const [daysPerWeek, setDaysPerWeek] = useState('');
-  // Valor de mão de obra carregado ao editar (a API guarda só o custo calculado,
-  // não a hora/tempo). Serve para preservar o valor ao salvar de novo.
-  const [initialLaborCost, setInitialLaborCost] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [applyingSuggestion, setApplyingSuggestion] = useState(false);
   const [subRecipes, setSubRecipes] = useState<SubRecipe[]>([]);
@@ -211,12 +211,8 @@ export const CreateRecipeScreen: React.FC = () => {
     additionalCosts: AdditionalCost[];
     additionalCostInputs: Record<string, string>;
     subRecipes: SubRecipe[];
-    hourlyRate: string;
-    prepTimeMinutes: string;
-    laborExpanded: boolean;
-    monthlyIncome: string;
-    hoursPerDay: string;
-    daysPerWeek: string;
+    hourlyRate?: string;
+    prepTimeMinutes?: string;
   }
 
   const { draft: recipeDraft, isDraftLoading, saveDraft, clearDraft } = useDraft<RecipeDraft>(
@@ -239,19 +235,6 @@ export const CreateRecipeScreen: React.FC = () => {
     }).catch(() => {});
   }, []);
 
-  // Pré-preenche o custo por hora salvo como padrão (só em receitas novas)
-  useEffect(() => {
-    if (isEditing) return;
-    laborSettingsStorage.get()
-      .then(s => {
-        if (s.hourlyRate) setHourlyRate(prev => (prev ? prev : s.hourlyRate));
-        if (s.monthlyIncome) setMonthlyIncome(prev => (prev ? prev : s.monthlyIncome!));
-        if (s.hoursPerDay) setHoursPerDay(prev => (prev ? prev : s.hoursPerDay!));
-        if (s.daysPerWeek) setDaysPerWeek(prev => (prev ? prev : s.daysPerWeek!));
-      })
-      .catch(() => {});
-  }, []);
-
   useEffect(() => {
     if (!recipeId) return;
     rApi.getById(recipeId)
@@ -266,20 +249,15 @@ export const CreateRecipeScreen: React.FC = () => {
         setWeightPerUnitUnit(recipe.yieldUnitWeightUnit ?? 'g');
         setProfitMargin(String(recipe.profitMargin));
         setIngredients(recipe.ingredients);
-        setAdditionalCosts(recipe.additionalCosts);
+        const costs = consolidateLaborCosts(recipe.additionalCosts, recipe.yield);
+        setAdditionalCosts(costs);
         setAdditionalCostInputs(
-          recipe.additionalCosts.reduce((acc, c) => {
+          costs.reduce((acc, c) => {
             acc[getCostInputName(c.name)] = c.value ? String(c.value).replace('.', ',') : '';
             return acc;
           }, {} as Record<string, string>)
         );
         setSubRecipes(recipe.subRecipes || []);
-        // Restore labor cost fields if present (inclui dados antigos com nome corrompido)
-        const laborCost = recipe.additionalCosts.find(c => isProfessionalLaborCost(c.name));
-        if (laborCost && laborCost.value > 0) {
-          setLaborExpanded(true);
-          setInitialLaborCost(laborCost.value);
-        }
       })
       .catch((error: { code?: string }) => {
         if (error.code === 'RECIPE_INACTIVE') {
@@ -318,15 +296,19 @@ export const CreateRecipeScreen: React.FC = () => {
             setWeightPerUnitUnit(recipeDraft.weightPerUnitUnit ?? 'g');
             setProfitMargin(recipeDraft.profitMargin);
             setIngredients(recipeDraft.ingredients);
-            setAdditionalCosts(recipeDraft.additionalCosts);
-            setAdditionalCostInputs(recipeDraft.additionalCostInputs);
+            const legacyRate = parseLocaleNumber(recipeDraft.hourlyRate ?? '');
+            const legacyMinutes = parseLocaleNumber(recipeDraft.prepTimeMinutes ?? '');
+            const draftCosts = [...recipeDraft.additionalCosts];
+            if (legacyRate > 0 && legacyMinutes > 0) {
+              draftCosts.push({ name: 'Mão de obra (profissional)', value: Math.round(legacyRate * legacyMinutes / 60 * 100) / 100 });
+            }
+            const costs = consolidateLaborCosts(draftCosts, parseLocaleNumber(recipeDraft.yieldAmount));
+            setAdditionalCosts(costs);
+            setAdditionalCostInputs(costs.reduce((acc, c) => {
+              acc[getCostInputName(c.name)] = c.value ? String(c.value).replace('.', ',') : '';
+              return acc;
+            }, {} as Record<string, string>));
             setSubRecipes(recipeDraft.subRecipes);
-            setHourlyRate(recipeDraft.hourlyRate);
-            setPrepTimeMinutes(recipeDraft.prepTimeMinutes);
-            setLaborExpanded(recipeDraft.laborExpanded);
-            setMonthlyIncome(recipeDraft.monthlyIncome ?? '');
-            setHoursPerDay(recipeDraft.hoursPerDay ?? '');
-            setDaysPerWeek(recipeDraft.daysPerWeek ?? '');
           },
         },
       ]
@@ -336,8 +318,8 @@ export const CreateRecipeScreen: React.FC = () => {
   // Auto-save form state whenever it changes
   useEffect(() => {
     if (isEditing || isDraftLoading) return;
-    saveDraft({ name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek });
-  }, [name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek]);
+    saveDraft({ name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes });
+  }, [name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes]);
 
   const toGrams = (value: number, unit: 'g' | 'kg') => unit === 'kg' ? value * 1000 : value;
 
@@ -561,34 +543,6 @@ export const CreateRecipeScreen: React.FC = () => {
     return additionalCostInputs[name] ?? '';
   };
 
-  const laborCostValue = (() => {
-    const rate = parseLocaleNumber(hourlyRate);
-    const mins = parseLocaleNumber(prepTimeMinutes);
-    if (rate > 0 && mins > 0) return Math.round(((rate / 60) * mins) * 100) / 100;
-    return 0;
-  })();
-
-  // Usa o cálculo (hora × tempo) quando preenchido; senão preserva o valor salvo (edição).
-  const effectiveLaborCost = laborCostValue > 0 ? laborCostValue : initialLaborCost;
-
-  // Assistente: converte "quanto quero ganhar por mês" em custo por hora.
-  // horas no mês = horas/dia × dias/semana × semanas/mês (média de 4,33).
-  const WEEKS_PER_MONTH = 4.33;
-  const computedHourlyRate = (() => {
-    const income = parseLocaleNumber(monthlyIncome);
-    const hd = parseLocaleNumber(hoursPerDay);
-    const dw = parseLocaleNumber(daysPerWeek);
-    const hoursPerMonth = hd * dw * WEEKS_PER_MONTH;
-    if (income > 0 && hoursPerMonth > 0) return Math.round((income / hoursPerMonth) * 100) / 100;
-    return 0;
-  })();
-
-  const applyComputedHourlyRate = () => {
-    if (computedHourlyRate <= 0) return;
-    setHourlyRate(computedHourlyRate.toFixed(2).replace('.', ','));
-    setRateHelperOpen(false);
-  };
-
   const handleSelectSuggestion = async (suggestion: SuggestedRecipe) => {
     if (!requirePremium('smartShoppingList')) return;
     setShowSuggestions(false);
@@ -663,13 +617,6 @@ export const CreateRecipeScreen: React.FC = () => {
     }
   };
 
-  const handleToggleLabor = () => {
-    if (!laborExpanded) {
-      if (!requirePremium('laborCostCalc')) return;
-    }
-    setLaborExpanded(!laborExpanded);
-  };
-
   const handleShowConfirmation = async () => {
     if (!validate()) return;
     if (!isEditing && !isPremium && recipeCount >= await planConfigApi.getFreeRecipeLimit()) {
@@ -697,14 +644,6 @@ export const CreateRecipeScreen: React.FC = () => {
     }
   };
 
-  const getFinalCosts = () => {
-    let finalCosts = additionalCosts.filter(c => c.name !== 'Mão de obra (profissional)');
-    if (laborCostValue > 0) {
-      finalCosts = [...finalCosts, { name: 'Mão de obra (profissional)', value: laborCostValue }];
-    }
-    return finalCosts;
-  };
-
   const getFinalCostsFromInputs = () => {
     const standardNames = new Set(localizedAdditionalCosts.map(cost => normalizeCostName(cost.name)));
     const finalCosts: AdditionalCost[] = localizedAdditionalCosts
@@ -721,20 +660,12 @@ export const CreateRecipeScreen: React.FC = () => {
       if (cost.value > 0) finalCosts.push(cost);
     }
 
-    if (effectiveLaborCost > 0) {
-      finalCosts.push({ name: 'Mão de obra (profissional)', value: effectiveLaborCost, costType: additionalCosts.find(c => isProfessionalLaborCost(c.name))?.costType ?? 'recipe' });
-    }
-
     return finalCosts;
   };
 
   const handleConfirmSave = async () => {
     setShowConfirmModal(false);
     setLoading(true);
-    // Lembra o custo por hora (e os dados do assistente) como padrão para as próximas receitas
-    if (parseLocaleNumber(hourlyRate) > 0) {
-      laborSettingsStorage.save({ hourlyRate, monthlyIncome, hoursPerDay, daysPerWeek }).catch(() => {});
-    }
     try {
       const payload = {
         name: name.trim(),
@@ -1312,135 +1243,6 @@ export const CreateRecipeScreen: React.FC = () => {
                 <Text style={{ fontSize: 11.5, color: INK3, marginTop: 4, lineHeight: 16 }}>{cost.hint}</Text>
               </View>
             ))}
-          </View>
-
-          {/* ── Custos profissionais (calculador de mão de obra) ── */}
-          <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 15, ...SH }}>
-            <TouchableOpacity onPress={handleToggleLabor} style={styles.laborHeader} activeOpacity={0.7}>
-              <View style={styles.laborHeaderLeft}>
-                <Ionicons name="construct-outline" size={20} color={laborExpanded ? PINK : INK2} />
-                <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>{t('createRecipe.professionalCosts')}</Text>
-              </View>
-              <View style={styles.laborHeaderRight}>
-                {!isPremium && (
-                  <View style={styles.premiumBadge}>
-                    <Ionicons name="sparkles" size={10} color="#fff" />
-                    <Text style={styles.premiumBadgeText}>Premium</Text>
-                  </View>
-                )}
-                <Ionicons name={laborExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={INK3} />
-              </View>
-            </TouchableOpacity>
-            {laborExpanded && (
-              <View style={styles.laborContent}>
-                <Text style={styles.laborDesc}>{t('createRecipe.laborDescription')}</Text>
-
-                {/* ── Assistente: calcula o R$/h a partir do salário desejado ── */}
-                <View style={{ backgroundColor: CREAM2, borderRadius: 12, padding: 12, marginBottom: 4 }}>
-                  <TouchableOpacity
-                    onPress={() => setRateHelperOpen(v => !v)}
-                    activeOpacity={0.7}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                  >
-                    <Ionicons name="help-buoy-outline" size={16} color={PINK} />
-                    <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: INK }}>
-                      {t('createRecipe.rateHelperTitle')}
-                    </Text>
-                    <Ionicons name={rateHelperOpen ? 'chevron-up' : 'chevron-down'} size={16} color={INK3} />
-                  </TouchableOpacity>
-                  {rateHelperOpen && (
-                    <View style={{ marginTop: 10, gap: 2 }}>
-                      <Text style={{ fontSize: 11.5, color: INK3, lineHeight: 16, marginBottom: 6 }}>
-                        {t('createRecipe.rateHelperDescription')}
-                      </Text>
-                      <Input
-                        label={t('createRecipe.monthlyIncome')}
-                        placeholder="2.000,00"
-                        value={monthlyIncome}
-                        onChangeText={setMonthlyIncome}
-                        keyboardType="decimal-pad"
-                        suffix={`${symbol}/mês`}
-                      />
-                      <View style={{ flexDirection: 'row' }}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                          <Input
-                            label={t('createRecipe.hoursPerDay')}
-                            placeholder="6"
-                            value={hoursPerDay}
-                            onChangeText={setHoursPerDay}
-                            keyboardType="number-pad"
-                            suffix="h/dia"
-                          />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Input
-                            label={t('createRecipe.daysPerWeek')}
-                            placeholder="5"
-                            value={daysPerWeek}
-                            onChangeText={setDaysPerWeek}
-                            keyboardType="number-pad"
-                            suffix="dias"
-                          />
-                        </View>
-                      </View>
-                      {computedHourlyRate > 0 && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                          <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: INK }}>
-                            {t('createRecipe.computedHourlyRate', { value: computedHourlyRate.toFixed(2) })}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={applyComputedHourlyRate}
-                            activeOpacity={0.8}
-                            style={{ backgroundColor: PINK, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14 }}
-                          >
-                            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
-                              {t('createRecipe.useRate')}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-
-                <View style={{ flexDirection: 'row' }}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Input
-                      label={t('createRecipe.hourlyRate')}
-                      placeholder="25,00"
-                      value={hourlyRate}
-                      onChangeText={setHourlyRate}
-                      keyboardType="decimal-pad"
-                      suffix={`${symbol}/h`}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      label={t('createRecipe.prepTime')}
-                      placeholder="120"
-                      value={prepTimeMinutes}
-                      onChangeText={setPrepTimeMinutes}
-                      keyboardType="number-pad"
-                      suffix="min"
-                    />
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                  <Ionicons name="bookmark-outline" size={13} color={INK3} />
-                  <Text style={{ flex: 1, fontSize: 11.5, color: INK3, lineHeight: 16 }}>
-                    O custo por hora fica salvo como padrão para as próximas receitas.
-                  </Text>
-                </View>
-                {effectiveLaborCost > 0 && (
-                  <View style={styles.laborResult}>
-                    <Ionicons name="calculator-outline" size={16} color={PINK} />
-                    <Text style={styles.laborResultText}>
-                      {t('createRecipe.laborCost', { value: effectiveLaborCost.toFixed(2) })}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
           </View>
 
           {/* ── Save button ── */}
