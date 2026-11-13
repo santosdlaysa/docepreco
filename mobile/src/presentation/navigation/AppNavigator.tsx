@@ -91,10 +91,10 @@ const Tab = createBottomTabNavigator();
 const DummyScreen = () => null;
 
 const ACTION_MAP: Record<string, { route: keyof RootStackParamList; icon: keyof typeof Ionicons.glyphMap; label: string }> = {
-  Home:        { route: 'CreateSale',       icon: 'cart',    label: 'Venda' },
-  Recipes:     { route: 'CreateRecipe',     icon: 'book',    label: 'Receita' },
-  Ingredients: { route: 'CreateIngredient', icon: 'basket',  label: 'Ingrediente' },
-  Sales:       { route: 'CreateSale',       icon: 'cart',    label: 'Venda' },
+  Home:        { route: 'CreateSale',       icon: 'cart',    label: 'Nova venda' },
+  Recipes:     { route: 'CreateRecipe',     icon: 'book',    label: 'Criar receita' },
+  Ingredients: { route: 'CreateIngredient', icon: 'basket',  label: 'Adicionar ingrediente' },
+  Sales:       { route: 'CreateSale',       icon: 'cart',    label: 'Nova venda' },
 };
 
 // CenterTabButton é renderizado DENTRO do Tab navigator,
@@ -104,12 +104,13 @@ function CenterTabButton({ onPress }: { onPress?: (e: any) => void }) {
   const action = ACTION_MAP[activeTab];
 
   return (
-    <TouchableOpacity style={tabStyles.centerBtn} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={tabStyles.centerBtn} onPress={onPress} activeOpacity={0.8}
+      accessibilityRole="button" accessibilityLabel={action?.label ?? 'Adicionar'}>
       <View style={tabStyles.centerBtnInner}>
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={28} color={colors.primaryDark} />
       </View>
       {action && (
-        <Text style={tabStyles.centerLabel}>{action.label}</Text>
+        <Text style={tabStyles.centerLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>{action.label}</Text>
       )}
     </TouchableOpacity>
   );
@@ -121,23 +122,39 @@ function TabNavigator() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Recipes') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Ingredients') iconName = focused ? 'basket' : 'basket-outline';
           else if (route.name === 'Sales') iconName = focused ? 'cart' : 'cart-outline';
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={27} color={color} />;
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: colors.primaryDark,
+        tabBarInactiveTintColor: colors.surface,
+        tabBarActiveBackgroundColor: colors.surface,
+        tabBarLabelPosition: 'below-icon',
+        tabBarItemStyle: {
+          borderRadius: 16,
+          marginHorizontal: 2,
+          paddingVertical: 6,
+        },
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          paddingBottom: insets.bottom + 4,
-          height: 64 + insets.bottom,
+          backgroundColor: colors.primary,
+          borderTopWidth: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingTop: 8,
+          paddingHorizontal: 4,
+          paddingBottom: insets.bottom + 8,
+          height: 80 + insets.bottom,
+          shadowColor: colors.primaryDark,
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.18,
+          shadowRadius: 14,
+          elevation: 12,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
+        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', letterSpacing: -0.3 },
         headerShown: false,
       })}
     >
@@ -199,28 +216,32 @@ const bannerStyles = StyleSheet.create({
 
 const tabStyles = StyleSheet.create({
   centerBtn: {
-    top: -18,
+    flex: 1,
+    top: -14,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 3,
   },
   centerBtnInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary,
+    width: 52,
+    height: 52,
+    borderRadius: 18,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
+    shadowColor: colors.primaryDark,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
   },
   centerLabel: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
-    color: colors.primary,
+    color: colors.surface,
+    textAlign: 'center',
+    lineHeight: 14,
+    paddingHorizontal: 2,
     marginTop: 2,
   },
 });
