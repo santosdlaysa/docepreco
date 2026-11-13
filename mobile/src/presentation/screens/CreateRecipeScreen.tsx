@@ -172,6 +172,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
   const [showIngredientModal, setShowIngredientModal] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
+  const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
   const [ingredientQuantity, setIngredientQuantity] = useState('');
   const [ingredientUnit, setIngredientUnit] = useState('');
   const [loading, setLoading] = useState(false);
@@ -393,12 +394,35 @@ export const CreateRecipeScreen: React.FC = () => {
     return qty;
   };
 
+  const closeIngredientModal = () => {
+    setShowIngredientModal(false);
+    setSelectedIngredient(null);
+    setEditingIngredientId(null);
+    setIngredientQuantity('');
+    setIngredientUnit('');
+  };
+
+  const editIngredient = (item: RecipeIngredient) => {
+    const ingredient = availableIngredients.find(available => available.id === item.ingredientId);
+    if (!ingredient) {
+      showToast('Não foi possível carregar este ingrediente. Tente novamente.', 'error');
+      return;
+    }
+    setEditingIngredientId(item.ingredientId);
+    setSelectedIngredient(ingredient);
+    setIngredientQuantity(String(item.quantityUsed));
+    setIngredientUnit(item.unit);
+    setShowIngredientModal(true);
+  };
+
   const confirmAndAddIngredient = () => {
     if (!selectedIngredient) return;
     const qty = parseLocaleNumber(ingredientQuantity);
     const unit = ingredientUnit || selectedIngredient.unit;
 
-    setIngredients(prev => [
+    setIngredients(prev => editingIngredientId ? prev.map(item =>
+      item.ingredientId === editingIngredientId ? { ...item, quantityUsed: qty, unit } : item
+    ) : [
       ...prev,
       {
         ingredientId: selectedIngredient.id,
@@ -407,17 +431,18 @@ export const CreateRecipeScreen: React.FC = () => {
         unit,
       },
     ]);
-    setSelectedIngredient(null);
-    setIngredientQuantity('');
-    setIngredientUnit('');
-    setShowIngredientModal(false);
+    closeIngredientModal();
   };
 
   const addIngredient = () => {
     const qty = parseLocaleNumber(ingredientQuantity);
-    if (!selectedIngredient || !ingredientQuantity || qty <= 0) return;
+    if (!selectedIngredient) return;
+    if (!ingredientQuantity || !Number.isFinite(qty) || qty <= 0) {
+      showToast('Informe uma quantidade maior que zero.', 'warning');
+      return;
+    }
     const existing = ingredients.find(i => i.ingredientId === selectedIngredient.id);
-    if (existing) {
+    if (existing && existing.ingredientId !== editingIngredientId) {
       showToast(t('createRecipe.alreadyAdded'), 'warning');
       return;
     }
@@ -1168,6 +1193,14 @@ export const CreateRecipeScreen: React.FC = () => {
                     <Text style={{ fontSize: 14.5, fontWeight: '700', color: INK }}>{ing.ingredientName}</Text>
                     <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{ing.quantityUsed} {formatUnitLabel(ing.unit)}</Text>
                   </View>
+                  <TouchableOpacity
+                    onPress={() => editIngredient(ing)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Editar quantidade de ${ing.ingredientName}`}
+                    style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Ionicons name="pencil-outline" size={20} color={PINK} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeIngredient(ing.ingredientId)}>
                     <Ionicons name="close-circle" size={20} color={colors.redDark} />
                   </TouchableOpacity>
@@ -1308,11 +1341,11 @@ export const CreateRecipeScreen: React.FC = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Modal visible={showIngredientModal} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={showIngredientModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeIngredientModal}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t('createRecipe.selectIngredient')}</Text>
-            <TouchableOpacity onPress={() => setShowIngredientModal(false)}>
+            <Text style={styles.modalTitle}>{editingIngredientId ? 'Editar quantidade' : t('createRecipe.selectIngredient')}</Text>
+            <TouchableOpacity onPress={closeIngredientModal}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
@@ -1357,13 +1390,16 @@ export const CreateRecipeScreen: React.FC = () => {
               )}
               <View style={styles.modalActions}>
                 <Button
-                  title={t('common.back')}
+                  title={editingIngredientId ? t('common.cancel') : t('common.back')}
                   variant="outline"
-                  onPress={() => { setSelectedIngredient(null); setIngredientUnit(''); }}
+                  onPress={() => {
+                    if (editingIngredientId) closeIngredientModal();
+                    else { setSelectedIngredient(null); setIngredientUnit(''); setIngredientQuantity(''); }
+                  }}
                   style={{ flex: 1, marginRight: 8 }}
                 />
                 <Button
-                  title={t('common.add')}
+                  title={editingIngredientId ? t('common.save') : t('common.add')}
                   onPress={addIngredient}
                   style={{ flex: 1 }}
                 />
@@ -1691,9 +1727,9 @@ export const CreateRecipeScreen: React.FC = () => {
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name={ingredientConfirm?.type === 'confirm' ? 'add-circle' : 'checkmark'} size={18} color="#fff" />
+                <Ionicons name={ingredientConfirm?.type === 'confirm' && !editingIngredientId ? 'add-circle' : 'checkmark'} size={18} color="#fff" />
                 <Text style={styles.confirmAddText}>
-                  {ingredientConfirm?.type === 'confirm' ? t('common.add') : t('createRecipe.yesCorrect')}
+                  {ingredientConfirm?.type === 'confirm' ? t(editingIngredientId ? 'common.save' : 'common.add') : t('createRecipe.yesCorrect')}
                 </Text>
               </TouchableOpacity>
             </View>
