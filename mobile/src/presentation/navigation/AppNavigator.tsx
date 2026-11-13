@@ -118,6 +118,7 @@ function CenterTabButton({ onPress }: { onPress?: (e: any) => void }) {
 
 function TabNavigator() {
   const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 4);
 
   return (
     <Tab.Navigator
@@ -137,17 +138,17 @@ function TabNavigator() {
         tabBarItemStyle: {
           borderRadius: 16,
           marginHorizontal: 2,
-          paddingVertical: 6,
+          paddingVertical: 4,
         },
         tabBarStyle: {
           backgroundColor: colors.primary,
           borderTopWidth: 0,
           borderTopLeftRadius: 24,
           borderTopRightRadius: 24,
-          paddingTop: 8,
+          paddingTop: 6,
           paddingHorizontal: 4,
-          paddingBottom: insets.bottom + 8,
-          height: 80 + insets.bottom,
+          paddingBottom: bottomPadding,
+          height: 64 + bottomPadding,
           shadowColor: colors.primaryDark,
           shadowOffset: { width: 0, height: -3 },
           shadowOpacity: 0.18,
