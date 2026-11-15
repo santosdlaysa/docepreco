@@ -571,6 +571,16 @@ export function AppNavigator() {
             <Stack.Screen name="CreateRecipe" component={CreateRecipeScreen} />
             <Stack.Screen name="Recipes" component={RecipesScreen} />
             <Stack.Screen name="RecipeDetail" component={RecipeDetailScreen} />
+            <Stack.Screen
+              name="Paywall"
+              component={PaywallScreen}
+              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="PixPayment"
+              component={PixPaymentScreen}
+              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
+            />
           </Stack.Navigator>
         </NavigationContainer>
       </AuthContext.Provider>
