@@ -1,6 +1,6 @@
 import { pool } from '../database/connection';
 
-export const conversionSources = ['recipe_limit', 'recipe_near_limit', 'recipes', 'clientsManagement', 'ordersManagement', 'store', 'stock', 'finance', 'salesTips', 'manual', 'other'] as const;
+export const conversionSources = ['first_recipe', 'recipe_limit', 'recipe_near_limit', 'recipes', 'clientsManagement', 'ordersManagement', 'store', 'stock', 'finance', 'salesTips', 'manual', 'other'] as const;
 export const conversionEvents = ['blocked', 'offer_viewed', 'offer_clicked', 'checkout_started'] as const;
 
 // Analytics never prevents a recipe save or checkout. Identity and tier come from the server.

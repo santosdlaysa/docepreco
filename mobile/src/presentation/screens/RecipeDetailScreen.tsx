@@ -73,7 +73,7 @@ export const RecipeDetailScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
   const { t } = useTranslation();
   const route = useRoute<RouteType>();
-  const { recipeId } = route.params;
+  const { recipeId, firstRecipe } = route.params;
 
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [calculation, setCalculation] = useState<CalculationResult | null>(null);
@@ -552,6 +552,22 @@ export const RecipeDetailScreen: React.FC = () => {
             </LinearGradient>
           )}
 
+          {firstRecipe && calculation && !isPremium && !isDemoMode() && (
+            <View style={s.firstRecipeOffer}>
+              <Text style={s.firstRecipeOfferTitle}>Sua primeira receita já tem preço 🎉</Text>
+              <Text style={s.firstRecipeOfferText}>
+                Continue precificando sem limite e organize clientes e encomendas com o Premium.
+              </Text>
+              <TouchableOpacity
+                style={s.firstRecipeOfferButton}
+                onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'activation', feature: 'first_recipe' } })}
+                activeOpacity={0.85}
+              >
+                <Text style={s.firstRecipeOfferButtonText}>Conhecer o Premium</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {/* ═══════ PREÇO PARA IFOOD (só em BRL) ═══════ */}
           {calculation && currency === 'BRL' && calculation.suggestedPrice > 0 && (
             <View style={s.ifoodCard}>
@@ -907,6 +923,18 @@ const s = StyleSheet.create({
   sliderScaleText: { fontSize: 10.5, color: INK3, fontWeight: '600' },
 
   /* ── Result card (green gradient) ── */
+  firstRecipeOffer: {
+    backgroundColor: colors.pinkBg3,
+    borderColor: colors.pinkBg2,
+    borderWidth: 1,
+    borderRadius: 18,
+    padding: 18,
+    gap: 10,
+  },
+  firstRecipeOfferTitle: { color: INK, fontSize: 17, fontWeight: '700' },
+  firstRecipeOfferText: { color: INK2, fontSize: 14, lineHeight: 20 },
+  firstRecipeOfferButton: { backgroundColor: PINK, borderRadius: 12, padding: 13, alignItems: 'center' },
+  firstRecipeOfferButtonText: { color: '#fff', fontSize: 14, fontWeight: '700' },
   resultCard: {
     borderRadius: 24,
     padding: 18,

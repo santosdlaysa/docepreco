@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, ConversionOpportunitiesData } from '../lib/api';
 
 const sourceLabels: Record<string, string> = {
+  first_recipe: 'Após a primeira receita',
   recipe_limit: 'Tentou criar outra receita', recipe_near_limit: 'Interesse em mais receitas',
   recipes: 'Receitas', clientsManagement: 'Clientes', ordersManagement: 'Encomendas',
   store: 'Loja online', stock: 'Estoque', finance: 'Financeiro', salesTips: 'Dicas de vendas',

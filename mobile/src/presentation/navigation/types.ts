@@ -5,12 +5,13 @@ export type PaywallTrigger =
   | { kind: 'limit'; feature: LimitedFeature; current: number; limit?: number; blocked?: boolean }
   | { kind: 'feature'; feature: PremiumFeature }
   | { kind: 'master'; feature?: string }
+  | { kind: 'activation'; feature: 'first_recipe' }
   | { kind: 'manual' };
 
 export type RootStackParamList = {
   Main: undefined;
   Recipes: undefined;
-  RecipeDetail: { recipeId: string };
+  RecipeDetail: { recipeId: string; firstRecipe?: boolean };
   /** asBase: nova receita já vem como receita-base (aberta pela aba Bases). */
   CreateRecipe: { asBase?: boolean } | undefined;
   EditRecipe: { recipeId: string };

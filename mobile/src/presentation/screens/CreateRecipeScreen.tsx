@@ -758,7 +758,7 @@ export const CreateRecipeScreen: React.FC = () => {
         const recipe = await rApi.create(payload);
         clearDraft();
         showToast(t('createRecipe.created'), 'success');
-        navigation.replace('RecipeDetail', { recipeId: recipe.id });
+        navigation.replace('RecipeDetail', { recipeId: recipe.id, firstRecipe: recipeCount === 0 });
       }
     } catch (error) {
       const err = error as Error & { code?: string; current?: number; limit?: number };

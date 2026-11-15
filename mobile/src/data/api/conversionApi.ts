@@ -5,6 +5,7 @@ import { isDemoMode } from '../demo/demoMode';
 import type { PaywallTrigger } from '../../presentation/navigation/types';
 
 export function conversionSource(trigger?: PaywallTrigger): string {
+  if (trigger?.kind === 'activation') return trigger.feature;
   if (trigger?.kind === 'limit') return trigger.feature === 'recipes' ? (trigger.blocked ? 'recipe_limit' : 'recipe_near_limit') : 'other';
   if (trigger?.kind === 'master') return ['stock', 'finance', 'salesTips'].includes(trigger.feature ?? '') ? trigger.feature! : 'store';
   if (trigger?.kind === 'feature') return ['clientsManagement', 'ordersManagement'].includes(trigger.feature) ? trigger.feature : 'other';
