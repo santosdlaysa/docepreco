@@ -110,7 +110,7 @@ function CenterTabButton({ onPress }: { onPress?: (e: any) => void }) {
         <Ionicons name="add" size={28} color={colors.primaryDark} />
       </View>
       {action && (
-        <Text style={tabStyles.centerLabel} numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.85}>{action.label}</Text>
+        <Text style={tabStyles.centerLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Adicionar</Text>
       )}
     </TouchableOpacity>
   );
@@ -129,15 +129,30 @@ function TabNavigator() {
           else if (route.name === 'Recipes') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Ingredients') iconName = focused ? 'basket' : 'basket-outline';
           else if (route.name === 'Sales') iconName = focused ? 'cart' : 'cart-outline';
-          return <Ionicons name={iconName} size={27} color={color} />;
+          return <Ionicons name={iconName} size={25} color={color} />;
         },
         tabBarActiveTintColor: colors.primaryDark,
         tabBarInactiveTintColor: colors.surface,
         tabBarActiveBackgroundColor: colors.surface,
         tabBarLabelPosition: 'below-icon',
+        tabBarIconStyle: { flex: 0, height: 36 },
+        tabBarLabel: ({ color, children }) => (
+          <Text
+            style={[tabStyles.tabLabel, { color }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
+            {children}
+          </Text>
+        ),
         tabBarItemStyle: {
+          flex: 1,
+          minWidth: 0,
+          justifyContent: 'center',
           borderRadius: 16,
           marginHorizontal: 2,
+          paddingHorizontal: 3,
           paddingVertical: 4,
         },
         tabBarStyle: {
@@ -155,12 +170,11 @@ function TabNavigator() {
           shadowRadius: 14,
           elevation: 12,
         },
-        tabBarLabelStyle: { fontSize: 12, fontWeight: '700', letterSpacing: -0.3 },
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Início' }} />
-      <Tab.Screen name="Recipes" component={RecipesScreen} options={{ tabBarLabel: 'Receitas' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Início' }} />
+      <Tab.Screen name="Recipes" component={RecipesScreen} options={{ title: 'Receitas' }} />
       <Tab.Screen
         name="AddAction"
         component={DummyScreen}
@@ -179,8 +193,8 @@ function TabNavigator() {
           },
         })}
       />
-      <Tab.Screen name="Ingredients" component={IngredientsScreen} options={{ tabBarLabel: 'Ingredientes' }} />
-      <Tab.Screen name="Sales" component={SalesScreen} options={{ tabBarLabel: 'Vendas' }} />
+      <Tab.Screen name="Ingredients" component={IngredientsScreen} options={{ title: 'Ingredientes' }} />
+      <Tab.Screen name="Sales" component={SalesScreen} options={{ title: 'Vendas' }} />
     </Tab.Navigator>
   );
 }
@@ -216,17 +230,27 @@ const bannerStyles = StyleSheet.create({
 });
 
 const tabStyles = StyleSheet.create({
+  tabLabel: {
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '600',
+    marginTop: 3,
+  },
   centerBtn: {
     flex: 1,
-    top: -14,
+    minWidth: 0,
+    marginHorizontal: 2,
+    paddingHorizontal: 3,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 3,
   },
   centerBtnInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 18,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
     backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
@@ -237,13 +261,13 @@ const tabStyles = StyleSheet.create({
     elevation: 8,
   },
   centerLabel: {
-    fontSize: 12,
-    fontWeight: '700',
+    width: '100%',
+    fontSize: 11,
+    fontWeight: '600',
     color: colors.surface,
     textAlign: 'center',
     lineHeight: 14,
     paddingHorizontal: 2,
-    marginTop: 2,
   },
 });
 

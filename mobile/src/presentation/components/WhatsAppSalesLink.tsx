@@ -37,12 +37,13 @@ export function WhatsAppSalesLink() {
       finally { setBusy(false); }
     } },
   ]);
+  // Only show sales linking once the integration and its contact number are ready.
+  if (!status?.enabled || !status.businessPhone) return null;
+
   const buttonStyle = { paddingVertical: 12, opacity: busy ? 0.5 : 1 };
   return <View style={{ padding: 18, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginVertical: 12, gap: 10 }}>
     <Text style={{ color: colors.text, fontSize: 19, fontWeight: '700' }}>Vendas pelo WhatsApp</Text>
     <Text style={{ color: colors.textSecondary }}>Envie uma venda por texto, revise o resumo e confirme para registrar no aplicativo. A mensagem é interpretada pela IA. Não envie dados de cartão ou informações sensíveis.</Text>
-    {!status && !error && <ActivityIndicator color={colors.primary} />}
-    {status && !status.enabled && <Text style={{ color: colors.textSecondary }}>Este recurso ainda não foi ativado pelo DocePreço.</Text>}
     {status?.phone ? <>
       <Text style={{ color: colors.text }}>Vinculado: +{status.phone}</Text>
       <Text style={{ color: colors.textSecondary }}>Exemplo: Vendi 10 brownies a R$ 8 cada, pago no Pix. Confirme usando o código enviado no resumo.</Text>

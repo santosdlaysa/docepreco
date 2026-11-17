@@ -235,8 +235,11 @@ export const IngredientsScreen: React.FC = () => {
                 <Ionicons name="information-circle" size={18} color={BLUE} />
               </View>
               <View style={s.bannerText}>
-                <Text style={s.bannerTitle}>Preço por unidade automático</Text>
-                <Text style={s.bannerSub}>Calculado a partir do que você pagou.</Text>
+                <Text style={s.bannerTitle}>Ingredientes salvos. Agora monte sua receita!</Text>
+                <Text style={s.bannerSub}>Cadastre cada ingrediente uma vez. Na receita, escolha os ingredientes e informe quanto usou de cada um para calcular o preço do doce.</Text>
+                <TouchableOpacity accessibilityRole="button" onPress={() => guardAction(() => navigation.navigate('CreateRecipe'))} style={{ paddingVertical: 12 }}>
+                  <Text style={{ color: PINK, fontWeight: '700' }}>Montar receita e calcular preço →</Text>
+                </TouchableOpacity>
               </View>
             </View>
 

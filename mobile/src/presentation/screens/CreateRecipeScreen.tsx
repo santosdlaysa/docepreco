@@ -1,6 +1,6 @@
 import { planConfigApi } from '../../data/api/planConfigApi';
 import { colors } from '../theme/colors';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,7 +18,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Skeleton } from '../components/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { recipeApi } from '../../data/api/recipeApi';
@@ -171,6 +171,7 @@ export const CreateRecipeScreen: React.FC = () => {
   const [additionalCostInputs, setAdditionalCostInputs] = useState<Record<string, string>>({});
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
   const [showIngredientModal, setShowIngredientModal] = useState(false);
+  const reopenIngredients = useRef(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
   const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
   const [ingredientQuantity, setIngredientQuantity] = useState('');
@@ -222,14 +223,30 @@ export const CreateRecipeScreen: React.FC = () => {
   );
 
   const { showToast } = useToast();
+  const ingredientLoadToast = useRef(showToast);
+  ingredientLoadToast.current = showToast;
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
   const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    iApi.getAll().then(list => {
+      if (!active) return;
+      setAvailableIngredients(list);
+      if (reopenIngredients.current) {
+        reopenIngredients.current = false;
+        setShowIngredientModal(true);
+      }
+    }).catch(() => {
+      if (active) ingredientLoadToast.current('Não foi possível carregar os ingredientes. Tente novamente.', 'error');
+    });
+    return () => { active = false; };
+  }, [iApi]));
+
   useEffect(() => {
-    iApi.getAll().then(setAvailableIngredients).catch(() => {});
     rApi.getAll().then(list => {
       if (!isEditing) setRecipeCount(list.length);
       setAvailableRecipes(list);
@@ -913,8 +930,8 @@ export const CreateRecipeScreen: React.FC = () => {
               <Ionicons name="information-circle" size={18} color={colors.blue} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>Preencha os dados</Text>
-              <Text style={{ fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 }}>O preço sugerido é calculado automaticamente.</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>2. Monte sua receita para precificar</Text>
+              <Text style={{ fontSize: 12, color: INK2, fontWeight: '500', marginTop: 6, lineHeight: 18 }}>Dê um nome ao doce, informe quantas unidades ele rende e adicione os ingredientes com a quantidade usada. Inclua os custos adicionais e confira o preço sugerido no final.</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('RecipeTutorial' as any)}
                 activeOpacity={0.8}
@@ -1184,6 +1201,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
           {/* ── Ingredientes (.gcard) ── */}
           <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Ingredientes</Text>
+          <Text style={{ fontSize: 12, color: INK2, lineHeight: 18 }}>Escolha um ingrediente por vez e informe só o que vai nesta receita. Exemplo: comprou 1000 g de açúcar e usou 200 g? Adicione 200 g aqui.</Text>
           {ingredients.length > 0 && (
             <View style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SH }}>
               {ingredients.map((ing, i) => (
@@ -1284,7 +1302,7 @@ export const CreateRecipeScreen: React.FC = () => {
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, color: INK2, fontWeight: '700', textTransform: 'uppercase' }}>
-                    Preço sugerido por unidade
+                    3. Preço sugerido por unidade
                   </Text>
                   <Text style={{ fontSize: 30, color: PINK, fontWeight: '800', marginTop: 3 }}>
                     {formatCurrency(pricingPreview.suggestedPrice)}
@@ -1299,6 +1317,9 @@ export const CreateRecipeScreen: React.FC = () => {
               </View>
               <Text style={{ fontSize: 12, color: INK2, lineHeight: 18 }}>
                 Valor de venda de 1 unidade, com {parseLocaleNumber(profitMargin) || 0}% de acréscimo sobre o custo.
+              </Text>
+              <Text style={{ fontSize: 12, color: INK2, lineHeight: 18 }}>
+                Como chegamos ao preço: {formatCurrency(pricingPreview.totalCost)} de custo da receita ÷ {pricingPreview.yieldNum} unidades = {formatCurrencyUnit(pricingPreview.costPerUnit)} por unidade. Depois aplicamos o acréscimo escolhido. Confira se incluiu embalagem, mão de obra e os demais custos.
               </Text>
               <View style={{ backgroundColor: CREAM2, borderRadius: 12, padding: 12 }}>
                 <Text style={{ fontSize: 12, color: INK2, fontWeight: '700' }}>Preço sugerido total da receita</Text>
@@ -1355,12 +1376,10 @@ export const CreateRecipeScreen: React.FC = () => {
               <Card style={styles.selectedIngCard}>
                 <Text style={styles.selectedIngName}>{selectedIngredient.name}</Text>
                 <Text style={styles.selectedIngInfo}>
-                  {selectedIngredient.purchaseUnitLabel
-                    ? t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.purchaseUnitLabel, price: selectedIngredient.purchasePrice.toFixed(2) })
-                      + ` (${selectedIngredient.purchaseQuantity * (selectedIngredient.purchaseUnitWeight ?? 0)} ${formatUnitLabel(selectedIngredient.unit)})`
-                    : t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: formatUnitLabel(selectedIngredient.unit), price: selectedIngredient.purchasePrice.toFixed(2) })}
+                  Compra cadastrada: {getEffectivePurchaseQuantity(selectedIngredient)} {formatUnitLabel(selectedIngredient.unit)} por {formatCurrency(selectedIngredient.purchasePrice)}
                 </Text>
               </Card>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: 12 }}>Quanto de {selectedIngredient.name} você usou nesta receita? O app calcula o custo dessa quantidade a partir do valor da compra.</Text>
               <Input
                 label={t('createRecipe.quantityUsed', { unit: formatUnitLabel(ingredientUnit || selectedIngredient.unit) })}
                 placeholder="0"
@@ -1410,6 +1429,16 @@ export const CreateRecipeScreen: React.FC = () => {
               data={availableIngredients}
               keyExtractor={item => item.id}
               contentContainerStyle={{ padding: 20 }}
+              ListHeaderComponent={
+                <View style={{ gap: 12, marginBottom: 16 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>Selecione um ingrediente já cadastrado. Se ainda falta algum, cadastre abaixo e volte para continuar esta receita.</Text>
+                  <Button title="Cadastrar novo ingrediente" variant="outline" onPress={() => {
+                    reopenIngredients.current = true;
+                    setShowIngredientModal(false);
+                    navigation.navigate('CreateIngredient', { returnToRecipe: true });
+                  }} />
+                </View>
+              }
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => { setSelectedIngredient(item); setIngredientUnit(getDefaultUnit(item)); }}
@@ -1419,9 +1448,7 @@ export const CreateRecipeScreen: React.FC = () => {
                     <View>
                       <Text style={styles.modalIngName}>{item.name}</Text>
                       <Text style={styles.modalIngInfo}>
-                        {item.purchaseUnitLabel
-                          ? `${item.purchaseQuantity} ${item.purchaseUnitLabel} (${item.purchaseQuantity * (item.purchaseUnitWeight ?? 0)} ${formatUnitLabel(item.unit)})`
-                          : `${item.purchaseQuantity} ${formatUnitLabel(item.unit)}`} — {formatCurrency(item.purchasePrice)}
+                        {getEffectivePurchaseQuantity(item)} {formatUnitLabel(item.unit)} — {formatCurrency(item.purchasePrice)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
