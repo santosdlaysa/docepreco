@@ -115,6 +115,8 @@ export const PaywallScreen: React.FC = () => {
   const masterPixAvailable = true;
   const [masterPrice, setMasterPrice] = useState(39.99);
   const [premiumPrice, setPremiumPrice] = useState(19.99);
+  // Dias grátis que o backend aplica no checkout do Stripe (trial_period_days), por nível
+  const [cardTrialDays, setCardTrialDays] = useState({ premium: 0, master: 0 });
   // Equivalente mensal do plano anual (anual ÷ 12), calculado da config do painel
   const [annualPerMonthLabel, setAnnualPerMonthLabel] = useState('R$ 10,00');
 
@@ -232,6 +234,8 @@ export const PaywallScreen: React.FC = () => {
       if (mi) setMasterPrice(mi.price);
       const pp = await planConfigApi.getPremiumPrice();
       if (pp) setPremiumPrice(pp);
+      const tc = await planConfigApi.getTrialConfig();
+      if (tc) setCardTrialDays({ premium: tc.premiumFreeDays, master: tc.masterFreeDays });
 
     })();
   }, []);
@@ -257,6 +261,9 @@ export const PaywallScreen: React.FC = () => {
     return monthly ? `${monthly.priceLabel}/mês · ${storeName}` : 'Consulte os planos abaixo';
   };
   const trialPackage = tierPackages.find(p => p.isTrialEligible && p.hasFreeTrial);
+  const cardTrial = cardTrialDays[tier];
+  // Hero: prioriza o trial da loja; senão mostra o trial do cartão
+  const heroTrialDays = trialPackage?.trialDays ?? (cardTrial > 0 ? cardTrial : null);
   // Lista de benefícios mostrada conforme o nível (extras do Master primeiro)
   const feats = isMasterTier ? [...MASTER_EXTRA, ...FEATS] : FEATS;
   const accent = isMasterTier ? PURPLE : PINK;
@@ -387,10 +394,10 @@ export const PaywallScreen: React.FC = () => {
                 ? `Suas receitas continuam salvas. ${trigger.limit ? `O Free permite ${trigger.limit} receitas. ` : ''}Com o Premium, cadastre receitas sem limite.`
                 : 'Receitas ilimitadas, gestão de clientes e encomendas em um só lugar.'}
           </Text>
-          {/* Trial no hero: só mostra se algum pacote da loja tem trial e o usuário é elegível */}
-          {trialPackage && (
+          {/* Trial no hero: pacote da loja elegível ou assinatura no cartão com dias grátis */}
+          {heroTrialDays && (
             <Text style={st.heroTrial}>
-              ✨ {trialPackage.trialDays} dias grátis · depois só pague
+              ✨ {heroTrialDays} dias grátis{!trialPackage ? ' no cartão' : ''} · depois só pague
             </Text>
           )}
         </LinearGradient>
@@ -500,6 +507,7 @@ export const PaywallScreen: React.FC = () => {
               <Text style={st.planName}>Mensal</Text>
               <Text style={st.planPrice}>{cardMonthlyMain}<Text style={st.planPriceSm}>{cardMonthlyCents}</Text></Text>
               <Text style={st.planPer}>por mês</Text>
+              {cardTrial > 0 && <Text style={[st.planTrial, isMasterTier && { color: PURPLE }]}>{cardTrial} dias grátis</Text>}
             </TouchableOpacity>
             {showAnnual && (
               <TouchableOpacity
@@ -513,11 +521,15 @@ export const PaywallScreen: React.FC = () => {
                 <Text style={st.planName}>Anual</Text>
                 <Text style={st.planPrice}>{cardAnnualMain}<Text style={st.planPriceSm}>{cardAnnualCents}</Text></Text>
                 <Text style={st.planPer}>{annualPerMonthLabel}/mês</Text>
+                {cardTrial > 0 && <Text style={st.planTrial}>{cardTrial} dias grátis</Text>}
               </TouchableOpacity>
             )}
           </View>
 
           <View style={[st.cardCtaRow]}>
+            {cardTrial > 0 && (
+              <Text style={st.foot}>Teste {cardTrial} dias grátis · a 1ª cobrança só acontece depois · cancele quando quiser</Text>
+            )}
             {cardLoading && <ActivityIndicator color={isMasterTier ? PURPLE : PINK} style={{ marginBottom: 8 }} />}
             <Text style={st.foot}>Pagamento seguro via Stripe · Visa, Master, Amex</Text>
           </View>
