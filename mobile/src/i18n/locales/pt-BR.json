@@ -43,6 +43,14 @@
     "short": ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"]
   },
   "login": {
+    "welcome": "Que bom ter você aqui.",
+    "subtitle": "Entre para cuidar das suas receitas e do seu negócio.",
+    "headline": "Seu talento merece o preço certo.",
+    "description": "Organize suas receitas, conheça seus custos e transforme cada doce em um negócio mais rentável.",
+    "recipes": "Receitas organizadas",
+    "pricing": "Preços com confiança",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
     "title": "Entrar na sua conta",
     "email": "Email",
     "emailPlaceholder": "seu@email.com",

@@ -21,6 +21,14 @@
     }
   },
   "login": {
+    "welcome": "Welcome back.",
+    "subtitle": "Sign in to take care of your recipes and your business.",
+    "headline": "Your talent deserves the right price.",
+    "description": "Organize your recipes, understand your costs and make every sweet a more profitable business.",
+    "recipes": "Organized recipes",
+    "pricing": "Price with confidence",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "demoError": "Couldn't open the demo. Please try again.",
     "errCompany": "Enter your bakery's name.",
     "errPhone": "Enter a valid phone number with area code.",

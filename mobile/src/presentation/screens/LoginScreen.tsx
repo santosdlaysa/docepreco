@@ -15,6 +15,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authApi, SocialLoginResult } from '../../data/api/authApi';
 import { signInWithApple } from '../../data/auth/socialSignIn';
 import { getAppleAuthModule } from '../../data/native/optionalNative';
@@ -37,6 +39,7 @@ interface Props {
 export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToForgotPassword, onDemoLogin, onSocialLogin }) => {
   const { t } = useTranslation();
   const L = useAuthLayout();
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -84,7 +87,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   };
 
   const handleLogin = async () => {
-    if (!validate()) return;
+    if (loading || socialLoading || linkLoading || !validate()) return;
     setLoading(true);
     try {
       const user = await authApi.login(email.trim(), password);
@@ -153,7 +156,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   };
 
   const errorBanner = errors.general ? (
-    <View style={styles.errorBanner}>
+    <View style={styles.errorBanner} accessibilityLiveRegion="polite">
       <Ionicons name="alert-circle" size={16} color={colors.error} />
       <Text style={styles.errorText}>{errors.general}</Text>
     </View>
@@ -168,6 +171,11 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
         onChangeText={(v) => { setEmail(v); if (errors.email) setErrors(prev => ({ ...prev, email: '' })); }}
         keyboardType="email-address"
         autoCapitalize="none"
+        autoCorrect={false}
+        autoComplete="email"
+        textContentType="emailAddress"
+        accessibilityLabel={t('login.email')}
+        leftElement={<Ionicons name="mail-outline" size={19} color={colors.textSecondary} style={{ marginLeft: 14 }} />}
         error={errors.email}
         containerStyle={{ marginBottom: L.fieldGap }}
       />
@@ -178,10 +186,17 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
         value={password}
         onChangeText={(v) => { setPassword(v); if (errors.password) setErrors(prev => ({ ...prev, password: '' })); }}
         secureTextEntry={!showPassword}
+        autoCapitalize="none"
+        autoComplete="current-password"
+        textContentType="password"
+        accessibilityLabel={t('login.password')}
+        returnKeyType="go"
+        onSubmitEditing={pendingLink ? handleLinkExisting : handleLogin}
+        leftElement={<Ionicons name="lock-closed-outline" size={19} color={colors.textSecondary} style={{ marginLeft: 14 }} />}
         error={errors.password}
         containerStyle={{ marginBottom: L.fieldGap }}
         rightElement={
-          <TouchableOpacity onPress={() => setShowPassword(v => !v)} style={{ padding: 6 }}>
+          <TouchableOpacity onPress={() => setShowPassword(v => !v)} accessibilityRole="button" accessibilityLabel={t(showPassword ? 'login.hidePassword' : 'login.showPassword')} style={{ padding: 10 }}>
             <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color={colors.textMuted} />
           </TouchableOpacity>
         }
@@ -239,16 +254,16 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FBE5ED" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
           {/* Header colorido */}
-          <View style={[styles.header, { paddingTop: L.headerPadTop, paddingBottom: CARD_OVERLAP + L.headerPadExtra }]}>
+          <LinearGradient colors={['#FBE5ED', '#FFF4EB']} style={[styles.header, { paddingTop: Math.max(insets.top + 16, L.headerPadTop), paddingBottom: CARD_OVERLAP + L.headerPadExtra }]}>
             <Animated.View style={[styles.logoArea, { opacity: fadeIn, transform: [{ scale: logoScale }] }]}>
               <View style={[styles.logoWrap, { width: L.logoSize, height: L.logoSize, borderRadius: L.logoRadius, marginBottom: L.logoGap }]}>
                 <Image
@@ -260,13 +275,14 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               <Text style={[styles.brand, { fontSize: L.brandSize }]}>Doce Preço</Text>
               <Text style={[styles.tagline, { fontSize: L.taglineSize }]}>{t('login.tagline')}</Text>
             </Animated.View>
-          </View>
+          </LinearGradient>
 
           {/* Card sobreposto */}
           <Animated.View style={[styles.card, { padding: L.cardPad, marginBottom: L.cardMarginBottom, opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
             {pendingLink ? linkCard : (
             <>
-            <Text style={[styles.cardTitle, { marginBottom: L.cardTitleGap }]}>{t('login.title')}</Text>
+            <Text style={[styles.cardTitle, { marginBottom: 8 }]}>{t('login.welcome')}</Text>
+            <Text style={[styles.linkDescription, { marginBottom: L.cardTitleGap }]}>{t('login.subtitle')}</Text>
 
             {errorBanner}
             {credentialFields}
@@ -274,7 +290,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
             <TouchableOpacity
               style={[styles.loginBtn, loading && { opacity: 0.6 }]}
               onPress={handleLogin}
-              disabled={loading}
+              disabled={loading || Boolean(socialLoading)}
               activeOpacity={0.85}
             >
               {loading && <ActivityIndicator size="small" color="#fff" />}
@@ -340,12 +356,12 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 const CARD_OVERLAP = 40;
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
+  root: { flex: 1, backgroundColor: '#FFF8F3' },
   scrollContent: { flexGrow: 1 },
 
   // Header rosa
   header: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#FBE5ED',
     paddingTop: Platform.OS === 'ios' ? 60 : 50,
     paddingBottom: CARD_OVERLAP + 32,
     alignItems: 'center',
@@ -365,13 +381,15 @@ const styles = StyleSheet.create({
   brand: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#fff',
+    color: colors.text,
     letterSpacing: -0.5,
   },
   tagline: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 4,
+    color: colors.textSecondary,
+    marginTop: 6,
+    textAlign: 'center',
+    paddingHorizontal: 20,
   },
 
   // Card sobreposto
@@ -379,17 +397,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     marginTop: -CARD_OVERLAP,
     marginHorizontal: 20,
+    width: '90%',
+    maxWidth: 460,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderColor: '#F3E5E8',
     borderRadius: 24,
     padding: 28,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.08,
     shadowRadius: 20,
     elevation: 8,
     marginBottom: 32,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 24,
     fontWeight: '700',
     color: colors.text,
     marginBottom: 24,
@@ -409,7 +432,7 @@ const styles = StyleSheet.create({
   linkDescription: { fontSize: 14, lineHeight: 20, color: colors.textSecondary },
 
   // Forgot
-  forgotRow: { alignSelf: 'flex-end', marginTop: -8, marginBottom: 16 },
+  forgotRow: { alignSelf: 'flex-end', minHeight: 44, justifyContent: 'center', marginTop: -8, marginBottom: 16 },
   forgotText: { fontSize: 13, color: colors.primary, fontWeight: '600' },
 
   // Login button
@@ -436,6 +459,7 @@ const styles = StyleSheet.create({
   // Register
   registerRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,

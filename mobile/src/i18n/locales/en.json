@@ -43,6 +43,14 @@
     "short": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
   },
   "login": {
+    "welcome": "Welcome back.",
+    "subtitle": "Sign in to take care of your recipes and your business.",
+    "headline": "Your talent deserves the right price.",
+    "description": "Organize your recipes, understand your costs and make every sweet a more profitable business.",
+    "recipes": "Organized recipes",
+    "pricing": "Price with confidence",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "title": "Sign in to your account",
     "email": "Email",
     "emailPlaceholder": "you@email.com",
