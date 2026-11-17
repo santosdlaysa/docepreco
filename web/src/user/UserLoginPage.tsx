@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cake, Eye, EyeOff, Loader2, PlayCircle, BookOpen, Check, ArrowRight } from 'lucide-react';
+import { Cake, Eye, EyeOff, Loader2, PlayCircle, ArrowRight } from 'lucide-react';
 import { wantsOpenRegister, clearOpenRegister } from './demo/demoMode';
 import { useAuth } from './UserAuthContext';
 import { userApi, ApiError } from './userApi';
 import { LgpdModal } from './lgpd';
 import './login.css';
+import loginSweets from '../assets/hero-brigadeiros.png';
+import authCake from '../assets/hero-strawberry-cake.png';
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
 
@@ -109,21 +111,34 @@ export function UserLoginPage() {
 
   return (
     <div className="login-page">
-      <aside className="login-story">
-        <div className="login-brand"><span className="login-brand-icon"><Cake size={27} /></span>Doce Preço</div>
-        <h2>{t('login.headline')}</h2>
-        <p>{t('login.description')}</p>
-        <div className="login-benefits">
-          <span><BookOpen size={16} />{t('login.recipes')}</span>
-          <span><Check size={16} />{t('login.pricing')}</span>
-        </div>
-      </aside>
+      <header className="login-topbar">
+        <div className="login-brand"><span className="login-brand-icon"><Cake size={24} /></span>Doce Preço</div>
+        <span className="login-tagline">{t('login.headline')}</span>
+      </header>
       <main className="login-panel">
+      <aside className="login-showcase">
+        <div className="login-showcase-copy">
+          <span className="login-kicker">DOCE PREÇO</span>
+          <h2>{t('login.headline')}</h2>
+          <p>{t('login.description')}</p>
+        </div>
+        <div className="login-cake-scene" aria-hidden="true">
+          <div className="login-cake-disc" />
+          <img src={authCake} alt="" />
+          <span className="login-spark login-spark-one">✦</span><span className="login-spark login-spark-two">✧</span>
+        </div>
+        <div className="login-showcase-footer"><span />{t('login.recipes')}<span />{t('login.pricing')}</div>
+      </aside>
       <div className="login-form">
-        <div className="login-brand login-mobile-brand"><span className="login-brand-icon"><Cake size={27} /></span>Doce Preço</div>
+        {(mode === 'login' || mode === 'register') && (
+          <div className="login-switch" role="group" aria-label="Conta">
+            <button type="button" aria-pressed={mode === 'login'} onClick={() => switchMode('login')}>{t('login.submitLogin')}</button>
+            <button type="button" aria-pressed={mode === 'register'} onClick={() => switchMode('register')}>{t('login.createAccount')}</button>
+          </div>
+        )}
         <div className="login-form-heading">
-          <h1>{mode === 'login' ? t('login.welcome') : title}</h1>
-          <p>{mode === 'login' ? t('login.subtitle') : title}</p>
+          <h1>{mode === 'login' ? t('login.titleLogin') : title}</h1>
+          {mode === 'login' && <p>{t('login.subtitle')}</p>}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -231,6 +246,8 @@ export function UserLoginPage() {
             </Field>
           )}
 
+          {mode === 'login' && <div className="login-forgot"><button type="button" onClick={() => switchMode('forgot')} className={linkClass}>{t('login.forgot')}</button></div>}
+
           {mode === 'register' && (
             <label className="flex items-start gap-2 cursor-pointer select-none">
               <input
@@ -255,7 +272,7 @@ export function UserLoginPage() {
           <button
             type="submit"
             disabled={loading || (mode === 'register' && !acceptedLgpd)}
-            className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 text-sm transition-all flex items-center justify-center gap-2"
+            className="login-submit w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 text-sm transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -275,33 +292,19 @@ export function UserLoginPage() {
         </form>
 
         {mode === 'login' && (
-          <button
-            type="button"
-            onClick={tryDemo}
-            disabled={startingDemo}
-            className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-primary-300 dark:border-primary-700 py-3.5 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 disabled:opacity-50"
-          >
-            {startingDemo ? <Loader2 size={16} className="animate-spin-slow" /> : <PlayCircle size={16} />}
-            {t('login.tryDemo')}
-          </button>
+          <div className="login-discover">
+            <img src={loginSweets} alt="" aria-hidden="true" />
+            <div>
+              <p>{t('login.headline')}</p>
+              <button type="button" onClick={tryDemo} disabled={startingDemo || loading}>
+                {startingDemo ? <Loader2 size={17} className="animate-spin-slow" /> : <PlayCircle size={17} />}
+                {t('login.tryDemo')}
+              </button>
+            </div>
+          </div>
         )}
 
         <div className="mt-5 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2">
-          {mode === 'login' && (
-            <>
-              <p>
-                {t('login.noAccount')}{' '}
-                <button onClick={() => switchMode('register')} className={linkClass}>
-                  {t('login.createAccount')}
-                </button>
-              </p>
-              <p>
-                <button onClick={() => switchMode('forgot')} className={linkClass}>
-                  {t('login.forgot')}
-                </button>
-              </p>
-            </>
-          )}
           {mode === 'reset' && (
             <p>
               <button onClick={() => switchMode('forgot')} className={linkClass}>

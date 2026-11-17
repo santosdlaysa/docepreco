@@ -49,6 +49,7 @@ export function SupportChatPage({ toast }: Props) {
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [sending, setSending] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
   // Nova conversa (iniciar suporte proativamente)
   const [showNewConv, setShowNewConv] = useState(false);
   // Broadcast (enviar a mesma mensagem para o chat de vários usuários)
@@ -93,6 +94,8 @@ export function SupportChatPage({ toast }: Props) {
     try {
       const data = await api.getSupportMessages(userId);
       setMessages(data);
+      // O servidor marca as mensagens como lidas ao carregar a conversa.
+      setConversations(prev => prev.map(c => c.userId === userId ? { ...c, unreadCount: 0 } : c));
     } catch {
       // silent
     } finally {
@@ -147,8 +150,6 @@ export function SupportChatPage({ toast }: Props) {
     setSelectedImage(null);
     setSelectedImageName('');
     await loadMessages(userId);
-    // Update unread in conversation list
-    setConversations(prev => prev.map(c => c.userId === userId ? { ...c, unreadCount: 0 } : c));
   };
 
   // Inicia (ou reabre) uma conversa com um usuário escolhido no seletor
@@ -279,12 +280,22 @@ export function SupportChatPage({ toast }: Props) {
     }
   };
 
-  const filtered = searchTerm
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const searched = normalizedSearch
     ? conversations.filter(c =>
-        c.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.userEmail.toLowerCase().includes(searchTerm.toLowerCase())
+        c.userName.toLowerCase().includes(normalizedSearch) ||
+        c.userEmail.toLowerCase().includes(normalizedSearch)
       )
     : conversations;
+  const unreadConversations = searched.filter(c => c.unreadCount > 0).length;
+  const readFilters = [
+    { value: 'all', label: 'Todas', count: searched.length },
+    { value: 'unread', label: 'Não lidas', count: unreadConversations },
+    { value: 'read', label: 'Lidas', count: searched.length - unreadConversations },
+  ] as const;
+  const filtered = searched.filter(c =>
+    readFilter === 'all' || (readFilter === 'unread' ? c.unreadCount > 0 : c.unreadCount === 0)
+  );
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
 
@@ -343,15 +354,49 @@ export function SupportChatPage({ toast }: Props) {
                 <input
                   type="text"
                   placeholder="Buscar conversa..."
+                  aria-label="Buscar conversa por nome ou e-mail"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 rounded-lg focus:outline-none focus:border-primary-400"
                 />
               </div>
+              <div role="group" aria-label="Filtrar conversas por leitura" className="flex flex-wrap gap-1.5 mt-3">
+                {readFilters.map(filter => (
+                  <button
+                    key={filter.value}
+                    type="button"
+                    aria-pressed={readFilter === filter.value}
+                    onClick={() => setReadFilter(filter.value)}
+                    className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-2 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 ${
+                      readFilter === filter.value
+                        ? 'bg-primary-500 text-white'
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {filter.label}
+                    <span className="tabular-nums opacity-80">{filter.count}</span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Conversation list */}
             <div className="flex-1 overflow-y-auto">
+              {filtered.length === 0 && (
+                <div role="status" className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400">
+                  <MessageCircle size={28} className="mx-auto mb-2 opacity-50" />
+                  <p>{normalizedSearch
+                    ? 'Nenhuma conversa encontrada com essa busca e filtro.'
+                    : readFilter === 'unread' ? 'Nenhuma conversa não lida.' : 'Nenhuma conversa lida.'}</p>
+                  <button
+                    type="button"
+                    onClick={() => { setSearchTerm(''); setReadFilter('all'); }}
+                    className="mt-3 text-primary-600 dark:text-primary-400 font-medium hover:underline"
+                  >
+                    Mostrar todas as conversas
+                  </button>
+                </div>
+              )}
               {filtered.map(conv => (
                 <button
                   key={conv.userId}

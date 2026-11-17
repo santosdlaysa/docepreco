@@ -15,12 +15,12 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { authApi, SocialLoginResult } from '../../data/api/authApi';
 import { signInWithApple } from '../../data/auth/socialSignIn';
 import { getAppleAuthModule } from '../../data/native/optionalNative';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
+import { AuthHero } from '../components/AuthHero';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion } from '../utils/emailTypoCheck';
@@ -53,11 +53,9 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(60)).current;
-  const logoScale = useRef(new Animated.Value(0.7)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
       Animated.timing(fadeIn, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(cardSlide, { toValue: 0, tension: 40, friction: 9, useNativeDriver: true }),
     ]).start();
@@ -165,6 +163,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   const credentialFields = (
     <>
       <Input
+        wrapperStyle={styles.fieldWrapper}
         label={t('login.email')}
         placeholder={t('login.emailPlaceholder')}
         value={email}
@@ -181,6 +180,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
       />
 
       <Input
+        wrapperStyle={styles.fieldWrapper}
         label={t('login.password')}
         placeholder={t('login.passwordPlaceholder')}
         value={password}
@@ -254,7 +254,7 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FBE5ED" />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF3E8" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
@@ -262,26 +262,15 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          {/* Header colorido */}
-          <LinearGradient colors={['#FBE5ED', '#FFF4EB']} style={[styles.header, { paddingTop: Math.max(insets.top + 16, L.headerPadTop), paddingBottom: CARD_OVERLAP + L.headerPadExtra }]}>
-            <Animated.View style={[styles.logoArea, { opacity: fadeIn, transform: [{ scale: logoScale }] }]}>
-              <View style={[styles.logoWrap, { width: L.logoSize, height: L.logoSize, borderRadius: L.logoRadius, marginBottom: L.logoGap }]}>
-                <Image
-                  source={require('../../../assets/icon.png')}
-                  style={{ width: L.logoSize, height: L.logoSize }}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={[styles.brand, { fontSize: L.brandSize }]}>Doce Preço</Text>
-              <Text style={[styles.tagline, { fontSize: L.taglineSize }]}>{t('login.tagline')}</Text>
-            </Animated.View>
-          </LinearGradient>
-
-          {/* Card sobreposto */}
-          <Animated.View style={[styles.card, { padding: L.cardPad, marginBottom: L.cardMarginBottom, opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
+          <AuthHero compact={L.compact} />
+          <Animated.View style={[styles.card, { paddingTop: L.compact ? 16 : 28, marginBottom: L.cardMarginBottom, opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
             {pendingLink ? linkCard : (
             <>
-            <Text style={[styles.cardTitle, { marginBottom: 8 }]}>{t('login.welcome')}</Text>
+            <View style={styles.accountSwitch}>
+              <View style={styles.activeTab} accessibilityRole="text"><Text style={styles.activeTabText}>{t('login.loginButton')}</Text></View>
+              <TouchableOpacity style={styles.inactiveTab} onPress={onGoToRegister} accessibilityRole="button"><Text style={styles.inactiveTabText}>{t('login.createAccount')}</Text></TouchableOpacity>
+            </View>
+            <Text style={[styles.cardTitle, { marginBottom: 10 }]}>{t('login.title')}</Text>
             <Text style={[styles.linkDescription, { marginBottom: L.cardTitleGap }]}>{t('login.subtitle')}</Text>
 
             {errorBanner}
@@ -297,13 +286,6 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
               <Text style={styles.loginBtnText}>{loading ? t('login.loggingIn') : t('login.loginButton')}</Text>
               {!loading && <Ionicons name="arrow-forward" size={18} color="#fff" />}
             </TouchableOpacity>
-
-            <View style={[styles.registerRow, { marginTop: L.smallGap }]}>
-              <Text style={styles.registerLabel}>{t('login.noAccount')}</Text>
-              <TouchableOpacity onPress={onGoToRegister} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.registerLink}>{t('login.createAccount')}</Text>
-              </TouchableOpacity>
-            </View>
 
             {appleAvailable && (
               <>
@@ -329,18 +311,16 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
             )}
 
             {onDemoLogin && (
-              <>
-                <View style={[styles.orRow, { marginTop: L.blockGap, marginBottom: L.fieldGap }]}>
-                  <View style={styles.orLine} />
-                  <Text style={styles.orText}>ou</Text>
-                  <View style={styles.orLine} />
+              <TouchableOpacity onPress={onDemoLogin} style={styles.discover} activeOpacity={0.7} accessibilityRole="button">
+                <Image source={require('../../../assets/login-sweets.png')} style={styles.discoverImage} resizeMode="contain" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.discoverTitle}>{t('login.headline')}</Text>
+                  <View style={styles.discoverAction}>
+                    <Ionicons name="play-circle-outline" size={18} color="#B91665" />
+                    <Text style={styles.discoverLink}>{t('login.tryWithoutAccount')}</Text>
+                  </View>
                 </View>
-
-                <TouchableOpacity onPress={onDemoLogin} style={styles.demoBtn} activeOpacity={0.7}>
-                  <Ionicons name="play-circle-outline" size={20} color={colors.primary} />
-                  <Text style={styles.demoBtnText}>{t('login.tryWithoutAccount')}</Text>
-                </TouchableOpacity>
-              </>
+              </TouchableOpacity>
             )}
             </>
             )}
@@ -353,70 +333,25 @@ export const LoginScreen: React.FC<Props> = ({ onLogin, onGoToRegister, onGoToFo
   );
 };
 
-const CARD_OVERLAP = 40;
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#FFF8F3' },
+  root: { flex: 1, backgroundColor: '#FFF3E8' },
   scrollContent: { flexGrow: 1 },
-
-  // Header rosa
-  header: {
-    backgroundColor: '#FBE5ED',
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
-    paddingBottom: CARD_OVERLAP + 32,
-    alignItems: 'center',
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  logoArea: { alignItems: 'center' },
-  logoWrap: {
-    width: 90,
-    height: 90,
-    borderRadius: 26,
-    overflow: 'hidden',
-    marginBottom: 14,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  brand: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.text,
-    letterSpacing: -0.5,
-  },
-  tagline: {
-    fontSize: 13,
-    color: colors.textSecondary,
-    marginTop: 6,
-    textAlign: 'center',
-    paddingHorizontal: 20,
-  },
-
-  // Card sobreposto
-  card: {
-    backgroundColor: colors.surface,
-    marginTop: -CARD_OVERLAP,
-    marginHorizontal: 20,
-    width: '90%',
-    maxWidth: 460,
-    alignSelf: 'center',
-    borderWidth: 1,
-    borderColor: '#F3E5E8',
-    borderRadius: 24,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 8,
-    marginBottom: 32,
-  },
-  cardTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: colors.text,
-    marginBottom: 24,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 28, width: '100%', maxWidth: 480, alignSelf: 'center' },
+  logoWrap: { width: 40, height: 40, borderRadius: 20 },
+  brand: { fontSize: 21, fontWeight: '800', color: '#29252B', letterSpacing: -0.7 },
+  card: { width: '100%', maxWidth: 480, alignSelf: 'center', paddingHorizontal: 28, paddingBottom: 24, backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, marginTop: -22 },
+  accountSwitch: { flexDirection: 'row', backgroundColor: '#FFF0F5', borderRadius: 12, padding: 5, marginBottom: 28 },
+  activeTab: { flex: 1, backgroundColor: '#FFFFFF', borderRadius: 9, minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: 8 },
+  inactiveTab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center', padding: 8 },
+  activeTabText: { fontSize: 14, fontWeight: '700', color: '#B52467' },
+  inactiveTabText: { fontSize: 14, fontWeight: '600', color: '#766D70' },
+  cardTitle: { fontSize: 29, fontWeight: '700', color: '#542936', letterSpacing: -0.8, maxWidth: 320 },
+  fieldWrapper: { backgroundColor: '#FFFAFC', borderColor: '#F0DFE6', borderWidth: 1, borderRadius: 12, minHeight: 54 },
+  discover: { flexDirection: 'row', alignItems: 'center', gap: 14, borderTopWidth: 1, borderColor: '#EEE7E9', marginTop: 28, paddingVertical: 18, paddingHorizontal: 8, borderBottomLeftRadius: 16, borderBottomRightRadius: 16, backgroundColor: '#FFF9FC' },
+  discoverImage: { width: 88, height: 88 },
+  discoverTitle: { fontSize: 13, lineHeight: 19, color: '#29252B', fontWeight: '600' },
+  discoverAction: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 10 },
+  discoverLink: { flex: 1, fontSize: 12, lineHeight: 18, color: '#B91665', fontWeight: '600' },
 
   // Error
   errorBanner: {
@@ -437,16 +372,17 @@ const styles = StyleSheet.create({
 
   // Login button
   loginBtn: {
-    backgroundColor: colors.primary,
-    borderRadius: 16,
+    backgroundColor: '#BC276D',
+    borderRadius: 14,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 22,
     gap: 8,
-    shadowColor: colors.primary,
+    shadowColor: '#BC276D',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
     elevation: 4,
   },
@@ -481,7 +417,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.cream,
+    backgroundColor: '#F8F6FA',
   },
   demoBtnText: { fontSize: 14, fontWeight: '600', color: colors.text },
   socialButtonWrap: { position: 'relative', marginBottom: 10 },
