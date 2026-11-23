@@ -1,3 +1,4 @@
+import { WhatsAppSalesLink } from '../WhatsAppSalesLink';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { TFunction } from 'i18next';
@@ -357,6 +358,8 @@ export function ProfilePage({ toast }: { toast: ToastFn }) {
           </button>
         </div>
       </form>
+
+      {!isDemoMode() && <WhatsAppSalesLink />}
 
       {/* Ajuda e sugestões (iguais ao app) */}
       <form

@@ -1,12 +1,10 @@
+import { registerSale, SaleRegistrationError } from '../../application/services/registerSale';
 import { Request, Response } from 'express';
 import { PostgresSaleRepository } from '../../infrastructure/repositories/PostgresSaleRepository';
-import { PostgresUserRepository } from '../../infrastructure/repositories/PostgresUserRepository';
 import { AuthRequest } from '../middleware/authMiddleware';
 import { normalizeDateToISO } from '../../domain/utils/date';
-import { canCreateMore, PREMIUM_ERROR_CODES, getFreeSaleLimit } from '../../domain/services/premium';
 
 const saleRepo = new PostgresSaleRepository();
-const userRepo = new PostgresUserRepository();
 
 export class SaleController {
   async getAll(req: AuthRequest, res: Response): Promise<void> {
@@ -56,32 +54,16 @@ export class SaleController {
         }
       }
 
-      // Gate do plano gratuito: bloqueia acima do limite de vendas do free.
-      const user = await userRepo.findById(req.userId!);
-      if (!user) {
-        res.status(401).json({ success: false, error: 'Usuário não encontrado' });
-        return;
-      }
-      const salesCount = await userRepo.countSales(req.userId!);
-      const freeSaleLimit = await getFreeSaleLimit();
-      if (!canCreateMore(user, 'sales', salesCount, freeSaleLimit)) {
-        res.status(403).json({
-          success: false,
-          error: `Você atingiu o limite de ${freeSaleLimit} vendas do plano gratuito. Assine o Premium para registrar vendas ilimitadas.`,
-          code: PREMIUM_ERROR_CODES.sales,
-          limit: freeSaleLimit,
-          current: salesCount,
-        });
-        return;
-      }
-
-      const sale = await saleRepo.create(
-        { recipeId: recipeId || null, productName: productName?.trim() || null, quantitySold: Number(quantitySold), salePrice: Number(salePrice), discount: discount != null ? Number(discount) : undefined, saleDate: normalizedDate, clientName: typeof clientName === 'string' ? clientName.trim() || null : null, notes, paymentMethod },
-        req.userId!
-      );
+      const sale = await registerSale(req.userId!,
+        { recipeId: recipeId || null, productName: typeof productName === 'string' ? productName.trim() || null : null,
+          quantitySold: Number(quantitySold), salePrice: Number(salePrice), discount: discount != null ? Number(discount) : undefined,
+          saleDate: normalizedDate, clientName: typeof clientName === 'string' ? clientName.trim() || null : null, notes, paymentMethod });
 
       res.status(201).json({ success: true, data: sale });
     } catch (error) {
+      if (error instanceof SaleRegistrationError) {
+        res.status(error.status).json({ success: false, error: error.message, code: error.code }); return;
+      }
       if (error instanceof Error) {
         res.status(400).json({ success: false, error: error.message });
       } else {

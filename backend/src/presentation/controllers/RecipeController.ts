@@ -1,3 +1,5 @@
+import { simulatePrice } from '../../domain/services/priceSimulation';
+import { explainRecipe } from '../../infrastructure/services/recipeAssistant';
 import { Request, Response } from 'express';
 import { CreateRecipeUseCase } from '../../application/use-cases/recipe/CreateRecipeUseCase';
 import { GetRecipesUseCase } from '../../application/use-cases/recipe/GetRecipesUseCase';
@@ -141,6 +143,32 @@ export class RecipeController {
         res.locals.errorMessage = error instanceof Error ? error.message : String(error);
         res.status(500).json({ success: false, error: 'Internal server error' });
       }
+    }
+  }
+
+  async assist(req: AuthRequest, res: Response): Promise<void> {
+    try {
+      if (!req.userId) { res.status(401).json({ success: false, error: 'Autenticação necessária.' }); return; }
+      const { discount = 0, quantity = 1, currency = 'BRL' } = req.body ?? {};
+      if (typeof discount !== 'number' || typeof quantity !== 'number' ||
+          !['BRL', 'USD', 'EUR', 'GBP', 'NZD', 'ARS', 'CLP', 'COP', 'MXN'].includes(currency)) {
+        res.status(400).json({ success: false, error: 'Parâmetros de simulação inválidos.' }); return;
+      }
+      if (!await this.allowRecipes(req.userId, [req.params.id], res)) return;
+      const recipe = await recipeRepo.findById(req.params.id, req.userId);
+      if (!recipe) { res.status(404).json({ success: false, error: 'Receita não encontrada.' }); return; }
+      const calculation = await new CalculateRecipeUseCase(recipeRepo, ingredientRepo).execute(recipe.id, req.userId);
+      let simulation;
+      try { simulation = simulatePrice(calculation, discount, quantity); }
+      catch (error) { res.status(400).json({ success: false, error: (error as Error).message }); return; }
+      if (!process.env.OPENAI_API_KEY?.trim()) {
+        res.status(503).json({ success: false, error: 'Assistente de IA ainda não configurada. A precificação continua disponível.' }); return;
+      }
+      const text = await explainRecipe({ name: recipe.name.slice(0, 200), currency, calculation, simulation,
+        additionalCosts: recipe.additionalCosts.slice(0, 30).map(c => ({ name: c.name.slice(0, 100), value: c.value, costType: c.costType })) });
+      res.json({ success: true, data: { simulation, text } });
+    } catch {
+      res.status(502).json({ success: false, error: 'Não foi possível gerar a análise agora. Tente novamente em instantes.' });
     }
   }
 

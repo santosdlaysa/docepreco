@@ -21,6 +21,14 @@
     }
   },
   "login": {
+    "welcome": "Welcome back.",
+    "subtitle": "Sign in to take care of your recipes and your business.",
+    "headline": "Your talent deserves the right price.",
+    "description": "Organize your recipes, understand your costs and make every sweet a more profitable business.",
+    "recipes": "Organized recipes",
+    "pricing": "Price with confidence",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "demoError": "Couldn't open the demo. Please try again.",
     "errCompany": "Enter your bakery's name.",
     "errPhone": "Enter a valid phone number with area code.",
@@ -206,6 +214,7 @@
     "payCardAnnual": "Pay yearly by card",
     "cardHint": "Secure payment via Stripe · Visa, Mastercard, Amex. The subscription renews automatically and can be cancelled anytime.",
     "offerPixOnly": " The offer discount applies to PIX only.",
+    "promoTitle": "{{title}}: {{percent}}% off with PIX",
     "offerTitle": "Welcome-back offer: {{percent}}% off with PIX",
     "offerValid": "Valid until {{date}}. The final amount is confirmed when the PIX is generated.",
     "payThisPix": "Pay this PIX and wait for the payment confirmation.",

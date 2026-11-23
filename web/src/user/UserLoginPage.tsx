@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Cake, Eye, EyeOff, Loader2, PlayCircle } from 'lucide-react';
+import { Cake, Eye, EyeOff, Loader2, PlayCircle, ArrowRight } from 'lucide-react';
 import { wantsOpenRegister, clearOpenRegister } from './demo/demoMode';
 import { useAuth } from './UserAuthContext';
 import { userApi, ApiError } from './userApi';
 import { LgpdModal } from './lgpd';
+import './login.css';
+import loginSweets from '../assets/hero-brigadeiros.png';
+import authCake from '../assets/hero-strawberry-cake.png';
 
 type Mode = 'login' | 'register' | 'forgot' | 'reset';
 
@@ -107,14 +110,35 @@ export function UserLoginPage() {
     mode === 'login' ? t('login.titleLogin') : mode === 'register' ? t('login.titleRegister') : mode === 'reset' ? t('login.titleReset') : t('login.titleForgot');
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-primary-50/30 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 w-full max-w-sm animate-slide-up">
-        <div className="flex flex-col items-center mb-6">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center mb-3 shadow-md">
-            <Cake size={28} className="text-white" />
+    <div className="login-page">
+      <header className="login-topbar">
+        <div className="login-brand"><span className="login-brand-icon"><Cake size={24} /></span>Doce Preço</div>
+        <span className="login-tagline">{t('login.headline')}</span>
+      </header>
+      <main className="login-panel">
+      <aside className="login-showcase">
+        <div className="login-showcase-copy">
+          <span className="login-kicker">DOCE PREÇO</span>
+          <h2>{t('login.headline')}</h2>
+          <p>{t('login.description')}</p>
+        </div>
+        <div className="login-cake-scene" aria-hidden="true">
+          <div className="login-cake-disc" />
+          <img src={authCake} alt="" />
+          <span className="login-spark login-spark-one">✦</span><span className="login-spark login-spark-two">✧</span>
+        </div>
+        <div className="login-showcase-footer"><span />{t('login.recipes')}<span />{t('login.pricing')}</div>
+      </aside>
+      <div className="login-form">
+        {(mode === 'login' || mode === 'register') && (
+          <div className="login-switch" role="group" aria-label="Conta">
+            <button type="button" aria-pressed={mode === 'login'} onClick={() => switchMode('login')}>{t('login.submitLogin')}</button>
+            <button type="button" aria-pressed={mode === 'register'} onClick={() => switchMode('register')}>{t('login.createAccount')}</button>
           </div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-white tracking-tight">DocePreço</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{title}</p>
+        )}
+        <div className="login-form-heading">
+          <h1>{mode === 'login' ? t('login.titleLogin') : title}</h1>
+          {mode === 'login' && <p>{t('login.subtitle')}</p>}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -133,6 +157,8 @@ export function UserLoginPage() {
           <Field label={t('login.email')}>
             <input
               type="email"
+              required
+              autoComplete="email"
               value={email}
               onChange={e => setEmail(e.target.value)}
               placeholder={t('login.emailPlaceholder')}
@@ -203,19 +229,24 @@ export function UserLoginPage() {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
                   className={inputClass + ' pr-10'}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(v => !v)}
                   className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                  tabIndex={-1}
+                  aria-label={t(showPassword ? 'login.hidePassword' : 'login.showPassword')}
+                  aria-pressed={showPassword}
                 >
                   {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
             </Field>
           )}
+
+          {mode === 'login' && <div className="login-forgot"><button type="button" onClick={() => switchMode('forgot')} className={linkClass}>{t('login.forgot')}</button></div>}
 
           {mode === 'register' && (
             <label className="flex items-start gap-2 cursor-pointer select-none">
@@ -235,13 +266,13 @@ export function UserLoginPage() {
             </label>
           )}
 
-          {error && <p className="text-sm text-red-600 animate-fade-in">{error}</p>}
-          {info && <p className="text-sm text-green-600 animate-fade-in">{info}</p>}
+          {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-700 animate-fade-in">{error}</p>}
+          {info && <p role="status" className="text-sm text-green-600 animate-fade-in">{info}</p>}
 
           <button
             type="submit"
             disabled={loading || (mode === 'register' && !acceptedLgpd)}
-            className="w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg py-2.5 text-sm transition-all flex items-center justify-center gap-2"
+            className="login-submit w-full bg-primary-500 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl py-3.5 text-sm transition-all flex items-center justify-center gap-2"
           >
             {loading ? (
               <>
@@ -249,7 +280,7 @@ export function UserLoginPage() {
                 {t('login.wait')}
               </>
             ) : mode === 'login' ? (
-              t('login.submitLogin')
+              <>{t('login.submitLogin')}<ArrowRight size={18} /></>
             ) : mode === 'register' ? (
               t('login.submitRegister')
             ) : mode === 'reset' ? (
@@ -261,33 +292,19 @@ export function UserLoginPage() {
         </form>
 
         {mode === 'login' && (
-          <button
-            type="button"
-            onClick={tryDemo}
-            disabled={startingDemo}
-            className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary-300 dark:border-primary-700 py-2.5 text-sm font-semibold text-primary-600 dark:text-primary-400 hover:bg-primary-50 dark:hover:bg-primary-900/20 disabled:opacity-50"
-          >
-            {startingDemo ? <Loader2 size={16} className="animate-spin-slow" /> : <PlayCircle size={16} />}
-            {t('login.tryDemo')}
-          </button>
+          <div className="login-discover">
+            <img src={loginSweets} alt="" aria-hidden="true" />
+            <div>
+              <p>{t('login.headline')}</p>
+              <button type="button" onClick={tryDemo} disabled={startingDemo || loading}>
+                {startingDemo ? <Loader2 size={17} className="animate-spin-slow" /> : <PlayCircle size={17} />}
+                {t('login.tryDemo')}
+              </button>
+            </div>
+          </div>
         )}
 
         <div className="mt-5 text-center text-sm text-gray-500 dark:text-gray-400 space-y-2">
-          {mode === 'login' && (
-            <>
-              <p>
-                {t('login.noAccount')}{' '}
-                <button onClick={() => switchMode('register')} className={linkClass}>
-                  {t('login.createAccount')}
-                </button>
-              </p>
-              <p>
-                <button onClick={() => switchMode('forgot')} className={linkClass}>
-                  {t('login.forgot')}
-                </button>
-              </p>
-            </>
-          )}
           {mode === 'reset' && (
             <p>
               <button onClick={() => switchMode('forgot')} className={linkClass}>
@@ -304,6 +321,8 @@ export function UserLoginPage() {
           )}
         </div>
       </div>
+
+      </main>
 
       {showLgpd && (
         <LgpdModal
@@ -323,14 +342,16 @@ export function UserLoginPage() {
 }
 
 const inputClass =
-  'w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow dark:bg-gray-700 dark:text-white dark:placeholder-gray-400';
+  'w-full border border-gray-300 dark:border-gray-600 rounded-xl px-4 py-3.5 text-base focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-shadow dark:bg-gray-700 dark:text-white dark:placeholder-gray-400';
 const linkClass = 'text-primary-600 dark:text-primary-400 font-medium hover:underline';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">{label}</label>
-      {children}
+      <label className="block text-sm font-medium text-gray-700 dark:text-gray-200">
+        <span className="block mb-2">{label}</span>
+        {children}
+      </label>
     </div>
   );
 }

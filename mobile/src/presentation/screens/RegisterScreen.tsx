@@ -15,6 +15,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { authApi } from '../../data/api/authApi';
 import { identifyRevenueCatUser, setRevenueCatLocationAttributes } from '../../data/premium/revenueCat';
+import { AuthHero } from '../components/AuthHero';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Input } from '../components/Input';
 import { useTranslation } from 'react-i18next';
 import { getEmailTypoSuggestion, isValidEmail } from '../utils/emailTypoCheck';
@@ -29,6 +31,7 @@ interface Props {
 
 export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => {
   const L = useAuthLayout();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [companyName, setCompanyName] = useState('');
   const [email, setEmail] = useState('');
@@ -46,11 +49,9 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
 
   const fadeIn = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(60)).current;
-  const logoScale = useRef(new Animated.Value(0.7)).current;
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(logoScale, { toValue: 1, tension: 50, friction: 7, useNativeDriver: true }),
       Animated.timing(fadeIn, { toValue: 1, duration: 600, useNativeDriver: true }),
       Animated.spring(cardSlide, { toValue: 0, tension: 40, friction: 9, useNativeDriver: true }),
     ]).start();
@@ -108,29 +109,15 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
 
   return (
     <View style={styles.root}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.primary} />
+      <StatusBar barStyle="dark-content" backgroundColor="#FFF3E8" />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView
-          contentContainerStyle={styles.scrollContent}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
           bounces={false}
         >
-          {/* Header colorido */}
-          <View style={[styles.header, { paddingTop: L.headerPadTop, paddingBottom: CARD_OVERLAP + (L.compact ? L.headerPadExtra : 24) }]}>
-            <Animated.View style={[styles.logoArea, { opacity: fadeIn, transform: [{ scale: logoScale }] }]}>
-              <View style={[styles.logoWrap, { width: L.logoSize, height: L.logoSize, borderRadius: L.logoRadius, marginBottom: L.logoGap }]}>
-                <Image
-                  source={require('../../../assets/icon.png')}
-                  style={{ width: L.logoSize, height: L.logoSize }}
-                  resizeMode="contain"
-                />
-              </View>
-              <Text style={[styles.brand, { fontSize: L.brandSize }]}>Doce Preço</Text>
-            </Animated.View>
-          </View>
-
-          {/* Card sobreposto */}
+          <AuthHero compact />
           <Animated.View style={[styles.card, { padding: L.cardPad, marginBottom: L.cardMarginBottom, opacity: fadeIn, transform: [{ translateY: cardSlide }] }]}>
             <Text style={styles.cardTitle}>{t('register.title')}</Text>
             <Text style={[styles.cardSubtitle, { marginBottom: L.blockGap }]}>{t('register.subtitle')}</Text>
@@ -143,6 +130,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
             )}
 
             <Input
+              wrapperStyle={styles.fieldWrapper}
               containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.companyName')}
               placeholder={t('register.companyPlaceholder')}
@@ -152,6 +140,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               maxLength={30}
             />
             <Input
+              wrapperStyle={styles.fieldWrapper}
               containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.emailLabel')}
               placeholder="seu@email.com"
@@ -162,6 +151,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               error={errors.email}
             />
             <Input
+              wrapperStyle={styles.fieldWrapper}
               containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.phoneLabel')}
               placeholder={t('register.phonePlaceholder')}
@@ -173,6 +163,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               leftElement={<CountryCodePicker value={countryCode} onChange={setCountryCode} />}
             />
             <Input
+              wrapperStyle={styles.fieldWrapper}
               containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.instagramLabel')}
               placeholder="@suaconfeitaria"
@@ -183,6 +174,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               maxLength={31}
             />
             <Input
+              wrapperStyle={styles.fieldWrapper}
               containerStyle={{ marginBottom: L.fieldGap }}
               label={t('register.passwordLabel')}
               placeholder={t('register.passwordPlaceholder')}
@@ -197,6 +189,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               }
             />
             <Input
+              wrapperStyle={styles.fieldWrapper}
               containerStyle={{ marginBottom: L.fieldGap }}
               label="Confirmar senha"
               placeholder="Digite a senha novamente"
@@ -206,6 +199,7 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
               error={errors.confirmPassword}
             />
             <Input
+              wrapperStyle={styles.fieldWrapper}
               containerStyle={{ marginBottom: L.fieldGap }}
               label="Código de indicação (opcional)"
               placeholder="Quem te indicou?"
@@ -265,54 +259,15 @@ export const RegisterScreen: React.FC<Props> = ({ onRegister, onGoToLogin }) => 
   );
 };
 
-const CARD_OVERLAP = 40;
-
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.surface },
+  root: { flex: 1, backgroundColor: '#FFF3E8' },
   scrollContent: { flexGrow: 1 },
-
-  // Header rosa
-  header: {
-    backgroundColor: colors.primary,
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
-    paddingBottom: CARD_OVERLAP + 24,
-    alignItems: 'center',
-  },
-  logoArea: { alignItems: 'center' },
-  logoWrap: {
-    width: 90,
-    height: 90,
-    borderRadius: 26,
-    overflow: 'hidden',
-    marginBottom: 14,
-    borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.3)',
-  },
-  brand: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-
-  // Card sobreposto
-  card: {
-    backgroundColor: colors.surface,
-    marginTop: -CARD_OVERLAP,
-    marginHorizontal: 20,
-    borderRadius: 24,
-    padding: 28,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 20,
-    elevation: 8,
-    marginBottom: 32,
-  },
+  card: { backgroundColor: '#FFFFFF', marginTop: -22, width: '100%', maxWidth: 480, alignSelf: 'center', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 28 },
+  fieldWrapper: { backgroundColor: '#FFFAFC', borderColor: '#F0DFE6', borderWidth: 1, borderRadius: 12, minHeight: 54 },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 29,
     fontWeight: '700',
-    color: colors.text,
+    color: '#542936',
     marginBottom: 4,
   },
   cardSubtitle: {
@@ -341,7 +296,7 @@ const styles = StyleSheet.create({
 
   // Register button
   registerBtn: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#BC276D',
     borderRadius: 16,
     paddingVertical: 16,
     flexDirection: 'row',
@@ -364,6 +319,7 @@ const styles = StyleSheet.create({
   // Login row
   loginRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,

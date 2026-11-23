@@ -45,6 +45,8 @@ import rewardedAdRoutes from './presentation/routes/rewardedAdRoutes';
 import checkinRoutes from './presentation/routes/checkinRoutes';
 import whatsappRoutes from './presentation/routes/whatsappRoutes';
 import metaWebhookRoutes from './presentation/routes/metaWebhookRoutes';
+import whatsappSalesRoutes from './presentation/routes/whatsappSalesRoutes';
+import { startWhatsAppSalesWorker } from './infrastructure/services/whatsappSales';
 import pixRoutes from './presentation/routes/pixRoutes';
 import winbackRoutes from './presentation/routes/winbackRoutes';
 import cashRoutes from './presentation/routes/cashRoutes';
@@ -205,6 +207,7 @@ app.use('/api/conversion-events', authMiddleware, conversionRoutes);
 app.use('/api/recipes', authMiddleware, recipeRoutes);
 app.use('/api/ingredients', authMiddleware, ingredientRoutes);
 app.use('/api/sales', authMiddleware, saleRoutes);
+app.use('/api/whatsapp-sales', authMiddleware, whatsappSalesRoutes);
 app.use('/api/cash', authMiddleware, cashRoutes);
 app.use('/api/stats', authMiddleware, statsRoutes);
 app.use('/api/goals', authMiddleware, goalRoutes);
@@ -273,6 +276,7 @@ async function bootstrap() {
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });
+    startWhatsAppSalesWorker();
     // Geocodifica lojas antigas sem coordenadas (fire-and-forget)
     void backfillStoreCoordinates();
 

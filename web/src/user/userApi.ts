@@ -763,7 +763,7 @@ export const userApi = {
   /** Checkout de cartão (Stripe). Volta para `returnUrl` com ?checkout=success|cancel. */
   createCardCheckout: (plan: 'monthly' | 'annual', tier: 'premium' | 'master', returnUrl: string) =>
     req<{ url: string }>('/stripe/create-checkout', { method: 'POST', body: JSON.stringify({ plan, tier, returnUrl }) }),
-  getDiscountOffer: () => req<{ discountPercent: number; expiresAt: string } | null>('/support/discount-offer'),
+  getDiscountOffer: () => req<{ kind?: 'promo' | 'winback'; title?: string; discountPercent: number; expiresAt: string | null } | null>('/support/discount-offer'),
   previewUpgrade: () => req<UpgradePreview>('/pix/upgrade/preview'),
   upgradeToMaster: () => req<UpgradeRequest>('/pix/upgrade', { method: 'POST' }),
 

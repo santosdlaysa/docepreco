@@ -1,6 +1,6 @@
 import { planConfigApi } from '../../data/api/planConfigApi';
 import { colors } from '../theme/colors';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,14 +18,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Skeleton } from '../components/Skeleton';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { recipeApi } from '../../data/api/recipeApi';
 import { ingredientApi } from '../../data/api/ingredientApi';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoRecipeApi, demoIngredientApi } from '../../data/demo/demoApi';
-import { laborSettingsStorage } from '../../data/storage/laborSettingsStorage';
 import { Ingredient } from '../../domain/entities/Ingredient';
 import { RecipeIngredient, AdditionalCost, SubRecipe } from '../../domain/entities/Recipe';
 import { Recipe } from '../../domain/entities/Recipe';
@@ -130,6 +129,18 @@ export const CreateRecipeScreen: React.FC = () => {
     normalizeCostName(name).includes('maodeobraprofissional') ||
     normalizeCostName(name).includes('laborprofessional');
 
+  const consolidateLaborCosts = (costs: AdditionalCost[], recipeYield: number) => {
+    const labor = costs.filter(c => isProfessionalLaborCost(c.name) ||
+      ['maodeobra', 'labor', normalizeCostName(t('createRecipe.labor'))].includes(normalizeCostName(c.name)));
+    if (!labor.length) return costs;
+    const costType = labor.every(c => c.costType === 'unit') ? 'unit' : 'recipe';
+    const value = labor.reduce((total, c) => total + c.value *
+      (costType === 'recipe' && c.costType === 'unit' ? recipeYield : 1), 0);
+    return [...costs.filter(c => !labor.includes(c)), {
+      name: t('createRecipe.labor'), value: Math.round(value * 100) / 100, costType,
+    } as AdditionalCost];
+  };
+
   const localizedMarginPresets = MARGIN_PRESETS.map(preset => ({
     ...preset,
     label: preset.value === 30 ? t('createRecipe.marginBasic')
@@ -160,7 +171,9 @@ export const CreateRecipeScreen: React.FC = () => {
   const [additionalCostInputs, setAdditionalCostInputs] = useState<Record<string, string>>({});
   const [availableIngredients, setAvailableIngredients] = useState<Ingredient[]>([]);
   const [showIngredientModal, setShowIngredientModal] = useState(false);
+  const reopenIngredients = useRef(false);
   const [selectedIngredient, setSelectedIngredient] = useState<Ingredient | null>(null);
+  const [editingIngredientId, setEditingIngredientId] = useState<string | null>(null);
   const [ingredientQuantity, setIngredientQuantity] = useState('');
   const [ingredientUnit, setIngredientUnit] = useState('');
   const [loading, setLoading] = useState(false);
@@ -168,17 +181,6 @@ export const CreateRecipeScreen: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [recipeCount, setRecipeCount] = useState(0);
-  const [laborExpanded, setLaborExpanded] = useState(false);
-  const [hourlyRate, setHourlyRate] = useState('');
-  const [prepTimeMinutes, setPrepTimeMinutes] = useState('');
-  // Assistente de custo por hora: deriva o R$/h a partir do salário desejado + jornada.
-  const [rateHelperOpen, setRateHelperOpen] = useState(false);
-  const [monthlyIncome, setMonthlyIncome] = useState('');
-  const [hoursPerDay, setHoursPerDay] = useState('');
-  const [daysPerWeek, setDaysPerWeek] = useState('');
-  // Valor de mão de obra carregado ao editar (a API guarda só o custo calculado,
-  // não a hora/tempo). Serve para preservar o valor ao salvar de novo.
-  const [initialLaborCost, setInitialLaborCost] = useState(0);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [applyingSuggestion, setApplyingSuggestion] = useState(false);
   const [subRecipes, setSubRecipes] = useState<SubRecipe[]>([]);
@@ -211,12 +213,8 @@ export const CreateRecipeScreen: React.FC = () => {
     additionalCosts: AdditionalCost[];
     additionalCostInputs: Record<string, string>;
     subRecipes: SubRecipe[];
-    hourlyRate: string;
-    prepTimeMinutes: string;
-    laborExpanded: boolean;
-    monthlyIncome: string;
-    hoursPerDay: string;
-    daysPerWeek: string;
+    hourlyRate?: string;
+    prepTimeMinutes?: string;
   }
 
   const { draft: recipeDraft, isDraftLoading, saveDraft, clearDraft } = useDraft<RecipeDraft>(
@@ -225,31 +223,34 @@ export const CreateRecipeScreen: React.FC = () => {
   );
 
   const { showToast } = useToast();
+  const ingredientLoadToast = useRef(showToast);
+  ingredientLoadToast.current = showToast;
   const { checkLimit, openPaywall, requirePremium } = usePaywall();
   const { isPremium } = usePremium();
   const { formatCurrency, formatCurrencyUnit } = useCurrencyFormat();
   const rApi = isDemoMode() ? demoRecipeApi : recipeApi;
   const iApi = isDemoMode() ? demoIngredientApi : ingredientApi;
 
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    iApi.getAll().then(list => {
+      if (!active) return;
+      setAvailableIngredients(list);
+      if (reopenIngredients.current) {
+        reopenIngredients.current = false;
+        setShowIngredientModal(true);
+      }
+    }).catch(() => {
+      if (active) ingredientLoadToast.current('Não foi possível carregar os ingredientes. Tente novamente.', 'error');
+    });
+    return () => { active = false; };
+  }, [iApi]));
+
   useEffect(() => {
-    iApi.getAll().then(setAvailableIngredients).catch(() => {});
     rApi.getAll().then(list => {
       if (!isEditing) setRecipeCount(list.length);
       setAvailableRecipes(list);
     }).catch(() => {});
-  }, []);
-
-  // Pré-preenche o custo por hora salvo como padrão (só em receitas novas)
-  useEffect(() => {
-    if (isEditing) return;
-    laborSettingsStorage.get()
-      .then(s => {
-        if (s.hourlyRate) setHourlyRate(prev => (prev ? prev : s.hourlyRate));
-        if (s.monthlyIncome) setMonthlyIncome(prev => (prev ? prev : s.monthlyIncome!));
-        if (s.hoursPerDay) setHoursPerDay(prev => (prev ? prev : s.hoursPerDay!));
-        if (s.daysPerWeek) setDaysPerWeek(prev => (prev ? prev : s.daysPerWeek!));
-      })
-      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -266,20 +267,15 @@ export const CreateRecipeScreen: React.FC = () => {
         setWeightPerUnitUnit(recipe.yieldUnitWeightUnit ?? 'g');
         setProfitMargin(String(recipe.profitMargin));
         setIngredients(recipe.ingredients);
-        setAdditionalCosts(recipe.additionalCosts);
+        const costs = consolidateLaborCosts(recipe.additionalCosts, recipe.yield);
+        setAdditionalCosts(costs);
         setAdditionalCostInputs(
-          recipe.additionalCosts.reduce((acc, c) => {
+          costs.reduce((acc, c) => {
             acc[getCostInputName(c.name)] = c.value ? String(c.value).replace('.', ',') : '';
             return acc;
           }, {} as Record<string, string>)
         );
         setSubRecipes(recipe.subRecipes || []);
-        // Restore labor cost fields if present (inclui dados antigos com nome corrompido)
-        const laborCost = recipe.additionalCosts.find(c => isProfessionalLaborCost(c.name));
-        if (laborCost && laborCost.value > 0) {
-          setLaborExpanded(true);
-          setInitialLaborCost(laborCost.value);
-        }
       })
       .catch((error: { code?: string }) => {
         if (error.code === 'RECIPE_INACTIVE') {
@@ -318,15 +314,19 @@ export const CreateRecipeScreen: React.FC = () => {
             setWeightPerUnitUnit(recipeDraft.weightPerUnitUnit ?? 'g');
             setProfitMargin(recipeDraft.profitMargin);
             setIngredients(recipeDraft.ingredients);
-            setAdditionalCosts(recipeDraft.additionalCosts);
-            setAdditionalCostInputs(recipeDraft.additionalCostInputs);
+            const legacyRate = parseLocaleNumber(recipeDraft.hourlyRate ?? '');
+            const legacyMinutes = parseLocaleNumber(recipeDraft.prepTimeMinutes ?? '');
+            const draftCosts = [...recipeDraft.additionalCosts];
+            if (legacyRate > 0 && legacyMinutes > 0) {
+              draftCosts.push({ name: 'Mão de obra (profissional)', value: Math.round(legacyRate * legacyMinutes / 60 * 100) / 100 });
+            }
+            const costs = consolidateLaborCosts(draftCosts, parseLocaleNumber(recipeDraft.yieldAmount));
+            setAdditionalCosts(costs);
+            setAdditionalCostInputs(costs.reduce((acc, c) => {
+              acc[getCostInputName(c.name)] = c.value ? String(c.value).replace('.', ',') : '';
+              return acc;
+            }, {} as Record<string, string>));
             setSubRecipes(recipeDraft.subRecipes);
-            setHourlyRate(recipeDraft.hourlyRate);
-            setPrepTimeMinutes(recipeDraft.prepTimeMinutes);
-            setLaborExpanded(recipeDraft.laborExpanded);
-            setMonthlyIncome(recipeDraft.monthlyIncome ?? '');
-            setHoursPerDay(recipeDraft.hoursPerDay ?? '');
-            setDaysPerWeek(recipeDraft.daysPerWeek ?? '');
           },
         },
       ]
@@ -336,8 +336,8 @@ export const CreateRecipeScreen: React.FC = () => {
   // Auto-save form state whenever it changes
   useEffect(() => {
     if (isEditing || isDraftLoading) return;
-    saveDraft({ name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek });
-  }, [name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes, hourlyRate, prepTimeMinutes, laborExpanded, monthlyIncome, hoursPerDay, daysPerWeek]);
+    saveDraft({ name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes });
+  }, [name, isProduct, yieldAmount, yieldMode, totalReadyWeight, totalReadyUnit, weightPerUnit, weightPerUnitUnit, profitMargin, ingredients, additionalCosts, additionalCostInputs, subRecipes]);
 
   const toGrams = (value: number, unit: 'g' | 'kg') => unit === 'kg' ? value * 1000 : value;
 
@@ -411,12 +411,35 @@ export const CreateRecipeScreen: React.FC = () => {
     return qty;
   };
 
+  const closeIngredientModal = () => {
+    setShowIngredientModal(false);
+    setSelectedIngredient(null);
+    setEditingIngredientId(null);
+    setIngredientQuantity('');
+    setIngredientUnit('');
+  };
+
+  const editIngredient = (item: RecipeIngredient) => {
+    const ingredient = availableIngredients.find(available => available.id === item.ingredientId);
+    if (!ingredient) {
+      showToast('Não foi possível carregar este ingrediente. Tente novamente.', 'error');
+      return;
+    }
+    setEditingIngredientId(item.ingredientId);
+    setSelectedIngredient(ingredient);
+    setIngredientQuantity(String(item.quantityUsed));
+    setIngredientUnit(item.unit);
+    setShowIngredientModal(true);
+  };
+
   const confirmAndAddIngredient = () => {
     if (!selectedIngredient) return;
     const qty = parseLocaleNumber(ingredientQuantity);
     const unit = ingredientUnit || selectedIngredient.unit;
 
-    setIngredients(prev => [
+    setIngredients(prev => editingIngredientId ? prev.map(item =>
+      item.ingredientId === editingIngredientId ? { ...item, quantityUsed: qty, unit } : item
+    ) : [
       ...prev,
       {
         ingredientId: selectedIngredient.id,
@@ -425,17 +448,18 @@ export const CreateRecipeScreen: React.FC = () => {
         unit,
       },
     ]);
-    setSelectedIngredient(null);
-    setIngredientQuantity('');
-    setIngredientUnit('');
-    setShowIngredientModal(false);
+    closeIngredientModal();
   };
 
   const addIngredient = () => {
     const qty = parseLocaleNumber(ingredientQuantity);
-    if (!selectedIngredient || !ingredientQuantity || qty <= 0) return;
+    if (!selectedIngredient) return;
+    if (!ingredientQuantity || !Number.isFinite(qty) || qty <= 0) {
+      showToast('Informe uma quantidade maior que zero.', 'warning');
+      return;
+    }
     const existing = ingredients.find(i => i.ingredientId === selectedIngredient.id);
-    if (existing) {
+    if (existing && existing.ingredientId !== editingIngredientId) {
       showToast(t('createRecipe.alreadyAdded'), 'warning');
       return;
     }
@@ -561,34 +585,6 @@ export const CreateRecipeScreen: React.FC = () => {
     return additionalCostInputs[name] ?? '';
   };
 
-  const laborCostValue = (() => {
-    const rate = parseLocaleNumber(hourlyRate);
-    const mins = parseLocaleNumber(prepTimeMinutes);
-    if (rate > 0 && mins > 0) return Math.round(((rate / 60) * mins) * 100) / 100;
-    return 0;
-  })();
-
-  // Usa o cálculo (hora × tempo) quando preenchido; senão preserva o valor salvo (edição).
-  const effectiveLaborCost = laborCostValue > 0 ? laborCostValue : initialLaborCost;
-
-  // Assistente: converte "quanto quero ganhar por mês" em custo por hora.
-  // horas no mês = horas/dia × dias/semana × semanas/mês (média de 4,33).
-  const WEEKS_PER_MONTH = 4.33;
-  const computedHourlyRate = (() => {
-    const income = parseLocaleNumber(monthlyIncome);
-    const hd = parseLocaleNumber(hoursPerDay);
-    const dw = parseLocaleNumber(daysPerWeek);
-    const hoursPerMonth = hd * dw * WEEKS_PER_MONTH;
-    if (income > 0 && hoursPerMonth > 0) return Math.round((income / hoursPerMonth) * 100) / 100;
-    return 0;
-  })();
-
-  const applyComputedHourlyRate = () => {
-    if (computedHourlyRate <= 0) return;
-    setHourlyRate(computedHourlyRate.toFixed(2).replace('.', ','));
-    setRateHelperOpen(false);
-  };
-
   const handleSelectSuggestion = async (suggestion: SuggestedRecipe) => {
     if (!requirePremium('smartShoppingList')) return;
     setShowSuggestions(false);
@@ -663,13 +659,6 @@ export const CreateRecipeScreen: React.FC = () => {
     }
   };
 
-  const handleToggleLabor = () => {
-    if (!laborExpanded) {
-      if (!requirePremium('laborCostCalc')) return;
-    }
-    setLaborExpanded(!laborExpanded);
-  };
-
   const handleShowConfirmation = async () => {
     if (!validate()) return;
     if (!isEditing && !isPremium && recipeCount >= await planConfigApi.getFreeRecipeLimit()) {
@@ -697,14 +686,6 @@ export const CreateRecipeScreen: React.FC = () => {
     }
   };
 
-  const getFinalCosts = () => {
-    let finalCosts = additionalCosts.filter(c => c.name !== 'Mão de obra (profissional)');
-    if (laborCostValue > 0) {
-      finalCosts = [...finalCosts, { name: 'Mão de obra (profissional)', value: laborCostValue }];
-    }
-    return finalCosts;
-  };
-
   const getFinalCostsFromInputs = () => {
     const standardNames = new Set(localizedAdditionalCosts.map(cost => normalizeCostName(cost.name)));
     const finalCosts: AdditionalCost[] = localizedAdditionalCosts
@@ -721,20 +702,12 @@ export const CreateRecipeScreen: React.FC = () => {
       if (cost.value > 0) finalCosts.push(cost);
     }
 
-    if (effectiveLaborCost > 0) {
-      finalCosts.push({ name: 'Mão de obra (profissional)', value: effectiveLaborCost, costType: additionalCosts.find(c => isProfessionalLaborCost(c.name))?.costType ?? 'recipe' });
-    }
-
     return finalCosts;
   };
 
   const handleConfirmSave = async () => {
     setShowConfirmModal(false);
     setLoading(true);
-    // Lembra o custo por hora (e os dados do assistente) como padrão para as próximas receitas
-    if (parseLocaleNumber(hourlyRate) > 0) {
-      laborSettingsStorage.save({ hourlyRate, monthlyIncome, hoursPerDay, daysPerWeek }).catch(() => {});
-    }
     try {
       const payload = {
         name: name.trim(),
@@ -957,8 +930,8 @@ export const CreateRecipeScreen: React.FC = () => {
               <Ionicons name="information-circle" size={18} color={colors.blue} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>Preencha os dados</Text>
-              <Text style={{ fontSize: 12, color: INK2, fontWeight: '500', marginTop: 2 }}>O preço sugerido é calculado automaticamente.</Text>
+              <Text style={{ fontSize: 15, fontWeight: '700', color: INK }}>2. Monte sua receita para precificar</Text>
+              <Text style={{ fontSize: 12, color: INK2, fontWeight: '500', marginTop: 6, lineHeight: 18 }}>Dê um nome ao doce, informe quantas unidades ele rende e adicione os ingredientes com a quantidade usada. Inclua os custos adicionais e confira o preço sugerido no final.</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('RecipeTutorial' as any)}
                 activeOpacity={0.8}
@@ -1228,6 +1201,7 @@ export const CreateRecipeScreen: React.FC = () => {
 
           {/* ── Ingredientes (.gcard) ── */}
           <Text style={{ fontSize: 16, fontWeight: '700', color: INK, marginLeft: 2 }}>Ingredientes</Text>
+          <Text style={{ fontSize: 12, color: INK2, lineHeight: 18 }}>Escolha um ingrediente por vez e informe só o que vai nesta receita. Exemplo: comprou 1000 g de açúcar e usou 200 g? Adicione 200 g aqui.</Text>
           {ingredients.length > 0 && (
             <View style={{ backgroundColor: '#fff', borderRadius: 18, overflow: 'hidden', ...SH }}>
               {ingredients.map((ing, i) => (
@@ -1237,6 +1211,14 @@ export const CreateRecipeScreen: React.FC = () => {
                     <Text style={{ fontSize: 14.5, fontWeight: '700', color: INK }}>{ing.ingredientName}</Text>
                     <Text style={{ fontSize: 12, color: INK2, fontWeight: '500' }}>{ing.quantityUsed} {formatUnitLabel(ing.unit)}</Text>
                   </View>
+                  <TouchableOpacity
+                    onPress={() => editIngredient(ing)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Editar quantidade de ${ing.ingredientName}`}
+                    style={{ minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <Ionicons name="pencil-outline" size={20} color={PINK} />
+                  </TouchableOpacity>
                   <TouchableOpacity onPress={() => removeIngredient(ing.ingredientId)}>
                     <Ionicons name="close-circle" size={20} color={colors.redDark} />
                   </TouchableOpacity>
@@ -1314,142 +1296,13 @@ export const CreateRecipeScreen: React.FC = () => {
             ))}
           </View>
 
-          {/* ── Custos profissionais (calculador de mão de obra) ── */}
-          <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 15, ...SH }}>
-            <TouchableOpacity onPress={handleToggleLabor} style={styles.laborHeader} activeOpacity={0.7}>
-              <View style={styles.laborHeaderLeft}>
-                <Ionicons name="construct-outline" size={20} color={laborExpanded ? PINK : INK2} />
-                <Text style={{ fontSize: 16, fontWeight: '700', color: INK }}>{t('createRecipe.professionalCosts')}</Text>
-              </View>
-              <View style={styles.laborHeaderRight}>
-                {!isPremium && (
-                  <View style={styles.premiumBadge}>
-                    <Ionicons name="sparkles" size={10} color="#fff" />
-                    <Text style={styles.premiumBadgeText}>Premium</Text>
-                  </View>
-                )}
-                <Ionicons name={laborExpanded ? 'chevron-up' : 'chevron-down'} size={18} color={INK3} />
-              </View>
-            </TouchableOpacity>
-            {laborExpanded && (
-              <View style={styles.laborContent}>
-                <Text style={styles.laborDesc}>{t('createRecipe.laborDescription')}</Text>
-
-                {/* ── Assistente: calcula o R$/h a partir do salário desejado ── */}
-                <View style={{ backgroundColor: CREAM2, borderRadius: 12, padding: 12, marginBottom: 4 }}>
-                  <TouchableOpacity
-                    onPress={() => setRateHelperOpen(v => !v)}
-                    activeOpacity={0.7}
-                    style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
-                  >
-                    <Ionicons name="help-buoy-outline" size={16} color={PINK} />
-                    <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: INK }}>
-                      {t('createRecipe.rateHelperTitle')}
-                    </Text>
-                    <Ionicons name={rateHelperOpen ? 'chevron-up' : 'chevron-down'} size={16} color={INK3} />
-                  </TouchableOpacity>
-                  {rateHelperOpen && (
-                    <View style={{ marginTop: 10, gap: 2 }}>
-                      <Text style={{ fontSize: 11.5, color: INK3, lineHeight: 16, marginBottom: 6 }}>
-                        {t('createRecipe.rateHelperDescription')}
-                      </Text>
-                      <Input
-                        label={t('createRecipe.monthlyIncome')}
-                        placeholder="2.000,00"
-                        value={monthlyIncome}
-                        onChangeText={setMonthlyIncome}
-                        keyboardType="decimal-pad"
-                        suffix={`${symbol}/mês`}
-                      />
-                      <View style={{ flexDirection: 'row' }}>
-                        <View style={{ flex: 1, marginRight: 8 }}>
-                          <Input
-                            label={t('createRecipe.hoursPerDay')}
-                            placeholder="6"
-                            value={hoursPerDay}
-                            onChangeText={setHoursPerDay}
-                            keyboardType="number-pad"
-                            suffix="h/dia"
-                          />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Input
-                            label={t('createRecipe.daysPerWeek')}
-                            placeholder="5"
-                            value={daysPerWeek}
-                            onChangeText={setDaysPerWeek}
-                            keyboardType="number-pad"
-                            suffix="dias"
-                          />
-                        </View>
-                      </View>
-                      {computedHourlyRate > 0 && (
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 4 }}>
-                          <Text style={{ flex: 1, fontSize: 13, fontWeight: '700', color: INK }}>
-                            {t('createRecipe.computedHourlyRate', { value: computedHourlyRate.toFixed(2) })}
-                          </Text>
-                          <TouchableOpacity
-                            onPress={applyComputedHourlyRate}
-                            activeOpacity={0.8}
-                            style={{ backgroundColor: PINK, borderRadius: 10, paddingVertical: 8, paddingHorizontal: 14 }}
-                          >
-                            <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
-                              {t('createRecipe.useRate')}
-                            </Text>
-                          </TouchableOpacity>
-                        </View>
-                      )}
-                    </View>
-                  )}
-                </View>
-
-                <View style={{ flexDirection: 'row' }}>
-                  <View style={{ flex: 1, marginRight: 8 }}>
-                    <Input
-                      label={t('createRecipe.hourlyRate')}
-                      placeholder="25,00"
-                      value={hourlyRate}
-                      onChangeText={setHourlyRate}
-                      keyboardType="decimal-pad"
-                      suffix={`${symbol}/h`}
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Input
-                      label={t('createRecipe.prepTime')}
-                      placeholder="120"
-                      value={prepTimeMinutes}
-                      onChangeText={setPrepTimeMinutes}
-                      keyboardType="number-pad"
-                      suffix="min"
-                    />
-                  </View>
-                </View>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                  <Ionicons name="bookmark-outline" size={13} color={INK3} />
-                  <Text style={{ flex: 1, fontSize: 11.5, color: INK3, lineHeight: 16 }}>
-                    O custo por hora fica salvo como padrão para as próximas receitas.
-                  </Text>
-                </View>
-                {effectiveLaborCost > 0 && (
-                  <View style={styles.laborResult}>
-                    <Ionicons name="calculator-outline" size={16} color={PINK} />
-                    <Text style={styles.laborResultText}>
-                      {t('createRecipe.laborCost', { value: effectiveLaborCost.toFixed(2) })}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
-          </View>
-
           {/* ── Save button ── */}
           {pricingPreview && pricingPreview.totalCost > 0 && (
             <View style={{ backgroundColor: '#fff', borderRadius: 18, padding: 15, gap: 12, ...SH }}>
               <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={{ fontSize: 12, color: INK2, fontWeight: '700', textTransform: 'uppercase' }}>
-                    Preço sugerido por unidade
+                    3. Preço sugerido por unidade
                   </Text>
                   <Text style={{ fontSize: 30, color: PINK, fontWeight: '800', marginTop: 3 }}>
                     {formatCurrency(pricingPreview.suggestedPrice)}
@@ -1464,6 +1317,9 @@ export const CreateRecipeScreen: React.FC = () => {
               </View>
               <Text style={{ fontSize: 12, color: INK2, lineHeight: 18 }}>
                 Valor de venda de 1 unidade, com {parseLocaleNumber(profitMargin) || 0}% de acréscimo sobre o custo.
+              </Text>
+              <Text style={{ fontSize: 12, color: INK2, lineHeight: 18 }}>
+                Como chegamos ao preço: {formatCurrency(pricingPreview.totalCost)} de custo da receita ÷ {pricingPreview.yieldNum} unidades = {formatCurrencyUnit(pricingPreview.costPerUnit)} por unidade. Depois aplicamos o acréscimo escolhido. Confira se incluiu embalagem, mão de obra e os demais custos.
               </Text>
               <View style={{ backgroundColor: CREAM2, borderRadius: 12, padding: 12 }}>
                 <Text style={{ fontSize: 12, color: INK2, fontWeight: '700' }}>Preço sugerido total da receita</Text>
@@ -1506,11 +1362,11 @@ export const CreateRecipeScreen: React.FC = () => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <Modal visible={showIngredientModal} animationType="slide" presentationStyle="pageSheet">
+      <Modal visible={showIngredientModal} animationType="slide" presentationStyle="pageSheet" onRequestClose={closeIngredientModal}>
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>{t('createRecipe.selectIngredient')}</Text>
-            <TouchableOpacity onPress={() => setShowIngredientModal(false)}>
+            <Text style={styles.modalTitle}>{editingIngredientId ? 'Editar quantidade' : t('createRecipe.selectIngredient')}</Text>
+            <TouchableOpacity onPress={closeIngredientModal}>
               <Ionicons name="close" size={24} color={colors.text} />
             </TouchableOpacity>
           </View>
@@ -1520,12 +1376,10 @@ export const CreateRecipeScreen: React.FC = () => {
               <Card style={styles.selectedIngCard}>
                 <Text style={styles.selectedIngName}>{selectedIngredient.name}</Text>
                 <Text style={styles.selectedIngInfo}>
-                  {selectedIngredient.purchaseUnitLabel
-                    ? t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: selectedIngredient.purchaseUnitLabel, price: selectedIngredient.purchasePrice.toFixed(2) })
-                      + ` (${selectedIngredient.purchaseQuantity * (selectedIngredient.purchaseUnitWeight ?? 0)} ${formatUnitLabel(selectedIngredient.unit)})`
-                    : t('createRecipe.purchased', { qty: selectedIngredient.purchaseQuantity, unit: formatUnitLabel(selectedIngredient.unit), price: selectedIngredient.purchasePrice.toFixed(2) })}
+                  Compra cadastrada: {getEffectivePurchaseQuantity(selectedIngredient)} {formatUnitLabel(selectedIngredient.unit)} por {formatCurrency(selectedIngredient.purchasePrice)}
                 </Text>
               </Card>
+              <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19, marginBottom: 12 }}>Quanto de {selectedIngredient.name} você usou nesta receita? O app calcula o custo dessa quantidade a partir do valor da compra.</Text>
               <Input
                 label={t('createRecipe.quantityUsed', { unit: formatUnitLabel(ingredientUnit || selectedIngredient.unit) })}
                 placeholder="0"
@@ -1555,13 +1409,16 @@ export const CreateRecipeScreen: React.FC = () => {
               )}
               <View style={styles.modalActions}>
                 <Button
-                  title={t('common.back')}
+                  title={editingIngredientId ? t('common.cancel') : t('common.back')}
                   variant="outline"
-                  onPress={() => { setSelectedIngredient(null); setIngredientUnit(''); }}
+                  onPress={() => {
+                    if (editingIngredientId) closeIngredientModal();
+                    else { setSelectedIngredient(null); setIngredientUnit(''); setIngredientQuantity(''); }
+                  }}
                   style={{ flex: 1, marginRight: 8 }}
                 />
                 <Button
-                  title={t('common.add')}
+                  title={editingIngredientId ? t('common.save') : t('common.add')}
                   onPress={addIngredient}
                   style={{ flex: 1 }}
                 />
@@ -1572,6 +1429,16 @@ export const CreateRecipeScreen: React.FC = () => {
               data={availableIngredients}
               keyExtractor={item => item.id}
               contentContainerStyle={{ padding: 20 }}
+              ListHeaderComponent={
+                <View style={{ gap: 12, marginBottom: 16 }}>
+                  <Text style={{ color: colors.textSecondary, fontSize: 13, lineHeight: 19 }}>Selecione um ingrediente já cadastrado. Se ainda falta algum, cadastre abaixo e volte para continuar esta receita.</Text>
+                  <Button title="Cadastrar novo ingrediente" variant="outline" onPress={() => {
+                    reopenIngredients.current = true;
+                    setShowIngredientModal(false);
+                    navigation.navigate('CreateIngredient', { returnToRecipe: true });
+                  }} />
+                </View>
+              }
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => { setSelectedIngredient(item); setIngredientUnit(getDefaultUnit(item)); }}
@@ -1581,9 +1448,7 @@ export const CreateRecipeScreen: React.FC = () => {
                     <View>
                       <Text style={styles.modalIngName}>{item.name}</Text>
                       <Text style={styles.modalIngInfo}>
-                        {item.purchaseUnitLabel
-                          ? `${item.purchaseQuantity} ${item.purchaseUnitLabel} (${item.purchaseQuantity * (item.purchaseUnitWeight ?? 0)} ${formatUnitLabel(item.unit)})`
-                          : `${item.purchaseQuantity} ${formatUnitLabel(item.unit)}`} — {formatCurrency(item.purchasePrice)}
+                        {getEffectivePurchaseQuantity(item)} {formatUnitLabel(item.unit)} — {formatCurrency(item.purchasePrice)}
                       </Text>
                     </View>
                     <Ionicons name="chevron-forward" size={20} color={colors.textMuted} />
@@ -1889,9 +1754,9 @@ export const CreateRecipeScreen: React.FC = () => {
                 }}
                 activeOpacity={0.8}
               >
-                <Ionicons name={ingredientConfirm?.type === 'confirm' ? 'add-circle' : 'checkmark'} size={18} color="#fff" />
+                <Ionicons name={ingredientConfirm?.type === 'confirm' && !editingIngredientId ? 'add-circle' : 'checkmark'} size={18} color="#fff" />
                 <Text style={styles.confirmAddText}>
-                  {ingredientConfirm?.type === 'confirm' ? t('common.add') : t('createRecipe.yesCorrect')}
+                  {ingredientConfirm?.type === 'confirm' ? t(editingIngredientId ? 'common.save' : 'common.add') : t('createRecipe.yesCorrect')}
                 </Text>
               </TouchableOpacity>
             </View>

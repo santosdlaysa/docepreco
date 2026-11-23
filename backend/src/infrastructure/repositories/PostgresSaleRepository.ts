@@ -1,8 +1,10 @@
+import { Pool } from 'pg';
 import { pool } from '../database/connection';
 import { Sale, CreateSaleDTO } from '../../domain/entities/Sale';
 import { ISaleRepository } from '../../domain/repositories/ISaleRepository';
 
 export class PostgresSaleRepository implements ISaleRepository {
+  constructor(private db: Pick<Pool, 'query'> = pool) {}
   async findAll(userId: string, startDate?: string): Promise<Sale[]> {
     const params: string[] = [userId];
     let whereClause = 'WHERE s.user_id = $1';
@@ -10,7 +12,7 @@ export class PostgresSaleRepository implements ISaleRepository {
       params.push(startDate);
       whereClause += ` AND s.sale_date >= $2`;
     }
-    const result = await pool.query(`
+    const result = await this.db.query(`
       SELECT s.*, COALESCE(r.name, s.product_name) AS recipe_name
       FROM sales s
       LEFT JOIN recipes r ON r.id = s.recipe_id
@@ -21,7 +23,7 @@ export class PostgresSaleRepository implements ISaleRepository {
   }
 
   async findById(id: string, userId: string): Promise<Sale | null> {
-    const result = await pool.query(`
+    const result = await this.db.query(`
       SELECT s.*, COALESCE(r.name, s.product_name) AS recipe_name
       FROM sales s
       LEFT JOIN recipes r ON r.id = s.recipe_id
@@ -36,7 +38,7 @@ export class PostgresSaleRepository implements ISaleRepository {
     // do erro cru de foreign key. Venda sem receita (produto da loja online
     // não vinculado) exige o nome do produto para exibição.
     if (data.recipeId) {
-      const recipe = await pool.query(
+      const recipe = await this.db.query(
         'SELECT 1 FROM recipes WHERE id = $1 AND user_id = $2',
         [data.recipeId, userId]
       );
@@ -49,12 +51,12 @@ export class PostgresSaleRepository implements ISaleRepository {
     const discount = Math.max(0, Math.min(data.discount || 0, data.quantitySold * data.salePrice));
     const totalRevenue = data.quantitySold * data.salePrice - discount;
     // Vincula a venda ao caixa aberto do usuário (se houver)
-    const openSession = await pool.query(
+    const openSession = await this.db.query(
       `SELECT id FROM cash_sessions WHERE user_id = $1 AND status = 'open' ORDER BY opened_at DESC LIMIT 1`,
       [userId]
     );
     const sessionId = openSession.rows[0]?.id ?? null;
-    const result = await pool.query(`
+    const result = await this.db.query(`
       INSERT INTO sales (user_id, recipe_id, product_name, quantity_sold, sale_price, total_revenue, discount, sale_date, client_name, notes, payment_method, session_id, order_id)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
@@ -70,7 +72,7 @@ export class PostgresSaleRepository implements ISaleRepository {
    */
   async update(id: string, data: CreateSaleDTO, userId: string): Promise<Sale | null> {
     if (data.recipeId) {
-      const recipe = await pool.query(
+      const recipe = await this.db.query(
         'SELECT 1 FROM recipes WHERE id = $1 AND user_id = $2',
         [data.recipeId, userId]
       );
@@ -82,7 +84,7 @@ export class PostgresSaleRepository implements ISaleRepository {
     }
     const discount = Math.max(0, Math.min(data.discount || 0, data.quantitySold * data.salePrice));
     const totalRevenue = data.quantitySold * data.salePrice - discount;
-    const result = await pool.query(`
+    const result = await this.db.query(`
       UPDATE sales SET
         recipe_id = $1, product_name = $2, quantity_sold = $3, sale_price = $4,
         total_revenue = $5, discount = $6, sale_date = $7, client_name = $8,
@@ -94,7 +96,7 @@ export class PostgresSaleRepository implements ISaleRepository {
   }
 
   async existsForOrder(orderId: string, userId: string): Promise<boolean> {
-    const result = await pool.query(
+    const result = await this.db.query(
       'SELECT 1 FROM sales WHERE order_id = $1 AND user_id = $2 LIMIT 1',
       [orderId, userId]
     );
@@ -102,7 +104,7 @@ export class PostgresSaleRepository implements ISaleRepository {
   }
 
   async deleteByOrderId(orderId: string, userId: string): Promise<number> {
-    const result = await pool.query(
+    const result = await this.db.query(
       'DELETE FROM sales WHERE order_id = $1 AND user_id = $2',
       [orderId, userId]
     );
@@ -116,7 +118,7 @@ export class PostgresSaleRepository implements ISaleRepository {
    * duplicar a venda enviada pelo cliente antigo.
    */
   async findRecentOrderLinkedDuplicate(recipeId: string, notes: string, userId: string): Promise<Sale | null> {
-    const result = await pool.query(`
+    const result = await this.db.query(`
       SELECT s.*, COALESCE(r.name, s.product_name) AS recipe_name
       FROM sales s
       LEFT JOIN recipes r ON r.id = s.recipe_id
@@ -131,7 +133,7 @@ export class PostgresSaleRepository implements ISaleRepository {
   }
 
   async delete(id: string, userId: string): Promise<boolean> {
-    const result = await pool.query(
+    const result = await this.db.query(
       'DELETE FROM sales WHERE id = $1 AND user_id = $2',
       [id, userId]
     );

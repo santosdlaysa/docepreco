@@ -19,7 +19,7 @@ const expenseRepo = { findAll: jest.fn(), create: jest.fn(), update: jest.fn(), 
 const pushRepo = { upsert: jest.fn(), removeByToken: jest.fn() };
 
 jest.mock('../infrastructure/database/connection', () => ({
-  pool: { query: (...args: unknown[]) => mockPoolQuery(...args) },
+  pool: { query: (...args: unknown[]) => mockPoolQuery(...args), connect: async () => ({ query: (...args: unknown[]) => mockPoolQuery(...args), release: () => {} }) },
 }));
 jest.mock('../infrastructure/repositories/PostgresIngredientRepository', () => ({
   PostgresIngredientRepository: jest.fn(() => ingredientRepo),
@@ -86,6 +86,8 @@ beforeEach(() => {
   mockPoolQuery.mockReset();
   mockPoolQuery.mockImplementation((sql: string) => {
     if (sql.includes('UPDATE users SET last_seen_at')) return Promise.resolve({ rows: [] });
+    if (sql.includes('SELECT * FROM users') && sql.includes('FOR UPDATE')) return Promise.resolve({ rows: [{ is_premium: false, premium_until: null }] });
+    if (sql === 'SELECT COUNT(*)::int AS count FROM sales WHERE user_id=$1') return Promise.resolve({ rows: [{ count: 0 }] });
     return Promise.resolve({ rows: [], rowCount: 0 });
   });
 });

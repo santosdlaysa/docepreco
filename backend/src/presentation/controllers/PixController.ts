@@ -16,6 +16,7 @@ import {
 import { PostgresBannerRepository } from '../../infrastructure/repositories/PostgresBannerRepository';
 import { PostgresCouponRepository } from '../../infrastructure/repositories/PostgresCouponRepository';
 import { getActiveOffer, applyDiscount, attachPixRequest, redeemByPixRequest } from '../../infrastructure/services/winbackService';
+import { getLivePixPromo } from '../../infrastructure/services/pixPromoService';
 import { getActiveTier } from '../../domain/services/premium';
 import { getPixAmountCents } from './PlanConfigController';
 import { isValidEmail, INVALID_ACCOUNT_EMAIL_ERROR } from '../../domain/services/email';
@@ -73,8 +74,19 @@ export class PixController {
     // Desconto aplicado SEMPRE no servidor (o app só informa o código do cupom —
     // nunca o valor com desconto). O QR do Mercado Pago cobra o valor final.
     // Precedência: oferta win-back automática > cupom digitado (não empilham).
-    const winbackOffer = await getActiveOffer(userId).catch(() => null);
-    const coupon = winbackOffer ? null : await resolveCoupon(couponCode);
+    // Promoção global (ex.: Black Friday) também entra na disputa: vale o MAIOR
+    // desconto entre win-back, promoção e cupom — nunca empilham.
+    const rawWinbackOffer = await getActiveOffer(userId).catch(() => null);
+    const promo = await getLivePixPromo().catch(() => null);
+    const rawCoupon = await resolveCoupon(couponCode);
+    const best = Math.max(
+      rawWinbackOffer?.discountPercent ?? 0,
+      promo?.discountPercent ?? 0,
+      rawCoupon?.discountPercent ?? 0
+    );
+    const winbackOffer = rawWinbackOffer && rawWinbackOffer.discountPercent === best ? rawWinbackOffer : null;
+    const usePromo = !winbackOffer && promo && promo.discountPercent === best ? promo : null;
+    const coupon = !winbackOffer && !usePromo ? rawCoupon : null;
     const baseCents = amountCents ?? 0;
     let discountPercent = 0;
     let discountSuffix = '';
@@ -82,6 +94,9 @@ export class PixController {
     if (winbackOffer) {
       discountPercent = winbackOffer.discountPercent;
       discountSuffix = ` • Volta com ${discountPercent}% OFF`;
+    } else if (usePromo) {
+      discountPercent = usePromo.discountPercent;
+      discountSuffix = ` • ${usePromo.title} ${discountPercent}% OFF`;
     } else if (coupon) {
       discountPercent = coupon.discountPercent;
       couponId = coupon.id;

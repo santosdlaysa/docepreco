@@ -20,6 +20,7 @@
     "all": "^0.0.0",
     "axios": "^1.6.2",
     "expo": "^55.0.14",
+    "expo-application": "~55.0.15",
     "expo-apple-authentication": "~55.0.17",
     "expo-asset": "~55.0.14",
     "expo-build-properties": "~55.0.18",

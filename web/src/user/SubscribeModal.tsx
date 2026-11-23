@@ -81,7 +81,7 @@ export function SubscribeModal({
   const [submitting, setSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [legacyMonthly, setLegacyMonthly] = useState(false);
-  const [offer, setOffer] = useState<{ discountPercent: number; expiresAt: string } | null>(null);
+  const [offer, setOffer] = useState<{ kind?: 'promo' | 'winback'; title?: string; discountPercent: number; expiresAt: string | null } | null>(null);
   const [offerQr, setOfferQr] = useState<PixRequestStatus | null>(null);
   const [method, setMethod] = useState<'pix' | 'card'>('pix');
   // PIX: 'once' = QR avulso (padrão atual); 'auto' = Pix Automático (renova sozinho, igual ao app)
@@ -515,8 +515,16 @@ export function SubscribeModal({
                   </div>
                 ) : offer ? (
                   <div className="space-y-3 rounded-xl bg-primary-50 dark:bg-primary-900/20 p-4">
-                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">{t('subscribe.offerTitle', { percent: offer.discountPercent })}</p>
-                    <p className="text-xs text-gray-500">{t('subscribe.offerValid', { date: new Date(offer.expiresAt).toLocaleString(getLang() === 'en' ? 'en-US' : 'pt-BR') })}</p>
+                    <p className="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                      {offer.kind === 'promo' && offer.title
+                        ? t('subscribe.promoTitle', { title: offer.title, percent: offer.discountPercent })
+                        : t('subscribe.offerTitle', { percent: offer.discountPercent })}
+                    </p>
+                    {offer.expiresAt && <p className="text-xs text-gray-500">{t('subscribe.offerValid', { date: new Date(offer.expiresAt).toLocaleString(getLang() === 'en' ? 'en-US' : 'pt-BR') })}</p>}
+                    {!offerQr?.mp_qr_code && <p className="text-sm text-gray-700 dark:text-gray-200">
+                      <s className="text-gray-400">{selected.priceLabel}</s>{' '}
+                      <strong>{fmtCents(Math.max(0, Math.round(selected.amountCents * (100 - offer.discountPercent) / 100)))}</strong>
+                    </p>}
                     {offerQr?.mp_qr_code ? <PixPayBlock
                       qrBase64={offerQr.mp_qr_code_base64} copyPaste={offerQr.mp_qr_code}
                       priceLabel={fmtCents(offerQr.amount_cents!)} copied={copied}

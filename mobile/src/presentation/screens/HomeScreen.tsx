@@ -246,7 +246,7 @@ export const HomeScreen: React.FC = () => {
 
   // Nº de slides do carrossel = planos (só p/ não-premium) + institucionais
   // (Loja Online, por público) + patrocinados + slide "anuncie".
-  const planSlideCount = (!isPremium || isAdmin) ? 2 : 0;
+  const planSlideCount = (!isPremium || isAdmin) ? 3 : 0;
   const totalSlides = planSlideCount + visiblePlanBanners.length + carouselBanners.length + 1;
 
   // Auto-rotação genérica entre todos os slides.
@@ -401,6 +401,35 @@ export const HomeScreen: React.FC = () => {
                 setPlanBannerIndex(Math.min(totalSlides - 1, Math.max(0, next)));
               }}
             >
+              {(!isPremium || isAdmin) && (
+                <TouchableOpacity
+                  style={{ width: PLAN_BANNER_WIDTH }}
+                  activeOpacity={0.9}
+                  accessibilityRole="button"
+                  accessibilityLabel="Aproveite 3 dias grátis no Premium ou Master. Ver planos."
+                  onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
+                >
+                  <LinearGradient
+                    colors={['#9D174D', '#7E22CE', '#4C1D95']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={s.planBanner}
+                  >
+                    <View style={[s.planBlob, s.planBlobOne, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
+                    <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
+                    <Ionicons name="gift" size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
+                    <View style={s.freeTrialContent}>
+                      <Text style={s.freeTrialEyebrow}>PREMIUM E MASTER</Text>
+                      <Text style={s.freeTrialTitle}>Aproveite 3 dias grátis</Text>
+                      <Text style={s.planBannerDesc}>Escolha seu plano e descubra os benefícios.</Text>
+                      <View style={s.planBannerLink}>
+                        <Text style={[s.planBannerLinkText, { color: '#7E22CE' }]}>Ver planos</Text>
+                        <Ionicons name="arrow-forward" size={12} color="#7E22CE" />
+                      </View>
+                    </View>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
               {(!isPremium || isAdmin) && ([
                 {
                   key: 'premium',
@@ -473,7 +502,18 @@ export const HomeScreen: React.FC = () => {
                   onPress={() => openPlanBannerAction(pb)}
                 >
                   {pb.imageUrl ? (
-                    <Image source={{ uri: pb.imageUrl }} style={s.sponsoredBanner} resizeMode="cover" accessibilityLabel={pb.title} />
+                    <View style={s.sponsoredBanner}>
+                      <Image source={{ uri: pb.imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" accessibilityLabel={pb.title} />
+                      {!!pb.title && (
+                        <LinearGradient
+                          colors={['transparent', 'rgba(0,0,0,0.7)']}
+                          style={s.imageBannerCaption}
+                        >
+                          {!!pb.eyebrow && <Text style={[s.planBannerEyebrow, { color: 'rgba(255,255,255,0.85)' }]}>{pb.eyebrow}</Text>}
+                          <Text style={[s.planBannerTitle, { color: '#FFFFFF' }]} numberOfLines={2}>{pb.title}</Text>
+                        </LinearGradient>
+                      )}
+                    </View>
                   ) : (
                   <LinearGradient
                     colors={['#2DD4BF', '#0D9488', '#0F766E']}
@@ -943,6 +983,9 @@ const s = StyleSheet.create({
 
   /* ── Subscription plans carousel ── */
   planBannerSection: { marginHorizontal: 18, marginBottom: 14 },
+  freeTrialContent: { paddingHorizontal: 22, paddingVertical: 14 },
+  freeTrialEyebrow: { color: '#FDE68A', fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+  freeTrialTitle: { color: '#FFFFFF', fontSize: 24, lineHeight: 28, fontWeight: '900', marginTop: 6 },
   planBanner: {
     height: 168,
     borderRadius: 22,
@@ -1002,6 +1045,7 @@ const s = StyleSheet.create({
     backgroundColor: colors.border,
     overflow: 'hidden',
   },
+  imageBannerCaption: { position: 'absolute', left: 0, right: 0, bottom: 0, paddingHorizontal: 16, paddingTop: 28, paddingBottom: 14 },
   sponsoredFallback: { alignItems: 'flex-start', justifyContent: 'center', padding: 18 },
   sponsoredFallbackTitle: { fontSize: 17, fontWeight: '800', color: INK },
   sponsoredFallbackMsg: { fontSize: 12.5, color: INK2, fontWeight: '500', marginTop: 6, lineHeight: 17 },

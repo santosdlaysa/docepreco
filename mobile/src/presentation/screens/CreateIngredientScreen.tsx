@@ -1,5 +1,5 @@
 import { colors } from '../theme/colors';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Alert,
+  Keyboard,
   FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -59,6 +61,8 @@ export const CreateIngredientScreen: React.FC = () => {
   const { t } = useTranslation();
   const ingredientId = (route.params as any)?.ingredientId as string | undefined;
   const isEditing = !!ingredientId;
+  const returnToRecipe = (route.params as RootStackParamList['CreateIngredient'])?.returnToRecipe;
+  const formScroll = useRef<ScrollView>(null);
 
   const [name, setName] = useState('');
   const [purchaseQuantity, setPurchaseQuantity] = useState('');
@@ -158,6 +162,26 @@ export const CreateIngredientScreen: React.FC = () => {
       } else {
         await api.create(payload);
         showToast(t('createIngredient.created'), 'success');
+        setAllNames(previous => [...previous, payload.name]);
+        Keyboard.dismiss();
+        Alert.alert(
+          `${payload.name} cadastrado!`,
+          'Cada ingrediente é salvo uma vez e pode ser usado em várias receitas. Qual é o próximo passo?',
+          [
+            { text: 'Cadastrar outro', onPress: () => {
+              setName(''); setPurchaseQuantity(''); setPurchasePrice('');
+              setUnit('' as Unit); setPackageType(''); setSuggestions([]); setErrors({});
+              formScroll.current?.scrollTo({ y: 0, animated: true });
+            } },
+            { text: returnToRecipe ? 'Voltar à receita' : 'Montar minha receita', onPress: () => {
+              if (returnToRecipe) navigation.goBack();
+              else navigation.replace('CreateRecipe');
+            } },
+            { text: 'Concluir', onPress: () => navigation.goBack() },
+          ],
+          { cancelable: false },
+        );
+        return;
       }
       navigation.goBack();
     } catch (error) {
@@ -171,7 +195,7 @@ export const CreateIngredientScreen: React.FC = () => {
   const qty = parseLocaleNumber(purchaseQuantity);
   const price = parseLocaleNumber(purchasePrice);
   const pricePerUnit = qty > 0 ? price / qty : 0;
-  const showPreview = qty > 0 && price > 0;
+  const showPreview = qty > 0 && price > 0 && !!unit;
 
   // Mostra dica de conversão se user selecionar kg ou l
   const conversionNote = (unit === 'kg' || unit === 'l')
@@ -205,7 +229,7 @@ export const CreateIngredientScreen: React.FC = () => {
       </View>
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView style={st.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
+        <ScrollView ref={formScroll} style={st.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled"
           contentContainerStyle={{ paddingTop: 14, paddingBottom: 40, gap: 14 }}>
 
           {/* ── Banner informativo ── */}
@@ -215,13 +239,16 @@ export const CreateIngredientScreen: React.FC = () => {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={st.infoBannerTitle}>
-                {isEditing ? 'Atualize os dados' : 'Preencha os dados do ingrediente'}
+                {isEditing ? 'Atualize os dados' : '1. Cadastre um ingrediente por vez'}
               </Text>
               <Text style={st.infoBannerSub}>
                 {isEditing
                   ? 'Ao alterar o preço, o histórico será atualizado automaticamente.'
-                  : 'Informe a quantidade total comprada e o valor total pago. Não use aqui a quantidade da receita.'}
+                  : 'Comece pelo açúcar, depois cadastre o leite e os outros ingredientes. Na próxima etapa, você monta a receita e informa quanto usou de cada um.'}
               </Text>
+              {!isEditing && <Text style={[st.infoBannerSub, { marginTop: 8 }]}>
+                Exemplo: comprou 1 kg de açúcar por {symbol} 5,00? Preencha Açúcar, quantidade 1000, valor 5,00 e unidade g. Se usar 200 g na receita, o app calcula o custo de {symbol} 1,00.
+              </Text>}
               <TouchableOpacity
                 onPress={() => navigation.navigate('PricingTutorial')}
                 activeOpacity={0.8}
@@ -313,7 +340,7 @@ export const CreateIngredientScreen: React.FC = () => {
           {/* ── Unidade de medida ── */}
           <View style={st.field}>
             <Text style={st.label}>Unidade de medida</Text>
-            <Text style={st.hint}>Em qual unidade você usa esse ingrediente nas receitas?</Text>
+            <Text style={st.hint}>Escolha a unidade da quantidade comprada acima: 1000 g ou 1 kg, por exemplo. Para açúcar e farinha, use g ou kg; para líquidos, ml ou L.</Text>
             <View style={st.ugrid}>
               {displayedUnitOptions.map(u => {
                 const on = unit === u.value;
@@ -333,8 +360,9 @@ export const CreateIngredientScreen: React.FC = () => {
           {showPreview && (
             <LinearGradient colors={['#34C97B', GREEN, '#2BA060']} locations={[0, 0.6, 1]}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.result}>
-              <Text style={st.rl}>Preço por unidade</Text>
+              <Text style={st.rl}>Custo do ingrediente por {formatUnitLabel(unit)}</Text>
               <Text style={st.rprice}>{formatCurrencyUnit(pricePerUnit)}<Text style={st.runit}> /{unit ? formatUnitLabel(unit) : 'un'}</Text></Text>
+              <Text style={{ color: '#fff', fontSize: 12, lineHeight: 18, marginTop: 8 }}>O preço de venda do seu doce será calculado na receita, com a quantidade que você usar.</Text>
             </LinearGradient>
           )}
 

@@ -21,6 +21,14 @@
     }
   },
   "login": {
+    "welcome": "Que bom ter você aqui.",
+    "subtitle": "Entre para cuidar das suas receitas e do seu negócio.",
+    "headline": "Seu talento merece o preço certo.",
+    "description": "Organize suas receitas, conheça seus custos e transforme cada doce em um negócio mais rentável.",
+    "recipes": "Receitas organizadas",
+    "pricing": "Preços com confiança",
+    "showPassword": "Mostrar senha",
+    "hidePassword": "Ocultar senha",
     "demoError": "Não foi possível abrir a demonstração. Tente novamente.",
     "errCompany": "Informe o nome da sua confeitaria.",
     "errPhone": "Informe um telefone válido com DDD.",
@@ -206,6 +214,7 @@
     "payCardAnnual": "Pagar anual com cartão",
     "cardHint": "Pagamento seguro via Stripe · Visa, Master, Amex. A assinatura renova automaticamente e pode ser cancelada quando quiser.",
     "offerPixOnly": " O desconto da oferta vale só no PIX.",
+    "promoTitle": "{{title}}: {{percent}}% de desconto no PIX",
     "offerTitle": "Oferta de retorno: {{percent}}% de desconto no PIX",
     "offerValid": "Válida até {{date}}. O valor final é confirmado ao gerar o PIX.",
     "payThisPix": "Pague este PIX e aguarde a confirmação do pagamento.",

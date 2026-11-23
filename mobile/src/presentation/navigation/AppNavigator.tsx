@@ -91,10 +91,10 @@ const Tab = createBottomTabNavigator();
 const DummyScreen = () => null;
 
 const ACTION_MAP: Record<string, { route: keyof RootStackParamList; icon: keyof typeof Ionicons.glyphMap; label: string }> = {
-  Home:        { route: 'CreateSale',       icon: 'cart',    label: 'Venda' },
-  Recipes:     { route: 'CreateRecipe',     icon: 'book',    label: 'Receita' },
-  Ingredients: { route: 'CreateIngredient', icon: 'basket',  label: 'Ingrediente' },
-  Sales:       { route: 'CreateSale',       icon: 'cart',    label: 'Venda' },
+  Home:        { route: 'CreateSale',       icon: 'cart',    label: 'Nova venda' },
+  Recipes:     { route: 'CreateRecipe',     icon: 'book',    label: 'Criar receita' },
+  Ingredients: { route: 'CreateIngredient', icon: 'basket',  label: 'Adicionar ingrediente' },
+  Sales:       { route: 'CreateSale',       icon: 'cart',    label: 'Nova venda' },
 };
 
 // CenterTabButton é renderizado DENTRO do Tab navigator,
@@ -104,12 +104,13 @@ function CenterTabButton({ onPress }: { onPress?: (e: any) => void }) {
   const action = ACTION_MAP[activeTab];
 
   return (
-    <TouchableOpacity style={tabStyles.centerBtn} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={tabStyles.centerBtn} onPress={onPress} activeOpacity={0.8}
+      accessibilityRole="button" accessibilityLabel={action?.label ?? 'Adicionar'}>
       <View style={tabStyles.centerBtnInner}>
-        <Ionicons name="add" size={28} color="#fff" />
+        <Ionicons name="add" size={28} color={colors.primaryDark} />
       </View>
       {action && (
-        <Text style={tabStyles.centerLabel}>{action.label}</Text>
+        <Text style={tabStyles.centerLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>Adicionar</Text>
       )}
     </TouchableOpacity>
   );
@@ -117,32 +118,63 @@ function CenterTabButton({ onPress }: { onPress?: (e: any) => void }) {
 
 function TabNavigator() {
   const insets = useSafeAreaInsets();
+  const bottomPadding = Math.max(insets.bottom, 4);
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName: keyof typeof Ionicons.glyphMap = 'home';
           if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
           else if (route.name === 'Recipes') iconName = focused ? 'book' : 'book-outline';
           else if (route.name === 'Ingredients') iconName = focused ? 'basket' : 'basket-outline';
           else if (route.name === 'Sales') iconName = focused ? 'cart' : 'cart-outline';
-          return <Ionicons name={iconName} size={size} color={color} />;
+          return <Ionicons name={iconName} size={25} color={color} />;
         },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
+        tabBarActiveTintColor: colors.primaryDark,
+        tabBarInactiveTintColor: colors.surface,
+        tabBarActiveBackgroundColor: colors.surface,
+        tabBarLabelPosition: 'below-icon',
+        tabBarIconStyle: { flex: 0, height: 36 },
+        tabBarLabel: ({ color, children }) => (
+          <Text
+            style={[tabStyles.tabLabel, { color }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+          >
+            {children}
+          </Text>
+        ),
+        tabBarItemStyle: {
+          flex: 1,
+          minWidth: 0,
+          justifyContent: 'center',
+          borderRadius: 16,
+          marginHorizontal: 2,
+          paddingHorizontal: 3,
+          paddingVertical: 4,
+        },
         tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-          paddingBottom: insets.bottom + 4,
-          height: 64 + insets.bottom,
+          backgroundColor: colors.primary,
+          borderTopWidth: 0,
+          borderTopLeftRadius: 24,
+          borderTopRightRadius: 24,
+          paddingTop: 6,
+          paddingHorizontal: 4,
+          paddingBottom: bottomPadding,
+          height: 64 + bottomPadding,
+          shadowColor: colors.primaryDark,
+          shadowOffset: { width: 0, height: -3 },
+          shadowOpacity: 0.18,
+          shadowRadius: 14,
+          elevation: 12,
         },
-        tabBarLabelStyle: { fontSize: 11, fontWeight: '600' },
         headerShown: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ tabBarLabel: 'Início' }} />
-      <Tab.Screen name="Recipes" component={RecipesScreen} options={{ tabBarLabel: 'Receitas' }} />
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Início' }} />
+      <Tab.Screen name="Recipes" component={RecipesScreen} options={{ title: 'Receitas' }} />
       <Tab.Screen
         name="AddAction"
         component={DummyScreen}
@@ -161,8 +193,8 @@ function TabNavigator() {
           },
         })}
       />
-      <Tab.Screen name="Ingredients" component={IngredientsScreen} options={{ tabBarLabel: 'Ingredientes' }} />
-      <Tab.Screen name="Sales" component={SalesScreen} options={{ tabBarLabel: 'Vendas' }} />
+      <Tab.Screen name="Ingredients" component={IngredientsScreen} options={{ title: 'Ingredientes' }} />
+      <Tab.Screen name="Sales" component={SalesScreen} options={{ title: 'Vendas' }} />
     </Tab.Navigator>
   );
 }
@@ -198,30 +230,44 @@ const bannerStyles = StyleSheet.create({
 });
 
 const tabStyles = StyleSheet.create({
+  tabLabel: {
+    width: '100%',
+    textAlign: 'center',
+    fontSize: 11,
+    lineHeight: 14,
+    fontWeight: '600',
+    marginTop: 3,
+  },
   centerBtn: {
-    top: -18,
+    flex: 1,
+    minWidth: 0,
+    marginHorizontal: 2,
+    paddingHorizontal: 3,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 3,
   },
   centerBtnInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: colors.primary,
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: colors.primary,
+    shadowColor: colors.primaryDark,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.2,
     shadowRadius: 8,
     elevation: 8,
   },
   centerLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: colors.primary,
-    marginTop: 2,
+    width: '100%',
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.surface,
+    textAlign: 'center',
+    lineHeight: 14,
+    paddingHorizontal: 2,
   },
 });
 
@@ -361,6 +407,11 @@ export function AppNavigator() {
       const data = response.notification.request.content.data as Record<string, unknown>;
       if (data?.type === 'new_order') {
         navigationRef.current?.navigate('Store', { initialTab: 'orders' });
+        return;
+      }
+      // Campanhas (Black Friday, win-back…) abrem a tela indicada no push.
+      if (data?.screen === 'Paywall' || data?.screen === 'SupportChat') {
+        navigationRef.current?.navigate(data.screen as never);
       }
     });
     const foregroundSub = Notifications.addNotificationReceivedListener(notification => {

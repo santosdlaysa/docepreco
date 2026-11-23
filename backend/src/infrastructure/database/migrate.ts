@@ -1,3 +1,4 @@
+import { migrateWhatsAppSales } from './whatsappSalesMigration';
 import { migrateConversions } from './conversionMigration';
 import { migrateStorePayments } from './storePaymentsMigration';
 import { migrateDeletedUsers } from './deletedUsersMigration';
@@ -1478,6 +1479,7 @@ export async function runMigrations() {
     await migrateStorePayments(client);
     await migrateDeletedUsers(client);
     await migrateCheckins(client);
+    await migrateWhatsAppSales(client);
     await client.query(`CREATE TABLE IF NOT EXISTS recipe_slot_purchases (
       checkout_session_id TEXT PRIMARY KEY,
       user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,

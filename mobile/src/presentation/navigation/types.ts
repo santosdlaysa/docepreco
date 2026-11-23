@@ -16,7 +16,7 @@ export type RootStackParamList = {
   CreateRecipe: { asBase?: boolean } | undefined;
   EditRecipe: { recipeId: string };
   Ingredients: undefined;
-  CreateIngredient: undefined;
+  CreateIngredient: { returnToRecipe?: boolean } | undefined;
   EditIngredient: { ingredientId: string };
   Sales: undefined;
   /** Sem parâmetro cria uma venda; com `sale` edita a venda existente. */
