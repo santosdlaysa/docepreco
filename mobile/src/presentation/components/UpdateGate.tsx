@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, Linking, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import * as Application from 'expo-application';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
@@ -41,7 +40,16 @@ export function UpdateGate() {
       try {
         // The OTA manifest can contain a newer app config than the native
         // binary. Read the build number from the installed binary itself.
-        const installed = Number(Application.nativeBuildVersion);
+        // Carregado sob demanda: builds antigas das lojas (runtime 2.0.1) não têm
+        // o módulo nativo e quebrariam no import ao receber este JS via OTA.
+        let nativeBuild: string | null = null;
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-var-requires
+          nativeBuild = require('expo-application').nativeBuildVersion ?? null;
+        } catch {
+          return;
+        }
+        const installed = Number(nativeBuild);
         if (!Number.isFinite(installed)) return;
 
         const res = await fetch(`${BASE_URL}/app-version`);
