@@ -3,7 +3,7 @@
     "name": "DocePreço",
     "slug": "sweet-pricing",
     "owner": "doce-preco",
-    "version": "2.14.0",
+    "version": "2.14.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
