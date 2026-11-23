@@ -54,6 +54,14 @@ const PLAN_BANNER_WIDTH = SCREEN_WIDTH - 36;
 
 const APP_INSTAGRAM = 'doceprecoapp';
 
+/** Visual dos banners de plano sem imagem (campo `theme` cadastrado no painel). */
+const PLAN_BANNER_THEMES: Record<string, { gradient: readonly [string, string, string]; accent: string; icon: keyof typeof Ionicons.glyphMap }> = {
+  teal: { gradient: ['#2DD4BF', '#0D9488', '#0F766E'], accent: '#0D9488', icon: 'storefront' },
+  pink: { gradient: ['#FF8FC0', colors.primary, '#C42C74'], accent: colors.primary, icon: 'diamond' },
+  purple: { gradient: ['#A97BF0', colors.purple, '#5B21B6'], accent: colors.purple, icon: 'trophy' },
+  violet: { gradient: ['#9D174D', '#7E22CE', '#4C1D95'], accent: '#7E22CE', icon: 'gift' },
+};
+
 // ── Design tokens (from reference) ──
 const INK = colors.text;
 const INK2 = colors.textSecondary;
@@ -221,13 +229,24 @@ export const HomeScreen: React.FC = () => {
       Linking.openURL(url).catch(() => {});
       return;
     }
-    const screen = url?.startsWith('app://') ? url.slice('app://'.length) : 'Store';
+    const target = url?.startsWith('app://') ? url.slice('app://'.length) : 'Store';
+    const [screen, query = ''] = (target || 'Store').split('?');
+    if (screen === 'Paywall') {
+      const master = /(^|&)plano=master(&|$)/.test(query);
+      navigation.navigate('Paywall', { trigger: { kind: master ? 'master' : 'manual' } });
+      return;
+    }
     navigation.navigate((screen || 'Store') as never);
   };
+
+  // Preço atual dos planos dentro do texto do banner: {preco_premium} / {preco_master}.
+  const fillPlanPrices = (text: string) =>
+    text.replace(/\{preco_premium\}/g, premiumPriceLabel).replace(/\{preco_master\}/g, masterPriceLabel);
 
   // Banners institucionais do carrossel visíveis conforme o plano do usuário.
   const visiblePlanBanners = planBanners.filter(b => {
     if (isAdmin) return true;
+    if (b.audience === 'free') return !isPremium;
     if (b.audience === 'master') return isMaster;
     if (b.audience === 'non_master') return !isMaster;
     return true; // 'all'
@@ -246,8 +265,7 @@ export const HomeScreen: React.FC = () => {
 
   // Nº de slides do carrossel = planos (só p/ não-premium) + institucionais
   // (Loja Online, por público) + patrocinados + slide "anuncie".
-  const planSlideCount = (!isPremium || isAdmin) ? 3 : 0;
-  const totalSlides = planSlideCount + visiblePlanBanners.length + carouselBanners.length + 1;
+  const totalSlides = visiblePlanBanners.length + carouselBanners.length + 1;
 
   // Auto-rotação genérica entre todos os slides.
   useEffect(() => {
@@ -401,98 +419,6 @@ export const HomeScreen: React.FC = () => {
                 setPlanBannerIndex(Math.min(totalSlides - 1, Math.max(0, next)));
               }}
             >
-              {(!isPremium || isAdmin) && (
-                <TouchableOpacity
-                  style={{ width: PLAN_BANNER_WIDTH }}
-                  activeOpacity={0.9}
-                  accessibilityRole="button"
-                  accessibilityLabel="Aproveite 3 dias grátis no Premium ou Master. Ver planos."
-                  onPress={() => navigation.navigate('Paywall', { trigger: { kind: 'manual' } })}
-                >
-                  <LinearGradient
-                    colors={['#9D174D', '#7E22CE', '#4C1D95']}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={s.planBanner}
-                  >
-                    <View style={[s.planBlob, s.planBlobOne, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
-                    <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: 'rgba(255,255,255,0.12)' }]} />
-                    <Ionicons name="gift" size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
-                    <View style={s.freeTrialContent}>
-                      <Text style={s.freeTrialEyebrow}>PREMIUM E MASTER</Text>
-                      <Text style={s.freeTrialTitle}>Aproveite 3 dias grátis</Text>
-                      <Text style={s.planBannerDesc}>Escolha seu plano e descubra os benefícios.</Text>
-                      <View style={s.planBannerLink}>
-                        <Text style={[s.planBannerLinkText, { color: '#7E22CE' }]}>Ver planos</Text>
-                        <Ionicons name="arrow-forward" size={12} color="#7E22CE" />
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              )}
-              {(!isPremium || isAdmin) && ([
-                {
-                  key: 'premium',
-                  gradient: ['#FF8FC0', colors.primary, '#C42C74'] as const,
-                  accent: PINK,
-                  titleColor: '#FFFFFF',
-                  eyebrowColor: 'rgba(255,255,255,0.85)',
-                  blob: 'rgba(255,255,255,0.16)',
-                  icon: 'diamond' as const,
-                  eyebrow: 'PLANO PREMIUM',
-                  title: 'Faça sua confeitaria crescer',
-                  price: premiumPriceLabel,
-                  link: 'Ver benefícios',
-                  trigger: { kind: 'manual' as const },
-                },
-                {
-                  key: 'master',
-                  gradient: ['#A97BF0', colors.purple, '#5B21B6'] as const,
-                  accent: colors.purple,
-                  titleColor: '#FFFFFF',
-                  eyebrowColor: 'rgba(255,255,255,0.85)',
-                  blob: 'rgba(255,255,255,0.16)',
-                  icon: 'trophy' as const,
-                  eyebrow: 'PLANO MASTER',
-                  title: 'Controle total do seu negócio',
-                  price: masterPriceLabel,
-                  link: 'Conhecer o Master',
-                  trigger: { kind: 'master' as const },
-                },
-              ]).map(plan => (
-                <TouchableOpacity
-                  key={plan.key}
-                  style={{ width: PLAN_BANNER_WIDTH }}
-                  activeOpacity={0.9}
-                  onPress={() => navigation.navigate('Paywall', { trigger: plan.trigger })}
-                >
-                  <LinearGradient
-                    colors={plan.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={s.planBanner}
-                  >
-                    {/* Decoração de fundo */}
-                    <View style={[s.planBlob, s.planBlobOne, { backgroundColor: plan.blob }]} />
-                    <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: plan.blob }]} />
-                    <Ionicons name={plan.icon} size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
-
-                    <View style={s.planBannerOverlay}>
-                      <View style={s.planIconBox}><Ionicons name={plan.icon} size={22} color={plan.accent} /></View>
-                      <View style={s.planBannerContent}>
-                        <Text style={[s.planBannerEyebrow, { color: plan.eyebrowColor }]}>{plan.eyebrow}</Text>
-                        <Text style={[s.planBannerTitle, { color: plan.titleColor }]}>{plan.title}</Text>
-                        <Text style={[s.planBannerPrice, { color: '#FFFFFF' }]}>{plan.price}<Text style={s.planBannerPeriod}>/mês</Text></Text>
-                        <View style={s.planBannerLink}>
-                          <Text style={[s.planBannerLinkText, { color: plan.accent }]}>{plan.link}</Text>
-                          <Ionicons name="arrow-forward" size={12} color={plan.accent} />
-                        </View>
-                      </View>
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-
               {/* Loja Online: banners institucionais do carrossel (gerenciáveis no painel web) */}
               {visiblePlanBanners.map(pb => (
                 <TouchableOpacity
@@ -515,30 +441,39 @@ export const HomeScreen: React.FC = () => {
                       )}
                     </View>
                   ) : (
+                  (() => {
+                    const th = PLAN_BANNER_THEMES[pb.theme ?? 'teal'] ?? PLAN_BANNER_THEMES.teal;
+                    const message = fillPlanPrices(pb.message ?? '');
+                    const isPrice = /^R\$/.test(message.trim());
+                    return (
                   <LinearGradient
-                    colors={['#2DD4BF', '#0D9488', '#0F766E']}
+                    colors={th.gradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={s.planBanner}
                   >
                     <View style={[s.planBlob, s.planBlobOne, { backgroundColor: 'rgba(255,255,255,0.16)' }]} />
                     <View style={[s.planBlob, s.planBlobTwo, { backgroundColor: 'rgba(255,255,255,0.16)' }]} />
-                    <Ionicons name="storefront" size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
+                    <Ionicons name={th.icon} size={128} color="rgba(255,255,255,0.12)" style={s.planWatermark} />
                     <View style={s.planBannerOverlay}>
-                      <View style={s.planIconBox}><Ionicons name="storefront" size={22} color="#0D9488" /></View>
+                      <View style={s.planIconBox}><Ionicons name={th.icon} size={22} color={th.accent} /></View>
                       <View style={s.planBannerContent}>
                         {!!pb.eyebrow && <Text style={[s.planBannerEyebrow, { color: 'rgba(255,255,255,0.85)' }]}>{pb.eyebrow}</Text>}
-                        <Text style={[s.planBannerTitle, { color: '#FFFFFF' }]}>{pb.title}</Text>
-                        <Text style={s.planBannerDesc} numberOfLines={2}>{pb.message}</Text>
+                        <Text style={[s.planBannerTitle, { color: '#FFFFFF' }]}>{fillPlanPrices(pb.title)}</Text>
+                        {!!message && (isPrice
+                          ? <Text style={[s.planBannerPrice, { color: '#FFFFFF' }]}>{message}</Text>
+                          : <Text style={s.planBannerDesc} numberOfLines={2}>{message}</Text>)}
                         {!!pb.ctaLabel && (
                           <View style={s.planBannerLink}>
-                            <Text style={[s.planBannerLinkText, { color: '#0D9488' }]}>{pb.ctaLabel}</Text>
-                            <Ionicons name="arrow-forward" size={12} color="#0D9488" />
+                            <Text style={[s.planBannerLinkText, { color: th.accent }]}>{pb.ctaLabel}</Text>
+                            <Ionicons name="arrow-forward" size={12} color={th.accent} />
                           </View>
                         )}
                       </View>
                     </View>
                   </LinearGradient>
+                    );
+                  })()
                   )}
                 </TouchableOpacity>
               ))}
@@ -983,9 +918,6 @@ const s = StyleSheet.create({
 
   /* ── Subscription plans carousel ── */
   planBannerSection: { marginHorizontal: 18, marginBottom: 14 },
-  freeTrialContent: { paddingHorizontal: 22, paddingVertical: 14 },
-  freeTrialEyebrow: { color: '#FDE68A', fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
-  freeTrialTitle: { color: '#FFFFFF', fontSize: 24, lineHeight: 28, fontWeight: '900', marginTop: 6 },
   planBanner: {
     height: 168,
     borderRadius: 22,

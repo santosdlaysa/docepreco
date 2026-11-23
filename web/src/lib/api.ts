@@ -958,7 +958,9 @@ export interface Banner {
   /** 'notification' = aviso; 'carousel' = anúncio patrocinado; 'plan' = banner institucional do carrossel. */
   placement?: 'notification' | 'carousel' | 'plan';
   /** Público-alvo dos banners 'plan'. */
-  audience?: 'all' | 'non_master' | 'master';
+  audience?: 'all' | 'free' | 'non_master' | 'master';
+  /** Visual do banner 'plan' sem imagem. */
+  theme?: 'teal' | 'pink' | 'purple' | 'violet';
   /** Texto pequeno acima do título (banners 'plan'). */
   eyebrow?: string | null;
   /** Rótulo do botão (banners 'plan'). */

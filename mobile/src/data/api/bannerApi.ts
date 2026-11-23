@@ -29,7 +29,9 @@ export interface PlanBanner {
   title: string;
   message: string;
   ctaLabel: string | null;
-  audience: 'all' | 'non_master' | 'master';
+  audience: 'all' | 'free' | 'non_master' | 'master';
+  /** Visual sem imagem: 'teal' | 'pink' | 'purple' | 'violet'. */
+  theme?: string;
   /** Arte própria (data URI ou https); quando presente, substitui o layout padrão. */
   imageUrl?: string | null;
   /** 'app://Tela' navega no app; https abre o link. Padrão: Loja Online. */
@@ -59,7 +61,8 @@ export const bannerApi = {
 
   /** Banners institucionais do carrossel (Loja Online), por público-alvo. */
   getPlan: async (): Promise<PlanBanner[]> => {
-    const response = await apiClient.get('/banners/plan');
+    // v=2: app sem banners de plano fixos — recebe também os de público 'free'.
+    const response = await apiClient.get('/banners/plan?v=2');
     return response.data.data;
   },
 

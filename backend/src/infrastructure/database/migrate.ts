@@ -646,6 +646,8 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'banners', 'target_plans', "TEXT[] NOT NULL DEFAULT ARRAY['all']::TEXT[]");
     await addColumnIfMissing(client, 'banners', 'eyebrow', 'VARCHAR(60) NULL');
     await addColumnIfMissing(client, 'banners', 'cta_label', 'VARCHAR(40) NULL');
+    // Visual dos banners 'plan' sem imagem (teal | pink | purple | violet).
+    await addColumnIfMissing(client, 'banners', 'theme', "VARCHAR(20) NOT NULL DEFAULT 'teal'");
     // pix_requests genérico: 'subscription' (assinatura) | 'ad_banner' (compra de anúncio).
     await addColumnIfMissing(client, 'pix_requests', 'product_type', "VARCHAR(20) NOT NULL DEFAULT 'subscription'");
     await addColumnIfMissing(client, 'pix_requests', 'ref_id', 'UUID NULL');
@@ -898,6 +900,25 @@ export async function runMigrations() {
           'NOVA FUNCIONALIDADE',
           'Abrir minha loja',
         ]
+      );
+    }
+
+    // Banners de plano que antes eram fixos no app (3 dias grátis / Premium / Master)
+    // viram cadastros editáveis no painel. Roda uma única vez (flag em app_settings),
+    // para não recriar se o admin apagar algum.
+    const upsellSeed = await client.query(`SELECT 1 FROM app_settings WHERE key = 'seed_plan_upsell_banners_v1'`);
+    if (upsellSeed.rows.length === 0) {
+      console.log('Seeding plan upsell carousel banners...');
+      await client.query(
+        `INSERT INTO banners (title, message, type, placement, audience, theme, priority, eyebrow, cta_label, action_url, is_active)
+         VALUES
+           ('Aproveite 3 dias grátis', 'Escolha seu plano e descubra os benefícios.', 'promo', 'plan', 'free', 'violet', 30, 'PREMIUM E MASTER', 'Ver planos', 'app://Paywall', TRUE),
+           ('Faça sua confeitaria crescer', '{preco_premium}/mês', 'promo', 'plan', 'free', 'pink', 20, 'PLANO PREMIUM', 'Ver benefícios', 'app://Paywall', TRUE),
+           ('Controle total do seu negócio', '{preco_master}/mês', 'promo', 'plan', 'free', 'purple', 10, 'PLANO MASTER', 'Conhecer o Master', 'app://Paywall?plano=master', TRUE)`
+      );
+      await client.query(
+        `INSERT INTO app_settings (key, value, updated_at) VALUES ('seed_plan_upsell_banners_v1', 'done', NOW())
+         ON CONFLICT (key) DO NOTHING`
       );
     }
 

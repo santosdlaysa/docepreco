@@ -108,6 +108,8 @@ export const PaywallScreen: React.FC = () => {
   const [legacyMonthly, setLegacyMonthly] = useState(false);
   // Rótulos de preço PIX gerenciados pelo painel web (fallback nos valores fixos)
   const [pixMonthlyLabel, setPixMonthlyLabel] = useState('R$ 19,99');
+  // Desconto automático no PIX (Black Friday / win-back) — o servidor aplica no QR
+  const [pixOffer, setPixOffer] = useState<{ title: string; discountPercent: number } | null>(null);
   const [pixAnnualLabel, setPixAnnualLabel] = useState('R$ 120,00');
   const [pixMasterMonthlyLabel, setPixMasterMonthlyLabel] = useState('R$ 39,99');
   const [pixMasterAnnualLabel, setPixMasterAnnualLabel] = useState('R$ 300,00');
@@ -221,6 +223,14 @@ export const PaywallScreen: React.FC = () => {
 
   // Carrega rótulos de preço do PIX, infos do Master e trial days gerenciados pelo painel web
   useEffect(() => {
+    pixApi.getDiscountOffer().then(offer => {
+      if (offer) {
+        setPixOffer({
+          title: offer.kind === 'promo' && offer.title ? offer.title : 'Oferta especial',
+          discountPercent: offer.discountPercent,
+        });
+      }
+    }).catch(() => {});
     (async () => {
       const cfg = await planConfigApi.getPixConfig();
       if (cfg) {
@@ -243,8 +253,15 @@ export const PaywallScreen: React.FC = () => {
   const isMasterTier = tier === 'master';
   const pixMonthlyShown = isMasterTier ? pixMasterMonthlyLabel : (legacyMonthly ? 'R$ 10,00' : pixMonthlyLabel);
   const pixAnnualShown = isMasterTier ? pixMasterAnnualLabel : pixAnnualLabel;
-  const [monthlyMain, monthlyCents] = splitPrice(pixMonthlyShown);
-  const [annualMain, annualCents] = splitPrice(pixAnnualShown);
+  // Com promoção, os cards do PIX mostram o valor já com desconto (o antigo vai riscado).
+  const applyPixOffer = (label: string) => {
+    if (!pixOffer) return label;
+    const value = Number(label.replace(/[^\d,]/g, '').replace(',', '.'));
+    if (!Number.isFinite(value) || value <= 0) return label;
+    return fmtBRL(Math.round(value * (100 - pixOffer.discountPercent)) / 100);
+  };
+  const [monthlyMain, monthlyCents] = splitPrice(applyPixOffer(pixMonthlyShown));
+  const [annualMain, annualCents] = splitPrice(applyPixOffer(pixAnnualShown));
   // Cards de cartão: mensal usa o preço do tier configurado no painel; anual usa o rótulo anual
   const [cardMonthlyMain, cardMonthlyCents] = splitPrice(fmtBRL(isMasterTier ? masterPrice : premiumPrice));
   const [cardAnnualMain, cardAnnualCents] = splitPrice(pixAnnualLabel);
@@ -459,12 +476,20 @@ export const PaywallScreen: React.FC = () => {
                 <View style={st.orLine} />
               </View>
 
+              {pixOffer && (
+                <View style={st.pixOfferBadge}>
+                  <Ionicons name="flash" size={15} color="#fff" />
+                  <Text style={st.pixOfferText}>{pixOffer.title}: {pixOffer.discountPercent}% OFF no PIX</Text>
+                </View>
+              )}
+
               <View style={st.plans}>
                 <TouchableOpacity style={[st.plan, pixPlan === 'monthly' && (isMasterTier ? st.planOnMaster : st.planOn)]} onPress={() => setPixPlan('monthly')} activeOpacity={0.8}>
                   <View style={[st.radio, pixPlan === 'monthly' && (isMasterTier ? st.radioOnMaster : st.radioOn)]}>
                     {pixPlan === 'monthly' && <Ionicons name="checkmark" size={12} color="#fff" />}
                   </View>
                   <Text style={st.planName}>Mensal</Text>
+                  {pixOffer && <Text style={st.planOldPrice}>{pixMonthlyShown}</Text>}
                   <Text style={st.planPrice}>{monthlyMain}<Text style={st.planPriceSm}>{monthlyCents}</Text></Text>
                   <Text style={st.planPer}>por mês</Text>
                 </TouchableOpacity>
@@ -474,8 +499,9 @@ export const PaywallScreen: React.FC = () => {
                       {pixPlan === 'annual' && <Ionicons name="checkmark" size={12} color="#fff" />}
                     </View>
                     <Text style={st.planName}>Anual</Text>
+                    {pixOffer && <Text style={st.planOldPrice}>{pixAnnualShown}</Text>}
                     <Text style={st.planPrice}>{annualMain}<Text style={st.planPriceSm}>{annualCents}</Text></Text>
-                    <Text style={st.planPer}>{annualPerMonthLabel}/mês</Text>
+                    <Text style={st.planPer}>{pixOffer ? 'pagamento único' : `${annualPerMonthLabel}/mês`}</Text>
                   </TouchableOpacity>
                 )}
               </View>
@@ -785,6 +811,12 @@ const st = StyleSheet.create({
   planOnMaster: { borderColor: PURPLE, shadowColor: PURPLE, shadowOpacity: 0.16, elevation: 5 },
   planName: { fontSize: 13, fontWeight: '700', color: INK2 },
   planTrial: { fontSize: 12, fontWeight: '600', color: PINK, marginTop: 4 },
+  planOldPrice: { fontSize: 12, fontWeight: '600', color: INK2, textDecorationLine: 'line-through', marginTop: 6 },
+  pixOfferBadge: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, alignSelf: 'center',
+    backgroundColor: '#111', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, marginBottom: 12,
+  },
+  pixOfferText: { color: '#fff', fontSize: 13, fontWeight: '800' },
   planPrice: { fontSize: 26, fontWeight: '800', color: INK, marginTop: 7, lineHeight: 28 },
   planPriceSm: { fontSize: 13, fontWeight: '600', color: INK2 },
   planPer: { fontSize: 12, color: INK2, fontWeight: '500', marginTop: 4 },

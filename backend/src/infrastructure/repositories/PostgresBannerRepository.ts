@@ -13,8 +13,10 @@ export interface Banner {
   updatedAt: string;
   /** 'notification' = aviso no meio da Home; 'carousel' = anúncio patrocinado; 'plan' = banner institucional do carrossel. */
   placement: 'notification' | 'carousel' | 'plan';
-  /** Público-alvo dos banners 'plan': 'all' | 'non_master' | 'master'. */
-  audience: 'all' | 'non_master' | 'master';
+  /** Público-alvo dos banners 'plan': 'all' | 'free' (não assinantes) | 'non_master' | 'master'. */
+  audience: 'all' | 'free' | 'non_master' | 'master';
+  /** Visual do banner 'plan' sem imagem: 'teal' | 'pink' | 'purple' | 'violet'. */
+  theme: string;
   targetPlans: string[];
   /** Texto pequeno acima do título (banners 'plan'). */
   eyebrow: string | null;
@@ -98,10 +100,12 @@ export class PostgresBannerRepository {
     ctaLabel?: string | null;
     imageUrl?: string | null;
     isActive?: boolean;
+    theme?: string;
+    priority?: number;
   }): Promise<Banner> {
     const result = await pool.query(
-      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at, placement, audience, target_plans, eyebrow, cta_label, image_url, is_active)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      `INSERT INTO banners (title, message, type, action_url, starts_at, ends_at, placement, audience, target_plans, eyebrow, cta_label, image_url, is_active, theme, priority)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
        RETURNING *`,
       [
         data.title,
@@ -117,6 +121,8 @@ export class PostgresBannerRepository {
         data.ctaLabel ?? null,
         data.imageUrl ?? null,
         data.isActive ?? true,
+        data.theme ?? 'teal',
+        data.priority ?? 0,
       ]
     );
     return this.mapRow(result.rows[0]);
@@ -181,6 +187,8 @@ export class PostgresBannerRepository {
       ctaLabel?: string | null;
       /** undefined = mantém; null = remove a imagem. */
       imageUrl?: string | null;
+      theme?: string;
+      priority?: number;
     }
   ): Promise<Banner | null> {
     const result = await pool.query(
@@ -197,6 +205,8 @@ export class PostgresBannerRepository {
         eyebrow = COALESCE($11, eyebrow),
         cta_label = COALESCE($12, cta_label),
         image_url = CASE WHEN $13::boolean THEN $14::text ELSE image_url END,
+        theme = COALESCE($15, theme),
+        priority = COALESCE($16, priority),
         updated_at = NOW()
        WHERE id = $1
        RETURNING *`,
@@ -215,6 +225,8 @@ export class PostgresBannerRepository {
         data.ctaLabel !== undefined ? data.ctaLabel : null,
         data.imageUrl !== undefined,
         data.imageUrl ?? null,
+        data.theme ?? null,
+        data.priority ?? null,
       ]
     );
     if (result.rows.length === 0) return null;
@@ -240,6 +252,7 @@ export class PostgresBannerRepository {
       updatedAt: (row.updated_at as Date).toISOString(),
       placement: ((row.placement as string) ?? 'notification') as Banner['placement'],
       audience: ((row.audience as string) ?? 'all') as Banner['audience'],
+      theme: (row.theme as string) ?? 'teal',
       targetPlans: Array.isArray(row.target_plans) && row.target_plans.length ? row.target_plans as string[] : ['all'],
       eyebrow: (row.eyebrow as string) ?? null,
       ctaLabel: (row.cta_label as string) ?? null,

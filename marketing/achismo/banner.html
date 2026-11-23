@@ -1,0 +1,39 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700;800;900&display=block" rel="stylesheet">
+<style>
+*{margin:0;box-sizing:border-box}
+html,body{width:1200px;height:600px;overflow:hidden}
+body{font-family:Poppins,'Segoe UI',sans-serif;color:#fff;position:relative;
+ background:radial-gradient(circle at 85% 15%,#ff94c4 0,transparent 45%),
+ radial-gradient(circle at 5% 100%,#851058 0,transparent 55%),
+ linear-gradient(135deg,#ff5ca3 0%,#e91e8c 45%,#a5136a 100%)}
+.wrap{position:absolute;left:0;right:0;top:0;height:390px;display:flex;align-items:center;padding:0 100px;gap:40px}
+.left{flex:1}
+.brand{display:flex;align-items:center;gap:14px;margin-bottom:22px}
+.brand img{height:54px;background:#fff;border-radius:14px;padding:6px 10px}
+.brand span{font-weight:600;font-size:22px;opacity:.9}
+h1{font-weight:900;font-size:76px;line-height:1.02;letter-spacing:-1px;text-shadow:0 6px 20px rgba(107,13,72,.3)}
+h1 s{text-decoration:none;position:relative;color:#ffe1ef}
+h1 s::after{content:'';position:absolute;left:-4px;right:-4px;top:52%;height:9px;background:#2b0a1d;border-radius:6px;transform:rotate(-4deg)}
+.card{flex:0 0 360px;margin-top:60px;background:#fff;color:#2b0a1d;border-radius:28px;padding:26px 28px;transform:rotate(3deg);
+ box-shadow:0 30px 60px rgba(80,5,50,.35)}
+.card .t{font-weight:700;font-size:20px;color:#a5136a;display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.row{display:flex;justify-content:space-between;font-size:21px;font-weight:500;padding:7px 0;border-bottom:2px dashed #f3d4e4}
+.row b{font-weight:700}
+.profit{margin-top:16px;background:#e9fbf3;border-radius:16px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center}
+.profit span{font-weight:600;font-size:20px;color:#0f7a4f}
+.profit b{font-weight:900;font-size:34px;color:#0f9d63}
+</style></head><body>
+<div class="wrap">
+ <div class="left">
+  <div class="brand"><img src="logo.png"><span>DocePreço</span></div>
+  <h1>Pare de vender no <s>achismo</s>.</h1>
+ </div>
+ <div class="card">
+  <div class="t">🧁 Brigadeiro gourmet</div>
+  <div class="row"><span>Custo</span><b>R$ 1,35</b></div>
+  <div class="row"><span>Preço de venda</span><b>R$ 3,50</b></div>
+  <div class="profit"><span>Lucro real</span><b>61%</b></div>
+ </div>
+</div>
+</body></html>

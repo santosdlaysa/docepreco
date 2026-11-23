@@ -24,6 +24,10 @@ function normalizePlanAction(v: unknown): string | null {
 }
 const userRepo = new PostgresUserRepository();
 
+const PLAN_AUDIENCES = ['all', 'free', 'non_master', 'master'];
+const PLAN_THEMES = ['teal', 'pink', 'purple', 'violet'];
+const isValidPriority = (v: unknown) => v === undefined || (Number.isInteger(v) && (v as number) >= -1000 && (v as number) <= 1000);
+
 export class BannerController {
   async getAll(req: Request, res: Response): Promise<void> {
     try {
@@ -58,10 +62,13 @@ export class BannerController {
   }
 
   /** Público (mobile): banners institucionais do carrossel (por público-alvo). */
-  async getPlan(_req: Request, res: Response): Promise<void> {
+  async getPlan(req: Request, res: Response): Promise<void> {
     try {
       const banners = await repo.findActivePlan();
-      res.json({ success: true, data: banners });
+      // Apps antigos (sem ?v=2) têm os banners de plano fixos no código e não
+      // entendem o público 'free' (mostrariam a todos) → não recebem esses.
+      const modern = req.query.v === '2';
+      res.json({ success: true, data: modern ? banners : banners.filter(b => b.audience !== 'free') });
     } catch {
       res.status(500).json({ success: false, error: 'Erro ao buscar banners do carrossel' });
     }
@@ -192,7 +199,7 @@ export class BannerController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { title, message, type, actionUrl, startsAt, endsAt, placement, audience, targetPlans, eyebrow, ctaLabel, imageUrl, isActive } = req.body;
+      const { title, message, type, actionUrl, startsAt, endsAt, placement, audience, targetPlans, eyebrow, ctaLabel, imageUrl, isActive, theme, priority } = req.body;
       const isPlan = placement === 'plan';
       // Banner do carrossel com imagem dispensa a descrição (a arte já fala por si).
       const hasImage = isPlan && imageUrl != null && imageUrl !== '';
@@ -215,8 +222,12 @@ export class BannerController {
         res.status(400).json({ success: false, error: 'type inválido' });
         return;
       }
-      if (isPlan && audience && !['all', 'non_master', 'master'].includes(audience)) {
+      if (isPlan && audience && !PLAN_AUDIENCES.includes(audience)) {
         res.status(400).json({ success: false, error: 'audience inválido' });
+        return;
+      }
+      if ((theme !== undefined && !PLAN_THEMES.includes(theme)) || !isValidPriority(priority)) {
+        res.status(400).json({ success: false, error: 'theme/priority inválido' });
         return;
       }
       if (!isPlan && targetPlans !== undefined && (!Array.isArray(targetPlans) || targetPlans.length === 0 || targetPlans.some((p: unknown) => !['all', 'free', 'premium', 'master'].includes(String(p))))) {
@@ -237,6 +248,8 @@ export class BannerController {
         ctaLabel: isPlan ? (ctaLabel ?? null) : undefined,
         imageUrl: hasImage ? imageUrl : null,
         isActive: typeof isActive === 'boolean' ? isActive : undefined,
+        theme: isPlan ? theme : undefined,
+        priority: isPlan ? priority : undefined,
       });
       res.status(201).json({ success: true, data: banner });
     } catch {
@@ -247,7 +260,7 @@ export class BannerController {
   async update(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { title, message, type, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel } = req.body;
+      const { title, message, type, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel, theme, priority } = req.body;
       let { actionUrl, imageUrl } = req.body;
       if (imageUrl === '') imageUrl = null;
       if (imageUrl != null && !isValidBannerImage(imageUrl)) {
@@ -266,15 +279,19 @@ export class BannerController {
           return;
         }
       }
-      if (audience && !['all', 'non_master', 'master'].includes(audience)) {
+      if (audience && !PLAN_AUDIENCES.includes(audience)) {
         res.status(400).json({ success: false, error: 'audience inválido' });
+        return;
+      }
+      if ((theme !== undefined && !PLAN_THEMES.includes(theme)) || !isValidPriority(priority)) {
+        res.status(400).json({ success: false, error: 'theme/priority inválido' });
         return;
       }
       if (targetPlans !== undefined && (!Array.isArray(targetPlans) || targetPlans.length === 0 || targetPlans.some((p: unknown) => !['all', 'free', 'premium', 'master'].includes(String(p))))) {
         res.status(400).json({ success: false, error: 'targetPlans inválido' });
         return;
       }
-      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel, imageUrl });
+      const banner = await repo.update(id, { title, message, type, actionUrl, startsAt, endsAt, isActive, audience, targetPlans, eyebrow, ctaLabel, imageUrl, theme, priority });
       if (!banner) {
         res.status(404).json({ success: false, error: 'Banner não encontrado' });
         return;

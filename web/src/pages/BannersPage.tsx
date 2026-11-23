@@ -49,10 +49,19 @@ const TARGET_PLAN_LABEL: Record<TargetPlan, string> = {
   all: 'Todos', free: 'Free', premium: 'Premium', master: 'Master',
 };
 
-type Audience = 'all' | 'non_master' | 'master';
+type Audience = 'all' | 'free' | 'non_master' | 'master';
+type Theme = 'teal' | 'pink' | 'purple' | 'violet';
+
+const THEME_OPTIONS: Array<{ value: Theme; label: string; gradient: string }> = [
+  { value: 'pink', label: 'Rosa (Premium)', gradient: 'linear-gradient(135deg,#FF8FC0,#E91E8C,#C42C74)' },
+  { value: 'purple', label: 'Roxo (Master)', gradient: 'linear-gradient(135deg,#A97BF0,#7C3AED,#5B21B6)' },
+  { value: 'violet', label: 'Vinho/roxo (Teste grátis)', gradient: 'linear-gradient(135deg,#9D174D,#7E22CE,#4C1D95)' },
+  { value: 'teal', label: 'Verde (Loja Online)', gradient: 'linear-gradient(135deg,#2DD4BF,#0D9488,#0F766E)' },
+];
 
 const AUDIENCE_LABEL: Record<Audience, string> = {
   all: 'Todos',
+  free: 'Não assinantes (Free)',
   non_master: 'Não-Master (Free e Premium)',
   master: 'Master',
 };
@@ -61,6 +70,7 @@ const AUDIENCE_LABEL: Record<Audience, string> = {
 const APP_SCREENS: { value: string; label: string }[] = [
   { value: 'app://Store', label: 'Loja Online' },
   { value: 'app://Paywall', label: 'Planos (assinar)' },
+  { value: 'app://Paywall?plano=master', label: 'Planos (abrir no Master)' },
   { value: 'app://MyPlan', label: 'Meu plano' },
   { value: 'app://Recipes', label: 'Receitas' },
   { value: 'app://CreateRecipe', label: 'Nova receita' },
@@ -88,6 +98,8 @@ const EMPTY_PLAN = {
   message: '',
   ctaLabel: '',
   audience: 'non_master' as Audience,
+  theme: 'teal' as Theme,
+  priority: 0,
   isActive: true,
   imageUrl: null as string | null,
   /** Destino ao tocar: 'app://Tela' ou link https. */
@@ -189,6 +201,8 @@ export function BannersPage({ toast }: Props) {
       message: b.message,
       ctaLabel: b.ctaLabel ?? '',
       audience: b.audience ?? 'non_master',
+      theme: b.theme ?? 'teal',
+      priority: b.priority ?? 0,
       isActive: b.isActive,
       imageUrl: b.imageUrl ?? null,
       actionUrl: b.actionUrl || 'app://Store',
@@ -216,6 +230,8 @@ export function BannersPage({ toast }: Props) {
           eyebrow: planForm.eyebrow || null,
           ctaLabel: planForm.ctaLabel || null,
           audience: planForm.audience,
+          theme: planForm.theme,
+          priority: planForm.priority,
           isActive: planForm.isActive,
           imageUrl: planForm.imageUrl,
           actionUrl: planForm.actionUrl.trim(),
@@ -229,6 +245,8 @@ export function BannersPage({ toast }: Props) {
           eyebrow: planForm.eyebrow || null,
           ctaLabel: planForm.ctaLabel || null,
           audience: planForm.audience,
+          theme: planForm.theme,
+          priority: planForm.priority,
           placement: 'plan',
           isActive: planForm.isActive,
           imageUrl: planForm.imageUrl,
@@ -642,10 +660,39 @@ export function BannersPage({ toast }: Props) {
                     onChange={e => setPlanForm({ ...planForm, audience: e.target.value as Audience })}
                   >
                     <option value="all">Todos</option>
+                    <option value="free">Não assinantes (Free)</option>
                     <option value="non_master">Não-Master (Free e Premium)</option>
                     <option value="master">Master</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Ordem (maior aparece primeiro)</label>
+                  <input
+                    type="number"
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm focus:border-primary-400 outline-none dark:bg-gray-700 dark:text-white"
+                    value={planForm.priority}
+                    onChange={e => setPlanForm({ ...planForm, priority: parseInt(e.target.value) || 0 })}
+                  />
+                </div>
+                {!planForm.imageUrl && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Cor do banner (quando não tem imagem)</label>
+                    <div className="flex flex-wrap gap-2">
+                      {THEME_OPTIONS.map(t => (
+                        <button
+                          key={t.value}
+                          type="button"
+                          onClick={() => setPlanForm({ ...planForm, theme: t.value })}
+                          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium ${planForm.theme === t.value ? 'border-primary-500 ring-2 ring-primary-200' : 'border-gray-300 dark:border-gray-600'}`}
+                        >
+                          <span className="w-5 h-5 rounded-full" style={{ background: t.gradient }} />
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">Dica: use <code>{'{preco_premium}'}</code> ou <code>{'{preco_master}'}</code> no texto para mostrar o preço atual do plano.</p>
+                  </div>
+                )}
               </div>
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-200 cursor-pointer">
                 <input
