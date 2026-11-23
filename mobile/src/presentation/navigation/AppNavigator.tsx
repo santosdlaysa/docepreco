@@ -407,6 +407,11 @@ export function AppNavigator() {
       const data = response.notification.request.content.data as Record<string, unknown>;
       if (data?.type === 'new_order') {
         navigationRef.current?.navigate('Store', { initialTab: 'orders' });
+        return;
+      }
+      // Campanhas (Black Friday, win-back…) abrem a tela indicada no push.
+      if (data?.screen === 'Paywall' || data?.screen === 'SupportChat') {
+        navigationRef.current?.navigate(data.screen as never);
       }
     });
     const foregroundSub = Notifications.addNotificationReceivedListener(notification => {

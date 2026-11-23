@@ -130,6 +130,8 @@ export const PixPaymentScreen: React.FC = () => {
   const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discountPercent: number } | null>(null);
   const [couponChecking, setCouponChecking] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
+  // Desconto automático (Black Friday / win-back) — aplicado pelo servidor no PIX avulso
+  const [autoOffer, setAutoOffer] = useState<{ title: string; discountPercent: number; expiresAt: string | null } | null>(null);
 
   const monthlyPlan = isMaster
     ? (serverMasterMonthly ?? MASTER_MONTHLY)
@@ -158,6 +160,22 @@ export const PixPaymentScreen: React.FC = () => {
       } catch {}
     })();
   }, []);
+
+  // Promoção/oferta vigente: abre direto no PIX avulso, onde o desconto vale
+  useEffect(() => {
+    if (isUpgrade) return;
+    (async () => {
+      const offer = await pixApi.getDiscountOffer();
+      if (offer) {
+        setAutoOffer({
+          title: offer.kind === 'promo' && offer.title ? offer.title : 'Oferta especial',
+          discountPercent: offer.discountPercent,
+          expiresAt: offer.expiresAt,
+        });
+        setMode('once');
+      }
+    })();
+  }, [isUpgrade]);
 
   // Assinatura recorrente existente (ativa ou aguardando autorização)
   useEffect(() => {
@@ -194,8 +212,11 @@ export const PixPaymentScreen: React.FC = () => {
   };
 
   // Preço final considerando o cupom aplicado (o servidor reaplica o desconto).
-  const discountedCents = appliedCoupon
-    ? Math.max(0, Math.round(plan.priceCents * (100 - appliedCoupon.discountPercent) / 100))
+  // Não empilha: vale o maior entre cupom e promoção (mesma regra do servidor).
+  const bestPercent = Math.max(appliedCoupon?.discountPercent ?? 0, autoOffer?.discountPercent ?? 0);
+  const promoWins = !!autoOffer && autoOffer.discountPercent >= (appliedCoupon?.discountPercent ?? 0);
+  const discountedCents = bestPercent > 0
+    ? Math.max(0, Math.round(plan.priceCents * (100 - bestPercent) / 100))
     : plan.priceCents;
 
   const handleApplyCoupon = async () => {
@@ -568,6 +589,37 @@ export const PixPaymentScreen: React.FC = () => {
                 </>
               )}
             </View>
+
+            {/* Promoção automática (ex.: Black Friday) — sem cupom, desconto no QR avulso */}
+            {autoOffer && (
+              <View style={[styles.couponCard, { borderColor: accent, borderWidth: 1.5 }]}>
+                <View style={styles.couponApplied}>
+                  <Ionicons name="flash" size={18} color={accent} />
+                  <Text style={styles.couponAppliedText}>
+                    {autoOffer.title} • {autoOffer.discountPercent}% OFF no PIX
+                  </Text>
+                </View>
+                {mode === 'once' ? (
+                  promoWins && (
+                    <View style={styles.couponPriceRow}>
+                      <Text style={styles.couponOldPrice}>{fmtCents(plan.priceCents)}</Text>
+                      <Text style={[styles.couponNewPrice, { color: accent }]}>{fmtCents(discountedCents)}</Text>
+                    </View>
+                  )
+                ) : (
+                  <TouchableOpacity onPress={() => setMode('once')} activeOpacity={0.7}>
+                    <Text style={[styles.couponLabel, { color: accent }]}>
+                      O desconto vale no PIX à vista — toque para usar
+                    </Text>
+                  </TouchableOpacity>
+                )}
+                {autoOffer.expiresAt && (
+                  <Text style={styles.couponLabel}>
+                    Válido até {new Date(autoOffer.expiresAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                  </Text>
+                )}
+              </View>
+            )}
 
             {/* Cupom de desconto — apenas no Pix comum (o QR avulso cobra o valor final) */}
             {mode === 'once' && (

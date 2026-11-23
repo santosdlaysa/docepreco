@@ -78,6 +78,17 @@ export const pixApi = {
     }
   },
 
+  /** Desconto automático vigente no PIX (promoção global ou oferta win-back). */
+  getDiscountOffer: async (): Promise<{ kind?: 'promo' | 'winback'; title?: string; discountPercent: number; expiresAt: string | null } | null> => {
+    try {
+      const response = await apiClient.get('/support/discount-offer');
+      const data = response.data?.data;
+      return data && typeof data.discountPercent === 'number' ? data : null;
+    } catch {
+      return null;
+    }
+  },
+
   getStatus: async (): Promise<PixRequest | null> => {
     const response = await apiClient.get('/pix/status');
     return response.data.data;

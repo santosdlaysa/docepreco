@@ -6,6 +6,7 @@ import { pool } from '../../infrastructure/database/connection';
 import { notifySupportMessage } from '../../infrastructure/services/telegramService';
 import { sendPushNotifications } from '../../infrastructure/services/pushService';
 import { getActiveOffer } from '../../infrastructure/services/winbackService';
+import { getLivePixPromo } from '../../infrastructure/services/pixPromoService';
 import { getAutomaticSupportReply } from '../../domain/services/supportAutoReply';
 
 const repo = new PostgresSupportRepository();
@@ -18,8 +19,20 @@ const TYPING_TIMEOUT_MS = 5000;
 export class SupportController {
   async getDiscountOffer(req: AuthRequest, res: Response): Promise<void> {
     try {
-      const offer = await getActiveOffer(req.userId!);
-      res.json({ success: true, data: offer ? { discountPercent: offer.discountPercent, expiresAt: offer.expiresAt } : null });
+      // Vale o maior desconto: oferta win-back individual ou promoção PIX global
+      // (mesma regra do PixController.createRequest).
+      const [offer, promo] = await Promise.all([
+        getActiveOffer(req.userId!),
+        getLivePixPromo().catch(() => null),
+      ]);
+      if (promo && (!offer || promo.discountPercent > offer.discountPercent)) {
+        res.json({
+          success: true,
+          data: { kind: 'promo', title: promo.title, discountPercent: promo.discountPercent, expiresAt: promo.endsAt },
+        });
+        return;
+      }
+      res.json({ success: true, data: offer ? { kind: 'winback', discountPercent: offer.discountPercent, expiresAt: offer.expiresAt } : null });
     } catch {
       res.status(500).json({ success: false, error: 'Erro ao consultar oferta.' });
     }

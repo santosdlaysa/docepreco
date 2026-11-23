@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, View, Text, TouchableOpacity, Linking, Platform, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Constants from 'expo-constants';
+import * as Application from 'expo-application';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { colors } from '../theme/colors';
@@ -39,11 +39,9 @@ export function UpdateGate() {
 
     (async () => {
       try {
-        const installed = Number(
-          platform === 'android'
-            ? Constants.expoConfig?.android?.versionCode
-            : Constants.expoConfig?.ios?.buildNumber,
-        );
+        // The OTA manifest can contain a newer app config than the native
+        // binary. Read the build number from the installed binary itself.
+        const installed = Number(Application.nativeBuildVersion);
         if (!Number.isFinite(installed)) return;
 
         const res = await fetch(`${BASE_URL}/app-version`);
