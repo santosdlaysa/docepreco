@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { adminApi, AdminUser } from '../../../data/api/adminApi';
 import { AdminStackParamList } from './types';
@@ -55,6 +55,8 @@ const FILTER_OPTIONS: Record<FilterKind, { value: string | null; label: string }
 
 export const AdminUsersScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<RouteProp<AdminStackParamList, 'AdminUsers'>>();
+  const subscriptionStatus = route.params?.subscriptionStatus;
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
   const [platform, setPlatform] = useState<string | null>(null);
@@ -84,8 +86,21 @@ export const AdminUsersScreen: React.FC = () => {
     } else if (planTier === 'master') {
       list = list.filter(u => u.planTier === 'master');
     }
+    if (subscriptionStatus === 'active') {
+      list = list.filter(u => u.isPremium && (!u.premiumUntil || new Date(u.premiumUntil).getTime() >= Date.now()));
+    } else if (subscriptionStatus === 'expiring') {
+      const now = Date.now();
+      const week = now + 7 * 24 * 60 * 60 * 1000;
+      list = list.filter(u => {
+        if (!u.isPremium || !u.premiumUntil) return false;
+        const expiration = new Date(u.premiumUntil).getTime();
+        return expiration >= now && expiration <= week;
+      });
+    } else if (subscriptionStatus === 'expired') {
+      list = list.filter(u => u.premiumUntil && new Date(u.premiumUntil).getTime() < Date.now());
+    }
     return list;
-  }, [users, platform, planTier]);
+  }, [users, platform, planTier, subscriptionStatus]);
 
   // Ordena a lista já filtrada, sem nova chamada à API
   const sorted = useMemo(() => {
@@ -135,7 +150,7 @@ export const AdminUsersScreen: React.FC = () => {
         <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={8}>
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Usuários</Text>
+        <Text style={styles.title}>{subscriptionStatus === 'active' ? `Assinantes ativos (${sorted.length})` : subscriptionStatus === 'expiring' ? `Assinaturas expirando (${sorted.length})` : subscriptionStatus === 'expired' ? `Assinaturas expiradas (${sorted.length})` : 'Usuários'}</Text>
         <View style={styles.countBadge}>
           <Text style={styles.countText}>{sorted.length}</Text>
         </View>

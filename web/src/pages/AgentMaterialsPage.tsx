@@ -2,6 +2,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Search, X } from 'lucide-react';
 import { agentMaterials } from '../data/agentMaterials';
 
+interface Props {
+  onPrepareNotification?: (draft: { title: string; body: string; target: string; eligibility?: string }) => void;
+}
+
+const categoryOrder = ['Conteúdos para redes sociais', 'Notificações', 'WhatsApp', 'Atendimento', 'Comercial', 'Suporte', 'Cobranças', 'Campanhas'];
+const targetLabels: Record<string, string> = {
+  all: 'Todos os usuários', free: 'Plano Free', premium: 'Plano Premium', master: 'Plano Master', expired: 'Assinatura expirada',
+};
+
+function materialCategory(item: (typeof agentMaterials)[number]): string {
+  return item.category || item.area;
+}
+
 export function normalizeMaterialSearch(value: string): string {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
 }
@@ -10,22 +23,35 @@ export function filterAgentMaterials(materials: typeof agentMaterials, search: s
   const term = normalizeMaterialSearch(search);
   return materials.filter(item => (!area || item.area === area)
     && (!term || normalizeMaterialSearch([
-      item.title, item.text, item.area, item.audience ?? '', item.action ?? '',
+      item.title, item.text, item.area, item.audience ?? '', item.action ?? '', item.category ?? '',
+      item.notification?.title ?? '', item.notification?.body ?? '', item.notification?.eligibility ?? '',
     ].join(' ')).includes(term)));
 }
 
-export function AgentMaterialsPage() {
+export function AgentMaterialsPage({ onPrepareNotification }: Props = {}) {
   const [search, setSearch] = useState('');
   const [area, setArea] = useState('');
+  const [category, setCategory] = useState('');
+  const [failedImages, setFailedImages] = useState<string[]>([]);
   const [copyingId, setCopyingId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState('');
   const [manualCopy, setManualCopy] = useState<{ title: string; text: string } | null>(null);
   const manualRef = useRef<HTMLTextAreaElement>(null);
+  const copyTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const areas = useMemo(() => [...new Set(agentMaterials.map(item => item.area))]
     .sort((a, b) => a.localeCompare(b, 'pt-BR')), []);
 
-  const visible = useMemo(() => filterAgentMaterials(agentMaterials, search, area), [search, area]);
+  const filtered = useMemo(() => filterAgentMaterials(agentMaterials, search, area), [search, area]);
+  const categories = useMemo(() => [...new Set(agentMaterials.map(materialCategory))].sort((a, b) => {
+    const aIndex = categoryOrder.indexOf(a);
+    const bIndex = categoryOrder.indexOf(b);
+    return (aIndex < 0 ? categoryOrder.length : aIndex) - (bIndex < 0 ? categoryOrder.length : bIndex)
+      || a.localeCompare(b, 'pt-BR');
+  }), []);
+  const visible = useMemo(() => filtered.filter(item => !category || materialCategory(item) === category), [filtered, category]);
+  const sections = categories.map(name => ({ name, items: visible.filter(item => materialCategory(item) === name) }))
+    .filter(section => section.items.length > 0);
 
   useEffect(() => {
     if (manualCopy) {
@@ -34,16 +60,23 @@ export function AgentMaterialsPage() {
     }
   }, [manualCopy]);
 
-  const copyText = async (item: (typeof agentMaterials)[number]) => {
+  const closeManualCopy = () => {
+    setManualCopy(null);
+    copyTriggerRef.current?.focus();
+  };
+
+  const copyText = async (item: (typeof agentMaterials)[number], trigger: HTMLButtonElement) => {
+    copyTriggerRef.current = trigger;
     setCopyingId(item.id);
     setFeedback('');
     setManualCopy(null);
+    const text = item.notification ? `${item.notification.title}\n\n${item.notification.body}` : item.text;
     try {
       if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
-      await navigator.clipboard.writeText(item.text);
+      await navigator.clipboard.writeText(text);
       setFeedback(`Texto de “${item.title}” copiado.`);
     } catch {
-      setManualCopy({ title: item.title, text: item.text });
+      setManualCopy({ title: item.title, text });
     } finally {
       setCopyingId(null);
     }
@@ -78,6 +111,19 @@ export function AgentMaterialsPage() {
         </div>
       </div>
 
+      <div role="group" aria-label="Categorias de materiais" className="flex flex-wrap gap-2">
+        <button type="button" aria-pressed={category === ''} onClick={() => setCategory('')}
+          className={`rounded-full border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 ${category === '' ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200'}`}>
+          Todas ({filtered.length})
+        </button>
+        {categories.map(name => (
+          <button type="button" key={name} aria-pressed={category === name} onClick={() => setCategory(name)}
+            className={`rounded-full border px-3 py-2 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary-500 ${category === name ? 'border-primary-500 bg-primary-500 text-white' : 'border-gray-300 bg-white text-gray-700 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200'}`}>
+            {name} ({filtered.filter(item => materialCategory(item) === name).length})
+          </button>
+        ))}
+      </div>
+
       <p role="status" aria-live="polite" className="text-sm text-gray-500 dark:text-gray-400">
         {visible.length} de {agentMaterials.length} materiais
       </p>
@@ -87,14 +133,14 @@ export function AgentMaterialsPage() {
         <section aria-labelledby="manual-copy-title" className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-700 dark:bg-gray-800">
           <div className="flex items-start justify-between gap-3">
             <h3 id="manual-copy-title" className="font-semibold text-gray-900 dark:text-white">Copiar manualmente: {manualCopy.title}</h3>
-            <button type="button" onClick={() => setManualCopy(null)} aria-label="Fechar cópia manual"
+            <button type="button" onClick={closeManualCopy} aria-label="Fechar cópia manual"
               className="rounded p-1 text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-gray-300"><X size={18} /></button>
           </div>
-          <p role="alert" className="my-2 text-sm text-amber-900 dark:text-amber-200">
+          <p id="manual-copy-instructions" role="alert" className="my-2 text-sm text-amber-900 dark:text-amber-200">
             Não foi possível copiar automaticamente. O texto abaixo está selecionado; use a opção Copiar do seu dispositivo ou Ctrl+C (Command+C no Mac).
           </p>
           <label htmlFor="agent-manual-copy" className="sr-only">Texto para cópia manual</label>
-          <textarea id="agent-manual-copy" ref={manualRef} readOnly value={manualCopy.text} rows={6}
+          <textarea id="agent-manual-copy" ref={manualRef} readOnly value={manualCopy.text} rows={6} aria-describedby="manual-copy-instructions"
             onFocus={event => event.currentTarget.select()}
             className="w-full rounded-lg border border-gray-300 bg-white p-3 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white" />
         </section>
@@ -103,28 +149,63 @@ export function AgentMaterialsPage() {
       {visible.length === 0 ? (
         <div className="rounded-xl border border-gray-200 bg-white p-8 text-center dark:border-gray-700 dark:bg-gray-800">
           <p className="text-gray-600 dark:text-gray-300">Nenhum material encontrado para os filtros selecionados.</p>
-          <button type="button" onClick={() => { setSearch(''); setArea(''); }}
+          <button type="button" onClick={() => { setSearch(''); setArea(''); setCategory(''); }}
             className="mt-3 rounded-lg px-3 py-2 text-sm font-medium text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300">Limpar filtros</button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
-          {visible.map(item => (
+        <div className="space-y-8">
+          {sections.map(section => (
+          <section key={section.name} aria-label={section.name} className="space-y-3">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{section.name} <span className="text-sm font-normal text-gray-500 dark:text-gray-400">({section.items.length})</span></h3>
+            <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-2">
+          {section.items.map(item => (
             <article key={item.id} className="min-w-0 rounded-xl border border-gray-200 bg-white p-5 dark:border-gray-700 dark:bg-gray-800">
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="text-xs font-medium text-primary-600 dark:text-primary-300">{item.area}</p>
-                  <h3 className="mt-1 break-words font-semibold text-gray-900 dark:text-white">{item.title}</h3>
+                  <h4 className="mt-1 break-words font-semibold text-gray-900 dark:text-white">{item.title}</h4>
                 </div>
-                <button type="button" onClick={() => void copyText(item)} disabled={copyingId !== null}
+                <button type="button" onClick={event => void copyText(item, event.currentTarget)} disabled={copyingId !== null}
                   aria-label={`Copiar texto de ${item.title}`}
                   className="flex shrink-0 items-center gap-1.5 rounded-lg bg-primary-500 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:cursor-wait disabled:opacity-60 dark:focus:ring-offset-gray-800">
                   <Copy size={15} aria-hidden="true" />{copyingId === item.id ? 'Copiando…' : 'Copiar'}
                 </button>
               </div>
+              {item.imageUrl && (
+                <div className="mb-4 space-y-2">
+                  {failedImages.includes(item.id) ? (
+                    <p role="status" className="rounded-lg bg-gray-100 p-4 text-sm text-gray-600 dark:bg-gray-900 dark:text-gray-300">Não foi possível carregar a imagem deste material.</p>
+                  ) : (
+                    <img src={item.imageUrl} alt={item.imageAlt || `Arte de ${item.title}`} loading="lazy"
+                      onError={() => setFailedImages(previous => previous.includes(item.id) ? previous : [...previous, item.id])}
+                      className="max-h-[36rem] w-full rounded-lg border border-gray-100 object-contain dark:border-gray-700" />
+                  )}
+                  <a href={item.imageUrl} download className="inline-block rounded px-1 py-1 text-sm font-medium text-primary-600 underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300">Baixar imagem de {item.title}</a>
+                </div>
+              )}
               {item.audience && <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-medium">Público:</span> {item.audience}</p>}
-              <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 dark:text-gray-200">{item.text}</p>
+              {item.notification ? (
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">Prévia da notificação</p>
+                    <p className="whitespace-pre-wrap break-words font-semibold text-gray-900 dark:text-white">{item.notification.title}</p>
+                    <p className="mt-1 whitespace-pre-wrap break-words text-sm text-gray-800 dark:text-gray-200">{item.notification.body}</p>
+                  </div>
+                  <p className="text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Público de destino:</span> {targetLabels[item.notification.target] || item.notification.target}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Elegibilidade:</span> {item.notification.eligibility}</p>
+                  <button type="button" disabled={!onPrepareNotification}
+                    onClick={() => {
+                      if (onPrepareNotification && item.notification) onPrepareNotification({ title: item.notification.title, body: item.notification.body, target: item.notification.target, eligibility: item.notification.eligibility });
+                    }}
+                    className="rounded-lg border border-primary-500 px-3 py-2 text-sm font-medium text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-300">Preparar notificação</button>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{onPrepareNotification ? 'Abre o formulário para revisão. O destino seleciona o plano, não verifica o comportamento descrito na elegibilidade. Confira os destinatários antes de enviar. Esta ação não envia nem agenda.' : 'A preparação precisa estar disponível neste painel. Você pode copiar o título e o texto acima.'}</p>
+                </div>
+              ) : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 dark:text-gray-200">{item.text}</p>}
               {item.action && <p className="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"><span className="font-medium">Ação:</span> {item.action}</p>}
             </article>
+          ))}
+            </div>
+          </section>
           ))}
         </div>
       )}

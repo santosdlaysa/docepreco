@@ -2,9 +2,12 @@ import { useEffect, useState } from 'react';
 import { api, AppNotification } from '../lib/api';
 import { TableSkeleton, ConfirmModal, ModalOverlay, ToastFn } from '../components';
 import { Send, Trash2, Plus, Bell, Sparkles } from 'lucide-react';
+import type { NotificationDraft } from '../data/agentMaterials';
 
 interface Props {
   toast: ToastFn;
+  initialDraft?: NotificationDraft | null;
+  onDraftConsumed?: () => void;
 }
 
 const STATUS_CONFIG: Record<AppNotification['status'], { label: string; color: string }> = {
@@ -29,7 +32,7 @@ function fmtDate(iso: string) {
   });
 }
 
-export function NotificationsPage({ toast }: Props) {
+export function NotificationsPage({ toast, initialDraft, onDraftConsumed }: Props) {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -38,6 +41,15 @@ export function NotificationsPage({ toast }: Props) {
   const [confirmDelete, setConfirmDelete] = useState<AppNotification | null>(null);
   const [pixPrices, setPixPrices] = useState<{ premium: string; master: string } | null>(null);
   const [loadingPixPrices, setLoadingPixPrices] = useState(false);
+  const [templateEligibility, setTemplateEligibility] = useState('');
+
+  useEffect(() => {
+    if (!initialDraft) return;
+    setForm({ title: initialDraft.title, body: initialDraft.body, target: initialDraft.target, schedule: false, scheduledAt: '' });
+    setTemplateEligibility(initialDraft.eligibility ?? '');
+    setShowModal(true);
+    onDraftConsumed?.();
+  }, [initialDraft, onDraftConsumed]);
 
   const load = async () => {
     try {
@@ -53,6 +65,7 @@ export function NotificationsPage({ toast }: Props) {
   useEffect(() => { load(); }, []);
 
   const openNew = async () => {
+    setTemplateEligibility('');
     setForm({ title: '', body: '', target: 'all', schedule: false, scheduledAt: '' });
     setShowModal(true);
     setLoadingPixPrices(true);
@@ -229,6 +242,13 @@ export function NotificationsPage({ toast }: Props) {
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg p-6">
             <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Nova notificação</h3>
             <div className="space-y-3">
+              {templateEligibility && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-100">
+                  <p className="font-medium">Quando usar este modelo</p>
+                  <p>{templateEligibility}</p>
+                  <p className="mt-1">O alvo abaixo seleciona um grupo por plano. Não aplica filtros de comportamento, vencimento ou falha de pagamento.</p>
+                </div>
+              )}
               <div className="rounded-lg border border-pink-200 bg-pink-50 dark:border-pink-900 dark:bg-pink-950/20 p-3">
                 <button
                   type="button"

@@ -4,6 +4,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SubscriptionsPage } from '../pages/SubscriptionsPage';
 import { AgentMaterialsPage } from '../pages/AgentMaterialsPage';
+import type { NotificationDraft } from '../data/agentMaterials';
 import { BusinessMetricsPage } from '../pages/BusinessMetricsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { StoresPage } from '../pages/StoresPage';
@@ -324,6 +325,7 @@ function ThemeToggle({ dark, toggle }: { dark: boolean; toggle: () => void }) {
 export default function AdminApp() {
   const [authed, setAuthed] = useState(!!loadSecret());
   const [page, setPage] = useState<Page>('dashboard');
+  const [notificationDraft, setNotificationDraft] = useState<NotificationDraft | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [impersonateUserId, setImpersonateUserId] = useState<string | null>(null);
   const { toasts, toast, removeToast } = useToast();
@@ -460,7 +462,7 @@ export default function AdminApp() {
           <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
             {page === 'subscriptions' && <SubscriptionsPage toast={toast} />}
-            {page === 'agent-materials' && <AgentMaterialsPage />}
+            {page === 'agent-materials' && <AgentMaterialsPage onPrepareNotification={draft => { setNotificationDraft(draft); navigate('notifications'); }} />}
             {page === 'metrics' && <BusinessMetricsPage toast={toast} />}
             {page === 'activity' && <ActivityUsersPage />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
@@ -469,7 +471,7 @@ export default function AdminApp() {
             {page === 'stores' && <StoresPage toast={toast} />}
             {page === 'banners' && <BannersPage toast={toast} />}
             {page === 'ads' && <AdsPage toast={toast} />}
-            {page === 'notifications' && <NotificationsPage toast={toast} />}
+            {page === 'notifications' && <NotificationsPage toast={toast} initialDraft={notificationDraft} onDraftConsumed={() => setNotificationDraft(null)} />}
             {page === 'tips' && <TipsPage toast={toast} />}
             {page === 'logs' && <LogsPage />}
             {page === 'requests' && <RequestLogsPage />}

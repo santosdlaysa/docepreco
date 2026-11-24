@@ -1,0 +1,137 @@
+{
+  "context": [
+    {
+      "observed_at": "2026-11-24T13:06:37.212Z",
+      "read_only": "on",
+      "timezone": "UTC"
+    }
+  ],
+  "financial_columns": [
+    {
+      "table_name": "pix_requests",
+      "column_name": "amount_cents"
+    },
+    {
+      "table_name": "pix_requests",
+      "column_name": "mp_payment_id"
+    },
+    {
+      "table_name": "pix_requests",
+      "column_name": "status"
+    },
+    {
+      "table_name": "pix_subscription_charges",
+      "column_name": "amount_cents"
+    },
+    {
+      "table_name": "pix_subscription_charges",
+      "column_name": "mp_payment_id"
+    },
+    {
+      "table_name": "pix_subscription_charges",
+      "column_name": "status"
+    },
+    {
+      "table_name": "pix_subscription_charges",
+      "column_name": "subscription_id"
+    },
+    {
+      "table_name": "pix_subscriptions",
+      "column_name": "amount_cents"
+    },
+    {
+      "table_name": "pix_subscriptions",
+      "column_name": "last_charge_at"
+    },
+    {
+      "table_name": "pix_subscriptions",
+      "column_name": "status"
+    },
+    {
+      "table_name": "premium_events",
+      "column_name": "amount_cents"
+    },
+    {
+      "table_name": "premium_events",
+      "column_name": "event_type"
+    },
+    {
+      "table_name": "premium_events",
+      "column_name": "source"
+    }
+  ],
+  "zero_structure": [
+    {
+      "zero_events": 20,
+      "no_expiration": 0,
+      "positive_same_user_expiry": 0,
+      "other_event_same_expiry": 8,
+      "events_linked_customer": 17
+    }
+  ],
+  "pix_mismatch": [
+    {
+      "accounts": 1,
+      "approved_requests": 1,
+      "approved_recurring_charges": 0,
+      "any_event_future": 0,
+      "positive_event_without_expiry": 0
+    }
+  ],
+  "pix_mismatch_event_groups": [
+    {
+      "event_type": "EXPIRED_BY_CRON",
+      "source": "system",
+      "platform": null,
+      "validity": "sem_validade",
+      "amount_category": "null",
+      "events": 1
+    },
+    {
+      "event_type": "INITIAL_PURCHASE",
+      "source": "pix",
+      "platform": "manual",
+      "validity": "passada",
+      "amount_category": "positivo",
+      "events": 1
+    }
+  ],
+  "manual_review": [
+    {
+      "plan_tier": "master",
+      "premium_platform": "manual",
+      "stripe_customer_exists": false,
+      "pix_recurring_exists": false,
+      "any_pix_request": true,
+      "any_premium_event": false,
+      "accounts": 1
+    }
+  ],
+  "pix_financial_coverage": [
+    {
+      "status": "approved",
+      "subscription_requests": 138,
+      "with_provider_payment_id": 115,
+      "positive_cents": "257417"
+    },
+    {
+      "status": "rejected",
+      "subscription_requests": 17,
+      "with_provider_payment_id": 13,
+      "positive_cents": "29973"
+    }
+  ],
+  "manual_pix_status": [
+    {
+      "status": "rejected",
+      "requests": 2
+    }
+  ],
+  "pix_validity_gap": [
+    {
+      "accounts": 1,
+      "user_expiry_after_last_event": 1,
+      "approved_request_after_last_positive_event": 0
+    }
+  ]
+}

@@ -195,6 +195,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginHorizontal: 20,
     marginTop: 12,
+    marginBottom: 16,
     padding: 14,
     borderRadius: 18,
     backgroundColor: colors.surface,

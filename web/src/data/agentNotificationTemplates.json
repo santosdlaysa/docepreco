@@ -1,0 +1,130 @@
+[
+  {
+    "id": "notif-boas-vindas",
+    "title": "Boas-vindas ao DocePreço",
+    "body": "Comece com uma receita que você já faz. Separe os ingredientes, as quantidades e o rendimento para organizar seus custos.",
+    "target": "all",
+    "eligibility": "Somente cadastros novos, criados nas últimas 24 horas, ainda sem receita e sem boas-vindas enviada. Exigir permissão de push e excluir recusa ou incidente aberto. all é público candidato, não seleção suficiente; sem filtro adicional verificado, não enviar.",
+    "action": "Abrir cadastro de receita apenas após validar destino disponível. Texto e critério são proposta manual, sem automação, autorização de envio ou envio amplo."
+  },
+  {
+    "id": "notif-primeira-receita",
+    "title": "Sua primeira receita, passo a passo",
+    "body": "Escolha uma receita simples e confira ingredientes, quantidades e rendimento. Um passo de cada vez para começar a precificar.",
+    "target": "all",
+    "eligibility": "Somente conta sem receita, com cadastro há mais de 24 horas, sem outra mensagem de ativação nas últimas 48 horas. Exigir permissão de push, excluir recusa e incidente. all não comprova ausência de receita; sem esse filtro, não enviar.",
+    "action": "Abrir tutorial ou cadastro somente após verificar destino. Não automatizado; não disparar ao segmento inteiro."
+  },
+  {
+    "id": "notif-custos-atualizados",
+    "title": "Mudou o custo de um ingrediente?",
+    "body": "Confira as receitas que usam esse ingrediente e revise o preço sugerido antes da próxima venda.",
+    "target": "all",
+    "eligibility": "Somente usuário com atualização recente de custo confirmada e receitas vinculadas ao ingrediente alterado. Não afirmar recálculo automático. Exigir permissão, excluir recusa e contato repetido. Sem associação verificada entre mudança e receitas, não enviar.",
+    "action": "Abrir lista de receitas afetadas apenas se o destino existir; caso contrário abrir receita verificada. Proposta manual, sem envio automático ou amplo."
+  },
+  {
+    "id": "notif-rotina-vendas",
+    "title": "Organize as vendas do dia",
+    "body": "Se vendeu hoje, confira o que já foi registrado e inclua as vendas que faltam. Assim fica mais fácil acompanhar sua rotina.",
+    "target": "premium",
+    "eligibility": "Somente Premium vigente com recurso de vendas confirmado no plano atual e interesse em lembrete de rotina. Exigir permissão, respeitar horário local e excluir recusa ou lembrete já enviado no dia. O segmento sozinho não basta.",
+    "action": "Abrir vendas em destino verificado. Para Master, revisar elegibilidade separadamente; não ampliar público automaticamente. Proposta manual, não agendada."
+  },
+  {
+    "id": "notif-revisao-ingredientes",
+    "title": "Seus ingredientes estão em dia?",
+    "body": "Compare os valores cadastrados com suas compras recentes. Custos atualizados ajudam você a revisar o preço das receitas.",
+    "target": "all",
+    "eligibility": "Somente conta com ingredientes cadastrados e sem revisão recente identificada em dados disponíveis. Exigir permissão, excluir recusa, incidente e contato semelhante nos últimos sete dias. Se não for possível confirmar a condição, não enviar ao segmento inteiro.",
+    "action": "Abrir ingredientes em destino validado. A janela é sugestão editorial, não rotina implementada; nenhum envio automático."
+  },
+  {
+    "id": "notif-orcamento",
+    "title": "Prepare seu próximo orçamento",
+    "body": "Antes de compartilhar um orçamento, revise os itens, as quantidades e os valores. Confira também as condições combinadas com o cliente.",
+    "target": "premium",
+    "eligibility": "Somente Premium vigente com orçamento disponível no plano atual e intenção de preparar orçamento confirmada. Exigir permissão, excluir recusa e envio repetido. Não presumir encomenda ou orçamento existente apenas pelo segmento.",
+    "action": "Abrir recurso de orçamento somente com destino confirmado. Para outro plano, revisar benefício e público em separado. Material manual, sem envio amplo ou automático."
+  },
+  {
+    "id": "notif-loja-pedidos-master",
+    "title": "Revise sua loja online",
+    "body": "Confira o catálogo, os preços e as condições de entrega da sua loja. Se houver pedidos, acompanhe os próximos passos no app.",
+    "target": "master",
+    "eligibility": "Somente Master vigente com loja online ativa e recurso confirmado. Não afirmar que há novo pedido. Exigir permissão e excluir recusa, incidente de loja e lembrete repetido nos últimos sete dias. master é apenas filtro inicial.",
+    "action": "Abrir gerenciamento da loja em destino validado. Não substitui notificação transacional de pedido nem cria evento de pedido. Proposta manual sem automação."
+  },
+  {
+    "id": "notif-assinatura-expirada",
+    "title": "Quer continuar com seu plano?",
+    "body": "Seu período de acesso ao plano pago terminou. Se quiser renovar, confira as opções pelo canal em que você assinou.",
+    "target": "expired",
+    "eligibility": "Somente expiração individual confirmada na hora do envio, sem novo pagamento, renovação em processamento, disputa, pagamento informado ou recusa de contato. Validar canal original e excluir conta já contatada no ciclo. expired sozinho não comprova dívida nem autoriza envio.",
+    "action": "Orientar gerenciamento no canal de compra verificado, sem link inventado ou cobrança externa substituta. Revisão manual obrigatória; não gerar débito, bloqueio ou envio automático."
+  },
+  {
+    "id": "notif-retorno-inativo",
+    "title": "Uma receita para retomar",
+    "body": "Quer voltar a organizar sua confeitaria? Comece revisando uma receita ou cadastrando a primeira. Se precisar, peça ajuda para continuar.",
+    "target": "all",
+    "eligibility": "Somente inatividade confirmada de pelo menos 14 dias, sem outro contato de retorno nos últimos sete dias. Exigir permissão e excluir recusa, incidente, disputa e retomada de uso recente. Não usar all como substituto do filtro de inatividade.",
+    "action": "Abrir receitas ou ajuda apenas em destino verificado. Janela proposta para revisão, sem agendamento ou disparo automático."
+  },
+  {
+    "id": "notif-suporte-atualizacao",
+    "title": "Precisa de ajuda com o app?",
+    "body": "Se encontrou uma dificuldade, confira a versão instalada e conte ao suporte o que aconteceu. Vamos orientar o próximo passo.",
+    "target": "all",
+    "eligibility": "Somente usuários com relato de dificuldade que solicitaram orientação e podem receber resposta por push. Excluir casos já resolvidos, recusa e contato duplicado. Não alegar atualização disponível ou correção sem evidência de versão publicada; all não seleciona esses casos.",
+    "action": "Abrir suporte em destino validado. Não prometer solução ou nova versão; nenhuma automação, publicação ou envio amplo está configurado."
+  },
+  {
+    "id": "notif-vencimento-proximo",
+    "title": "Seu acesso está perto de vencer",
+    "body": "Se quiser continuar com o plano, confira a renovação pelo canal em que você assinou. Se já pagou, peça ajuda para verificar o acesso.",
+    "target": "premium",
+    "eligibility": "Somente Premium vigente com vencimento confirmado nos próximos dois dias e renovação manual verificada. Reconsultar pagamento antes do envio; excluir renovação automática, pagamento pendente/aprovado, disputa, pagamento informado e recusa. Não há segmento nativo de vencimento; sem seleção adicional comprovada, não enviar. Para Master, avaliar separadamente.",
+    "action": "Abrir gerenciamento pelo canal confirmado, sem criar link ou novo pagamento. Template manual, não agendado; nunca enviar ao segmento premium inteiro."
+  },
+  {
+    "id": "notif-falha-renovacao",
+    "title": "Vamos conferir sua renovação?",
+    "body": "A última tentativa de renovação não foi concluída. Confira a situação no canal de assinatura. Se já pagou, peça ajuda antes de tentar novamente.",
+    "target": "expired",
+    "eligibility": "Somente assinatura expirada com falha de renovação comprovada no provedor e sem confirmação posterior, pagamento pendente, disputa, pagamento informado ou recusa. Canal deve estar verificado. Não há segmento nativo de falha; expired não prova falha. Sem seleção individual adicional, não enviar.",
+    "action": "Orientar verificação no canal original, não repetir débito. Modelo manual sem disparo amplo ou automático; casos ainda vigentes exigem outra seleção verificada, não alteração indiscriminada do target."
+  },
+  {
+    "id": "notif-nova-versao",
+    "title": "Nova versão do DocePreço",
+    "body": "Atualize o aplicativo para acessar as novidades e melhorias desta versão. Depois, confira o que mudou no app.",
+    "target": "all",
+    "eligibility": "Usar somente após confirmar que a nova versão está publicada na loja da plataforma destinatária. Excluir quem já atualizou quando esse dado estiver disponível.",
+    "action": "Revisar disponibilidade por plataforma antes do envio; não incluir link de loja sem validação."
+  },
+  {
+    "id": "notif-novo-pedido",
+    "title": "Tem pedido novo na sua loja",
+    "body": "Abra sua loja no DocePreço para conferir os itens, o pagamento e os dados de entrega da nova encomenda.",
+    "target": "master",
+    "eligibility": "Somente dono da loja que realmente recebeu um pedido novo, ainda não notificado. Master é grupo candidato e não identifica o dono; sem seleção individual não enviar.",
+    "action": "Abrir o pedido confirmado. Evitar duplicar o push transacional existente de novo pedido; não disparar para todo Master."
+  },
+  {
+    "id": "notif-estoque-baixo",
+    "title": "Hora de conferir seu estoque",
+    "body": "Um item está no limite mínimo cadastrado. Confira a quantidade disponível e planeje a reposição antes da próxima produção.",
+    "target": "all",
+    "eligibility": "Somente responsável por item com estoque atual no limite mínimo ou abaixo, conforme dado confirmado e sem alerta duplicado. Exige filtro individual; não enviar a todos.",
+    "action": "Abrir estoque e revisar o item; este modelo não cria monitoramento automático."
+  },
+  {
+    "id": "notif-resumo-vendas",
+    "title": "Confira suas vendas do dia",
+    "body": "Revise as vendas registradas e os pagamentos do dia no DocePreço. Assim você acompanha o que entrou e o que ainda falta receber.",
+    "target": "all",
+    "eligibility": "Somente contas com vendas no dia local e sem resumo já enviado. Confirmar configuração de notificações; não duplicar o resumo diário existente.",
+    "action": "Abrir vendas ou relatório verificado; o texto não presume recebimento de todas as vendas."
+  }
+]

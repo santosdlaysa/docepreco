@@ -453,18 +453,24 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
 
             {/* Assinantes */}
             <View style={st.miniRow}>
-              <MiniCard
-                label="Ativos" value={subDash.overview.activeSubscribers}
-                icon="checkmark-circle-outline" bg="#F0FDF4" iconColor={GREEN}
-              />
-              <MiniCard
-                label="Expirando (7d)" value={subDash.overview.expiringSubscribers}
-                icon="alert-circle-outline" bg="#FFFBEB" iconColor="#D97706"
-              />
-              <MiniCard
-                label="Expirados" value={subDash.overview.expiredSubscribers}
-                icon="close-circle-outline" bg="#FEF2F2" iconColor={RED}
-              />
+              <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.75} onPress={() => navigation.navigate('AdminUsers', { subscriptionStatus: 'active' })}>
+                <MiniCard
+                  label="Ativos" value={subDash.overview.activeSubscribers}
+                  icon="checkmark-circle-outline" bg="#F0FDF4" iconColor={GREEN}
+                />
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.75} onPress={() => navigation.navigate('AdminUsers', { subscriptionStatus: 'expiring' })}>
+                <MiniCard
+                  label="Expirando (7d)" value={subDash.overview.expiringSubscribers}
+                  icon="alert-circle-outline" bg="#FFFBEB" iconColor="#D97706"
+                />
+              </TouchableOpacity>
+              <TouchableOpacity style={{ flex: 1 }} activeOpacity={0.75} onPress={() => navigation.navigate('AdminUsers', { subscriptionStatus: 'expired' })}>
+                <MiniCard
+                  label="Expirados" value={subDash.overview.expiredSubscribers}
+                  icon="close-circle-outline" bg="#FEF2F2" iconColor={RED}
+                />
+              </TouchableOpacity>
             </View>
 
             {/* Gráfico de receita semanal */}

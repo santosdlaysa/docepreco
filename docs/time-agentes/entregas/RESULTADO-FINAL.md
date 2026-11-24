@@ -1,5 +1,7 @@
 # Resultado do time DocePreço
 
+Atualização de implementação e testes: [Fechamento da execução](2026-11-24-fechamento-execucao.md).
+
 Rodada de 24/11/2026. Este é o ponto de entrada para os resultados, não uma lista de demandas futuras. Os materiais escritos e arquivos operacionais estão disponíveis; publicações, envios e transações não foram realizados.
 
 ## Onde estão as entregas

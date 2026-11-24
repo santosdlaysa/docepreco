@@ -137,7 +137,7 @@ function RevenueChart({ timeseries }: { timeseries: any[] }) {
 
   return (
     <div className={`${card} p-5`}>
-      <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">Receita - Últimos 30 dias</h3>
+      <h3 className="text-base font-bold text-gray-900 dark:text-white mb-4">Valores registrados - últimos 90 dias</h3>
       {data.length === 0 ? (
         <p className="text-center text-gray-400 text-sm py-8">Sem dados</p>
       ) : (
@@ -147,7 +147,7 @@ function RevenueChart({ timeseries }: { timeseries: any[] }) {
             <YAxis tick={{ fontSize: 12, fill: '#9ca3af' }} />
             <Tooltip formatter={(v: any) => fmt(typeof v === 'number' ? v : 0)} />
             <Legend />
-            <Line type="monotone" dataKey="revenue" stroke="#2646E1" strokeWidth={2} name="Receita (R$)" dot={false} />
+            <Line type="monotone" dataKey="revenue" stroke="#2646E1" strokeWidth={2} name="Valor registrado (R$)" dot={false} />
           </LineChart>
         </ResponsiveContainer>
       )}
@@ -798,9 +798,13 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
       </div>
 
       {/* Key Metrics */}
+      <p className="text-sm text-gray-500 dark:text-gray-400">
+        Valores registrados nos eventos de assinatura podem incluir estimativas históricas.
+        Não representam repasses conciliados, valores líquidos ou lucro.
+      </p>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatMetric
-          label="Assinantes Ativos"
+          label="Acessos ativos"
           value={overview.activeSubscribers}
           sub={`${overview.expiringSubscribers} expirando em 7d`}
           icon={Users}
@@ -814,23 +818,23 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
           color="bg-yellow-500"
         />
         <StatMetric
-          label="Receita Total"
+          label="Total registrado"
           value={fmt(overview.totalReceivedBRL)}
-          sub={`Avg: ${fmt(overview.avgValueBRL)}`}
+          sub={`Média por evento positivo: ${fmt(overview.avgValueBRL)}`}
           icon={DollarSign}
           color="bg-emerald-500"
         />
         <StatMetric
-          label="MRR"
+          label="Média mensal por ativo"
           value={fmt(overview.mrr)}
-          sub="Receita mensal média"
+          sub="Valor registrado no mês / acessos ativos"
           icon={TrendingUp}
           color="bg-purple-500"
         />
         <StatMetric
-          label="ARR"
+          label="Média por ativo × 12"
           value={fmt(overview.arr)}
-          sub={overview.momGrowth >= 0 ? `+${overview.momGrowth.toFixed(1)}% MoM` : `${overview.momGrowth.toFixed(1)}% MoM`}
+          sub="Extrapolação da média parcial; não é ARR"
           icon={Crown}
           color="bg-pink-500"
         />
@@ -842,7 +846,7 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
           color="bg-cyan-500"
         />
         <StatMetric
-          label="Receita de renovações"
+          label="Renovações registradas"
           value={fmt(overview.monthlyRenewalRevenueBRL)}
           sub="Gerada neste mês"
           icon={DollarSign}
@@ -856,7 +860,7 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
           <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Este Mês</p>
           <p className="text-3xl font-bold text-gray-900 dark:text-white">{fmt(overview.monthlyReceivedBRL)}</p>
           <div className="mt-3">
-            <TrendBadge value={overview.momGrowth} label="vs. mês anterior" />
+            <TrendBadge value={overview.momGrowth} label="parcial vs. mês anterior completo" />
           </div>
         </div>
         <div className={`${card} p-5`}>
@@ -865,13 +869,13 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
           <p className="text-xs text-gray-400 mt-3">Comparação</p>
         </div>
         <div className={`${card} p-5`}>
-          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Taxa de Churn</p>
+          <p className="text-xs font-medium text-gray-400 uppercase tracking-wider mb-1">Proporção de acessos expirados</p>
           <p className="text-3xl font-bold text-gray-900 dark:text-white">
             {overview.activeSubscribers > 0
               ? ((overview.expiredSubscribers / (overview.activeSubscribers + overview.expiredSubscribers)) * 100).toFixed(1)
               : '0'}%
           </p>
-          <p className="text-xs text-gray-400 mt-3">Assinaturas expiradas</p>
+          <p className="text-xs text-gray-400 mt-3">Retrato de ativos e expirados; não mede churn mensal</p>
         </div>
       </div>
 
@@ -894,7 +898,7 @@ export function SubscriptionsPage({ toast }: { toast: (msg: string, type?: 'succ
                 <th className="text-left px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Plataforma</th>
                 <th className="text-center px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Assinantes</th>
                 <th className="text-center px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Eventos</th>
-                <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Receita Total</th>
+                <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Total registrado</th>
                 <th className="text-right px-5 py-2.5 text-xs font-medium text-gray-400 uppercase tracking-wider">Valor Médio</th>
               </tr>
             </thead>

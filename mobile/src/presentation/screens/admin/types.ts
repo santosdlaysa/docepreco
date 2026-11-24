@@ -1,6 +1,6 @@
 export type AdminStackParamList = {
   AdminDashboard: undefined;
-  AdminUsers: undefined;
+  AdminUsers: { subscriptionStatus?: 'active' | 'expiring' | 'expired' } | undefined;
   AdminLogs: undefined;
   AdminUserDetail: { userId: string };
   AdminPix: undefined;
