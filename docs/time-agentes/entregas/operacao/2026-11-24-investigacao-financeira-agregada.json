@@ -1,0 +1,246 @@
+{
+  "context": [
+    {
+      "observed_at": "2026-11-24T12:56:25.742Z",
+      "read_only": "on",
+      "timezone": "UTC"
+    }
+  ],
+  "missing": [
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "master",
+      "month": "2026-07",
+      "value_category": "zero",
+      "events": 2,
+      "accounts": 1,
+      "events_linked_active": 0
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "premium",
+      "month": "2026-07",
+      "value_category": "zero",
+      "events": 1,
+      "accounts": 1,
+      "events_linked_active": 0
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "master",
+      "month": "2026-08",
+      "value_category": "zero",
+      "events": 1,
+      "accounts": 1,
+      "events_linked_active": 0
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "premium",
+      "month": "2026-08",
+      "value_category": "zero",
+      "events": 2,
+      "accounts": 2,
+      "events_linked_active": 1
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "premium",
+      "month": "2026-09",
+      "value_category": "zero",
+      "events": 4,
+      "accounts": 3,
+      "events_linked_active": 3
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "master",
+      "month": "2026-10",
+      "value_category": "zero",
+      "events": 2,
+      "accounts": 1,
+      "events_linked_active": 0
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "premium",
+      "month": "2026-10",
+      "value_category": "zero",
+      "events": 2,
+      "accounts": 2,
+      "events_linked_active": 1
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "master",
+      "month": "2026-11",
+      "value_category": "zero",
+      "events": 4,
+      "accounts": 3,
+      "events_linked_active": 4
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "event_type": "INITIAL_PURCHASE",
+      "product_category": "premium",
+      "month": "2026-11",
+      "value_category": "zero",
+      "events": 2,
+      "accounts": 1,
+      "events_linked_active": 2
+    }
+  ],
+  "active_evidence": [
+    {
+      "plan_tier": "master",
+      "premium_platform": "card",
+      "without_expiry": false,
+      "historical_positive_event": true,
+      "historical_server_source_positive": true,
+      "positive_event_future_expiry": true,
+      "accounts": 2
+    },
+    {
+      "plan_tier": "master",
+      "premium_platform": "manual",
+      "without_expiry": true,
+      "historical_positive_event": false,
+      "historical_server_source_positive": false,
+      "positive_event_future_expiry": false,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "master",
+      "premium_platform": "pix",
+      "without_expiry": false,
+      "historical_positive_event": true,
+      "historical_server_source_positive": true,
+      "positive_event_future_expiry": true,
+      "accounts": 4
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "card",
+      "without_expiry": false,
+      "historical_positive_event": true,
+      "historical_server_source_positive": true,
+      "positive_event_future_expiry": true,
+      "accounts": 4
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "ios",
+      "without_expiry": false,
+      "historical_positive_event": true,
+      "historical_server_source_positive": false,
+      "positive_event_future_expiry": true,
+      "accounts": 2
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "pix",
+      "without_expiry": false,
+      "historical_positive_event": true,
+      "historical_server_source_positive": true,
+      "positive_event_future_expiry": false,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "pix",
+      "without_expiry": false,
+      "historical_positive_event": true,
+      "historical_server_source_positive": true,
+      "positive_event_future_expiry": true,
+      "accounts": 9
+    }
+  ],
+  "without_expiry": [
+    {
+      "plan_tier": "master",
+      "premium_platform": "manual",
+      "trial_used": false,
+      "any_event": false,
+      "positive_event": false,
+      "approved_pix_request": false,
+      "accounts": 1
+    }
+  ],
+  "expiring": [
+    {
+      "plan_tier": "premium",
+      "premium_platform": "card",
+      "expiry_date_utc": "2026-11-25",
+      "whatsapp_marketing_opt_in": false,
+      "latest_pix_recurring_status": "sem_registro",
+      "historical_positive_event": true,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "master",
+      "premium_platform": "pix",
+      "expiry_date_utc": "2026-11-26",
+      "whatsapp_marketing_opt_in": false,
+      "latest_pix_recurring_status": "sem_registro",
+      "historical_positive_event": true,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "card",
+      "expiry_date_utc": "2026-11-27",
+      "whatsapp_marketing_opt_in": false,
+      "latest_pix_recurring_status": "sem_registro",
+      "historical_positive_event": true,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "ios",
+      "expiry_date_utc": "2026-11-30",
+      "whatsapp_marketing_opt_in": false,
+      "latest_pix_recurring_status": "sem_registro",
+      "historical_positive_event": true,
+      "accounts": 1
+    }
+  ],
+  "totals": [
+    {
+      "active": 23,
+      "without_expiry": 1,
+      "expiring": 4
+    }
+  ],
+  "missing_totals": [
+    {
+      "events": 20,
+      "accounts": 14
+    }
+  ],
+  "missing_links": [
+    {
+      "zero_events": 20,
+      "accounts": 14,
+      "zero_events_linked_active": 11,
+      "active_accounts_with_zero_event": 7,
+      "accounts_with_other_positive_event": 12
+    }
+  ]
+}

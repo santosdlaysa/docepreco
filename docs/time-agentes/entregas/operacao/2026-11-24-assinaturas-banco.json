@@ -1,0 +1,129 @@
+{
+  "context": [
+    {
+      "observed_at": "2026-11-24T12:45:27.462Z",
+      "read_only": "on",
+      "database_timezone": "UTC"
+    }
+  ],
+  "users": [
+    {
+      "accounts": 2140,
+      "active_admin": 23,
+      "active_dated": 22,
+      "without_expiry": 1,
+      "expiring_7d": 4
+    }
+  ],
+  "tiers": [
+    {
+      "plan_tier": "master",
+      "accounts": 7
+    },
+    {
+      "plan_tier": "premium",
+      "accounts": 16
+    }
+  ],
+  "events": [
+    {
+      "event_type": "RENEWAL",
+      "currency": "BRL",
+      "events": 21,
+      "positive_cents": "44319",
+      "missing_or_nonpositive": 0
+    },
+    {
+      "event_type": "INITIAL_PURCHASE",
+      "currency": "BRL",
+      "events": 179,
+      "positive_cents": "289146",
+      "missing_or_nonpositive": 20
+    },
+    {
+      "event_type": "EXPIRED_BY_CRON",
+      "currency": "BRL",
+      "events": 170,
+      "positive_cents": "0",
+      "missing_or_nonpositive": 170
+    }
+  ],
+  "monthly": [
+    {
+      "period": "2026-11",
+      "currency": "BRL",
+      "events": 25,
+      "positive_cents": "45747"
+    },
+    {
+      "period": "2026-10",
+      "currency": "BRL",
+      "events": 38,
+      "positive_cents": "73652"
+    },
+    {
+      "period": "2026-09",
+      "currency": "BRL",
+      "events": 44,
+      "positive_cents": "71903"
+    },
+    {
+      "period": "2026-08",
+      "currency": "BRL",
+      "events": 29,
+      "positive_cents": "56100"
+    },
+    {
+      "period": "2026-07",
+      "currency": "BRL",
+      "events": 38,
+      "positive_cents": "55929"
+    },
+    {
+      "period": "2026-06",
+      "currency": "BRL",
+      "events": 23,
+      "positive_cents": "26644"
+    },
+    {
+      "period": "2026-05",
+      "currency": "BRL",
+      "events": 3,
+      "positive_cents": "3490"
+    }
+  ],
+  "sources": [
+    {
+      "source": "app_sync",
+      "platform": "ios",
+      "store": null,
+      "currency": "BRL",
+      "events": 17,
+      "positive_cents": "25330"
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "store": "STRIPE",
+      "currency": "BRL",
+      "events": 38,
+      "positive_cents": "40419"
+    },
+    {
+      "source": "pix",
+      "platform": "manual",
+      "store": "PIX",
+      "currency": "BRL",
+      "events": 144,
+      "positive_cents": "266226"
+    },
+    {
+      "source": "app_sync",
+      "platform": "android",
+      "store": null,
+      "currency": "BRL",
+      "events": 1,
+      "positive_cents": "1490"
+    }
+  ]
+}

@@ -1,0 +1,370 @@
+[
+  {
+    "title": "Peça 1 — Dia 1: custo dos ingredientes (carrossel)",
+    "id": "conteudo-C1",
+    "text": "Objetivo: ensinar custo proporcional. Cards: 1. Quanto do pacote entra na sua receita? 2. Um pacote de 1 kg por R$ 20 custa R$ 0,02 por grama. 3. Se usar 250 g, o custo dessa porção é R$ 5. 4. Faça isso com cada ingrediente. 5. Comece registrando uma receita que você já produz.\nLegenda: O valor do pacote e o custo usado na receita são diferentes. Anote preço, quantidade comprada e quantidade utilizada para calcular sua porção.\nVisual: pacote ilustrativo, balança e exemplo escrito; não simular captura do app.\nAção: salve para conferir sua próxima receita.",
+    "area": "Conteúdo"
+  },
+  {
+    "title": "Peça 2 — Dia 2: rendimento (Reel)",
+    "id": "conteudo-C2",
+    "text": "Objetivo: mostrar divisão do custo. Cena 1, bandeja: “Sua receita rende quantas unidades de verdade?” Cena 2, vinte brownies: “Se o lote custa R$ 40 e rende 20 unidades, o custo médio é R$ 2 por unidade.” Cena 3, caderno: “Anote o rendimento real e acrescente os demais custos antes de definir o preço.”\nLegenda: Porções e perdas mudam o custo por unidade. Meça o rendimento do seu preparo.\nVisual: gravação de preparo ou ilustração, sem alegação de lucro.\nAção: confira o rendimento de uma receita sua.",
+    "area": "Conteúdo"
+  },
+  {
+    "title": "Peça 3 — Dia 3: custos adicionais (post)",
+    "id": "conteudo-C3",
+    "text": "Objetivo: lembrar custos fora dos ingredientes. Texto da arte: “A embalagem também entra na conta.” Legenda: Além dos ingredientes, considere embalagem, tempo de trabalho e outros custos aplicáveis. Diferencie o custo do lote do custo de cada unidade para evitar contar duas vezes. Escolha uma receita e faça essa conferência hoje.\nVisual: embalagem, etiqueta e lista de custos.\nAção: revisar custos adicionais.",
+    "area": "Conteúdo"
+  },
+  {
+    "title": "Peça 4 — Dia 4: margem (Reel)",
+    "id": "conteudo-C4",
+    "text": "Objetivo: evitar confusão entre acréscimo e margem sobre venda. Cena 1: “Acrescentar 50% ao custo não significa margem de 50% sobre o preço.” Cena 2: “Custo de R$ 10 com acréscimo de 50% vira R$ 15.” Cena 3: “A diferença é R$ 5: um terço do preço. Confira a base do percentual antes de comparar.”\nLegenda: O significado do percentual muda o cálculo. E o resultado só considera os custos informados.\nVisual: conta escrita, sem apresentar como lucro líquido garantido.\nAção: conferir o cálculo que usa hoje.",
+    "area": "Conteúdo"
+  },
+  {
+    "title": "Peça 5 — Dia 5: atualização de valores (stories, três telas)",
+    "id": "conteudo-C5",
+    "text": "Objetivo: incentivar revisão. Tela 1: “Seu chocolate ficou mais caro?” Tela 2: “Confira preço e quantidade da compra antes de atualizar o cadastro.” Tela 3: “Depois revise custo e preço das receitas que usam esse ingrediente.” Legenda/apoio: O exemplo depende dos seus custos reais; não existe aumento igual para todas as receitas.\nVisual: compra antiga e nova sem marcas de terceiros.\nAção: revisar um ingrediente.",
+    "area": "Conteúdo"
+  },
+  {
+    "title": "Peça 6 — Dia 6: organização de vendas (post)",
+    "id": "conteudo-C6",
+    "text": "Objetivo: criar hábito. Texto da arte: “Vendeu? Registre enquanto lembra.” Legenda: Separe alguns minutos para registrar produto, quantidade, valor e pagamento. No fim do dia, confira o que entrou e o que ainda precisa acompanhar. Venda registrada e dinheiro recebido podem ter datas diferentes.\nVisual: lista de conferência.\nAção: conferir os registros do dia.",
+    "area": "Conteúdo"
+  },
+  {
+    "title": "Peça 7 — Dia 7: rotina do app (stories, três telas)",
+    "id": "conteudo-C7",
+    "text": "Objetivo: reduzir a sensação de tarefa grande. Tela 1: “Comece por uma receita.” Tela 2: “Separe ingredientes, quantidades e rendimento.” Tela 3: “Cadastre, confira os resultados e ajuste com seus dados reais.” Legenda/apoio: Você não precisa organizar todo o catálogo de uma vez. Se travar em uma etapa, conte qual é sua dúvida.\nVisual: sequência ilustrada; inserir capturas reais somente após conferir a versão publicada.\nAção: iniciar primeira receita ou pedir ajuda.",
+    "area": "Conteúdo"
+  },
+  {
+    "id": "copy-W1A",
+    "area": "Copy",
+    "title": "Boas-vindas A",
+    "text": "Olá! Boas-vindas ao DocePreço. Quer ajuda para começar pela sua primeira receita?",
+    "audience": "cadastro recente com contato autorizado.",
+    "action": "iniciar diálogo."
+  },
+  {
+    "id": "copy-W1B",
+    "area": "Copy",
+    "title": "Boas-vindas B",
+    "text": "Olá! Para começar no DocePreço, escolha uma receita que você já faz. Posso orientar seu primeiro cadastro?",
+    "audience": "cadastro recente com contato autorizado.",
+    "action": "iniciar diálogo."
+  },
+  {
+    "id": "copy-W2A",
+    "area": "Copy",
+    "title": "Cadastro sem uso A",
+    "text": "Olá! Ficou alguma dúvida para começar no DocePreço? Me diga em qual etapa você parou para eu orientar.",
+    "audience": "conta elegível sem receita, sem incidente aberto.",
+    "action": "identificar bloqueio."
+  },
+  {
+    "id": "copy-W2B",
+    "area": "Copy",
+    "title": "Cadastro sem uso B",
+    "text": "Olá! Quer começar com uma receita simples? Podemos conferir juntos os ingredientes, as quantidades e o rendimento.",
+    "audience": "conta elegível sem receita, sem incidente aberto.",
+    "action": "identificar bloqueio."
+  },
+  {
+    "id": "copy-W3A",
+    "area": "Copy",
+    "title": "Primeira receita concluída A",
+    "text": "Sua primeira receita já está cadastrada! Confira ingredientes, quantidades e rendimento antes de usar o preço sugerido. Ficou alguma dúvida?",
+    "audience": "primeira receita confirmada por registro atual.",
+    "action": "revisar resultado."
+  },
+  {
+    "id": "copy-W3B",
+    "area": "Copy",
+    "title": "Primeira receita concluída B",
+    "text": "Você deu o primeiro passo no DocePreço. Agora vale revisar os custos da receita e conferir se todos os itens foram incluídos. Quer ajuda nessa revisão?",
+    "audience": "primeira receita confirmada por registro atual.",
+    "action": "revisar resultado."
+  },
+  {
+    "id": "copy-W4A",
+    "area": "Copy",
+    "title": "Interesse em plano A",
+    "text": "Que bom saber do seu interesse! O que você mais precisa organizar hoje na confeitaria? Assim posso explicar qual plano combina com sua rotina.",
+    "audience": "interesse declarado.",
+    "action": "identificar necessidade antes de recomendar."
+  },
+  {
+    "id": "copy-W4B",
+    "area": "Copy",
+    "title": "Interesse em plano B",
+    "text": "Posso ajudar a comparar os planos do DocePreço. Você procura apoio para precificar, organizar as vendas ou trabalhar com uma loja online?",
+    "audience": "interesse declarado.",
+    "action": "identificar necessidade antes de recomendar."
+  },
+  {
+    "id": "copy-W5A",
+    "area": "Copy",
+    "title": "Retorno após inatividade A",
+    "text": "Olá! Quer retomar o uso do DocePreço? Podemos começar revisando uma receita que você já cadastrou ou criando a primeira.",
+    "audience": "inatividade confirmada, contato autorizado, sem recusa ou incidente aberto.",
+    "action": "oferecer retomada."
+  },
+  {
+    "id": "copy-W5B",
+    "area": "Copy",
+    "title": "Retorno após inatividade B",
+    "text": "Olá! Se quiser voltar ao DocePreço, me conte o que ficou difícil na sua rotina. Posso orientar um próximo passo simples.",
+    "audience": "inatividade confirmada, contato autorizado, sem recusa ou incidente aberto.",
+    "action": "oferecer retomada."
+  },
+  {
+    "id": "copy-N1",
+    "area": "Copy",
+    "title": "Ativacao Unica Comece por uma receita",
+    "text": "Separe ingredientes, quantidades e rendimento para iniciar seu cadastro.",
+    "audience": "Cadastro sem receita",
+    "action": "Abrir cadastro de receita"
+  },
+  {
+    "id": "copy-N2",
+    "area": "Copy",
+    "title": "Ativacao Unica Precisa de ajuda?",
+    "text": "Uma receita de cada vez. Veja como começar a organizar seus custos no DocePreço.",
+    "audience": "Cadastro sem receita",
+    "action": "Abrir tutorial verificado"
+  },
+  {
+    "id": "copy-N3",
+    "area": "Copy",
+    "title": "Ativacao Unica Confira seus custos",
+    "text": "Revise quantidades, rendimento e custos adicionais da sua receita.",
+    "audience": "Primeira receita confirmada",
+    "action": "Abrir receita correspondente"
+  },
+  {
+    "title": "Não sabe começar",
+    "action": "Nome da receita; atendimento acompanha o primeiro cadastro.",
+    "id": "atendimento-AT-01",
+    "text": "Vamos começar por uma receita que você já faz. Primeiro, separe o preço e a quantidade comprada de cada ingrediente. Qual receita você gostaria de cadastrar?",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Ingrediente",
+    "action": "Unidade, quantidade e preço; valores do exemplo são fictícios. Suporte se o cadastro falhar.",
+    "id": "atendimento-AT-02",
+    "text": "Para calcular o custo, precisamos do preço e da quantidade da embalagem comprada. Por exemplo: um pacote de 1 kg por R$ 10. Qual informação está deixando você em dúvida?",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Rendimento",
+    "action": "Quantidade e unidade do rendimento; atendimento, com suporte se houver divergência.",
+    "id": "atendimento-AT-03",
+    "text": "O rendimento deve representar quanto a receita inteira produz. Se ela rende 20 unidades iguais, use esse total para calcular o custo de cada uma. Qual rendimento você está tentando informar?",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Plano",
+    "action": "Necessidade; comercial consulta os benefícios e preços vigentes antes de recomendar.",
+    "id": "atendimento-AT-04",
+    "text": "Posso ajudar a escolher conforme o que você precisa. Você quer organizar a precificação e as vendas ou também receber encomendas pela loja online?",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Tutorial",
+    "action": "Etapa atual; atendimento usa tutorial verificado. Não afirmar que há vídeo pronto.",
+    "id": "atendimento-AT-05",
+    "text": "Posso te orientar passo a passo por aqui. Você prefere começar pelo cadastro dos ingredientes ou pela primeira receita?",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Senha recusada",
+    "action": "Mensagem, forma de login e plataforma; suporte se persistir.",
+    "id": "atendimento-AT-06",
+    "text": "Entendi. Confira se está usando o mesmo e-mail e a mesma forma de entrada do cadastro. Se foi por e-mail e senha, use a opção de recuperação na tela de entrada. Qual mensagem aparece? Não envie sua senha.",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Recuperação não chega",
+    "action": "Horário com fuso, mensagem e provedor de e-mail; suporte verifica fluxo e entrega em acesso autorizado.",
+    "id": "atendimento-AT-07",
+    "text": "Confira a caixa de spam e se o endereço informado está correto. Você pode me dizer aproximadamente quando fez a solicitação e qual mensagem apareceu no app? Não envie o código de recuperação.",
+    "area": "Atendimento"
+  },
+  {
+    "title": "App fecha",
+    "action": "Ação, modelo, versões, horário; suporte. Não orientar apagar dados ou reinstalar nesta triagem.",
+    "id": "atendimento-AT-08",
+    "text": "Vamos investigar. O aplicativo fecha logo ao abrir ou depois de alguma ação? Informe também o modelo do celular e as versões do sistema e do app, se conseguir consultar.",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Valor inesperado",
+    "action": "Esperado/observado, unidades e custos; suporte investiga. Não atribuir erro ao cliente.",
+    "id": "atendimento-AT-09",
+    "text": "Vamos conferir com um exemplo. Qual era o valor esperado e qual apareceu? Se puder, envie os valores do ingrediente, quantidade usada e rendimento da receita, sem dados pessoais.",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Pagou sem acesso",
+    "action": "Canal, data, status e referência mascarada; financeiro concilia e suporte verifica acesso. Não pedir novo pagamento.",
+    "id": "atendimento-AT-10",
+    "text": "Vamos verificar o pagamento e a liberação do acesso. A assinatura foi feita pelo iPhone, Google Play ou pelo site? Informe a data e o status mostrado no comprovante, ocultando dados pessoais e bancários.",
+    "area": "Atendimento"
+  },
+  {
+    "title": "Diagnóstico — Pergunta 1",
+    "action": "Usar somente perguntas ainda não respondidas",
+    "id": "comercial-1",
+    "text": "Qual parte da sua rotina você mais precisa organizar hoje: precificação, vendas ou encomendas online?",
+    "area": "Comercial"
+  },
+  {
+    "title": "Diagnóstico — Pergunta 2",
+    "action": "Usar somente perguntas ainda não respondidas",
+    "id": "comercial-2",
+    "text": "Você já cadastrou e precificou uma receita no DocePreço?",
+    "area": "Comercial"
+  },
+  {
+    "title": "Diagnóstico — Pergunta 3",
+    "action": "Usar somente perguntas ainda não respondidas",
+    "id": "comercial-3",
+    "text": "O que falta para você decidir se uma assinatura faz sentido?",
+    "area": "Comercial"
+  },
+  {
+    "title": "Objeção — Falta de tempo",
+    "action": "Orientar conforme necessidade; suspender venda diante de erro, divergência de pagamento ou recusa",
+    "id": "comercial-4",
+    "text": "Podemos começar por uma receita que você já faz, em uma orientação curta. Quer que eu te ajude nessa primeira etapa?",
+    "area": "Comercial"
+  },
+  {
+    "title": "Objeção — Preço",
+    "action": "Orientar conforme necessidade; suspender venda diante de erro, divergência de pagamento ou recusa",
+    "id": "comercial-5",
+    "text": "Entendo. Vamos conferir os recursos e o valor atual para você avaliar se atendem ao que precisa. Qual tarefa você espera resolver com a assinatura?",
+    "area": "Comercial"
+  },
+  {
+    "title": "Objeção — Dificuldade de uso",
+    "action": "Orientar conforme necessidade; suspender venda diante de erro, divergência de pagamento ou recusa",
+    "id": "comercial-6",
+    "text": "Posso te orientar em uma tarefa de cada vez. Em qual etapa você teve dificuldade? Se houve erro no app, vamos encaminhar ao suporte antes de falar em assinatura.",
+    "area": "Comercial"
+  },
+  {
+    "title": "Objeção — Dúvida sobre utilidade",
+    "action": "Orientar conforme necessidade; suspender venda diante de erro, divergência de pagamento ou recusa",
+    "id": "comercial-7",
+    "text": "Podemos usar uma receita sua como exemplo e conferir o custo com os dados cadastrados. Assim você avalia a utilidade na sua rotina.",
+    "area": "Comercial"
+  },
+  {
+    "title": "Roteiro — Usuário Free com interesse confirmado",
+    "action": "demonstrar a tarefa escolhida e, após validar plano/preço/link oficial, apresentar as condições. Se ainda não começou, retornar ao atendimento e à campanha DP-002, sem duplicar a sequência DP-004.",
+    "id": "comercial-8",
+    "text": "Você comentou que quer organizar melhor sua rotina. Qual tarefa está tomando mais tempo hoje? Posso mostrar como o DocePreço atende essa necessidade e conferir qual plano faz sentido para você.",
+    "area": "Comercial"
+  },
+  {
+    "title": "Roteiro — Interessado na loja online",
+    "action": "demonstrar catálogo e pedido em ambiente de demonstração autorizado, sem criar pedido real. Só recomendar Master após confirmar benefícios vigentes.",
+    "id": "comercial-9",
+    "text": "Você quer deixar seu catálogo disponível para receber encomendas? Posso te mostrar o fluxo da loja online e conferir as condições do plano que inclui esse recurso.",
+    "area": "Comercial"
+  },
+  {
+    "title": "Roteiro — Ex-assinante",
+    "action": "entender motivo; se foi falha, encaminhar ao suporte; se foi adequação, demonstrar tarefa relevante e validar condições atuais. Não prometer desconto ou reativação gratuita.",
+    "id": "comercial-10",
+    "text": "Você já usou o DocePreço e gostaria de entender o que faria sentido para sua rotina hoje? Se quiser, me conte o que motivou a saída para eu orientar melhor.",
+    "area": "Comercial"
+  },
+  {
+    "id": "cobrancas-1",
+    "area": "Cobranças",
+    "title": "Modelo 1",
+    "text": "Olá, [nome]! Seu acesso ao DocePreço está válido até [data confirmada]. Se quiser continuar, posso te orientar sobre a renovação pelo canal em que você assinou.",
+    "audience": "Elegível: vigente;manual;vencimento_futuro_confirmado. Excluir: recusa;cancelamento;disputa;pagamento_informado;status_desconhecido;duplicata_contato;pagamento_pendente_ou_aprovado",
+    "action": "reconsultar_status;validar_campos;verificar_autorizacao"
+  },
+  {
+    "id": "cobrancas-2",
+    "area": "Cobranças",
+    "title": "Modelo 2",
+    "text": "Olá, [nome]! Hoje é a data de vencimento do seu acesso ao DocePreço. Quer ajuda para renovar pelo seu canal de assinatura?",
+    "audience": "Elegível: vigente;manual;vencimento_hoje_confirmado. Excluir: recusa;cancelamento;disputa;pagamento_informado;status_desconhecido;duplicata_contato;pagamento_pendente_ou_aprovado",
+    "action": "reconsultar_status;validar_campos;verificar_autorizacao"
+  },
+  {
+    "id": "cobrancas-3",
+    "area": "Cobranças",
+    "title": "Modelo 3",
+    "text": "Olá, [nome]! A última tentativa de renovação da sua assinatura do DocePreço não foi concluída. Quer ajuda para verificar a situação no canal em que você assinou? Se já pagou, avise para conferirmos antes de qualquer nova tentativa.",
+    "audience": "Elegível: renovacao_falhou;sem_pagamento_posterior. Excluir: recusa;cancelamento;disputa;pagamento_informado;status_desconhecido;duplicata_contato;pagamento_pendente_ou_aprovado",
+    "action": "reconsultar_status;validar_campos;verificar_autorizacao"
+  },
+  {
+    "id": "cobrancas-4",
+    "area": "Cobranças",
+    "title": "Modelo 4",
+    "text": "Olá, [nome]! Seu período de acesso ao plano pago do DocePreço terminou. Se quiser voltar, posso te apresentar as opções atuais e orientar a renovação. Gostaria de saber mais?",
+    "audience": "Elegível: expirada;sem_pagamento_em_processamento. Excluir: recusa;cancelamento;disputa;pagamento_informado;status_desconhecido;duplicata_contato;pagamento_pendente_ou_aprovado",
+    "action": "reconsultar_status;validar_campos;verificar_autorizacao"
+  },
+  {
+    "id": "cobrancas-5",
+    "area": "Cobranças",
+    "title": "Modelo 5",
+    "text": "Obrigada por avisar, [nome]. Vamos conferir o pagamento antes de orientar qualquer nova tentativa. Você pode informar a data e o canal em que pagou? Se precisar enviar um comprovante, oculte os dados pessoais e financeiros que não forem necessários para a conferência.",
+    "audience": "Elegível: pagamento_informado_ou_divergencia. Excluir: nao_iniciar_debito;nao_solicitar_dados_sensiveis",
+    "action": "pausar_cobranca;encaminhar_financeiro"
+  },
+  {
+    "title": "Login e recuperação",
+    "action": "Recolher mensagem e horário; conferir forma de login e spam; não coletar senha ou código",
+    "id": "suporte-SUP-01",
+    "text": "Evidências: Forma de entrada; plataforma; versão; ação; mensagem; horário e fuso\n\nHipóteses: Forma de entrada divergente; senha; bloqueio; rede; entrega de e-mail; código inválido\n\nTeste: AuthController.test.ts com repositório e email simulados\n\nLimite: Resposta genérica não prova entrega; sem teste de produção",
+    "area": "Suporte"
+  },
+  {
+    "title": "Aplicativo fecha",
+    "action": "Correlacionar crash autorizado; não apagar dados nem reinstalar sem avaliar sincronização",
+    "id": "suporte-SUP-02",
+    "text": "Evidências: Modelo; sistema; app/build; horário e fuso; ação anterior; recorrência\n\nHipóteses: Erro nativo ou JavaScript; build/atualização; memória; recurso específico\n\nTeste: Proposto: reproduzir em dispositivo e build equivalente, com conta de teste\n\nLimite: Não testado em dispositivo; sem diagnóstico confirmado",
+    "area": "Suporte"
+  },
+  {
+    "title": "Custo ou preço inesperado",
+    "action": "Comparar valores intermediários; markup é acréscimo sobre custo; não editar cadastro real para testar",
+    "id": "suporte-SUP-03",
+    "text": "Evidências: Esperado/observado; preço e quantidade de compra; unidade; peso; quantidade usada; rendimento; adicionais; sub-receitas; percentual\n\nHipóteses: Unidade; rendimento; custo por unidade/lote; markup confundido com margem; vínculo ausente; dado desatualizado\n\nTeste: recipeCalculator.test.ts com entradas sintéticas\n\nLimite: Cálculo local não prova sincronização ou comportamento publicado",
+    "area": "Suporte"
+  },
+  {
+    "title": "D0 — Identificar necessidade",
+    "audience": "Hipótese a testar: orientação curta ajuda parte dos cadastros sem receitas a começar. A hipótese não foi comprovada com dados atuais. Público: contas reais cadastradas há 2–7 dias, sem receita cadastrada, com contato autorizado no canal escolhido. Excluir contas de teste, recusas, incidentes de acesso ou pagamento abertos e quem criou receita antes de cada contato. Não oferecer desconto ou prometer lucro.\n\nCanal proposto: WhatsApp individual autorizado, com alternativa de tutorial dentro do app quando disponível. Nenhum contato foi realizado. Sem verba de anúncio presumida. Oferta: ajuda para cadastrar a primeira receita, sem benefício pago ou gratuidade adicional.",
+    "id": "marketing-D0",
+    "text": "Perguntar se quer ajuda para começar\n\nAntes de cada contato revalidar consentimento, ausência de receita, falta de incidentes e ausência de outro atendimento. Uma lista operacional única deve registrar responsável, status e último contato; não guardar dados de clientes neste repositório. Sair imediatamente após recusa ou primeira receita; após D5 encerrar sequência sem insistência. Comercial só recebe quem pedir informações sobre plano, sem contato simultâneo automático.\n\nMedição: Proposta: distribuir aleatoriamente elegíveis em grupo com orientação e controle com experiência habitual. Registrar atribuição e instante de entrada antes do envio. Medir criação da primeira receita em sete dias completos após entrada, inclusive para quem não respondeu. Taxa = usuários atribuídos com primeira receita na janela / todos os elegíveis atribuídos ao grupo. Comparar diferença absoluta de taxas; relatar tamanho de amostra, perdas e incerteza. Critério inicial de sucesso: melhora positiva sem aumento de recusas/reclamações; não declarar efeito conclusivo com amostra pequena. Definir tamanho de amostra após linha de base e efeito mínimo desejado.\n\nO código de conversionService.ts tem fontes first_recipe e eventos de oferta; isso não comprova evento de criação de receita. Contagem atual de receitas pode selecionar contas sem receita, mas não mede sozinha primeira criação histórica se houver exclusões. Faltam confirmar histórico de criação, consentimento, entrega de mensagens e registro de atribuição. Não foi implementado rastreamento nem consultada produção. Alcance e respostas são medidas auxiliares, não substituem ativação.",
+    "area": "Marketing"
+  },
+  {
+    "title": "D2 — Ajudar a cadastrar ingrediente e receita",
+    "audience": "Hipótese a testar: orientação curta ajuda parte dos cadastros sem receitas a começar. A hipótese não foi comprovada com dados atuais. Público: contas reais cadastradas há 2–7 dias, sem receita cadastrada, com contato autorizado no canal escolhido. Excluir contas de teste, recusas, incidentes de acesso ou pagamento abertos e quem criou receita antes de cada contato. Não oferecer desconto ou prometer lucro.\n\nCanal proposto: WhatsApp individual autorizado, com alternativa de tutorial dentro do app quando disponível. Nenhum contato foi realizado. Sem verba de anúncio presumida. Oferta: ajuda para cadastrar a primeira receita, sem benefício pago ou gratuidade adicional.",
+    "id": "marketing-D2",
+    "text": "Compartilhar tutorial somente após aceite\n\nAntes de cada contato revalidar consentimento, ausência de receita, falta de incidentes e ausência de outro atendimento. Uma lista operacional única deve registrar responsável, status e último contato; não guardar dados de clientes neste repositório. Sair imediatamente após recusa ou primeira receita; após D5 encerrar sequência sem insistência. Comercial só recebe quem pedir informações sobre plano, sem contato simultâneo automático.\n\nMedição: Proposta: distribuir aleatoriamente elegíveis em grupo com orientação e controle com experiência habitual. Registrar atribuição e instante de entrada antes do envio. Medir criação da primeira receita em sete dias completos após entrada, inclusive para quem não respondeu. Taxa = usuários atribuídos com primeira receita na janela / todos os elegíveis atribuídos ao grupo. Comparar diferença absoluta de taxas; relatar tamanho de amostra, perdas e incerteza. Critério inicial de sucesso: melhora positiva sem aumento de recusas/reclamações; não declarar efeito conclusivo com amostra pequena. Definir tamanho de amostra após linha de base e efeito mínimo desejado.\n\nO código de conversionService.ts tem fontes first_recipe e eventos de oferta; isso não comprova evento de criação de receita. Contagem atual de receitas pode selecionar contas sem receita, mas não mede sozinha primeira criação histórica se houver exclusões. Faltam confirmar histórico de criação, consentimento, entrega de mensagens e registro de atribuição. Não foi implementado rastreamento nem consultada produção. Alcance e respostas são medidas auxiliares, não substituem ativação.",
+    "area": "Marketing"
+  },
+  {
+    "title": "D5 — Resolver bloqueio",
+    "audience": "Hipótese a testar: orientação curta ajuda parte dos cadastros sem receitas a começar. A hipótese não foi comprovada com dados atuais. Público: contas reais cadastradas há 2–7 dias, sem receita cadastrada, com contato autorizado no canal escolhido. Excluir contas de teste, recusas, incidentes de acesso ou pagamento abertos e quem criou receita antes de cada contato. Não oferecer desconto ou prometer lucro.\n\nCanal proposto: WhatsApp individual autorizado, com alternativa de tutorial dentro do app quando disponível. Nenhum contato foi realizado. Sem verba de anúncio presumida. Oferta: ajuda para cadastrar a primeira receita, sem benefício pago ou gratuidade adicional.",
+    "id": "marketing-D5",
+    "text": "Perguntar se conseguiu e oferecer orientação pontual\n\nAntes de cada contato revalidar consentimento, ausência de receita, falta de incidentes e ausência de outro atendimento. Uma lista operacional única deve registrar responsável, status e último contato; não guardar dados de clientes neste repositório. Sair imediatamente após recusa ou primeira receita; após D5 encerrar sequência sem insistência. Comercial só recebe quem pedir informações sobre plano, sem contato simultâneo automático.\n\nMedição: Proposta: distribuir aleatoriamente elegíveis em grupo com orientação e controle com experiência habitual. Registrar atribuição e instante de entrada antes do envio. Medir criação da primeira receita em sete dias completos após entrada, inclusive para quem não respondeu. Taxa = usuários atribuídos com primeira receita na janela / todos os elegíveis atribuídos ao grupo. Comparar diferença absoluta de taxas; relatar tamanho de amostra, perdas e incerteza. Critério inicial de sucesso: melhora positiva sem aumento de recusas/reclamações; não declarar efeito conclusivo com amostra pequena. Definir tamanho de amostra após linha de base e efeito mínimo desejado.\n\nO código de conversionService.ts tem fontes first_recipe e eventos de oferta; isso não comprova evento de criação de receita. Contagem atual de receitas pode selecionar contas sem receita, mas não mede sozinha primeira criação histórica se houver exclusões. Faltam confirmar histórico de criação, consentimento, entrega de mensagens e registro de atribuição. Não foi implementado rastreamento nem consultada produção. Alcance e respostas são medidas auxiliares, não substituem ativação.",
+    "area": "Marketing"
+  }
+]

@@ -1,0 +1,25 @@
+"id","dia_relativo","titulo","texto_completo","fonte","estado"
+"C1","1","Peça 1 — Dia 1: custo dos ingredientes (carrossel)","Objetivo: ensinar custo proporcional. Cards: 1. Quanto do pacote entra na sua receita? 2. Um pacote de 1 kg por R$ 20 custa R$ 0,02 por grama. 3. Se usar 250 g, o custo dessa porção é R$ 5. 4. Faça isso com cada ingrediente. 5. Comece registrando uma receita que você já produz.
+Legenda: O valor do pacote e o custo usado na receita são diferentes. Anote preço, quantidade comprada e quantidade utilizada para calcular sua porção.
+Visual: pacote ilustrativo, balança e exemplo escrito; não simular captura do app.
+Ação: salve para conferir sua próxima receita.","DP-003-conteudos.md","Preparado; nao publicado"
+"C2","2","Peça 2 — Dia 2: rendimento (Reel)","Objetivo: mostrar divisão do custo. Cena 1, bandeja: “Sua receita rende quantas unidades de verdade?” Cena 2, vinte brownies: “Se o lote custa R$ 40 e rende 20 unidades, o custo médio é R$ 2 por unidade.” Cena 3, caderno: “Anote o rendimento real e acrescente os demais custos antes de definir o preço.”
+Legenda: Porções e perdas mudam o custo por unidade. Meça o rendimento do seu preparo.
+Visual: gravação de preparo ou ilustração, sem alegação de lucro.
+Ação: confira o rendimento de uma receita sua.","DP-003-conteudos.md","Preparado; nao publicado"
+"C3","3","Peça 3 — Dia 3: custos adicionais (post)","Objetivo: lembrar custos fora dos ingredientes. Texto da arte: “A embalagem também entra na conta.” Legenda: Além dos ingredientes, considere embalagem, tempo de trabalho e outros custos aplicáveis. Diferencie o custo do lote do custo de cada unidade para evitar contar duas vezes. Escolha uma receita e faça essa conferência hoje.
+Visual: embalagem, etiqueta e lista de custos.
+Ação: revisar custos adicionais.","DP-003-conteudos.md","Preparado; nao publicado"
+"C4","4","Peça 4 — Dia 4: margem (Reel)","Objetivo: evitar confusão entre acréscimo e margem sobre venda. Cena 1: “Acrescentar 50% ao custo não significa margem de 50% sobre o preço.” Cena 2: “Custo de R$ 10 com acréscimo de 50% vira R$ 15.” Cena 3: “A diferença é R$ 5: um terço do preço. Confira a base do percentual antes de comparar.”
+Legenda: O significado do percentual muda o cálculo. E o resultado só considera os custos informados.
+Visual: conta escrita, sem apresentar como lucro líquido garantido.
+Ação: conferir o cálculo que usa hoje.","DP-003-conteudos.md","Preparado; nao publicado"
+"C5","5","Peça 5 — Dia 5: atualização de valores (stories, três telas)","Objetivo: incentivar revisão. Tela 1: “Seu chocolate ficou mais caro?” Tela 2: “Confira preço e quantidade da compra antes de atualizar o cadastro.” Tela 3: “Depois revise custo e preço das receitas que usam esse ingrediente.” Legenda/apoio: O exemplo depende dos seus custos reais; não existe aumento igual para todas as receitas.
+Visual: compra antiga e nova sem marcas de terceiros.
+Ação: revisar um ingrediente.","DP-003-conteudos.md","Preparado; nao publicado"
+"C6","6","Peça 6 — Dia 6: organização de vendas (post)","Objetivo: criar hábito. Texto da arte: “Vendeu? Registre enquanto lembra.” Legenda: Separe alguns minutos para registrar produto, quantidade, valor e pagamento. No fim do dia, confira o que entrou e o que ainda precisa acompanhar. Venda registrada e dinheiro recebido podem ter datas diferentes.
+Visual: lista de conferência.
+Ação: conferir os registros do dia.","DP-003-conteudos.md","Preparado; nao publicado"
+"C7","7","Peça 7 — Dia 7: rotina do app (stories, três telas)","Objetivo: reduzir a sensação de tarefa grande. Tela 1: “Comece por uma receita.” Tela 2: “Separe ingredientes, quantidades e rendimento.” Tela 3: “Cadastre, confira os resultados e ajuste com seus dados reais.” Legenda/apoio: Você não precisa organizar todo o catálogo de uma vez. Se travar em uma etapa, conte qual é sua dúvida.
+Visual: sequência ilustrada; inserir capturas reais somente após conferir a versão publicada.
+Ação: iniciar primeira receita ou pedir ajuda.","DP-003-conteudos.md","Preparado; nao publicado"

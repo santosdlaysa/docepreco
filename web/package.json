@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "test:agent-materials": "node scripts/test-agent-materials.cjs",
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview"

@@ -3,6 +3,7 @@ import { loadSecret, clearSecret, api, LogEntry } from '../lib/api';
 import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SubscriptionsPage } from '../pages/SubscriptionsPage';
+import { AgentMaterialsPage } from '../pages/AgentMaterialsPage';
 import { BusinessMetricsPage } from '../pages/BusinessMetricsPage';
 import { UsersPage } from '../pages/UsersPage';
 import { StoresPage } from '../pages/StoresPage';
@@ -82,7 +83,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'subscriptions' | 'metrics' | 'activity' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'checkin' | 'database' | 'ads' | 'security' | 'user-lifecycle';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'checkin' | 'database' | 'ads' | 'security' | 'user-lifecycle' | 'agent-materials';
 
 interface NavItem {
   id: Page;
@@ -94,6 +95,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'subscriptions', label: 'Assinaturas', icon: TrendingUp },
+  { id: 'agent-materials', label: 'Materiais do time', icon: Bot },
   { id: 'metrics', label: 'Métricas de Negócio', icon: Activity },
   { id: 'activity', label: 'Cadastros ativos', icon: UserRoundPlus },
   { id: 'users', label: 'Usuários', icon: Users },
@@ -458,6 +460,7 @@ export default function AdminApp() {
           <PageTransition pageKey={impersonateUserId ? `user-${impersonateUserId}` : page}>
             {page === 'dashboard' && <DashboardPage toast={toast} />}
             {page === 'subscriptions' && <SubscriptionsPage toast={toast} />}
+            {page === 'agent-materials' && <AgentMaterialsPage />}
             {page === 'metrics' && <BusinessMetricsPage toast={toast} />}
             {page === 'activity' && <ActivityUsersPage />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}
