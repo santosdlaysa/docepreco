@@ -1,8 +1,8 @@
 import { colors } from '../../theme/colors';
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, ScrollView,
-  StyleSheet, ActivityIndicator, TextInput, RefreshControl,
+  View, Text, FlatList, TouchableOpacity, Modal, Pressable,
+  StyleSheet, ActivityIndicator, TextInput, RefreshControl, Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,11 +34,24 @@ const planTierLabel = (p: string) => PLAN_TIER_LABELS[p] ?? p;
 const PLAN_TIER_OPTIONS = ['free', 'premium', 'master'];
 
 type SortBy = 'recent' | 'revenue' | 'sales';
+type FilterKind = 'platform' | 'plan' | 'sort';
 const SORT_OPTIONS: { key: SortBy; label: string }[] = [
-  { key: 'recent', label: 'Recentes' },
-  { key: 'revenue', label: 'Receita' },
-  { key: 'sales', label: 'Vendas' },
+  { key: 'recent', label: 'Mais recentes' },
+  { key: 'revenue', label: 'Maior receita' },
+  { key: 'sales', label: 'Mais vendas' },
 ];
+
+const FILTER_OPTIONS: Record<FilterKind, { value: string | null; label: string }[]> = {
+  platform: [
+    { value: null, label: 'Todas as plataformas' },
+    ...PLATFORM_OPTIONS.map(value => ({ value, label: platformLabel(value) })),
+  ],
+  plan: [
+    { value: null, label: 'Todos os planos' },
+    ...PLAN_TIER_OPTIONS.map(value => ({ value, label: planTierLabel(value) })),
+  ],
+  sort: SORT_OPTIONS.map(({ key, label }) => ({ value: key, label })),
+};
 
 export const AdminUsersScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
@@ -47,6 +60,7 @@ export const AdminUsersScreen: React.FC = () => {
   const [platform, setPlatform] = useState<string | null>(null);
   const [planTier, setPlanTier] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortBy>('recent');
+  const [openFilter, setOpenFilter] = useState<FilterKind | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -101,6 +115,20 @@ export const AdminUsersScreen: React.FC = () => {
 
   const onRefresh = async () => { setRefreshing(true); await load(search || undefined); setRefreshing(false); };
 
+  const filterFields: { kind: FilterKind; label: string; selected: string; active: boolean }[] = [
+    { kind: 'platform', label: 'Plataforma', selected: platform ? platformLabel(platform) : 'Todas', active: platform !== null },
+    { kind: 'plan', label: 'Plano', selected: planTier ? planTierLabel(planTier) : 'Todos', active: planTier !== null },
+    { kind: 'sort', label: 'Ordenar por', selected: SORT_OPTIONS.find(option => option.key === sortBy)?.label ?? 'Mais recentes', active: sortBy !== 'recent' },
+  ];
+  const selectedValue = openFilter === 'platform' ? platform : openFilter === 'plan' ? planTier : sortBy;
+
+  const selectOption = (value: string | null) => {
+    if (openFilter === 'platform') setPlatform(value);
+    if (openFilter === 'plan') setPlanTier(value);
+    if (openFilter === 'sort') setSortBy(SORT_OPTIONS.find(option => option.key === value)?.key ?? 'recent');
+    setOpenFilter(null);
+  };
+
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.header}>
@@ -129,79 +157,53 @@ export const AdminUsersScreen: React.FC = () => {
         )}
       </View>
 
-      <Text style={styles.filterLabel}>Plataforma</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
+      <View style={styles.filters}>
+        {filterFields.map(field => (
           <TouchableOpacity
-            onPress={() => setPlatform(null)}
-            style={[styles.chip, platform === null && styles.chipActive]}
+            key={field.kind}
+            accessibilityRole="button"
+            accessibilityLabel={`${field.label}: ${field.selected}`}
+            onPress={() => { Keyboard.dismiss(); setOpenFilter(field.kind); }}
+            style={[styles.filterField, field.active && styles.filterFieldActive]}
             activeOpacity={0.8}
           >
-            <Text style={[styles.chipText, platform === null && styles.chipTextActive]}>Todas</Text>
-          </TouchableOpacity>
-          {PLATFORM_OPTIONS.map(p => (
-            <TouchableOpacity
-              key={p}
-              onPress={() => setPlatform(p)}
-              style={[styles.chip, platform === p && styles.chipActive]}
-              activeOpacity={0.8}
-            >
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={[styles.chipText, platform === p && styles.chipTextActive]}
-              >
-                {platformLabel(p)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-      </ScrollView>
-
-      <Text style={styles.filterLabel}>Plano</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
-          <TouchableOpacity
-            onPress={() => setPlanTier(null)}
-            style={[styles.chip, planTier === null && styles.chipActive]}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.chipText, planTier === null && styles.chipTextActive]}>Todos os planos</Text>
-          </TouchableOpacity>
-          {PLAN_TIER_OPTIONS.map(p => (
-            <TouchableOpacity
-              key={p}
-              onPress={() => setPlanTier(p)}
-              style={[styles.chip, planTier === p && styles.chipActive]}
-              activeOpacity={0.8}
-            >
-              <Text
-                numberOfLines={1}
-                ellipsizeMode="tail"
-                style={[styles.chipText, planTier === p && styles.chipTextActive]}
-              >
-                {planTierLabel(p)}
-              </Text>
-            </TouchableOpacity>
-          ))}
-      </ScrollView>
-
-      <Text style={styles.filterLabel}>Ordenar por</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
-        {SORT_OPTIONS.map(opt => (
-          <TouchableOpacity
-            key={opt.key}
-            onPress={() => setSortBy(opt.key)}
-            style={[styles.chip, sortBy === opt.key && styles.chipActive]}
-            activeOpacity={0.8}
-          >
-            <Ionicons
-              name="swap-vertical"
-              size={12}
-              color={sortBy === opt.key ? '#fff' : colors.textMuted}
-              style={{ marginRight: 4 }}
-            />
-            <Text style={[styles.chipText, sortBy === opt.key && styles.chipTextActive]}>{opt.label}</Text>
+            <View style={styles.filterFieldText}>
+              <Text style={styles.filterFieldLabel}>{field.label}</Text>
+              <Text style={styles.filterFieldValue} numberOfLines={1}>{field.selected}</Text>
+            </View>
+            <Ionicons name="chevron-down" size={18} color={colors.textSecondary} />
           </TouchableOpacity>
         ))}
-      </ScrollView>
+      </View>
+
+      <Modal visible={openFilter !== null} transparent animationType="slide" onRequestClose={() => setOpenFilter(null)}>
+        <View style={styles.modalRoot}>
+          <Pressable style={styles.modalBackdrop} onPress={() => setOpenFilter(null)} />
+          <SafeAreaView style={styles.optionSheet} edges={['bottom']}>
+            <View style={styles.optionHeader}>
+              <Text style={styles.optionTitle}>
+                {filterFields.find(field => field.kind === openFilter)?.label}
+              </Text>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel="Fechar opções" onPress={() => setOpenFilter(null)} hitSlop={10}>
+                <Ionicons name="close" size={22} color={colors.text} />
+              </TouchableOpacity>
+            </View>
+            {openFilter && FILTER_OPTIONS[openFilter].map(option => (
+              <TouchableOpacity
+                key={option.value ?? 'all'}
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectedValue === option.value }}
+                onPress={() => selectOption(option.value)}
+                style={[styles.optionRow, selectedValue === option.value && styles.optionRowSelected]}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.optionText, selectedValue === option.value && styles.optionTextSelected]}>{option.label}</Text>
+                {selectedValue === option.value && <Ionicons name="checkmark" size={20} color={colors.primary} />}
+              </TouchableOpacity>
+            ))}
+          </SafeAreaView>
+        </View>
+      </Modal>
 
       {loading ? (
         <ActivityIndicator color={colors.primary} style={{ marginTop: 40 }} />
@@ -257,13 +259,21 @@ const styles = StyleSheet.create({
   countText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   searchWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, height: 44, fontSize: 14, color: colors.text },
-  filterLabel: { marginHorizontal: 20, marginBottom: 6, fontSize: 12, fontWeight: '700', color: colors.textSecondary },
-  chipsScroll: { flexGrow: 0, marginBottom: 12 },
-  chipsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 8 },
-  chip: { flexDirection: 'row', flexShrink: 0, alignItems: 'center', minHeight: 40, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { flexShrink: 0, fontSize: 14, fontWeight: '600', color: colors.text },
-  chipTextActive: { color: '#fff' },
+  filters: { marginHorizontal: 20, marginBottom: 12, gap: 8 },
+  filterField: { minHeight: 52, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, borderRadius: 12, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  filterFieldActive: { borderColor: colors.primary },
+  filterFieldText: { flex: 1, paddingVertical: 7 },
+  filterFieldLabel: { fontSize: 12, fontWeight: '600', color: colors.textSecondary },
+  filterFieldValue: { fontSize: 15, fontWeight: '700', color: colors.text, marginTop: 2 },
+  modalRoot: { flex: 1, justifyContent: 'flex-end' },
+  modalBackdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  optionSheet: { backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 20, paddingTop: 18 },
+  optionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  optionTitle: { fontSize: 18, fontWeight: '700', color: colors.text },
+  optionRow: { minHeight: 50, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, borderRadius: 10 },
+  optionRowSelected: { backgroundColor: colors.background },
+  optionText: { fontSize: 15, color: colors.text },
+  optionTextSelected: { fontWeight: '700', color: colors.primary },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 15, fontWeight: '700', color: colors.primary },
