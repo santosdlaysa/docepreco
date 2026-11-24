@@ -371,6 +371,12 @@ export const AdminDashboardScreen: React.FC<Props> = ({ onLogout }) => {
             onPress={() => navigation.navigate('AdminUsers')}
           />
           <NavTile
+            icon="pulse-outline" label="Logs"
+            sub="Erros e HTTP"
+            color="#DC2626"
+            onPress={() => navigation.navigate('AdminLogs')}
+          />
+          <NavTile
             icon="qr-code-outline" label="PIX"
             sub="Aprovar"
             color="#16A34A"

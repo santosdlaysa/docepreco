@@ -1,6 +1,7 @@
 export type AdminStackParamList = {
   AdminDashboard: undefined;
   AdminUsers: undefined;
+  AdminLogs: undefined;
   AdminUserDetail: { userId: string };
   AdminPix: undefined;
   AdminSupport: undefined;

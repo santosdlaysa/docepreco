@@ -1,4 +1,4 @@
-import { explainRecipe } from './recipeAssistant';
+import { explainRecipe, RecipeAssistantFailure } from './recipeAssistant';
 
 describe('recipe assistant OpenAI integration', () => {
   const originalFetch = global.fetch;
@@ -41,12 +41,28 @@ describe('recipe assistant OpenAI integration', () => {
   });
   it('does not call the provider without a key', async () => {
     delete process.env.OPENAI_API_KEY;
-    await expect(explainRecipe({})).rejects.toThrow('not configured');
+    await expect(explainRecipe({})).rejects.toMatchObject({ reason: 'not_configured' });
     expect(fetchMock).not.toHaveBeenCalled();
   });
-  it('rejects provider failures without exposing their content', async () => {
-    fetchMock.mockResolvedValue({ ok: false });
-    await expect(explainRecipe({})).rejects.toThrow('OpenAI request failed');
+  it('captures only the provider status and safe error code', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 429, json: async () => ({ error: {
+      code: 'credit_balance_exhausted', message: 'Sensitive provider details',
+    } }) });
+    await expect(explainRecipe({})).rejects.toMatchObject({
+      reason: 'upstream', providerStatus: 429, providerCode: 'credit_balance_exhausted',
+    });
+  });
+  it('does not retain unsafe provider error details', async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 401, json: async () => ({ error: {
+      code: 'invalid key: secret-value', message: 'Sensitive provider details',
+    } }) });
+    let failure: RecipeAssistantFailure | undefined;
+    try { await explainRecipe({}); }
+    catch (error) { failure = error as RecipeAssistantFailure; }
+    expect(failure).toBeInstanceOf(RecipeAssistantFailure);
+    expect(failure).toMatchObject({ reason: 'upstream', providerStatus: 401 });
+    expect(failure?.providerCode).toBeUndefined();
+    expect(failure?.message).not.toContain('secret-value');
   });
   it.each([
     { status: 'incomplete', output: [] },
@@ -61,7 +77,7 @@ describe('recipe assistant OpenAI integration', () => {
     fetchMock.mockImplementation((_url, options) => new Promise((_resolve, reject) => {
       options.signal.addEventListener('abort', () => reject(new Error('Aborted')));
     }));
-    const pending = expect(explainRecipe({})).rejects.toThrow('Aborted');
+    const pending = expect(explainRecipe({})).rejects.toMatchObject({ reason: 'timeout' });
     await jest.advanceTimersByTimeAsync(30000);
     await pending;
   });

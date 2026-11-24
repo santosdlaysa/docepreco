@@ -38,6 +38,38 @@ export interface AdminStats {
   recentUsers: { id: string; companyName: string; email: string; isPremium: boolean; createdAt: string }[];
 }
 
+export interface AdminRequestLog {
+  id: number;
+  method: string;
+  path: string;
+  statusCode: number;
+  durationMs: number;
+  ip: string | null;
+  errorMessage: string | null;
+  bodyEmail: string | null;
+  requestBody: string | null;
+  responseBody: string | null;
+  ts: string;
+}
+
+export interface AdminEventLog {
+  type: 'new_user' | 'sale' | 'premium_on' | 'premium_off' | 'suggestion' | 'pix_request';
+  label: string;
+  detail: string;
+  ts: string;
+}
+
+export interface AdminRouteLog {
+  method: string;
+  route: string;
+  count: number;
+  err4xx: number;
+  err5xx: number;
+  avgDurationMs: number;
+  distinctIps: number;
+  lastAccess: string;
+}
+
 export interface SubscriptionDashboard {
   overview: {
     activeSubscribers: number;
@@ -271,6 +303,21 @@ const normalizeConversation = (raw: RawAdminConversation): AdminConversation => 
 // ── API ──────────────────────────────────────────────────────────────────────
 
 export const adminApi = {
+  async getRequestLogs(params: { limit?: number; onlyErrors?: boolean; search?: string } = {}): Promise<AdminRequestLog[]> {
+    const { data } = await adminClient.get('/admin/request-logs', { params });
+    return data.data;
+  },
+
+  async getRouteLogs(hours = 24): Promise<AdminRouteLog[]> {
+    const { data } = await adminClient.get('/admin/request-logs/routes', { params: { hours } });
+    return data.data.routes;
+  },
+
+  async getEventLogs(limit = 100): Promise<AdminEventLog[]> {
+    const { data } = await adminClient.get('/admin/logs', { params: { limit } });
+    return data.data;
+  },
+
   async getStats(): Promise<AdminStats> {
     const { data } = await adminClient.get('/admin/stats');
     return data.data;

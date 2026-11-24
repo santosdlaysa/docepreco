@@ -1,5 +1,5 @@
 import { simulatePrice } from '../../domain/services/priceSimulation';
-import { explainRecipe } from '../../infrastructure/services/recipeAssistant';
+import { explainRecipe, RecipeAssistantFailure } from '../../infrastructure/services/recipeAssistant';
 import { Request, Response } from 'express';
 import { CreateRecipeUseCase } from '../../application/use-cases/recipe/CreateRecipeUseCase';
 import { GetRecipesUseCase } from '../../application/use-cases/recipe/GetRecipesUseCase';
@@ -164,11 +164,24 @@ export class RecipeController {
       if (!process.env.OPENAI_API_KEY?.trim()) {
         res.status(503).json({ success: false, error: 'Assistente de IA ainda não configurada. A precificação continua disponível.' }); return;
       }
-      const text = await explainRecipe({ name: recipe.name.slice(0, 200), currency, calculation, simulation,
-        additionalCosts: recipe.additionalCosts.slice(0, 30).map(c => ({ name: c.name.slice(0, 100), value: c.value, costType: c.costType })) });
+      let text: string;
+      try {
+        text = await explainRecipe({ name: recipe.name.slice(0, 200), currency, calculation, simulation,
+          additionalCosts: recipe.additionalCosts.slice(0, 30).map(c => ({ name: c.name.slice(0, 100), value: c.value, costType: c.costType })) });
+      } catch (error) {
+        const failure = error instanceof RecipeAssistantFailure
+          ? { reason: error.reason, providerStatus: error.providerStatus, providerCode: error.providerCode }
+          : { reason: 'unexpected' };
+        console.error('[RecipeAssistant] AI request failed', failure);
+        res.locals.errorMessage = `Assistente IA: ${failure.reason}${'providerStatus' in failure && failure.providerStatus ? `; OpenAI HTTP ${failure.providerStatus}` : ''}${'providerCode' in failure && failure.providerCode ? `; código ${failure.providerCode}` : ''}`;
+        res.status(502).json({ success: false, error: 'Não foi possível gerar a análise agora. Tente novamente em instantes.' });
+        return;
+      }
       res.json({ success: true, data: { simulation, text } });
-    } catch {
-      res.status(502).json({ success: false, error: 'Não foi possível gerar a análise agora. Tente novamente em instantes.' });
+    } catch (error) {
+      console.error('[RecipeAssistant] preparation failed', { reason: error instanceof Error ? error.name : 'unknown' });
+      res.locals.errorMessage = `Assistente IA: falha ao preparar dados (${error instanceof Error ? error.name : 'unknown'})`;
+      res.status(500).json({ success: false, error: 'Não foi possível preparar a análise agora. Tente novamente em instantes.' });
     }
   }
 

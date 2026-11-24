@@ -53,6 +53,7 @@ import { PixPaymentScreen } from '../screens/PixPaymentScreen';
 import { AnnounceBannerScreen } from '../screens/AnnounceBannerScreen';
 import { AdminDashboardScreen } from '../screens/admin/AdminDashboardScreen';
 import { AdminUsersScreen } from '../screens/admin/AdminUsersScreen';
+import { AdminLogsScreen } from '../screens/admin/AdminLogsScreen';
 import { AdminUserDetailScreen } from '../screens/admin/AdminUserDetailScreen';
 import { AdminPixScreen } from '../screens/admin/AdminPixScreen';
 import { AdminSupportScreen } from '../screens/admin/AdminSupportScreen';
@@ -723,6 +724,7 @@ export function AppNavigator() {
             )}
           </Stack.Screen>
           <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+          <Stack.Screen name="AdminLogs" component={AdminLogsScreen} />
           <Stack.Screen name="AdminUserDetail" component={AdminUserDetailScreen} />
           <Stack.Screen name="AdminPix" component={AdminPixScreen} />
           <Stack.Screen name="AdminSupport" component={AdminSupportScreen} />

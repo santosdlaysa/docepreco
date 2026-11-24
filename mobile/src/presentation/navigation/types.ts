@@ -53,6 +53,7 @@ export type RootStackParamList = {
   MyPlan: undefined;
   AdminDashboard: undefined;
   AdminUsers: undefined;
+  AdminLogs: undefined;
   AdminUserDetail: { userId: string };
   AdminPix: undefined;
   AdminSupport: undefined;
