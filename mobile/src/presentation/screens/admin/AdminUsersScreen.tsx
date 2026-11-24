@@ -129,6 +129,7 @@ export const AdminUsersScreen: React.FC = () => {
         )}
       </View>
 
+      <Text style={styles.filterLabel}>Plataforma</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
           <TouchableOpacity
             onPress={() => setPlatform(null)}
@@ -155,6 +156,7 @@ export const AdminUsersScreen: React.FC = () => {
           ))}
       </ScrollView>
 
+      <Text style={styles.filterLabel}>Plano</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
           <TouchableOpacity
             onPress={() => setPlanTier(null)}
@@ -181,6 +183,7 @@ export const AdminUsersScreen: React.FC = () => {
           ))}
       </ScrollView>
 
+      <Text style={styles.filterLabel}>Ordenar por</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsRow}>
         {SORT_OPTIONS.map(opt => (
           <TouchableOpacity
@@ -254,13 +257,12 @@ const styles = StyleSheet.create({
   countText: { fontSize: 13, fontWeight: '600', color: colors.textMuted },
   searchWrap: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 20, marginBottom: 12, backgroundColor: colors.surface, borderRadius: 12, paddingHorizontal: 14, borderWidth: 1, borderColor: colors.border },
   searchInput: { flex: 1, height: 44, fontSize: 14, color: colors.text },
-  // Cada grupo de filtros numa linha rolável: antes quebravam em várias linhas e
-  // ocupavam metade da tela antes da lista.
-  chipsScroll: { flexGrow: 0, marginBottom: 8 },
-  chipsRow: { flexDirection: 'row', paddingHorizontal: 20, gap: 8 },
-  chip: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
+  filterLabel: { marginHorizontal: 20, marginBottom: 6, fontSize: 12, fontWeight: '700', color: colors.textSecondary },
+  chipsScroll: { flexGrow: 0, marginBottom: 12 },
+  chipsRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, gap: 8 },
+  chip: { flexDirection: 'row', flexShrink: 0, alignItems: 'center', minHeight: 40, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { flexShrink: 1, maxWidth: 180, fontSize: 13, fontWeight: '600', color: colors.textMuted },
+  chipText: { flexShrink: 0, fontSize: 14, fontWeight: '600', color: colors.text },
   chipTextActive: { color: '#fff' },
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 20, gap: 12 },
   avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center' },
