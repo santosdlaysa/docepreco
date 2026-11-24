@@ -28,6 +28,8 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Marketing downloads belong to the admin, not the offline storefront.
+        globIgnores: ['**/agent-materials/**'],
         // A landing page e os links de assinatura precisam do HTML publicado,
         // não do shell antigo em cache. O app instalado em /lojas mantém offline.
         navigateFallbackDenylist: [/^\/$/, /^\/assinar\/?$/],

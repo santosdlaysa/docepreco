@@ -42,11 +42,13 @@ export function NotificationsPage({ toast, initialDraft, onDraftConsumed }: Prop
   const [pixPrices, setPixPrices] = useState<{ premium: string; master: string } | null>(null);
   const [loadingPixPrices, setLoadingPixPrices] = useState(false);
   const [templateEligibility, setTemplateEligibility] = useState('');
+  const [individualTargetRequired, setIndividualTargetRequired] = useState(false);
 
   useEffect(() => {
     if (!initialDraft) return;
     setForm({ title: initialDraft.title, body: initialDraft.body, target: initialDraft.target, schedule: false, scheduledAt: '' });
     setTemplateEligibility(initialDraft.eligibility ?? '');
+    setIndividualTargetRequired(Boolean(initialDraft.requiresIndividualTargeting));
     setShowModal(true);
     onDraftConsumed?.();
   }, [initialDraft, onDraftConsumed]);
@@ -66,6 +68,7 @@ export function NotificationsPage({ toast, initialDraft, onDraftConsumed }: Prop
 
   const openNew = async () => {
     setTemplateEligibility('');
+    setIndividualTargetRequired(false);
     setForm({ title: '', body: '', target: 'all', schedule: false, scheduledAt: '' });
     setShowModal(true);
     setLoadingPixPrices(true);
@@ -95,6 +98,10 @@ export function NotificationsPage({ toast, initialDraft, onDraftConsumed }: Prop
   };
 
   const save = async () => {
+    if (individualTargetRequired) {
+      toast.error('Este modelo precisa de destinatários individuais. O editor atual envia somente para grupos por plano.');
+      return;
+    }
     try {
       await api.createNotification({
         title: form.title,
@@ -247,6 +254,7 @@ export function NotificationsPage({ toast, initialDraft, onDraftConsumed }: Prop
                   <p className="font-medium">Quando usar este modelo</p>
                   <p>{templateEligibility}</p>
                   <p className="mt-1">O alvo abaixo seleciona um grupo por plano. Não aplica filtros de comportamento, vencimento ou falha de pagamento.</p>
+                  {individualTargetRequired && <p className="mt-2 font-medium">Este modelo é para destinatários específicos. Envio e agendamento indisponíveis neste editor de grupos. Você pode revisar e copiar o texto nos Materiais do time.</p>}
                 </div>
               )}
               <div className="rounded-lg border border-pink-200 bg-pink-50 dark:border-pink-900 dark:bg-pink-950/20 p-3">
@@ -325,7 +333,7 @@ export function NotificationsPage({ toast, initialDraft, onDraftConsumed }: Prop
               </button>
               <button
                 onClick={save}
-                disabled={!form.title || !form.body}
+                disabled={!form.title || !form.body || individualTargetRequired}
                 className="text-sm bg-primary-500 hover:bg-primary-600 disabled:bg-gray-300 text-white px-4 py-2 rounded-lg transition-colors font-medium"
               >
                 {form.schedule ? 'Agendar' : 'Enviar agora'}

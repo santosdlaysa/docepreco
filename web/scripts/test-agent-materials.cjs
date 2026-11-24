@@ -22,18 +22,28 @@ const output = ts.transpileModule(source, { compilerOptions: { module: ts.Module
 const mod = { exports: {} };
 vm.runInNewContext(output, { exports: mod.exports, module: mod, require: id => id === '../data/agentMaterials' ? { agentMaterials } : localRequire(id) });
 const { filterAgentMaterials, AgentMaterialsPage } = mod.exports;
-assert.equal(agentMaterials.length, 67);
-assert.equal(new Set(agentMaterials.map(item => item.id)).size, 67);
+assert.equal(agentMaterials.length, 74);
+assert.equal(new Set(agentMaterials.map(item => item.id)).size, 74);
 assert.ok(agentMaterials.every(item => item.title.trim() && item.text.trim()));
-assert.equal(new Set(agentMaterials.map(item => item.category)).size, 8);
-assert.equal(agentMaterials.filter(item => item.imageUrl).length, 7);
+assert.equal(agentMaterials.filter(item => item.caption?.trim()).length, 7);
+assert.ok(agentMaterials.filter(item => item.caption).every(item => !item.caption.includes('Visual:') && !item.caption.includes('Objetivo:')));
+assert.equal(new Set(agentMaterials.map(item => item.category)).size, 9);
+const generatedImageCount = Object.keys(reqGeneratedImages()).length;
+assert.equal(generatedImageCount, 7);
+assert.equal(agentMaterials.filter(item => item.imageUrl).length, 7 + generatedImageCount);
+function reqGeneratedImages() { return JSON.parse(fs.readFileSync(path.join(root, 'src/data/agentGeneratedImages.json'), 'utf8').replace(/^\uFEFF/, '')); }
 for (const item of agentMaterials.filter(item => item.imageUrl)) {
   assert.ok(item.imageAlt?.trim());
-  assert.ok(item.imageUrl.startsWith('/agent-materials/'));
+  assert.ok(item.imageUrl.startsWith('/agent-materials/') || /^\/mobile-screen-[a-z0-9-]+\.jpg$/.test(item.imageUrl));
   const asset = fs.readFileSync(path.join(root, 'public', item.imageUrl));
   assert.ok(asset.length > 1000, `Image must not be a placeholder: ${item.imageUrl}`);
-  assert.equal(asset.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', `PNG required: ${item.imageUrl}`);
-  assert.ok(asset.readUInt32BE(16) >= 512 && asset.readUInt32BE(20) >= 512);
+  if (item.imageUrl.endsWith('.png')) {
+    assert.equal(asset.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.ok(asset.readUInt32BE(16) >= 512 && asset.readUInt32BE(20) >= 512);
+  } else {
+    assert.equal(asset.subarray(0, 2).toString('hex'), 'ffd8');
+    assert.equal(asset.subarray(-2).toString('hex'), 'ffd9');
+  }
 }
 assert.equal(agentMaterials.filter(item => item.notification).length, 19);
 for (const item of agentMaterials.filter(item => item.notification)) {
@@ -41,26 +51,26 @@ for (const item of agentMaterials.filter(item => item.notification)) {
   assert.ok(item.notification.body.length <= 180);
   assert.ok(item.notification.eligibility);
 }
-assert.equal(filterAgentMaterials(agentMaterials, '   ', '').length, 67);
+assert.equal(filterAgentMaterials(agentMaterials, '   ', '').length, 74);
 assert.equal(filterAgentMaterials(agentMaterials, 'ATENDIMENTO', 'Atendimento').length, 10);
 assert.deepEqual(Array.from(filterAgentMaterials(agentMaterials, 'ATENDIMENTO', ''), item => item.id), Array.from(filterAgentMaterials(agentMaterials, 'atendimento', ''), item => item.id));
 assert.equal(filterAgentMaterials(agentMaterials, 'cobrancas', 'Cobranças').length, 5);
 assert.equal(filterAgentMaterials(agentMaterials, 'termo inexistente xyz', '').length, 0);
 assert.equal(filterAgentMaterials(agentMaterials, 'boas-vindas', 'Suporte').length, 0);
-assert.equal(filterAgentMaterials(agentMaterials, '', 'Conteúdo').length, 7);
+assert.equal(filterAgentMaterials(agentMaterials, '', 'Conteúdo').length, 14);
 const html = renderToStaticMarkup(React.createElement(AgentMaterialsPage));
-assert.equal((html.match(/<article /g) || []).length, 67);
+assert.equal((html.match(/<article /g) || []).length, 74);
 assert.ok(html.includes('Materiais do time'));
 assert.ok(html.includes('agent-material-search'));
 assert.ok(html.includes('agent-material-area'));
 assert.ok(html.includes('aria-live="polite"'));
-assert.equal((html.match(/<img /g) || []).length, 7);
+assert.equal((html.match(/<img /g) || []).length, 7 + generatedImageCount);
 assert.ok(html.includes('Categorias de materiais'));
 assert.ok(!source.includes('dangerouslySetInnerHTML'));
 const admin = fs.readFileSync(path.join(root, 'src/admin/AdminApp.tsx'), 'utf8');
 assert.ok(admin.includes("id: 'agent-materials'"));
 assert.ok(admin.includes("page === 'agent-materials' && <AgentMaterialsPage onPrepareNotification="));
-console.log('PASS: catalog, accent/case/combined filters, empty results, SSR 67 cards, accessibility labels and admin integration.');
+console.log('PASS: catalog, accent/case/combined filters, empty results, SSR 74 cards, accessibility labels and admin integration.');
 console.log('SSR checks completed; component handler interaction checks follow below.');
 
 // Component interaction tests with deterministic React hook state and mocked DOM refs.
@@ -154,9 +164,15 @@ const flushPromises = () => new Promise(resolve => setImmediate(resolve));
   nodes = filters.render();
   assert.equal(nodes.filter(node => node.type === 'article').length, 0);
   nodes.find(node => node.type === 'button' && node.props.children === 'Limpar filtros').props.onClick();
-  assert.equal(filters.render().filter(node => node.type === 'article').length, 67);
+  assert.equal(filters.render().filter(node => node.type === 'article').length, 74);
   assert.ok(agentMaterials.every(item => filterAgentMaterials(agentMaterials, item.title, item.area).some(found => found.id === item.id)));
   const categories = makeHarness(undefined);
+  let copiedCaption;
+  const captions = makeHarness({ writeText(text) { copiedCaption = text; return Promise.resolve(); } });
+  const captionNodes = captions.render();
+  captionNodes.find(node => node.type === 'button' && node.props.children === 'Copiar legenda').props.onClick({ currentTarget: { focus() {} } });
+  await flushPromises();
+  assert.equal(copiedCaption, agentMaterials.find(item => item.caption).caption);
   let prepared;
   const props = { onPrepareNotification(draft) { prepared = draft; } };
   nodes = categories.render(props);
@@ -172,7 +188,7 @@ const flushPromises = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(prepared.body, firstNotification.body);
   assert.equal(prepared.target, firstNotification.target);
   assert.equal(prepared.eligibility, firstNotification.eligibility);
-  console.log('PASS: 8 categories, 7 image previews, 19 notification drafts, category selection and prepare callback.');
-  console.log('PASS: actual component handlers for pending/successful clipboard, denied/missing API, textarea focus/selection, accessible fallback, focus restoration, empty/reset filters and all 67 titles.');
+  console.log('PASS: 9 categories, 14 image previews, 7 captions, 19 notification drafts, category selection and prepare callback.');
+  console.log('PASS: actual component handlers for pending/successful clipboard, denied/missing API, textarea focus/selection, accessible fallback, focus restoration, empty/reset filters and all 74 titles.');
   console.log('Limits: hook/ref harness and SSR; no browser layout, native clipboard permissions, assistive technology or production was exercised.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

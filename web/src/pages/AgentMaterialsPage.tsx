@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, Search, X } from 'lucide-react';
 import { agentMaterials } from '../data/agentMaterials';
+import type { NotificationDraft } from '../data/agentMaterials';
 
 interface Props {
-  onPrepareNotification?: (draft: { title: string; body: string; target: string; eligibility?: string }) => void;
+  onPrepareNotification?: (draft: NotificationDraft) => void;
 }
 
-const categoryOrder = ['Conteúdos para redes sociais', 'Notificações', 'WhatsApp', 'Atendimento', 'Comercial', 'Suporte', 'Cobranças', 'Campanhas'];
+const categoryOrder = ['Conteúdos para redes sociais', 'Imagens do aplicativo', 'Notificações', 'WhatsApp', 'Atendimento', 'Comercial', 'Suporte', 'Cobranças', 'Campanhas'];
 const targetLabels: Record<string, string> = {
   all: 'Todos os usuários', free: 'Plano Free', premium: 'Plano Premium', master: 'Plano Master', expired: 'Assinatura expirada',
 };
@@ -23,7 +24,7 @@ export function filterAgentMaterials(materials: typeof agentMaterials, search: s
   const term = normalizeMaterialSearch(search);
   return materials.filter(item => (!area || item.area === area)
     && (!term || normalizeMaterialSearch([
-      item.title, item.text, item.area, item.audience ?? '', item.action ?? '', item.category ?? '',
+      item.title, item.text, item.area, item.audience ?? '', item.action ?? '', item.category ?? '', item.caption ?? '',
       item.notification?.title ?? '', item.notification?.body ?? '', item.notification?.eligibility ?? '',
     ].join(' ')).includes(term)));
 }
@@ -52,6 +53,7 @@ export function AgentMaterialsPage({ onPrepareNotification }: Props = {}) {
   const visible = useMemo(() => filtered.filter(item => !category || materialCategory(item) === category), [filtered, category]);
   const sections = categories.map(name => ({ name, items: visible.filter(item => materialCategory(item) === name) }))
     .filter(section => section.items.length > 0);
+  const artCount = agentMaterials.filter(item => item.imageUrl?.startsWith('/agent-materials/')).length;
 
   useEffect(() => {
     if (manualCopy) {
@@ -124,6 +126,17 @@ export function AgentMaterialsPage({ onPrepareNotification }: Props = {}) {
         ))}
       </div>
 
+      {(!category || category === 'Imagens do aplicativo') && (
+        <a href="/agent-materials/imagens-aplicativo.zip" download className="inline-block rounded-lg border border-primary-500 px-4 py-2 text-sm font-medium text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300">
+          Baixar todas as imagens do aplicativo (ZIP)
+        </a>
+      )}
+      {artCount === 7 && (!category || category === 'Conteúdos para redes sociais') && (
+        <a href="/agent-materials/artes-docepreco.zip" download className="ml-2 inline-block rounded-lg border border-primary-500 px-4 py-2 text-sm font-medium text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300">
+          Baixar todas as artes (ZIP)
+        </a>
+      )}
+
       <p role="status" aria-live="polite" className="text-sm text-gray-500 dark:text-gray-400">
         {visible.length} de {agentMaterials.length} materiais
       </p>
@@ -180,10 +193,19 @@ export function AgentMaterialsPage({ onPrepareNotification }: Props = {}) {
                       onError={() => setFailedImages(previous => previous.includes(item.id) ? previous : [...previous, item.id])}
                       className="max-h-[36rem] w-full rounded-lg border border-gray-100 object-contain dark:border-gray-700" />
                   )}
-                  <a href={item.imageUrl} download className="inline-block rounded px-1 py-1 text-sm font-medium text-primary-600 underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300">Baixar imagem de {item.title}</a>
+                  {!failedImages.includes(item.id) && <a href={item.imageUrl} download className="inline-block rounded px-1 py-1 text-sm font-medium text-primary-600 underline focus:outline-none focus:ring-2 focus:ring-primary-500 dark:text-primary-300">Baixar imagem de {item.title}</a>}
                 </div>
               )}
               {item.audience && <p className="mb-2 text-sm text-gray-500 dark:text-gray-400"><span className="font-medium">Público:</span> {item.audience}</p>}
+              {item.caption && (
+                <div className="mb-4 rounded-lg bg-gray-50 p-3 dark:bg-gray-900">
+                  <p className="mb-1 text-xs font-semibold uppercase text-gray-500 dark:text-gray-400">Legenda pronta para usar</p>
+                  <p className="whitespace-pre-wrap text-sm text-gray-800 dark:text-gray-200">{item.caption}</p>
+                  <button type="button" disabled={copyingId !== null}
+                    onClick={event => void copyText({ ...item, text: item.caption!, title: `Legenda — ${item.title}` }, event.currentTarget)}
+                    className="mt-2 rounded px-1 py-1 text-sm font-medium text-primary-600 underline focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50 dark:text-primary-300">Copiar legenda</button>
+                </div>
+              )}
               {item.notification ? (
                 <div className="space-y-3">
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
@@ -195,7 +217,7 @@ export function AgentMaterialsPage({ onPrepareNotification }: Props = {}) {
                   <p className="text-sm text-gray-600 dark:text-gray-300"><span className="font-medium">Elegibilidade:</span> {item.notification.eligibility}</p>
                   <button type="button" disabled={!onPrepareNotification}
                     onClick={() => {
-                      if (onPrepareNotification && item.notification) onPrepareNotification({ title: item.notification.title, body: item.notification.body, target: item.notification.target, eligibility: item.notification.eligibility });
+                      if (onPrepareNotification && item.notification) onPrepareNotification({ ...item.notification });
                     }}
                     className="rounded-lg border border-primary-500 px-3 py-2 text-sm font-medium text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-300">Preparar notificação</button>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{onPrepareNotification ? 'Abre o formulário para revisão. O destino seleciona o plano, não verifica o comportamento descrito na elegibilidade. Confira os destinatários antes de enviar. Esta ação não envia nem agenda.' : 'A preparação precisa estar disponível neste painel. Você pode copiar o título e o texto acima.'}</p>
