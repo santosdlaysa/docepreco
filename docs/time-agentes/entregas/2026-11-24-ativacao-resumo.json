@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-11-24T19:11:40.273Z",
+  "read_only": "on",
+  "days": 30,
+  "totalAccounts": 210,
+  "withIngredients": 153,
+  "withRecipes": 78,
+  "withSales": 18,
+  "withoutRecipes": 132,
+  "total": 132,
+  "usersPageCount": 20,
+  "validation": "withRecipes + withoutRecipes = totalAccounts; no client personal data exported"
+}

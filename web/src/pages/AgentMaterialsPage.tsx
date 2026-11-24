@@ -220,7 +220,7 @@ export function AgentMaterialsPage({ onPrepareNotification }: Props = {}) {
                       if (onPrepareNotification && item.notification) onPrepareNotification({ ...item.notification });
                     }}
                     className="rounded-lg border border-primary-500 px-3 py-2 text-sm font-medium text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:cursor-not-allowed disabled:opacity-50 dark:text-primary-300">Preparar notificação</button>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{onPrepareNotification ? 'Abre o formulário para revisão. O destino seleciona o plano, não verifica o comportamento descrito na elegibilidade. Confira os destinatários antes de enviar. Esta ação não envia nem agenda.' : 'A preparação precisa estar disponível neste painel. Você pode copiar o título e o texto acima.'}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{onPrepareNotification ? 'Abre o formulário para revisar e selecionar destinatários. Modelos individuais exigem contas específicas. Confira a elegibilidade antes de enviar. Esta ação não envia nem agenda.' : 'A preparação precisa estar disponível neste painel. Você pode copiar o título e o texto acima.'}</p>
                 </div>
               ) : <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-800 dark:text-gray-200">{item.text}</p>}
               {item.action && <p className="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400"><span className="font-medium">Ação:</span> {item.action}</p>}

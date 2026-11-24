@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { tokenStorage } from '../storage/tokenStorage';
 import { isDemoMode } from '../demo/demoMode';
+import { shouldInvalidateSession } from './sessionFailure';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://docepreco.onrender.com/api';
 
@@ -45,13 +46,8 @@ apiClient.interceptors.response.use(
     const status = error.response?.status ?? 'ERR';
     // Auto-logout: token inválido ou usuário não existe mais
     // Ignora 401 de rotas admin/settings e de sessões demo
-    const isAdminRoute = url?.includes('/admin/');
     const requestToken = (error.config as { _authToken?: string | null } | undefined)?._authToken;
-    if (
-      !isDemoMode()
-      && requestToken
-      && ((status === 401 && !isAdminRoute) || (status === 404 && url?.includes('/auth/me')))
-    ) {
+    if (shouldInvalidateSession(status, url, Boolean(requestToken), isDemoMode())) {
       tokenStorage.getToken().then((currentToken) => {
         // Só encerra a sessão se a resposta inválida for do token atualmente
         // ativo. Isto evita uma corrida durante login por Apple/Google.

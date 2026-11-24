@@ -8,6 +8,7 @@ export interface NotificationDraft {
   target: string;
   eligibility?: string;
   requiresIndividualTargeting?: boolean;
+  recipients?: Array<{ id: string; companyName: string; email: string; isActive: boolean }>;
 }
 
 export interface AgentMaterial {

@@ -21,9 +21,9 @@ O catálogo inclui ativação, boas-vindas, primeira receita, revisão de custos
 
 Cada modelo mostra título, corpo, grupo candidato, condição de uso e ação. **Preparar notificação** abre o formulário do admin com o texto preenchido. Você pode editar, cancelar ou utilizar o fluxo existente de criação/envio. Preparar e cancelar não criam registros nem enviam mensagens.
 
-Os alvos existentes são grupos de plano. Eles não selecionam automaticamente contas com estoque baixo, falha de renovação, novo pedido ou versão antiga. As condições individuais precisam ser verificadas antes do uso. Não duplicar as notificações transacionais já existentes de pedidos/resumo diário.
+O editor oferece grupos por plano e seleção individual de até 100 contas. Os grupos não selecionam automaticamente contas com estoque baixo, falha de renovação, novo pedido ou versão antiga. As condições individuais precisam ser verificadas antes do uso. Não duplicar as notificações transacionais já existentes de pedidos/resumo diário.
 
-Modelos de novo pedido, estoque baixo, resumo de vendas, falha de renovação e vencimento próximo têm envio/agendamento bloqueados no editor de grupos. Podem ser consultados e copiados, mas precisam de seleção individual ou do fluxo transacional correspondente para envio. Isso evita disparar uma informação pessoal para todos de um plano.
+Modelos de novo pedido, estoque baixo, resumo de vendas, falha de renovação e vencimento próximo exigem seleção individual. O formulário permite buscar contas, selecionar/remover destinatários e agendar, mas bloqueia troca desses modelos para grupo e não envia com lista vazia. Os IDs escolhidos são persistidos para o agendamento; a condição de negócio de cada conta não é reavaliada automaticamente.
 
 ## Imagens
 

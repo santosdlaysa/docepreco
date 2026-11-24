@@ -4,6 +4,7 @@ import { LoginPage } from '../pages/LoginPage';
 import { DashboardPage } from '../pages/DashboardPage';
 import { SubscriptionsPage } from '../pages/SubscriptionsPage';
 import { AgentMaterialsPage } from '../pages/AgentMaterialsPage';
+import { ActivationPage } from '../pages/ActivationPage';
 import type { NotificationDraft } from '../data/agentMaterials';
 import { BusinessMetricsPage } from '../pages/BusinessMetricsPage';
 import { UsersPage } from '../pages/UsersPage';
@@ -84,7 +85,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 
 type Page = 'dashboard' | 'subscriptions' | 'metrics' | 'activity' | 'users' | 'stores' | 'banners' | 'notifications' | 'tips' | 'logs' | 'requests' | 'settings'
-  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'checkin' | 'database' | 'ads' | 'security' | 'user-lifecycle' | 'agent-materials';
+  | 'ingredients' | 'recipes' | 'plans' | 'flags' | 'faq' | 'coupons' | 'categories' | 'feedbacks' | 'suggestions' | 'changelog' | 'onboarding' | 'telegram' | 'support' | 'whatsapp' | 'pix' | 'referrals' | 'checkin' | 'database' | 'ads' | 'security' | 'user-lifecycle' | 'agent-materials' | 'activation';
 
 interface NavItem {
   id: Page;
@@ -97,6 +98,7 @@ const NAV: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'subscriptions', label: 'Assinaturas', icon: TrendingUp },
   { id: 'agent-materials', label: 'Materiais do time', icon: Bot },
+  { id: 'activation', label: 'Ativação de usuários', icon: Activity },
   { id: 'metrics', label: 'Métricas de Negócio', icon: Activity },
   { id: 'activity', label: 'Cadastros ativos', icon: UserRoundPlus },
   { id: 'users', label: 'Usuários', icon: Users },
@@ -463,6 +465,19 @@ export default function AdminApp() {
             {page === 'dashboard' && <DashboardPage toast={toast} />}
             {page === 'subscriptions' && <SubscriptionsPage toast={toast} />}
             {page === 'agent-materials' && <AgentMaterialsPage onPrepareNotification={draft => { setNotificationDraft(draft); navigate('notifications'); }} />}
+            {page === 'activation' && <ActivationPage
+              onOpenUser={id => { navigate('users'); setImpersonateUserId(id); }}
+              onNotifyUser={user => {
+                setNotificationDraft({
+                  title: 'Comece por uma receita',
+                  body: 'Separe ingredientes, quantidades e rendimento para cadastrar sua primeira receita. Se precisar de ajuda, fale com nosso suporte.',
+                  target: 'individual',
+                  requiresIndividualTargeting: true,
+                  eligibility: 'Conta selecionada na lista sem receitas. Confira a situação atual antes de enviar.',
+                  recipients: [{ id: user.id, companyName: user.companyName, email: user.email, isActive: user.isActive }],
+                });
+                navigate('notifications');
+              }} />}
             {page === 'metrics' && <BusinessMetricsPage toast={toast} />}
             {page === 'activity' && <ActivityUsersPage />}
             {page === 'users' && !impersonateUserId && <UsersPage toast={toast} onImpersonate={setImpersonateUserId} />}

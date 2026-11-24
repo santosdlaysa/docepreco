@@ -1,4 +1,5 @@
 import { pool } from '../database/connection';
+import { normalizeNotificationAudience, NotificationTarget } from '../../domain/services/notificationAudience';
 
 export interface PushToken {
   id: string;
@@ -56,9 +57,22 @@ export class PostgresPushTokenRepository {
     return result.rows.map(this.mapRow);
   }
 
-  async findByTarget(target: 'all' | 'premium' | 'free' | 'master' | 'expired'): Promise<PushToken[]> {
+  async findByTarget(target: NotificationTarget, recipientUserIds?: string[] | null): Promise<PushToken[]> {
+    const audience = normalizeNotificationAudience(target, recipientUserIds);
+    if (audience.target === 'individual') {
+      const result = await pool.query(
+        `SELECT pt.* FROM push_tokens pt JOIN users u ON u.id = pt.user_id
+         WHERE COALESCE(u.is_active, TRUE) AND u.id = ANY($1::uuid[])`,
+        [audience.recipientUserIds]
+      );
+      return result.rows.map(this.mapRow);
+    }
     if (target === 'all') {
-      return this.findAll();
+      const result = await pool.query(
+        `SELECT pt.* FROM push_tokens pt JOIN users u ON u.id = pt.user_id
+         WHERE COALESCE(u.is_active, TRUE)`
+      );
+      return result.rows.map(this.mapRow);
     }
     if (target === 'expired') {
       // Ex-assinantes: já tiveram plano pago e ele venceu. Não exige is_premium = FALSE
@@ -66,7 +80,8 @@ export class PostgresPushTokenRepository {
       const result = await pool.query(
         `SELECT pt.* FROM push_tokens pt
          JOIN users u ON u.id = pt.user_id
-         WHERE u.premium_until IS NOT NULL AND u.premium_until <= NOW()`
+         WHERE COALESCE(u.is_active, TRUE)
+           AND u.premium_until IS NOT NULL AND u.premium_until <= NOW()`
       );
       return result.rows.map(this.mapRow);
     }
@@ -74,7 +89,8 @@ export class PostgresPushTokenRepository {
       const result = await pool.query(
         `SELECT pt.* FROM push_tokens pt
          JOIN users u ON u.id = pt.user_id
-         WHERE u.plan_tier = 'master'`
+         WHERE COALESCE(u.is_active, TRUE) AND u.is_premium = TRUE AND u.plan_tier = 'master'
+           AND (u.premium_until IS NULL OR u.premium_until > NOW())`
       );
       return result.rows.map(this.mapRow);
     }
@@ -85,7 +101,7 @@ export class PostgresPushTokenRepository {
       const result = await pool.query(
         `SELECT pt.* FROM push_tokens pt
          JOIN users u ON u.id = pt.user_id
-         WHERE u.plan_tier = 'premium'
+         WHERE COALESCE(u.is_active, TRUE) AND u.is_premium = TRUE AND u.plan_tier = 'premium'
            AND (u.premium_until IS NULL OR u.premium_until > NOW())`
       );
       return result.rows.map(this.mapRow);
@@ -94,8 +110,8 @@ export class PostgresPushTokenRepository {
     const result = await pool.query(
       `SELECT pt.* FROM push_tokens pt
        JOIN users u ON u.id = pt.user_id
-       WHERE u.is_premium = FALSE
-          OR (u.is_premium = TRUE AND u.premium_until <= NOW())`
+       WHERE COALESCE(u.is_active, TRUE) AND (u.is_premium = FALSE
+          OR (u.is_premium = TRUE AND u.premium_until <= NOW()))`
     );
     return result.rows.map(this.mapRow);
   }

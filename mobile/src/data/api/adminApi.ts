@@ -243,7 +243,8 @@ export interface AppNotification {
   title: string;
   body: string;
   dataJson: string | null;
-  target: 'all' | 'premium' | 'free' | 'master' | 'expired';
+  target: 'all' | 'premium' | 'free' | 'master' | 'expired' | 'individual';
+  recipientUserIds?: string[] | null;
   scheduledAt: string | null;
   sentAt: string | null;
   status: 'pending' | 'scheduled' | 'sent' | 'failed';

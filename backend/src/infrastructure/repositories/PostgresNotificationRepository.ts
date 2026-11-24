@@ -1,11 +1,13 @@
 import { pool } from '../database/connection';
+import { normalizeNotificationAudience, normalizeNotificationSchedule, NotificationTarget } from '../../domain/services/notificationAudience';
 
 export interface AppNotification {
   id: string;
   title: string;
   body: string;
   dataJson: string | null;
-  target: 'all' | 'premium' | 'free' | 'master' | 'expired';
+  target: NotificationTarget;
+  recipientUserIds: string[] | null;
   scheduledAt: string | null;
   sentAt: string | null;
   status: 'pending' | 'scheduled' | 'sent' | 'failed';
@@ -42,21 +44,25 @@ export class PostgresNotificationRepository {
     body: string;
     dataJson?: string;
     target?: string;
+    recipientUserIds?: string[] | null;
     scheduledAt?: string;
     status?: string;
   }): Promise<AppNotification> {
-    const status = data.scheduledAt ? 'scheduled' : (data.status ?? 'pending');
+    const audience = normalizeNotificationAudience(data.target, data.recipientUserIds);
+    const scheduledAt = normalizeNotificationSchedule(data.scheduledAt);
+    const status = scheduledAt ? 'scheduled' : (data.status ?? 'pending');
     const result = await pool.query(
-      `INSERT INTO notifications (title, body, data_json, target, scheduled_at, status)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO notifications (title, body, data_json, target, scheduled_at, status, recipient_user_ids)
+       VALUES ($1, $2, $3, $4, $5, $6, $7::uuid[])
        RETURNING *`,
       [
         data.title,
         data.body,
         data.dataJson ?? null,
-        data.target ?? 'all',
-        data.scheduledAt ?? null,
+        audience.target,
+        scheduledAt ?? null,
         status,
+        audience.recipientUserIds,
       ]
     );
     return this.mapRow(result.rows[0]);
@@ -88,6 +94,7 @@ export class PostgresNotificationRepository {
       body: row.body as string,
       dataJson: (row.data_json as string) ?? null,
       target: row.target as AppNotification['target'],
+      recipientUserIds: (row.recipient_user_ids as string[] | null) ?? null,
       scheduledAt: row.scheduled_at ? (row.scheduled_at as Date).toISOString() : null,
       sentAt: row.sent_at ? (row.sent_at as Date).toISOString() : null,
       status: row.status as AppNotification['status'],

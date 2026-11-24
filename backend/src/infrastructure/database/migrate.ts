@@ -3,6 +3,7 @@ import { migrateConversions } from './conversionMigration';
 import { migrateStorePayments } from './storePaymentsMigration';
 import { migrateDeletedUsers } from './deletedUsersMigration';
 import { migrateCheckins } from './checkinMigration';
+import { migrateIndividualNotifications } from './individualNotificationsMigration';
 import { pool } from './connection';
 import dotenv from 'dotenv';
 
@@ -656,10 +657,7 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'pix_requests', 'coupon_id', 'UUID NULL');
 
     // Permite segmentar notificações para Master e ex-assinantes com plano expirado (além de all/premium/free).
-    await client.query(`ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_target_check`);
-    await client.query(
-      `ALTER TABLE notifications ADD CONSTRAINT notifications_target_check CHECK (target IN ('all', 'premium', 'free', 'master', 'expired'))`
-    );
+    await migrateIndividualNotifications(client);
 
     await addColumnIfMissing(client, 'users', 'last_seen_at', 'TIMESTAMP NULL');
     await addColumnIfMissing(client, 'users', 'instagram_handle', 'VARCHAR(30) NULL');

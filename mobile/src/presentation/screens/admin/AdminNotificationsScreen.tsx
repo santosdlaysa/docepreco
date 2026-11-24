@@ -17,7 +17,7 @@ const TARGETS: { value: AppNotification['target']; label: string }[] = [
   { value: 'free', label: 'Gratuito' },
   { value: 'expired', label: 'Plano expirado' },
 ];
-const targetLabel = (t: AppNotification['target']) => TARGETS.find(x => x.value === t)?.label ?? t;
+const targetLabel = (t: AppNotification['target']) => t === 'individual' ? 'Destinatários selecionados' : TARGETS.find(x => x.value === t)?.label ?? t;
 
 const TARGET_COLORS: Record<AppNotification['target'], string> = {
   all: colors.textSecondary,
@@ -25,6 +25,7 @@ const TARGET_COLORS: Record<AppNotification['target'], string> = {
   master: '#9333EA',
   free: '#2563EB',
   expired: '#D97706',
+  individual: '#0F766E',
 };
 
 const STATUS: Record<AppNotification['status'], { label: string; color: string }> = {

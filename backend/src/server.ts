@@ -1,3 +1,4 @@
+import { processScheduledNotifications } from './infrastructure/services/scheduledNotificationService';
 import storePaymentRoutes from './presentation/routes/storePaymentRoutes';
 import express from 'express';
 import cors from 'cors';
@@ -61,9 +62,6 @@ import { backfillStoreCoordinates } from './infrastructure/services/geocodeBackf
 import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
 import { PostgresTelegramAlertRepository } from './infrastructure/repositories/PostgresTelegramAlertRepository';
-import { PostgresNotificationRepository } from './infrastructure/repositories/PostgresNotificationRepository';
-import { PostgresPushTokenRepository } from './infrastructure/repositories/PostgresPushTokenRepository';
-import { sendPushNotifications } from './infrastructure/services/pushService';
 import { checkManualRenewals } from './infrastructure/services/renewalNotificationService';
 import { checkSalesSummarySchedules } from './infrastructure/services/dailySalesNotificationService';
 import { setupSwagger } from './swagger';
@@ -317,27 +315,12 @@ async function bootstrap() {
     // Telegram só quando cruza os limiares. Janela = intervalo do cron.
     cron.schedule(`*/${SECURITY_WINDOW_MIN} * * * *`, () => { void sendSecurityAlert(); }, { timezone: 'America/Sao_Paulo' });
 
-    // Cron: envia notificações agendadas a cada minuto
-    const notifRepo = new PostgresNotificationRepository();
-    const tokenRepo = new PostgresPushTokenRepository();
+    // Cron: recipients are persisted for individual notifications.
     cron.schedule('* * * * *', async () => {
       try {
-        const pending = await notifRepo.findPending();
-        for (const notif of pending) {
-          try {
-            const tokens = await tokenRepo.findByTarget(notif.target);
-            const tokenStrings = tokens.map(t => t.token);
-            const data = notif.dataJson ? JSON.parse(notif.dataJson) : undefined;
-            const count = await sendPushNotifications(tokenStrings, notif.title, notif.body, data);
-            await notifRepo.markSent(notif.id, count);
-            console.log(`[Cron] Notificação ${notif.id} enviada para ${count} dispositivos`);
-          } catch (err) {
-            await notifRepo.markFailed(notif.id);
-            console.error(`[Cron] Falha ao enviar notificação ${notif.id}:`, err);
-          }
-        }
-      } catch (err) {
-        console.error('[Cron] Erro ao processar notificações:', err);
+        await processScheduledNotifications();
+      } catch (error) {
+        console.error('[Cron] Erro ao processar notificações:', error);
       }
     });
     // Cron: notifica usuários manuais com mensalidade prestes a expirar (todo dia às 10h)

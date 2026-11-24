@@ -251,6 +251,30 @@ export interface UsersResponse {
   limit: number;
 }
 
+export interface ActivationUser {
+  id: string;
+  companyName: string;
+  email: string;
+  createdAt: string;
+  lastSeenAt: string | null;
+  ingredientCount: number;
+  planTier: string;
+  isActive: boolean;
+}
+
+export interface ActivationReport {
+  days: number;
+  totalAccounts: number;
+  withIngredients: number;
+  withRecipes: number;
+  withSales: number;
+  withoutRecipes: number;
+  users: ActivationUser[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface RecipeIngredient {
   ingredientId: string;
   name: string;
@@ -491,6 +515,13 @@ export const api = {
 
   getBusinessMetrics: (month?: string) =>
     req<BusinessMetrics>(`/admin/business-metrics${month ? `?month=${encodeURIComponent(month)}` : ''}`),
+  getActivationReport: (params: { days?: number; page?: number; limit?: number; search?: string } = {}) => {
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries(params)) {
+      if (value !== undefined && value !== '') query.set(key, String(value));
+    }
+    return req<ActivationReport>(`/admin/activation?${query.toString()}`);
+  },
 
   getWinbackEligible: () => req<WinbackEligibleUser[]>('/admin/winback/eligible'),
   getWinbackOffers: () => req<WinbackOffer[]>('/admin/winback'),
@@ -669,7 +700,7 @@ export const api = {
 
   // ── Notifications ──
   listNotifications: () => req<AppNotification[]>('/notifications'),
-  createNotification: (data: { title: string; body: string; target?: string; scheduledAt?: string; dataJson?: string }) =>
+  createNotification: (data: { title: string; body: string; target?: string; scheduledAt?: string; dataJson?: string; recipientUserIds?: string[] }) =>
     req<AppNotification>('/notifications', { method: 'POST', body: JSON.stringify(data) }),
   sendNotification: (id: string) =>
     req<AppNotification>(`/notifications/${id}/send`, { method: 'POST' }),
@@ -992,7 +1023,8 @@ export interface AppNotification {
   title: string;
   body: string;
   dataJson: string | null;
-  target: 'all' | 'premium' | 'free' | 'master' | 'expired';
+  target: 'all' | 'premium' | 'free' | 'master' | 'expired' | 'individual';
+  recipientUserIds?: string[] | null;
   scheduledAt: string | null;
   sentAt: string | null;
   status: 'pending' | 'scheduled' | 'sent' | 'failed';

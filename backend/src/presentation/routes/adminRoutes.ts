@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { AdminController } from '../controllers/AdminController';
+import { ActivationController } from '../controllers/ActivationController';
 import { adminMiddleware } from '../middleware/adminMiddleware';
 
 import { pool } from '../../infrastructure/database/connection';
@@ -10,6 +11,7 @@ const router = Router();
 const controller = new AdminController();
 
 router.use(adminMiddleware);
+router.get('/activation', (req, res) => new ActivationController().report(req, res));
 
 router.get('/conversion-opportunities', async (_req, res) => {
   try {

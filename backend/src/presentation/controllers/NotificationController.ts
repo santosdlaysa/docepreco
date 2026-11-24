@@ -3,6 +3,7 @@ import { PostgresNotificationRepository } from '../../infrastructure/repositorie
 import { PostgresPushTokenRepository } from '../../infrastructure/repositories/PostgresPushTokenRepository';
 import { sendPushNotificationsDetailed } from '../../infrastructure/services/pushService';
 import type { PushToken } from '../../infrastructure/repositories/PostgresPushTokenRepository';
+import { normalizeNotificationAudience, normalizeNotificationSchedule } from '../../domain/services/notificationAudience';
 
 const notifRepo = new PostgresNotificationRepository();
 const tokenRepo = new PostgresPushTokenRepository();
@@ -32,24 +33,33 @@ export class NotificationController {
 
   async create(req: Request, res: Response): Promise<void> {
     try {
-      const { title, body, dataJson, target, scheduledAt } = req.body;
+      const { title, body, dataJson, target, scheduledAt, recipientUserIds } = req.body;
       if (!title || !body) {
         res.status(400).json({ success: false, error: 'title e body são obrigatórios' });
         return;
       }
 
+      let audience;
+      let schedule;
+      try {
+        audience = normalizeNotificationAudience(target, recipientUserIds);
+        schedule = normalizeNotificationSchedule(scheduledAt);
+      } catch (error) {
+        res.status(400).json({ success: false, error: (error as Error).message });
+        return;
+      }
       const notification = await notifRepo.create({
         title,
         body,
         dataJson,
-        target,
-        scheduledAt,
+        ...audience,
+        scheduledAt: schedule,
       });
 
       // If no scheduledAt, send immediately
-      if (!scheduledAt) {
+      if (!schedule) {
         try {
-          const tokens = await tokenRepo.findByTarget(notification.target);
+          const tokens = await tokenRepo.findByTarget(notification.target, notification.recipientUserIds);
           const tokenStrings = tokens.map(t => t.token);
           const data = dataJson ? JSON.parse(dataJson) : undefined;
           const { successfulTokens } = await sendPushNotificationsDetailed(tokenStrings, title, body, data);
@@ -85,7 +95,7 @@ export class NotificationController {
         return;
       }
 
-      const tokens = await tokenRepo.findByTarget(notification.target);
+      const tokens = await tokenRepo.findByTarget(notification.target, notification.recipientUserIds);
       const tokenStrings = tokens.map(t => t.token);
       const data = notification.dataJson ? JSON.parse(notification.dataJson) : undefined;
       const { successfulTokens } = await sendPushNotificationsDetailed(tokenStrings, notification.title, notification.body, data);

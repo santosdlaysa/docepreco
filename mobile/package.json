@@ -3,6 +3,7 @@
   "version": "2.12.0",
   "main": "expo/AppEntry",
   "scripts": {
+    "test:sessions": "node scripts/test-session-failure.cjs",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
