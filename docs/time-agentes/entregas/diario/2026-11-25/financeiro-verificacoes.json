@@ -1,0 +1,22 @@
+{
+  "result": "PASS",
+  "historical_events": 202,
+  "historical_positive_cents": 337263,
+  "monthly_events": 27,
+  "monthly_positive_cents": 49545,
+  "delta_since_previous_snapshot": {
+    "accounts": 12,
+    "active": 2,
+    "recorded_cents": 3798,
+    "month_cents": 3798,
+    "events": 2
+  },
+  "checks": [
+    "historical_types=sources=months",
+    "monthly_types=sources",
+    "tiers=active",
+    "expiring_groups=expiring_total",
+    "monthly_renewals=renewal_summary",
+    "BRL_only"
+  ]
+}

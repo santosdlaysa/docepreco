@@ -1,10 +1,10 @@
 # Como usar o time do DocePreço
 
-O arquivo `AGENTS.md` na raiz orienta o Codex a carregar a base e o perfil adequado. São nove perfis reutilizáveis neste repositório: um coordenador e oito especialistas. Não são contas, GPTs separados ou processos executando continuamente. Nenhuma integração de envio, cobrança ou agendamento foi ativada por esta configuração.
+O arquivo `AGENTS.md` na raiz orienta o Codex a carregar a base e o perfil adequado. São nove perfis reutilizáveis neste repositório: um coordenador e oito especialistas. Não são contas, GPTs separados ou processos executando continuamente. Em 25/11/2026 foi configurada uma rodada diária, descrita em [ROTINA-DIARIA.md](ROTINA-DIARIA.md), com relatório consolidado. Essa rotina não ativa envio a clientes, cobrança ou publicação automática.
 
 ## Pedidos prontos
 
-As primeiras nove demandas estão em [DEMANDAS.md](DEMANDAS.md), com responsáveis, prioridades, entregas e critérios de conclusão. Para iniciar uma delas, peça: “Execute a DP-005”. As demandas cadastradas não executam automaticamente.
+As primeiras nove demandas estão em [DEMANDAS.md](DEMANDAS.md), com responsáveis, prioridades, entregas e critérios de conclusão. Para iniciar uma delas, peça: “Execute a DP-005”. Demandas avulsas são acionadas por pedido; as rodadas recorrentes seguem a rotina diária e retomam pendências sem duplicar entregas.
 
 | Perfil | Exemplo de pedido |
 | --- | --- |

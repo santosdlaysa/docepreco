@@ -1,0 +1,192 @@
+{
+  "context": [
+    {
+      "observed_at": "2026-11-25T12:38:14.037Z",
+      "read_only": "on",
+      "timezone": "UTC"
+    }
+  ],
+  "access": [
+    {
+      "accounts": 2152,
+      "active_admin": 25,
+      "active_without_expiry": 1,
+      "expiring_7d": 4,
+      "expired_admin": 125
+    }
+  ],
+  "tiers": [
+    {
+      "plan_tier": "master",
+      "accounts": 7
+    },
+    {
+      "plan_tier": "premium",
+      "accounts": 18
+    }
+  ],
+  "expiring": [
+    {
+      "plan_tier": "premium",
+      "premium_platform": "card",
+      "expiry_date_utc": "2026-11-25",
+      "whatsapp_marketing_opt_in": false,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "master",
+      "premium_platform": "pix",
+      "expiry_date_utc": "2026-11-26",
+      "whatsapp_marketing_opt_in": false,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "card",
+      "expiry_date_utc": "2026-11-27",
+      "whatsapp_marketing_opt_in": false,
+      "accounts": 1
+    },
+    {
+      "plan_tier": "premium",
+      "premium_platform": "ios",
+      "expiry_date_utc": "2026-11-30",
+      "whatsapp_marketing_opt_in": false,
+      "accounts": 1
+    }
+  ],
+  "historical_types": [
+    {
+      "event_type": "INITIAL_PURCHASE",
+      "currency": "BRL",
+      "events": 181,
+      "positive_cents": "292944",
+      "missing_or_nonpositive": 20
+    },
+    {
+      "event_type": "RENEWAL",
+      "currency": "BRL",
+      "events": 21,
+      "positive_cents": "44319",
+      "missing_or_nonpositive": 0
+    }
+  ],
+  "historical_sources": [
+    {
+      "source": "app_sync",
+      "platform": "android",
+      "currency": "BRL",
+      "events": 1,
+      "positive_cents": "1490"
+    },
+    {
+      "source": "app_sync",
+      "platform": "ios",
+      "currency": "BRL",
+      "events": 17,
+      "positive_cents": "25330"
+    },
+    {
+      "source": "pix",
+      "platform": "manual",
+      "currency": "BRL",
+      "events": 146,
+      "positive_cents": "270024"
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "currency": "BRL",
+      "events": 38,
+      "positive_cents": "40419"
+    }
+  ],
+  "monthly": [
+    {
+      "event_type": "INITIAL_PURCHASE",
+      "currency": "BRL",
+      "events": 19,
+      "positive_cents": "30478"
+    },
+    {
+      "event_type": "RENEWAL",
+      "currency": "BRL",
+      "events": 8,
+      "positive_cents": "19067"
+    }
+  ],
+  "month_sources": [
+    {
+      "source": "app_sync",
+      "platform": "ios",
+      "currency": "BRL",
+      "events": 1,
+      "positive_cents": "1490"
+    },
+    {
+      "source": "pix",
+      "platform": "manual",
+      "currency": "BRL",
+      "events": 14,
+      "positive_cents": "31588"
+    },
+    {
+      "source": "stripe",
+      "platform": "card",
+      "currency": "BRL",
+      "events": 12,
+      "positive_cents": "16467"
+    }
+  ],
+  "month_series": [
+    {
+      "month": "2026-05",
+      "currency": "BRL",
+      "events": 3,
+      "positive_cents": "3490"
+    },
+    {
+      "month": "2026-06",
+      "currency": "BRL",
+      "events": 23,
+      "positive_cents": "26644"
+    },
+    {
+      "month": "2026-07",
+      "currency": "BRL",
+      "events": 38,
+      "positive_cents": "55929"
+    },
+    {
+      "month": "2026-08",
+      "currency": "BRL",
+      "events": 29,
+      "positive_cents": "56100"
+    },
+    {
+      "month": "2026-09",
+      "currency": "BRL",
+      "events": 44,
+      "positive_cents": "71903"
+    },
+    {
+      "month": "2026-10",
+      "currency": "BRL",
+      "events": 38,
+      "positive_cents": "73652"
+    },
+    {
+      "month": "2026-11",
+      "currency": "BRL",
+      "events": 27,
+      "positive_cents": "49545"
+    }
+  ],
+  "renewals": [
+    {
+      "events": 8,
+      "accounts": 6,
+      "positive_cents": "19067"
+    }
+  ]
+}
