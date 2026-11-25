@@ -19,13 +19,26 @@ export const formatCurrency = (value: number, currency: Currency = 'BRL'): strin
 
 export const formatCurrencyUnit = (value: number, currency: Currency = 'BRL'): string => {
   const numericValue = Number.isFinite(value) ? value : 0;
-  const fractionDigits = numericValue > 0 && numericValue < 0.01 ? 4 : 2;
+  const magnitude = Math.abs(numericValue);
+  const isSmall = magnitude > 0 && magnitude < 0.01;
+  // Unit costs can be fractions of a cent. Show at least two significant
+  // digits without changing the value used by recipe calculations.
+  const maxUnitDecimals = 8;
+  const smallestDisplayedUnit = 10 ** -maxUnitDecimals;
+  const belowDisplayPrecision = isSmall && magnitude < smallestDisplayedUnit;
+  const fractionDigits = isSmall
+    ? Math.min(maxUnitDecimals, Math.max(4, Math.ceil(-Math.log10(magnitude)) + 1))
+    : 2;
   const info = CURRENCY_INFO[currency];
-
-  return numericValue.toLocaleString(info.locale, {
+  const displayedValue = belowDisplayPrecision
+    ? Math.sign(numericValue) * smallestDisplayedUnit
+    : numericValue;
+  const formatted = displayedValue.toLocaleString(info.locale, {
     style: 'currency',
     currency,
-    minimumFractionDigits: fractionDigits,
+    minimumFractionDigits: isSmall ? 4 : 2,
     maximumFractionDigits: fractionDigits,
   });
+  // Never imply that a known non-zero cost is free at the display limit.
+  return belowDisplayPrecision ? `${numericValue > 0 ? '<' : '>'} ${formatted}` : formatted;
 };

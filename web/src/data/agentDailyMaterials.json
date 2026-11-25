@@ -1,0 +1,112 @@
+[
+  {
+    "id": "dia-2026-11-25-post",
+    "area": "Conteúdo",
+    "category": "Conteúdos para redes sociais",
+    "title": "25/11/2026 — Do ingrediente ao preço",
+    "text": "Sua receita começa nos ingredientes.\n\nConfira a quantidade comprada, o valor total pago e a unidade de medida.\nNa receita, informe quanto usou e considere os custos adicionais.\n\nOrganize os custos antes de definir seu preço.\n\nDocePreço",
+    "caption": "Antes de precificar, confira os dados da compra: quantidade, valor total pago e unidade de medida. Depois, na receita, informe quanto utilizou de cada ingrediente e revise os custos adicionais, como embalagem e mão de obra.\n\nNo DocePreço, a tela de Ingredientes orienta o próximo passo: montar a receita e calcular o preço. Comece por uma receita que você já faz e revise os dados antes de usar o valor sugerido.\n\nSalve este passo a passo para consultar quando organizar sua próxima receita.",
+    "action": "Texto pronto para diagramação. Arte nova ainda não produzida."
+  },
+  {
+    "id": "dia-2026-11-25-P1",
+    "area": "Copy",
+    "category": "Notificações",
+    "title": "25/11/2026 — Confira seus ingredientes",
+    "text": "Revise quantidade comprada, valor total pago e unidade de medida antes de montar sua receita.",
+    "audience": "Conferir permissão e destinatários ativos antes do envio; não presume erro, venda ou pagamento detectado.",
+    "notification": {
+      "title": "Confira seus ingredientes",
+      "body": "Revise quantidade comprada, valor total pago e unidade de medida antes de montar sua receita.",
+      "target": "individual",
+      "eligibility": "Conferir permissão e destinatários ativos antes do envio; não presume erro, venda ou pagamento detectado.",
+      "requiresIndividualTargeting": true
+    }
+  },
+  {
+    "id": "dia-2026-11-25-P2",
+    "area": "Copy",
+    "category": "Notificações",
+    "title": "25/11/2026 — Ingredientes salvos? Monte sua receita",
+    "text": "Na tela de Ingredientes, use a opção de montar receita e informe quanto usou de cada ingrediente.",
+    "audience": "Somente contas ativas com ingredientes cadastrados confirmados; conferir permissão e navegação antes do envio.",
+    "notification": {
+      "title": "Ingredientes salvos? Monte sua receita",
+      "body": "Na tela de Ingredientes, use a opção de montar receita e informe quanto usou de cada ingrediente.",
+      "target": "individual",
+      "eligibility": "Somente contas ativas com ingredientes cadastrados confirmados; conferir permissão e navegação antes do envio.",
+      "requiresIndividualTargeting": true
+    }
+  },
+  {
+    "id": "dia-2026-11-25-P3",
+    "area": "Copy",
+    "category": "Notificações",
+    "title": "25/11/2026 — Vai registrar uma venda?",
+    "text": "Confira quantidade, preço unitário e forma de pagamento antes de salvar sua venda no DocePreço.",
+    "audience": "Conferir permissão e destinatários ativos antes do envio; não presume erro, venda ou pagamento detectado.",
+    "notification": {
+      "title": "Vai registrar uma venda?",
+      "body": "Confira quantidade, preço unitário e forma de pagamento antes de salvar sua venda no DocePreço.",
+      "target": "individual",
+      "eligibility": "Conferir permissão e destinatários ativos antes do envio; não presume erro, venda ou pagamento detectado.",
+      "requiresIndividualTargeting": true
+    }
+  },
+  {
+    "id": "dia-2026-11-25-atendimento",
+    "area": "Atendimento",
+    "category": "Atendimento",
+    "title": "25/11/2026 — Ajuda para a primeira receita",
+    "text": "Podemos começar por uma receita que você já faz. Separe o preço e a quantidade comprada de cada ingrediente, as quantidades usadas e o rendimento do preparo. Em qual etapa você quer ajuda primeiro?",
+    "action": "Usar em resposta a uma dúvida recebida. Não solicitar senha ou código."
+  },
+  {
+    "id": "dia-2026-11-25-comercial",
+    "area": "Comercial",
+    "category": "Comercial",
+    "title": "25/11/2026 — Entender a necessidade antes da oferta",
+    "text": "Você quer organizar a precificação, acompanhar suas vendas ou trabalhar com uma loja online? Me conte o que precisa resolver hoje para eu conferir quais recursos e condições fazem sentido para você.",
+    "action": "Após interesse confirmado. Conferir recursos e condições atuais; encaminhar problemas técnicos ou de pagamento."
+  },
+  {
+    "id": "dia-2026-11-25-procedimento",
+    "area": "Atendimento",
+    "category": "Atendimento",
+    "title": "25/11/2026 — Preparar ajuda individual",
+    "text": "1. Abra Ativação de usuários e selecione a coorte.\n2. Localize a conta sem receita e abra o usuário.\n3. Confira a dificuldade e a situação atual.\n4. Use Preparar ajuda e revise os destinatários selecionados.\n5. Adapte o texto à dúvida conhecida.\n6. Confira autorização antes de enviar ou agendar. Cancelar encerra sem envio.",
+    "action": "Preparar ajuda apenas monta o rascunho; não envia automaticamente."
+  },
+  {
+    "id": "dia-2026-11-25-design",
+    "area": "Marketing",
+    "category": "Campanhas",
+    "title": "25/11/2026 — Revisão do design atual",
+    "text": "Prioridades: atualizar capturas antigas com demonstrações atuais sem dados pessoais; revisar legibilidade de rótulos pequenos; melhorar contraste de ações e do cartão de resultado. Medição local: branco/rosa #E91E8C = 4,18:1; texto #B5A090/branco = 2,50:1. Propostas de cores ainda não aplicadas.",
+    "action": "Análise dos prints atuais e tokens do código. Validar estados e apresentação em aparelho antes de aprovar mudanças visuais."
+  },
+  {
+    "id": "dia-2026-11-25-suporte",
+    "area": "Suporte",
+    "category": "Suporte",
+    "title": "25/11/2026 — Custos unitários muito pequenos",
+    "text": "Corrigida localmente a exibição de custos menores que um centavo. O custo de R$ 1 dividido por 100.000 unidades passa a aparecer como R$ 0,00001. Precisão adaptativa até oito casas; abaixo disso, indicação de limite. Cálculos e preços finais preservados.",
+    "action": "Regressão de formatação e TypeScript aprovados. Alteração ainda depende de publicação para chegar ao aplicativo."
+  },
+  {
+    "id": "dia-2026-11-25-financeiro",
+    "area": "Financeiro",
+    "category": "Financeiro",
+    "title": "25/11/2026 — Conferência de assinaturas e repasses",
+    "text": "Conferir o estado da assinatura e pagamentos posteriores no provedor original. Separar valor registrado, valor bruto, taxas e repasse líquido. Conciliar com extrato antes de tratar um registro como dinheiro recebido ou lucro.",
+    "action": "Procedimento interno. Dados financeiros e contas individuais permanecem fora do catálogo estático."
+  },
+  {
+    "id": "dia-2026-11-25-cobrancas",
+    "area": "Cobranças",
+    "category": "Cobranças",
+    "title": "25/11/2026 — Checagem antes de orientar renovação",
+    "text": "Confira validade e horário local, renovação automática, cancelamento, pagamento posterior e eventual contestação no canal original. Expiração não comprova dívida nem falha de pagamento. Evite pagamento duplicado e confirme autorização de contato.",
+    "action": "Nenhuma cobrança ou mensagem foi executada nesta rodada."
+  }
+]

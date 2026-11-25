@@ -22,12 +22,12 @@ const output = ts.transpileModule(source, { compilerOptions: { module: ts.Module
 const mod = { exports: {} };
 vm.runInNewContext(output, { exports: mod.exports, module: mod, require: id => id === '../data/agentMaterials' ? { agentMaterials } : localRequire(id) });
 const { filterAgentMaterials, AgentMaterialsPage } = mod.exports;
-assert.equal(agentMaterials.length, 74);
-assert.equal(new Set(agentMaterials.map(item => item.id)).size, 74);
+assert.equal(agentMaterials.length, 85);
+assert.equal(new Set(agentMaterials.map(item => item.id)).size, 85);
 assert.ok(agentMaterials.every(item => item.title.trim() && item.text.trim()));
-assert.equal(agentMaterials.filter(item => item.caption?.trim()).length, 7);
+assert.equal(agentMaterials.filter(item => item.caption?.trim()).length, 8);
 assert.ok(agentMaterials.filter(item => item.caption).every(item => !item.caption.includes('Visual:') && !item.caption.includes('Objetivo:')));
-assert.equal(new Set(agentMaterials.map(item => item.category)).size, 9);
+assert.equal(new Set(agentMaterials.map(item => item.category)).size, 10);
 const generatedImageCount = Object.keys(reqGeneratedImages()).length;
 assert.equal(generatedImageCount, 7);
 assert.equal(agentMaterials.filter(item => item.imageUrl).length, 7 + generatedImageCount);
@@ -45,21 +45,26 @@ for (const item of agentMaterials.filter(item => item.imageUrl)) {
     assert.equal(asset.subarray(-2).toString('hex'), 'ffd9');
   }
 }
-assert.equal(agentMaterials.filter(item => item.notification).length, 19);
+assert.equal(agentMaterials.filter(item => item.notification).length, 22);
 for (const item of agentMaterials.filter(item => item.notification)) {
   assert.ok(item.notification.title.length <= 60);
   assert.ok(item.notification.body.length <= 180);
   assert.ok(item.notification.eligibility);
 }
-assert.equal(filterAgentMaterials(agentMaterials, '   ', '').length, 74);
-assert.equal(filterAgentMaterials(agentMaterials, 'ATENDIMENTO', 'Atendimento').length, 10);
+assert.equal(filterAgentMaterials(agentMaterials, '   ', '').length, 85);
+assert.equal(filterAgentMaterials(agentMaterials, 'ATENDIMENTO', 'Atendimento').length, 12);
 assert.deepEqual(Array.from(filterAgentMaterials(agentMaterials, 'ATENDIMENTO', ''), item => item.id), Array.from(filterAgentMaterials(agentMaterials, 'atendimento', ''), item => item.id));
-assert.equal(filterAgentMaterials(agentMaterials, 'cobrancas', 'Cobranças').length, 5);
+assert.equal(filterAgentMaterials(agentMaterials, 'cobrancas', 'Cobranças').length, 6);
 assert.equal(filterAgentMaterials(agentMaterials, 'termo inexistente xyz', '').length, 0);
 assert.equal(filterAgentMaterials(agentMaterials, 'boas-vindas', 'Suporte').length, 0);
-assert.equal(filterAgentMaterials(agentMaterials, '', 'Conteúdo').length, 14);
+assert.equal(filterAgentMaterials(agentMaterials, '', 'Conteúdo').length, 15);
+const daily = agentMaterials.filter(item => item.id.startsWith('dia-2026-11-25-'));
+assert.equal(daily.length, 11);
+assert.equal(new Set(daily.map(item => item.area)).size, 8);
+assert.ok(daily.every(item => filterAgentMaterials(agentMaterials, '25/11/2026', item.area).some(found => found.id === item.id)));
+assert.ok(daily.filter(item => item.notification).every(item => item.notification.target === 'individual' && item.notification.requiresIndividualTargeting));
 const html = renderToStaticMarkup(React.createElement(AgentMaterialsPage));
-assert.equal((html.match(/<article /g) || []).length, 74);
+assert.equal((html.match(/<article /g) || []).length, 85);
 assert.ok(html.includes('Materiais do time'));
 assert.ok(html.includes('agent-material-search'));
 assert.ok(html.includes('agent-material-area'));
@@ -70,7 +75,7 @@ assert.ok(!source.includes('dangerouslySetInnerHTML'));
 const admin = fs.readFileSync(path.join(root, 'src/admin/AdminApp.tsx'), 'utf8');
 assert.ok(admin.includes("id: 'agent-materials'"));
 assert.ok(admin.includes("page === 'agent-materials' && <AgentMaterialsPage onPrepareNotification="));
-console.log('PASS: catalog, accent/case/combined filters, empty results, SSR 74 cards, accessibility labels and admin integration.');
+console.log('PASS: catalog, accent/case/combined filters, empty results, SSR 85 cards, accessibility labels and admin integration.');
 console.log('SSR checks completed; component handler interaction checks follow below.');
 
 // Component interaction tests with deterministic React hook state and mocked DOM refs.
@@ -164,7 +169,7 @@ const flushPromises = () => new Promise(resolve => setImmediate(resolve));
   nodes = filters.render();
   assert.equal(nodes.filter(node => node.type === 'article').length, 0);
   nodes.find(node => node.type === 'button' && node.props.children === 'Limpar filtros').props.onClick();
-  assert.equal(filters.render().filter(node => node.type === 'article').length, 74);
+  assert.equal(filters.render().filter(node => node.type === 'article').length, 85);
   assert.ok(agentMaterials.every(item => filterAgentMaterials(agentMaterials, item.title, item.area).some(found => found.id === item.id)));
   const categories = makeHarness(undefined);
   let copiedCaption;
@@ -180,7 +185,7 @@ const flushPromises = () => new Promise(resolve => setImmediate(resolve));
   assert.ok(notificationChip);
   notificationChip.props.onClick();
   nodes = categories.render(props);
-  assert.equal(nodes.filter(node => node.type === 'article').length, 19);
+  assert.equal(nodes.filter(node => node.type === 'article').length, 22);
   const prepareButton = nodes.find(node => node.type === 'button' && node.props.children === 'Preparar notificação');
   prepareButton.props.onClick();
   const firstNotification = agentMaterials.find(item => item.notification).notification;
@@ -188,7 +193,7 @@ const flushPromises = () => new Promise(resolve => setImmediate(resolve));
   assert.equal(prepared.body, firstNotification.body);
   assert.equal(prepared.target, firstNotification.target);
   assert.equal(prepared.eligibility, firstNotification.eligibility);
-  console.log('PASS: 9 categories, 14 image previews, 7 captions, 19 notification drafts, category selection and prepare callback.');
-  console.log('PASS: actual component handlers for pending/successful clipboard, denied/missing API, textarea focus/selection, accessible fallback, focus restoration, empty/reset filters and all 74 titles.');
+  console.log('PASS: 10 categories, 14 image previews, 8 captions, 22 notification drafts, category selection and prepare callback.');
+  console.log('PASS: actual component handlers for pending/successful clipboard, denied/missing API, textarea focus/selection, accessible fallback, focus restoration, empty/reset filters and all 85 titles.');
   console.log('Limits: hook/ref harness and SSR; no browser layout, native clipboard permissions, assistive technology or production was exercised.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

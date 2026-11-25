@@ -1,3 +1,4 @@
+import dailyMaterials from './agentDailyMaterials.json';
 import materials from './agentMaterials.json';
 import notificationTemplates from './agentNotificationTemplates.json';
 import generatedImages from './agentGeneratedImages.json';
@@ -48,6 +49,7 @@ const individualTemplates = new Set([
 ]);
 
 export const agentMaterials: AgentMaterial[] = [
+  ...dailyMaterials,
   ...materials.map((item): AgentMaterial => {
     const isPush = item.id.startsWith('copy-N');
     const category = item.area === 'Conteúdo' ? 'Conteúdos para redes sociais'
@@ -58,7 +60,7 @@ export const agentMaterials: AgentMaterial[] = [
       title: pushTitles[item.id] ?? item.title,
       category,
       ...(item.area === 'Conteúdo' ? {
-        caption: item.text.match(/(?:^|\s)Legenda(?:\/apoio)?:\s*([\s\S]*?)(?:\nVisual:|\nAção:|$)/)?.[1].trim(),
+        caption: item.id === 'conteudo-C4' ? "Acréscimo e margem usam bases diferentes. Com custo de R$ 10, acrescentar 50% resulta em preço de R$ 15. A diferença de R$ 5 representa aproximadamente 33,33% do preço de venda. Essa conta considera os custos informados e não garante lucro líquido. Confira também despesas e taxas aplicáveis antes de definir seu preço." : item.text.match(/(?:^|\s)Legenda(?:\/apoio)?:\s*([\s\S]*?)(?:\nVisual:|\nAção:|$)/)?.[1].trim(),
       } : {}),
       ...(images[item.id] ? {
         imageUrl: `/agent-materials/${images[item.id]}`,
