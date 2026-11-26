@@ -1,3 +1,4 @@
+import campaignMaterials from './agentCampaignMaterials.json';
 import dailyMaterials from './agentDailyMaterials.json';
 import materials from './agentMaterials.json';
 import notificationTemplates from './agentNotificationTemplates.json';
@@ -50,6 +51,7 @@ const individualTemplates = new Set([
 
 export const agentMaterials: AgentMaterial[] = [
   ...dailyMaterials,
+  ...campaignMaterials,
   ...materials.map((item): AgentMaterial => {
     const isPush = item.id.startsWith('copy-N');
     const category = item.area === 'Conteúdo' ? 'Conteúdos para redes sociais'

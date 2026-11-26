@@ -49,3 +49,7 @@ Alterações locais, sem publicação ou envio a clientes. A rotina dos próximo
 As entregas de hoje foram integradas ao catálogo do admin: 11 itens datados, cobrindo oito áreas; total 85 materiais, 22 notificações e dez categorias. Inclui post e legenda, três pushes individuais, respostas de atendimento/comercial e procedimentos internos resumidos. Dados financeiros reais e capturas com dados de conta não foram incorporados aos arquivos públicos. Legenda C4 ajustada para porcentagem aproximada.
 
 Testes de catálogo (SSR, filtros, cópia e preparação), rascunhos de notificação, formatador de custos e TypeScript web/mobile aprovados. Nenhum envio real ou publicação do aplicativo foi realizado.
+
+## Publicações informadas hoje
+
+Feed: embalagem; TikTok: rendimento. [Análise e plano de conversão](marketing-conversao-publicacoes.md), com apoio para stories/comentário, ponte para primeiro cálculo e assinatura e critérios de medição. Desempenho ainda não medido; versões publicadas não inspecionadas.

@@ -82,6 +82,7 @@ const PAYMENT_METHODS: { key: PaymentMethodType; icon: keyof typeof Ionicons.gly
 ];
 
 const THUMB_COLORS = [colors.pinkSoft, colors.primary, colors.blue, colors.amber, colors.green, '#7B68EE'];
+const WEEKDAYS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export const CreateOrderScreen: React.FC = () => {
   const { currency } = useCurrency();
@@ -333,19 +334,17 @@ export const CreateOrderScreen: React.FC = () => {
     setShowDatePicker(true);
   };
 
-  const selectCalendarDate = (day: number) => {
-    const date = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), day);
-    setDeliveryDate(`${String(day).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`);
+  const selectCalendarDate = (date: string) => {
+    setDeliveryDate(date);
     setErrors(prev => ({ ...prev, date: '' }));
     setShowDatePicker(false);
   };
 
-  const calendarDays = () => {
-    const first = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth(), 1).getDay();
-    const count = new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 0).getDate();
-    return [...Array(first).fill(null), ...Array.from({ length: count }, (_, i) => i + 1)];
-  };
-
+  const year = calendarMonth.getFullYear();
+  const month = calendarMonth.getMonth();
+  const firstWeekday = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const weekCount = Math.ceil((firstWeekday + daysInMonth) / WEEKDAYS.length);
   const monthLabel = calendarMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
   const timeOptions = Array.from({ length: 27 }, (_, i) => `${String(7 + Math.floor(i / 2)).padStart(2, '0')}:${i % 2 ? '30' : '00'}`);
 
@@ -493,7 +492,7 @@ export const CreateOrderScreen: React.FC = () => {
               <Text style={st.label}>Data</Text>
               <TouchableOpacity activeOpacity={0.75} disabled={isLocked} onPress={openDatePicker} style={[st.input, errors.date ? st.inputErr : null]}>
                 <Ionicons name="calendar-outline" size={18} color={INK3} />
-                <Text style={[st.inputText, !deliveryDate && { color: INK3 }]}>{deliveryDate || '15-01-2026'}</Text>
+            <Text style={[st.inputText, !deliveryDate && { color: INK3 }]}>{deliveryDate || 'Selecionar data'}</Text>
                 <Ionicons name="chevron-down" size={16} color={INK3} />
               </TouchableOpacity>
               {errors.date && <Text style={st.err}>{errors.date}</Text>}
@@ -747,9 +746,29 @@ export const CreateOrderScreen: React.FC = () => {
         <View style={st.pickerOverlay}><View style={st.pickerCard}>
           <View style={st.modalHead}><Text style={st.modalTitle}>Escolher data de entrega</Text><TouchableOpacity onPress={() => setShowDatePicker(false)}><Ionicons name="close" size={23} color={INK} /></TouchableOpacity></View>
           <View style={st.calendarNav}><TouchableOpacity style={st.navBtn} onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1, 1))}><Ionicons name="chevron-back" size={19} color={PINK} /></TouchableOpacity><Text style={st.calendarMonth}>{monthLabel}</Text><TouchableOpacity style={st.navBtn} onPress={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))}><Ionicons name="chevron-forward" size={19} color={PINK} /></TouchableOpacity></View>
-          <View style={st.weekRow}>{['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].map((day, index) => <Text key={`${day}-${index}`} style={st.weekDay}>{day}</Text>)}</View>
-          <View style={st.calendarGrid}>{calendarDays().map((day, index) => day === null ? <View key={`empty-${index}`} style={st.dayCell} /> : <TouchableOpacity key={day} onPress={() => selectCalendarDate(day)} style={[st.dayCell, deliveryDate === `${String(day).padStart(2, '0')}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-${calendarMonth.getFullYear()}` && st.daySelected]}><Text style={[st.dayText, deliveryDate === `${String(day).padStart(2, '0')}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}-${calendarMonth.getFullYear()}` && st.dayTextSelected]}>{day}</Text></TouchableOpacity>)}</View>
-          <TouchableOpacity style={st.todayBtn} onPress={() => { const today = new Date(); setCalendarMonth(new Date(today.getFullYear(), today.getMonth(), 1)); setDeliveryDate(`${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`); setErrors(prev => ({ ...prev, date: '' })); setShowDatePicker(false); }}><Text style={st.todayText}>Hoje</Text></TouchableOpacity>
+          <View style={[st.calendarRow, st.weekHeader]}>
+            {WEEKDAYS.map((day, index) => <Text key={index} style={st.weekDay}>{day}</Text>)}
+          </View>
+          {Array.from({ length: weekCount }, (_, week) => (
+            <View key={week} style={st.calendarRow}>
+              {WEEKDAYS.map((_, weekday) => {
+                const day = week * WEEKDAYS.length + weekday - firstWeekday + 1;
+                if (day < 1 || day > daysInMonth) return <View key={weekday} style={st.dayCell} />;
+
+                const date = `${String(day).padStart(2, '0')}-${String(month + 1).padStart(2, '0')}-${year}`;
+                const selected = deliveryDate === date;
+                return (
+                  <TouchableOpacity key={weekday} onPress={() => selectCalendarDate(date)} style={[st.dayCell, selected && st.daySelected]}>
+                    <Text style={[st.dayText, selected && st.dayTextSelected]}>{day}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
+          <TouchableOpacity style={st.todayBtn} onPress={() => {
+            const today = new Date();
+            selectCalendarDate(`${String(today.getDate()).padStart(2, '0')}-${String(today.getMonth() + 1).padStart(2, '0')}-${today.getFullYear()}`);
+          }}><Text style={st.todayText}>Hoje</Text></TouchableOpacity>
         </View></View>
       </Modal>
 
@@ -881,10 +900,10 @@ const st = StyleSheet.create({
   calendarNav: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 18, paddingVertical: 12 },
   navBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', ...SHADOW },
   calendarMonth: { textTransform: 'capitalize', fontSize: 17, fontWeight: '800', color: INK },
-  weekRow: { flexDirection: 'row', paddingHorizontal: 18, marginBottom: 4 },
+  calendarRow: { flexDirection: 'row', paddingHorizontal: 18 },
+  weekHeader: { marginBottom: 4 },
   weekDay: { flex: 1, textAlign: 'center', fontSize: 12, fontWeight: '700', color: INK3 },
-  calendarGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 18 },
-  dayCell: { width: `${100 / 7}%`, height: 43, alignItems: 'center', justifyContent: 'center' },
+  dayCell: { flex: 1, height: 43, alignItems: 'center', justifyContent: 'center' },
   daySelected: { backgroundColor: PINK, borderRadius: 13 },
   dayText: { fontSize: 14, color: INK, fontWeight: '600' },
   dayTextSelected: { color: '#fff', fontWeight: '800' },
