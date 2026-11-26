@@ -2,7 +2,7 @@ import { apiClient } from './client';
 
 export interface PixRequest {
   id: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   plan_label?: string;
   amount_cents?: number;
   created_at: string;

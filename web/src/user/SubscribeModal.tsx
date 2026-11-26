@@ -122,6 +122,27 @@ export function SubscribeModal({
   const [upgradeDiff, setUpgradeDiff] = useState<number | null>(null);
   const [upgradeQr, setUpgradeQr] = useState<{ base64?: string; copyPaste?: string } | null>(null);
 
+  const activePixId = offerQr?.id ?? couponQr?.id ?? status?.id;
+  useEffect(() => {
+    if (!activePixId) return;
+    let active = true;
+    const interval = setInterval(async () => {
+      try {
+        const latest = await userApi.getPixStatus();
+        if (!active || latest?.id !== activePixId || latest.status !== 'expired') return;
+        setStatus(null);
+        setCouponQr(null);
+        setOfferQr(null);
+        setUpgradeQr(null);
+        setCopied(false);
+        toast.error(t('subscribe.pixExpired'));
+      } catch {
+        // Retry on the next poll.
+      }
+    }, 5000);
+    return () => { active = false; clearInterval(interval); };
+  }, [activePixId, t]);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -189,7 +210,7 @@ export function SubscribeModal({
     try {
       const cycleLabel = effectiveCycle === 'monthly' ? 'mensal' : 'anual';
       const label = `Plano ${TIER_META[tier].label} ${cycleLabel}`;
-      const res = await userApi.createPixRequest(label, selected.amountCents, tier);
+      const res = await userApi.createPixRequest(label, selected.amountCents, tier, undefined, true);
       setStatus(res);
       toast.success(t('subscribe.requestSent'));
     } catch (err) {

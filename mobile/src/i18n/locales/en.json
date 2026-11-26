@@ -823,6 +823,8 @@
     "approved": "Payment approved! Welcome to Premium!",
     "rejected": "Payment not confirmed. Please try again.",
     "stillPending": "Still waiting for confirmation. We'll notify you!",
+    "expired": "This Pix code expired. Generate a new one to continue.",
+    "generateNew": "Generate new Pix code",
     "checkError": "Error checking status",
     "waitingTitle": "Waiting for confirmation",
     "waitingSubtitle": "Your payment is being verified. You'll receive a notification once it's approved.",

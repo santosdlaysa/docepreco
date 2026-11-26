@@ -218,6 +218,7 @@
     "offerTitle": "Oferta de retorno: {{percent}}% de desconto no PIX",
     "offerValid": "Válida até {{date}}. O valor final é confirmado ao gerar o PIX.",
     "payThisPix": "Pague este PIX e aguarde a confirmação do pagamento.",
+    "pixExpired": "Este Pix venceu. Gere um novo código para continuar.",
     "generatingPix": "Gerando PIX…",
     "generateDiscountPix": "Gerar PIX com desconto",
     "autoActiveTitle": "Renovação automática ativa",

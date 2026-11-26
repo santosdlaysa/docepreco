@@ -1241,7 +1241,7 @@ export interface ChangelogEntry {
 export interface PixRequestItem {
   id: string;
   userId: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   productType: 'subscription' | 'ad_banner';
   planLabel: string;
   planTier: 'premium' | 'master';

@@ -63,6 +63,7 @@ import { pool } from './infrastructure/database/connection';
 import { runMigrations } from './infrastructure/database/migrate';
 import { PostgresTelegramAlertRepository } from './infrastructure/repositories/PostgresTelegramAlertRepository';
 import { checkManualRenewals } from './infrastructure/services/renewalNotificationService';
+import { expireSubscriptionPixRequests } from './infrastructure/services/subscriptionPixExpiration';
 import { checkSalesSummarySchedules } from './infrastructure/services/dailySalesNotificationService';
 import { setupSwagger } from './swagger';
 import { assertRequiredSecrets } from './config/secrets';
@@ -314,6 +315,14 @@ async function bootstrap() {
     // (brute force, fuçada em rotas admin, rate limit estourado) e avisa no
     // Telegram só quando cruza os limiares. Janela = intervalo do cron.
     cron.schedule(`*/${SECURITY_WINDOW_MIN} * * * *`, () => { void sendSecurityAlert(); }, { timezone: 'America/Sao_Paulo' });
+
+    cron.schedule('* * * * *', async () => {
+      try {
+        await expireSubscriptionPixRequests();
+      } catch (error) {
+        console.error('[Cron] Erro ao verificar vencimentos de Pix:', error);
+      }
+    }, { noOverlap: true });
 
     // Cron: recipients are persisted for individual notifications.
     cron.schedule('* * * * *', async () => {

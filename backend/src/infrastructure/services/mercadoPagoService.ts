@@ -24,17 +24,19 @@ export async function createMpPixPayment(opts: {
   description: string;
   payerEmail: string;
   externalReference: string;
+  expirationMinutes?: number;
 }): Promise<MpPixPayment> {
   const token = getAccessToken();
   const amount = opts.amountCents / 100;
 
-  // Expira em 24 horas
-  const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+  // O padrão de 24 horas também é usado pelos fluxos que não pedem prazo próprio.
+  const expiresAt = new Date(Date.now() + (opts.expirationMinutes ?? 24 * 60) * 60_000).toISOString();
 
   const notificationUrl = `${process.env.APP_BASE_URL}/api/pix/webhook/mercadopago`;
 
   const response = await fetch(`${MP_BASE_URL}/v1/payments`, {
     method: 'POST',
+    signal: opts.expirationMinutes === undefined ? undefined : AbortSignal.timeout(15_000),
     headers: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`,
@@ -208,11 +210,12 @@ export async function getMpAuthorizedPayment(authorizedPaymentId: string): Promi
  * Consulta o status de um pagamento no Mercado Pago.
  * Retorna o status ('approved', 'pending', 'rejected', etc.) e o external_reference.
  */
-export async function getMpPaymentInfo(paymentId: string): Promise<{ status: string; externalReference: string }> {
+export async function getMpPaymentInfo(paymentId: string, signal?: AbortSignal): Promise<{ status: string; externalReference: string }> {
   const token = getAccessToken();
 
   const response = await fetch(`${MP_BASE_URL}/v1/payments/${paymentId}`, {
     headers: { 'Authorization': `Bearer ${token}` },
+    signal,
   });
 
   if (!response.ok) {
@@ -225,4 +228,16 @@ export async function getMpPaymentInfo(paymentId: string): Promise<{ status: str
     status: data.status,
     externalReference: data.external_reference ?? '',
   };
+}
+
+export async function cancelPendingMpPixPayment(paymentId: string, signal: AbortSignal): Promise<string> {
+  const response = await fetch(`${MP_BASE_URL}/v1/payments/${paymentId}`, {
+    method: 'PUT',
+    headers: { Authorization: `Bearer ${getAccessToken()}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status: 'cancelled' }),
+    signal,
+  });
+  if (!response.ok) throw new Error(`[MercadoPago] Cancelamento do Pix ${paymentId} retornou HTTP ${response.status}`);
+  const data = await response.json() as { status: string };
+  return data.status;
 }

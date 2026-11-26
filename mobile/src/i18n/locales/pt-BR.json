@@ -823,6 +823,8 @@
     "approved": "Pagamento aprovado! Bem-vindo ao Premium!",
     "rejected": "Pagamento não confirmado. Tente novamente.",
     "stillPending": "Ainda aguardando confirmação. Vamos te avisar!",
+    "expired": "Este Pix venceu. Gere um novo código para continuar.",
+    "generateNew": "Gerar novo Pix",
     "checkError": "Erro ao verificar status",
     "waitingTitle": "Aguardando confirmação",
     "waitingSubtitle": "Seu pagamento está sendo verificado. Você receberá uma notificação assim que for aprovado.",

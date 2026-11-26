@@ -630,6 +630,11 @@ export async function runMigrations() {
     await addColumnIfMissing(client, 'pix_requests', 'mp_payment_id', 'VARCHAR(100) NULL');
     await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code', 'TEXT NULL');
     await addColumnIfMissing(client, 'pix_requests', 'mp_qr_code_base64', 'TEXT NULL');
+    await addColumnIfMissing(client, 'pix_requests', 'expires_at', 'TIMESTAMPTZ NULL');
+    await addColumnIfMissing(client, 'pix_requests', 'manual_confirmation', 'BOOLEAN NOT NULL DEFAULT FALSE');
+    await client.query(`ALTER TABLE pix_requests DROP CONSTRAINT IF EXISTS pix_requests_status_check`);
+    await client.query(`ALTER TABLE pix_requests ADD CONSTRAINT pix_requests_status_check
+      CHECK (status IN ('pending', 'approved', 'rejected', 'expired'))`);
 
     // Sponsored carousel banners — confeitarias pagam via PIX para anunciar na Home.
     // Reaproveita a tabela `banners`; `placement='carousel'` distingue dos avisos.

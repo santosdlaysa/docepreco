@@ -47,12 +47,13 @@ const STATUS_MAP: Record<string, { label: string; color: string; icon: typeof Cl
   pending: { label: 'Pendente', color: 'bg-yellow-100 text-yellow-700', icon: Clock },
   approved: { label: 'Aprovado', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   rejected: { label: 'Rejeitado', color: 'bg-red-100 text-red-600', icon: XCircle },
+  expired: { label: 'Expirado', color: 'bg-gray-100 text-gray-600', icon: Clock },
 };
 
 export function PixRequestsPage({ toast }: Props) {
   const [requests, setRequests] = useState<PixRequestItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'rejected' | 'all'>('pending');
+  const [filter, setFilter] = useState<PixRequestItem['status'] | 'all'>('pending');
   const [approving, setApproving] = useState<string | null>(null);
   const [confirmApprove, setConfirmApprove] = useState<PixRequestItem | null>(null);
   const [approveAmount, setApproveAmount] = useState('');
@@ -156,7 +157,7 @@ export function PixRequestsPage({ toast }: Props) {
 
       {/* Filter tabs */}
       <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg mb-6 w-fit">
-        {(['pending', 'approved', 'rejected', 'all'] as const).map(f => (
+        {(['pending', 'approved', 'rejected', 'expired', 'all'] as const).map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -166,7 +167,7 @@ export function PixRequestsPage({ toast }: Props) {
                 : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
             }`}
           >
-            {f === 'pending' ? 'Pendentes' : f === 'approved' ? 'Aprovados' : f === 'rejected' ? 'Rejeitados' : 'Todos'}
+            {f === 'pending' ? 'Pendentes' : f === 'approved' ? 'Aprovados' : f === 'rejected' ? 'Rejeitados' : f === 'expired' ? 'Expirados' : 'Todos'}
           </button>
         ))}
       </div>
@@ -274,7 +275,7 @@ export function PixRequestsPage({ toast }: Props) {
 
                 {req.status !== 'pending' && req.reviewedAt && (
                   <p className="text-xs text-gray-400 mt-2">
-                    {req.status === 'approved' ? 'Aprovado' : 'Rejeitado'} em {fmtDate(req.reviewedAt)}
+                    {st.label} em {fmtDate(req.reviewedAt)}
                   </p>
                 )}
               </div>

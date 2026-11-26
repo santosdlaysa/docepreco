@@ -109,6 +109,7 @@ export const PixPaymentScreen: React.FC = () => {
   const [selectedPlan, setSelectedPlan] = useState<PlanType>(route.params?.plan === 'annual' ? 'annual' : 'monthly');
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [expired, setExpired] = useState(false);
   const [checking, setChecking] = useState(false);
   const [copied, setCopied] = useState(false);
   // QR dinâmico retornado pelo Mercado Pago
@@ -150,7 +151,10 @@ export const PixPaymentScreen: React.FC = () => {
         if (status?.amount_cents === LEGACY_MONTHLY_CENTS) {
           setLegacyMonthly(true);
         }
-        if (status?.status === 'pending') {
+        if (status?.status === 'expired') {
+          setMode('once');
+          setExpired(true);
+        } else if (status?.status === 'pending') {
           setSent(true);
           // Recupera QR dinâmico salvo (se existir)
           if (status.mp_qr_code && status.mp_qr_code_base64) {
@@ -251,10 +255,13 @@ export const PixPaymentScreen: React.FC = () => {
   const handleGenerateQr = async () => {
     setSending(true);
     try {
-      const result = await pixApi.createRequest(plan.label, plan.priceCents, tier, appliedCoupon?.code);
-      if (result.mp_qr_code && result.mp_qr_code_base64) {
-        setDynamicQr({ copyPaste: result.mp_qr_code, base64: result.mp_qr_code_base64 });
-      }
+      const result = isUpgrade
+        ? await pixApi.upgradeToMaster()
+        : await pixApi.createRequest(plan.label, plan.priceCents, tier, appliedCoupon?.code);
+      setDynamicQr(result.mp_qr_code && result.mp_qr_code_base64
+        ? { copyPaste: result.mp_qr_code, base64: result.mp_qr_code_base64 }
+        : null);
+      setExpired(false);
       setSent(true);
     } catch (error) {
       const msg = error instanceof Error ? error.message : t('pix.requestError');
@@ -341,6 +348,15 @@ export const PixPaymentScreen: React.FC = () => {
     );
   };
 
+  const handleExpired = useCallback(() => {
+    setDynamicQr(null);
+    setCopied(false);
+    setSent(false);
+    setMode('once');
+    setExpired(true);
+    showToast(t('pix.expired'), 'info');
+  }, [showToast, t]);
+
   const handleCheckStatus = useCallback(async () => {
     setChecking(true);
     try {
@@ -350,8 +366,11 @@ export const PixPaymentScreen: React.FC = () => {
         await refresh();
         navigation.goBack();
         navigation.goBack();
+      } else if (status?.status === 'expired') {
+        handleExpired();
       } else if (status?.status === 'rejected') {
         showToast(t('pix.rejected'), 'error');
+        setDynamicQr(null);
         setSent(false);
       } else {
         showToast(t('pix.stillPending'), 'info');
@@ -361,7 +380,7 @@ export const PixPaymentScreen: React.FC = () => {
     } finally {
       setChecking(false);
     }
-  }, [refresh, navigation, showToast, t]);
+  }, [handleExpired, refresh, navigation, showToast, t]);
 
   // Poll status every 15s when request is sent
   useEffect(() => {
@@ -375,11 +394,14 @@ export const PixPaymentScreen: React.FC = () => {
           await refresh();
           navigation.goBack();
           navigation.goBack();
+        } else if (status?.status === 'expired') {
+          clearInterval(interval);
+          handleExpired();
         }
       } catch {}
     }, 5000);
     return () => clearInterval(interval);
-  }, [sent, refresh, navigation, showToast, t]);
+  }, [sent, handleExpired, refresh, navigation, showToast, t]);
 
   // Poll da autorização do Pix Automático a cada 5s enquanto o link está aberto
   useEffect(() => {
@@ -410,7 +432,14 @@ export const PixPaymentScreen: React.FC = () => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {isUpgrade && !sent ? (
+        {expired && <Text style={[styles.waitingSubtitle, { margin: 16 }]}>{t('pix.expired')}</Text>}
+        {isUpgrade && !sent && expired ? (
+          <View style={styles.waitingContainer}>
+            <TouchableOpacity style={[styles.cta, { backgroundColor: accent }]} onPress={handleGenerateQr} disabled={sending}>
+              {sending ? <ActivityIndicator color="#fff" /> : <Text style={styles.ctaText}>{t('pix.generateNew')}</Text>}
+            </TouchableOpacity>
+          </View>
+        ) : isUpgrade && !sent ? (
           /* Upgrade: cobrança sendo carregada (criada no backend antes de navegar) */
           <View style={styles.waitingContainer}>
             <ActivityIndicator size="large" color={accent} />

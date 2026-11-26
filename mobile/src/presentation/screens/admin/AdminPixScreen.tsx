@@ -13,6 +13,7 @@ const STATUS = {
   pending: { label: 'Pendente', color: '#F59E0B', icon: 'hourglass-outline' as const },
   approved: { label: 'Aprovado', color: '#22C55E', icon: 'checkmark-circle' as const },
   rejected: { label: 'Recusado', color: colors.red, icon: 'close-circle' as const },
+  expired: { label: 'Expirado', color: colors.textMuted, icon: 'time-outline' as const },
 };
 
 const fmtCents = (c: number) => (c / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -22,7 +23,7 @@ export const AdminPixScreen: React.FC = () => {
   const [requests, setRequests] = useState<PixRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
+  const [filter, setFilter] = useState<'all' | PixRequest['status']>('all');
   const [acting, setActing] = useState<string | null>(null);
 
   const load = useCallback(async () => {

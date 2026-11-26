@@ -404,7 +404,7 @@ export interface PixRequestStatus {
   mp_qr_code?: string;
   mp_qr_code_base64?: string;
   id: string;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   plan_label?: string;
   amount_cents?: number;
   plan_tier?: PlanTier;
@@ -742,10 +742,10 @@ export const userApi = {
 
   // Premium / PIX
   getPlanConfig: () => req<PlanConfigPublic>('/admin/settings/plans'),
-  createPixRequest: (planLabel: string, amountCents: number, planTier: PlanTier = 'premium', couponCode?: string) =>
+  createPixRequest: (planLabel: string, amountCents: number, planTier: PlanTier = 'premium', couponCode?: string, manualConfirmation = false) =>
     req<PixRequestStatus>('/pix/request', {
       method: 'POST',
-      body: JSON.stringify({ planLabel, amountCents, planTier, ...(couponCode ? { couponCode } : {}) }),
+      body: JSON.stringify({ planLabel, amountCents, planTier, ...(couponCode ? { couponCode } : {}), ...(manualConfirmation ? { manualConfirmation } : {}) }),
     }),
   /** Valida cupom de desconto; null se inválido/expirado. */
   validateCoupon: (code: string) =>

@@ -193,7 +193,7 @@ export interface PixRequest {
   email: string;
   planLabel: string;
   amountCents: number;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'pending' | 'approved' | 'rejected' | 'expired';
   createdAt: string;
   reviewedAt: string | null;
 }

@@ -13,6 +13,10 @@ import {
   cancelMpPreapproval,
   getMpAuthorizedPayment,
 } from '../../infrastructure/services/mercadoPagoService';
+import {
+  closeUnpaidSubscriptionPix, expireSubscriptionPixRequests, subscriptionPixDeadlineSql, subscriptionPixManualSql,
+  SUBSCRIPTION_MP_EXPIRATION_MINUTES, SUBSCRIPTION_PIX_TTL_MINUTES,
+} from '../../infrastructure/services/subscriptionPixExpiration';
 import { PostgresBannerRepository } from '../../infrastructure/repositories/PostgresBannerRepository';
 import { PostgresCouponRepository } from '../../infrastructure/repositories/PostgresCouponRepository';
 import { getActiveOffer, applyDiscount, attachPixRequest, redeemByPixRequest } from '../../infrastructure/services/winbackService';
@@ -25,6 +29,32 @@ const userRepo = new PostgresUserRepository();
 const pushTokenRepo = new PostgresPushTokenRepository();
 const bannerRepo = new PostgresBannerRepository();
 const couponRepo = new PostgresCouponRepository();
+const PIX_ALREADY_PENDING = 'Estamos verificando o Pix anterior. Tente novamente em instantes.';
+
+async function reserveSubscriptionPix(userId: string, label: string, tier: 'premium' | 'master', amountCents: number, couponId: string | null = null, manualConfirmation = false) {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Serialize reservations for a user without holding the lock during a provider call.
+    await client.query('SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE', [userId]);
+    const inserted = await client.query<{ id: string; status: 'pending'; created_at: Date }>(
+      `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents, coupon_id, manual_confirmation)
+       SELECT $1::uuid, $2, $3, $4, $5, $6
+       WHERE NOT EXISTS (
+         SELECT 1 FROM pix_requests WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription'
+       )
+       RETURNING id, status, created_at`,
+      [userId, label, tier, amountCents, couponId, manualConfirmation]
+    );
+    await client.query('COMMIT');
+    return inserted.rows[0];
+  } catch (error) {
+    await client.query('ROLLBACK');
+    throw error;
+  } finally {
+    client.release();
+  }
+}
 
 /**
  * Valida um cupom no servidor (nunca confia no desconto vindo do app) e devolve
@@ -63,11 +93,12 @@ export class PixController {
       return;
     }
 
-    const { planLabel, amountCents, planTier, couponCode } = req.body as {
+    const { planLabel, amountCents, planTier, couponCode, manualConfirmation } = req.body as {
       planLabel?: string;
       amountCents?: number;
       planTier?: 'premium' | 'master';
       couponCode?: string;
+      manualConfirmation?: boolean;
     };
     const tier: 'premium' | 'master' = planTier === 'master' ? 'master' : 'premium';
 
@@ -106,13 +137,45 @@ export class PixController {
     const finalLabel = `${planLabel ?? 'Mensal'}${discountSuffix}`;
 
     try {
+      await expireSubscriptionPixRequests(userId);
       // Check if user already has a pending request
       const existing = await pool.query(
-        `SELECT id, status, plan_label, amount_cents, mp_qr_code, mp_qr_code_base64 FROM pix_requests WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription' LIMIT 1`,
+        `SELECT id, status, plan_label, plan_tier, amount_cents, mp_qr_code, mp_qr_code_base64, mp_payment_id,
+                (${subscriptionPixDeadlineSql} <= NOW()) AS past_deadline,
+                ${subscriptionPixManualSql} AS requires_manual_review,
+                (created_at > NOW() - INTERVAL '1 minute') AS recently_created
+         FROM pix_requests WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription'
+         ORDER BY created_at DESC LIMIT 1`,
         [userId]
       );
-      if (existing.rows.length > 0) {
-        const row = existing.rows[0];
+      let pending = existing.rows[0];
+      if (pending?.requires_manual_review || (manualConfirmation === true && pending)) {
+        if (manualConfirmation === true && pending.requires_manual_review) {
+          res.json({ success: true, data: { id: pending.id, status: pending.status, alreadyExists: true } });
+          return;
+        }
+        res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+        return;
+      }
+      if (pending?.mp_payment_id) {
+        if (pending.past_deadline) {
+          res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+          return;
+        }
+        if (!pending.mp_qr_code || pending.amount_cents !== finalCents || pending.plan_tier !== tier) {
+          if (!await closeUnpaidSubscriptionPix(pending.id, pending.mp_payment_id)) {
+            res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+            return;
+          }
+          pending = undefined;
+        }
+      }
+      if (pending) {
+        const row = pending;
+        if (!row.mp_payment_id && row.recently_created) {
+          res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+          return;
+        }
         // Pedido pendente ainda com o valor certo e QR pronto → devolve como está.
         // Se o valor mudou (ex.: usuário acabou de aplicar um cupom) ou falta o QR,
         // regenera a cobrança com o valor final para o cupom valer de fato.
@@ -142,13 +205,15 @@ export class PixController {
             description: `DocePreço ${finalLabel} - ${tier}`,
             payerEmail: user?.email ?? 'cliente@docepreco.com',
             externalReference: row.id,
+            expirationMinutes: SUBSCRIPTION_MP_EXPIRATION_MINUTES,
           });
           mpQrCode = mp.qrCode;
           mpQrCodeBase64 = mp.qrCodeBase64;
           await pool.query(
             `UPDATE pix_requests
              SET plan_label = $1, amount_cents = $2, coupon_id = $3,
-                 mp_payment_id = $4, mp_qr_code = $5, mp_qr_code_base64 = $6
+                 mp_payment_id = $4, mp_qr_code = $5, mp_qr_code_base64 = $6,
+                 expires_at = NOW() + INTERVAL '${SUBSCRIPTION_PIX_TTL_MINUTES} minutes'
              WHERE id = $7`,
             [finalLabel, finalCents, couponId, mp.paymentId, mpQrCode, mpQrCodeBase64, row.id]
           );
@@ -171,14 +236,12 @@ export class PixController {
         return;
       }
 
-      const result = await pool.query(
-        `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents, coupon_id)
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, status, created_at`,
-        [userId, finalLabel, tier, finalCents, couponId]
-      );
-
-      const pixRequestId: string = result.rows[0].id;
+      const request = await reserveSubscriptionPix(userId, finalLabel, tier, finalCents, couponId, manualConfirmation === true);
+      if (!request) {
+        res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+        return;
+      }
+      const pixRequestId = request.id;
       if (winbackOffer) {
         await attachPixRequest(winbackOffer.id, pixRequestId).catch(() => {});
       }
@@ -187,19 +250,21 @@ export class PixController {
       // Gera pagamento PIX no Mercado Pago
       let mpQrCode: string | null = null;
       let mpQrCodeBase64: string | null = null;
-      try {
+      if (manualConfirmation !== true) try {
         const mp = await createMpPixPayment({
           amountCents: finalCents,
           description: `DocePreço ${finalLabel} - ${tier}`,
           payerEmail: user?.email ?? 'cliente@docepreco.com',
           externalReference: pixRequestId,
+          expirationMinutes: SUBSCRIPTION_MP_EXPIRATION_MINUTES,
         });
 
         mpQrCode = mp.qrCode;
         mpQrCodeBase64 = mp.qrCodeBase64;
 
         await pool.query(
-          `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3 WHERE id = $4`,
+          `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3,
+             expires_at = NOW() + INTERVAL '${SUBSCRIPTION_PIX_TTL_MINUTES} minutes' WHERE id = $4`,
           [mp.paymentId, mpQrCode, mpQrCodeBase64, pixRequestId]
         );
       } catch (mpErr) {
@@ -217,7 +282,7 @@ export class PixController {
       res.status(201).json({
         success: true,
         data: {
-          ...result.rows[0],
+          ...request,
           amount_cents: finalCents,
           mp_qr_code: mpQrCode,
           mp_qr_code_base64: mpQrCodeBase64,
@@ -364,12 +429,26 @@ export class PixController {
       const user = await userRepo.findById(userId);
 
       // Reaproveita um pedido de upgrade ainda pendente e com o mesmo valor (evita QR duplicado).
+      await expireSubscriptionPixRequests(userId);
       const existing = await pool.query(
-        `SELECT id, status, amount_cents, mp_qr_code, mp_qr_code_base64 FROM pix_requests
+        `SELECT id, status, amount_cents, mp_qr_code, mp_qr_code_base64, mp_payment_id,
+                (${subscriptionPixDeadlineSql} <= NOW()) AS past_deadline,
+                ${subscriptionPixManualSql} AS requires_manual_review FROM pix_requests
          WHERE user_id = $1 AND status = 'pending' AND product_type = 'subscription' AND plan_tier = 'master'
          ORDER BY created_at DESC LIMIT 1`,
         [userId]
       );
+      const pending = existing.rows[0];
+      if (pending?.requires_manual_review) {
+        res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+        return;
+      }
+      if (pending?.mp_payment_id && (pending.past_deadline ||
+        ((pending.amount_cents !== diffCents || !pending.mp_qr_code) &&
+          !await closeUnpaidSubscriptionPix(pending.id, pending.mp_payment_id)))) {
+        res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+        return;
+      }
       if (existing.rows.length > 0 && existing.rows[0].amount_cents === diffCents && existing.rows[0].mp_qr_code) {
         const row = existing.rows[0];
         res.json({
@@ -388,13 +467,12 @@ export class PixController {
         return;
       }
 
-      const inserted = await pool.query(
-        `INSERT INTO pix_requests (user_id, plan_label, plan_tier, amount_cents)
-         VALUES ($1, $2, 'master', $3)
-         RETURNING id, status, created_at`,
-        [userId, label, diffCents]
-      );
-      const pixRequestId: string = inserted.rows[0].id;
+      const request = await reserveSubscriptionPix(userId, label, 'master', diffCents);
+      if (!request) {
+        res.status(409).json({ success: false, error: PIX_ALREADY_PENDING });
+        return;
+      }
+      const pixRequestId = request.id;
 
       let mpQrCode: string | null = null;
       let mpQrCodeBase64: string | null = null;
@@ -404,11 +482,13 @@ export class PixController {
           description: `DocePreço ${label}`,
           payerEmail: user?.email ?? 'cliente@docepreco.com',
           externalReference: pixRequestId,
+          expirationMinutes: SUBSCRIPTION_MP_EXPIRATION_MINUTES,
         });
         mpQrCode = mp.qrCode;
         mpQrCodeBase64 = mp.qrCodeBase64;
         await pool.query(
-          `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3 WHERE id = $4`,
+          `UPDATE pix_requests SET mp_payment_id = $1, mp_qr_code = $2, mp_qr_code_base64 = $3,
+             expires_at = NOW() + INTERVAL '${SUBSCRIPTION_PIX_TTL_MINUTES} minutes' WHERE id = $4`,
           [mp.paymentId, mpQrCode, mpQrCodeBase64, pixRequestId]
         );
       } catch (mpErr) {
@@ -420,7 +500,7 @@ export class PixController {
       res.status(201).json({
         success: true,
         data: {
-          ...inserted.rows[0],
+          ...request,
           amount_cents: diffCents,
           diff_cents: diffCents,
           master_cents: masterCents,
@@ -446,8 +526,11 @@ export class PixController {
     }
 
     try {
+      await expireSubscriptionPixRequests(userId);
       const result = await pool.query(
-        `SELECT id, status, plan_label, amount_cents, created_at, reviewed_at, mp_qr_code, mp_qr_code_base64
+        `SELECT id, status, plan_label, plan_tier, amount_cents, created_at, reviewed_at,
+                CASE WHEN status = 'pending' THEN mp_qr_code END AS mp_qr_code,
+                CASE WHEN status = 'pending' THEN mp_qr_code_base64 END AS mp_qr_code_base64
          FROM pix_requests
          WHERE user_id = $1 AND product_type = 'subscription'
          ORDER BY created_at DESC
