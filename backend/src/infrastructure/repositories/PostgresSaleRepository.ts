@@ -149,7 +149,10 @@ export class PostgresSaleRepository implements ISaleRepository {
       salePrice: parseFloat(row.sale_price as string),
       totalRevenue: parseFloat(row.total_revenue as string),
       discount: parseFloat((row.discount as string) ?? '0'),
-      saleDate: (row.sale_date as Date).toISOString().split('T')[0],
+      // PostgreSQL DATE is normally returned as a YYYY-MM-DD string by `pg`.
+      // If configured with a Date parser, keep its calendar date in UTC instead
+      // of converting it through the device/server timezone.
+      saleDate: mapSaleDate(row.sale_date),
       clientName: (row.client_name as string) ?? null,
       notes: row.notes as string | undefined,
       paymentMethod: (row.payment_method as Sale['paymentMethod']) ?? null,
@@ -157,4 +160,15 @@ export class PostgresSaleRepository implements ISaleRepository {
       createdAt: (row.created_at as Date).toISOString(),
     };
   }
+}
+
+function mapSaleDate(value: unknown): string {
+  if (typeof value === 'string') {
+    const dateOnly = value.match(/^\d{4}-\d{2}-\d{2}/)?.[0];
+    if (dateOnly) return dateOnly;
+  }
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return value.toISOString().slice(0, 10);
+  }
+  throw new Error('Data da venda inválida retornada pelo banco.');
 }
