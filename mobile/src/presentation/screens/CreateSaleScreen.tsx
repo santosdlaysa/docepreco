@@ -1,4 +1,5 @@
 import { colors } from '../theme/colors';
+import { localSalesDate } from '../../domain/services/todaySales';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
@@ -103,7 +104,7 @@ export const CreateSaleScreen: React.FC = () => {
   const [salePrice, setSalePrice] = useState(editingSale ? String(editingSale.salePrice).replace('.', ',') : '');
   const [discountType, setDiscountType] = useState<DiscountType>('fixed');
   const [discountValue, setDiscountValue] = useState(editingSale && editingSale.discount > 0 ? String(editingSale.discount).replace('.', ',') : '');
-  const [saleDate, setSaleDate] = useState(editingSale?.saleDate ?? new Date().toISOString().split('T')[0]);
+  const [saleDate, setSaleDate] = useState(editingSale?.saleDate ?? localSalesDate());
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(validPayment(editingSale?.paymentMethod) ? editingSale!.paymentMethod! : 'pix');
   const [clientName, setClientName] = useState(editingSale?.clientName ?? '');
   const [notes, setNotes] = useState(editingSale?.notes ?? '');

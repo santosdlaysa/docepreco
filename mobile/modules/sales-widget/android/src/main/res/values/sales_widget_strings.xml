@@ -1,0 +1,5 @@
+<resources>
+    <string name="sales_widget_title">Vendas de hoje</string>
+    <string name="sales_widget_sync">Abra o app para sincronizar</string>
+    <string name="sales_widget_open">Ver vendas →</string>
+</resources>

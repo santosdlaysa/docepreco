@@ -1,4 +1,5 @@
 import { apiClient } from './client';
+import { notifySalesChanges } from './salesChanges';
 import { Sale, CreateSaleDTO } from '../../domain/entities/Sale';
 
 export const saleApi = {
@@ -10,15 +11,18 @@ export const saleApi = {
 
   create: async (data: CreateSaleDTO): Promise<Sale> => {
     const response = await apiClient.post('/sales', data);
+    notifySalesChanges();
     return response.data.data;
   },
 
   update: async (id: string, data: CreateSaleDTO): Promise<Sale> => {
     const response = await apiClient.put(`/sales/${id}`, data);
+    notifySalesChanges();
     return response.data.data;
   },
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/sales/${id}`);
+    notifySalesChanges();
   },
 };

@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiClient } from './client';
+import { notifySalesChanges } from './salesChanges';
 import { Order } from '../../domain/entities/Order';
 
 const LOCAL_KEY = '@docepreco_orders';
@@ -44,6 +45,7 @@ export const orderApi = {
 
   create: async (data: Omit<Order, 'id' | 'createdAt'>): Promise<Order> => {
     const res = await apiClient.post('/orders', data);
+    notifySalesChanges();
     return res.data.data;
   },
 
@@ -51,10 +53,12 @@ export const orderApi = {
   // (integração encomendas → vendas, disparada ao marcar como entregue).
   update: async (id: string, data: Partial<Omit<Order, 'id' | 'createdAt'>>): Promise<(Order & { saleRegistered?: boolean }) | null> => {
     const res = await apiClient.put(`/orders/${id}`, data);
+    notifySalesChanges();
     return res.data.data;
   },
 
   delete: async (id: string): Promise<void> => {
     await apiClient.delete(`/orders/${id}`);
+    notifySalesChanges();
   },
 };

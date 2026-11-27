@@ -1,4 +1,5 @@
 import { PremiumFeature, LimitedFeature } from '../premium/limits';
+import type { NavigatorScreenParams } from '@react-navigation/native';
 import { Sale } from '../../domain/entities/Sale';
 
 export type PaywallTrigger =
@@ -8,8 +9,16 @@ export type PaywallTrigger =
   | { kind: 'activation'; feature: 'first_recipe' }
   | { kind: 'manual' };
 
+export type MainTabParamList = {
+  Home: undefined;
+  Recipes: undefined;
+  AddAction: undefined;
+  Ingredients: undefined;
+  Sales: { todayRequest?: number } | undefined;
+};
+
 export type RootStackParamList = {
-  Main: undefined;
+  Main: NavigatorScreenParams<MainTabParamList> | undefined;
   Recipes: undefined;
   RecipeDetail: { recipeId: string; firstRecipe?: boolean };
   /** asBase: nova receita já vem como receita-base (aberta pela aba Bases). */

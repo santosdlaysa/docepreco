@@ -7,7 +7,7 @@ import { NavigationContainer, NavigationContainerRef, useNavigationState } from 
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { PaywallTrigger, RootStackParamList } from './types';
+import { MainTabParamList, PaywallTrigger, RootStackParamList } from './types';
 import { HomeScreen } from '../screens/HomeScreen';
 import { RecipesScreen } from '../screens/RecipesScreen';
 import { IngredientsScreen } from '../screens/IngredientsScreen';
@@ -85,8 +85,10 @@ import { usePremium } from '../context/PremiumContext';
 import { setForceLogout } from '../../data/api/client';
 import { storeApi } from '../../data/api/storeApi';
 
+import { useSalesWidget } from '../hooks/useSalesWidget';
+
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator();
+const Tab = createBottomTabNavigator<MainTabParamList>();
 
 // Placeholder screen for the center "+" tab (never actually rendered)
 const DummyScreen = () => null;
@@ -190,7 +192,7 @@ function TabNavigator() {
             const state = navigation.getState();
             const currentTab = state?.routes[state.index]?.name ?? 'Home';
             const destination = ACTION_MAP[currentTab]?.route ?? 'CreateSale';
-            navigation.navigate(destination);
+            navigation.getParent()?.navigate(destination);
           },
         })}
       />
@@ -291,8 +293,22 @@ export function AppNavigator() {
   const [whatsNewVisible, setWhatsNewVisible] = useState<boolean | null>(null);
   const navigationRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingPaywall = useRef(false);
+  const pendingSalesLink = useRef(false);
+  const salesRequest = useRef(0);
+  const openTodaySales = () => {
+    pendingSalesLink.current = false;
+    navigationRef.current?.navigate('Main', {
+      screen: 'Sales',
+      params: { todayRequest: ++salesRequest.current },
+      initial: false,
+    });
+  };
   const pendingSubscriptionLink = useRef<PaywallTrigger | null>(null);
   const { reset: resetPremium, refresh: refreshPremium } = usePremium();
+
+  useSalesWidget(authState === 'loading' ? 'loading' : (
+    authState === 'app' && !demoMode && impersonatedCompany === null ? 'active' : 'hidden'
+  ), sessionKey);
 
   // Guarda o destino enquanto a pessoa faz login ou conclui o onboarding.
   useEffect(() => {
@@ -306,8 +322,16 @@ export function AppNavigator() {
         pendingSubscriptionLink.current = trigger;
       }
     };
-    const listener = Linking.addEventListener('url', ({ url }) => openSubscription(url));
-    void Linking.getInitialURL().then(openSubscription).catch(() => {});
+    const openLink = (url: string | null) => {
+      if (url && /^docepreco:\/\/vendas\/?\?periodo=hoje(?:[&#].*)?$/i.test(url)) {
+        if (navigationRef.current?.isReady()) openTodaySales();
+        else pendingSalesLink.current = true;
+        return;
+      }
+      openSubscription(url);
+    };
+    const listener = Linking.addEventListener('url', ({ url }) => openLink(url));
+    void Linking.getInitialURL().then(openLink).catch(() => {});
     return () => listener.remove();
   }, []);
 
@@ -663,6 +687,11 @@ export function AppNavigator() {
         key={sessionKey}
         ref={navigationRef}
         onReady={() => {
+          if (pendingSalesLink.current) {
+            pendingPaywall.current = false;
+            openTodaySales();
+            return;
+          }
           if (pendingSubscriptionLink.current) {
             const trigger = pendingSubscriptionLink.current;
             pendingSubscriptionLink.current = null;

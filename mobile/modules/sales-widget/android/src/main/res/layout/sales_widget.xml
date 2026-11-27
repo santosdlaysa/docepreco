@@ -1,0 +1,56 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/sales_widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/sales_widget_background"
+    android:orientation="vertical"
+    android:padding="12dp">
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:text="@string/sales_widget_title"
+        android:textColor="#A30F4F"
+        android:textSize="12sp"
+        android:textStyle="bold" />
+    <FrameLayout android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1" />
+    <TextView
+        android:id="@+id/sales_widget_amount"
+        android:layout_width="match_parent"
+        android:layout_height="30dp"
+        android:autoSizeTextType="uniform"
+        android:autoSizeMinTextSize="10sp"
+        android:autoSizeMaxTextSize="25sp"
+        android:autoSizeStepGranularity="1sp"
+        android:gravity="center_vertical"
+        android:maxLines="1"
+        android:text="—"
+        android:ellipsize="end"
+        android:textSize="25sp"
+        android:textColor="#2E1421"
+        android:textStyle="bold" />
+    <TextView
+        android:id="@+id/sales_widget_details"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="2"
+        android:text="@string/sales_widget_sync"
+        android:textColor="#2E1421"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+    <TextView
+        android:id="@+id/sales_widget_updated"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:maxLines="1"
+        android:textColor="#66404F"
+        android:textSize="9sp" />
+    <FrameLayout android:layout_width="1dp" android:layout_height="0dp" android:layout_weight="1" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/sales_widget_open"
+        android:textColor="#A30F4F"
+        android:textSize="11sp"
+        android:textStyle="bold" />
+</LinearLayout>

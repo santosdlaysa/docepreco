@@ -11,9 +11,9 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { RouteProp, useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
+import { MainTabParamList, RootStackParamList } from '../navigation/types';
 import { Sale } from '../../domain/entities/Sale';
 import { saleApi } from '../../data/api/saleApi';
 import { isDemoMode } from '../../data/demo/demoMode';
@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { useDemoGuard } from '../hooks/useDemoGuard';
 import { Skeleton } from '../components/Skeleton';
 import { useCurrencyFormat } from '../hooks/useCurrencyFormat';
+import { localSalesDate, salesOnDate, sumSaleRevenue } from '../../domain/services/todaySales';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -49,6 +50,7 @@ type Section = { date: string; label: string; data: Sale[]; total: number };
 export const SalesScreen: React.FC = () => {
   const { formatCurrency: fmtCurrency } = useCurrencyFormat();
   const navigation = useNavigation<NavigationProp>();
+  const todayRequest = useRoute<RouteProp<MainTabParamList, 'Sales'>>().params?.todayRequest;
   const { t } = useTranslation();
   const { showToast } = useToast();
   const { guardAction, DemoGuardModal } = useDemoGuard();
@@ -57,7 +59,9 @@ export const SalesScreen: React.FC = () => {
   const [sales, setSales] = useState<Sale[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [period, setPeriod] = useState<'all' | 'week' | 'month'>('all');
+  const [period, setPeriod] = useState<'today' | 'all' | 'week' | 'month'>(todayRequest ? 'today' : 'all');
+  const loadRequest = useRef(0);
+  useEffect(() => { if (todayRequest) setPeriod('today'); }, [todayRequest]);
 
   const formatDateLabel = (dateStr: string) => {
     const [year, month, day] = dateStr.split('-');
@@ -80,28 +84,30 @@ export const SalesScreen: React.FC = () => {
       date,
       label: formatDateLabel(date),
       data,
-      total: data.reduce((sum, s) => sum + s.totalRevenue, 0),
+      total: sumSaleRevenue(data),
     }));
   };
 
-  const loadSales = async () => {
+  const loadSales = useCallback(async () => {
+    const request = ++loadRequest.current;
     try {
-      const data = await api.getAll(period === 'all' ? undefined : period);
-      setSales(data);
+      const data = await api.getAll(period === 'all' ? undefined : period === 'today' ? 'week' : period);
+      if (request === loadRequest.current) setSales(data);
     } catch {
-      showToast('Erro ao carregar vendas', 'error');
+      if (request === loadRequest.current) showToast('Erro ao carregar vendas', 'error');
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (request === loadRequest.current) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, [api, period, showToast]);
 
-  useFocusEffect(useCallback(() => { setLoading(true); loadSales(); }, []));
-  const isFirstRender = useRef(true);
-  useEffect(() => {
-    if (isFirstRender.current) { isFirstRender.current = false; return; }
-    loadSales();
-  }, [period]);
+  useFocusEffect(useCallback(() => {
+    setLoading(true);
+    void loadSales();
+    return () => { loadRequest.current++; };
+  }, [loadSales, todayRequest]));
 
   const handleDelete = (sale: Sale) => {
     if (!guardAction()) return;
@@ -125,9 +131,10 @@ export const SalesScreen: React.FC = () => {
     });
   };
 
-  const totalRevenue = sales.reduce((sum, s) => sum + s.totalRevenue, 0);
-  const totalUnits = sales.reduce((sum, s) => sum + s.quantitySold, 0);
-  const sections = groupByDate(sales);
+  const visibleSales = period === 'today' ? salesOnDate(sales, localSalesDate()) : sales;
+  const totalRevenue = sumSaleRevenue(visibleSales);
+  const totalUnits = visibleSales.reduce((sum, s) => sum + s.quantitySold, 0);
+  const sections = groupByDate(visibleSales);
 
   /* ─── Loading skeleton ─── */
   if (loading) {
@@ -152,7 +159,7 @@ export const SalesScreen: React.FC = () => {
       <View style={st.sh}>
         <View style={st.shT}>
           <Text style={st.shH1}>Vendas</Text>
-          <Text style={st.shSub}>{sales.length} venda{sales.length !== 1 ? 's' : ''} este mês</Text>
+          <Text style={st.shSub}>{visibleSales.length} venda{visibleSales.length !== 1 ? 's' : ''}{period === 'today' ? ' hoje' : ''}</Text>
         </View>
       </View>
 
@@ -176,7 +183,7 @@ export const SalesScreen: React.FC = () => {
               <View style={st.heroStats}>
                 <View style={st.heroStat}>
                   <Text style={st.heroStatN}>{totalUnits} un</Text>
-                  <Text style={st.heroStatT}>vendidas no mês</Text>
+                  <Text style={st.heroStatT}>{period === 'today' ? 'vendidas hoje' : 'unidades vendidas'}</Text>
                 </View>
                 <View style={st.heroStat}>
                   <Text style={st.heroStatN}>{fmtCurrency(totalRevenue)}</Text>
@@ -187,9 +194,9 @@ export const SalesScreen: React.FC = () => {
 
             {/* ── Segmented filter ── */}
             <View style={st.seg}>
-              {(['all', 'month', 'week'] as const).map(p => {
+              {(['today', 'all', 'month', 'week'] as const).map(p => {
                 const on = period === p;
-                const label = p === 'all' ? 'Todas' : p === 'month' ? 'Este mês' : 'Esta semana';
+                const label = p === 'today' ? 'Hoje' : p === 'all' ? 'Todas' : p === 'month' ? 'Mês' : 'Semana';
                 return (
                   <TouchableOpacity key={p} onPress={() => setPeriod(p)} style={[st.segOpt, on && st.segOptOn]} activeOpacity={0.7}>
                     <Text style={[st.segText, on && st.segTextOn]}>{label}</Text>

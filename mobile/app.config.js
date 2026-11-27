@@ -5,6 +5,24 @@ module.exports = ({ config }) => {
   // Several third-party podspecs still declare older versions, so normalize
   // their generated build settings during Expo prebuild.
   plugins.push(require('./plugins/withIosPodsDeploymentTarget'));
+  plugins.push('@bacons/apple-targets');
 
-  return { ...config, plugins };
+  const appGroupsKey = 'com.apple.security.application-groups';
+  const entitlements = config.ios?.entitlements || {};
+  const appleTeamId = process.env.EXPO_APPLE_TEAM_ID || config.ios?.appleTeamId;
+  return {
+    ...config,
+    plugins,
+    ios: {
+      ...config.ios,
+      ...(appleTeamId ? { appleTeamId } : {}),
+      entitlements: {
+        ...entitlements,
+        [appGroupsKey]: [...new Set([
+          ...(entitlements[appGroupsKey] || []),
+          `group.${config.ios.bundleIdentifier}.saleswidget`,
+        ])],
+      },
+    },
+  };
 };
