@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { AppState, Platform } from 'react-native';
 import { requireOptionalNativeModule } from 'expo-modules-core';
-import { ExtensionStorage } from '@bacons/apple-targets';
 import { useCurrency } from '../../context/CurrencyContext';
 import { saleApi } from '../../data/api/saleApi';
 import { tokenStorage } from '../../data/storage/tokenStorage';
@@ -14,15 +13,22 @@ const appGroup = 'group.com.laysadiniz.sweetpricing.saleswidget';
 const androidWidget = Platform.OS === 'android'
   ? requireOptionalNativeModule<{ setSummary(summary: string | null): void }>('DocePrecoSalesWidget')
   : null;
-const iosWidget = Platform.OS === 'ios' && requireOptionalNativeModule('ExtensionStorage')
-  ? new ExtensionStorage(appGroup)
+const iosWidget = Platform.OS === 'ios'
+  ? requireOptionalNativeModule<{
+    setString(key: string, value: string, group: string): void;
+    remove(key: string, group: string): void;
+    reloadWidget(kind: string): void;
+  }>('ExtensionStorage')
   : null;
+
+export const isSalesWidgetAvailable = Boolean(androidWidget || iosWidget);
 
 function setSummary(summary: string | null) {
   androidWidget?.setSummary(summary);
   if (iosWidget) {
-    iosWidget.set('todaySales', summary ?? undefined);
-    ExtensionStorage.reloadWidget('TodaySalesWidget');
+    if (summary === null) iosWidget.remove('todaySales', appGroup);
+    else iosWidget.setString('todaySales', summary, appGroup);
+    iosWidget.reloadWidget('TodaySalesWidget');
   }
 }
 
@@ -30,7 +36,7 @@ export function useSalesWidget(mode: 'loading' | 'hidden' | 'active', sessionKey
   const { currency, loading: loadingCurrency } = useCurrency();
 
   useEffect(() => {
-    if (!androidWidget && !iosWidget) return;
+    if (!isSalesWidgetAvailable) return;
     if (mode === 'hidden') {
       setSummary(null);
       return;

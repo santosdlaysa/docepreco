@@ -1,4 +1,11 @@
 {
+  "salesWidget": {
+    "title": "Adicionar widget de vendas",
+    "description": "Veja o total do dia e abra Vendas em um toque para registrar uma nova venda.",
+    "action": "Como adicionar",
+    "ios": "1. Na tela de início do iPhone, toque e segure um espaço vazio.\n\n2. Toque em Editar > Adicionar Widget. Se aparecer o botão +, toque nele.\n\n3. Busque DocePreço, escolha Vendas de hoje e toque em Adicionar Widget.",
+    "android": "1. Na tela inicial do celular, toque e segure um espaço vazio.\n\n2. Toque em Widgets e procure DocePreço.\n\n3. Toque e segure Vendas de hoje e arraste para a tela inicial."
+  },
   "common": {
     "cancel": "Cancelar",
     "delete": "Excluir",

@@ -17,6 +17,7 @@
     ],
     "scheme": "docepreco",
     "ios": {
+      "version": "2.14.3",
       "supportsTablet": false,
       "usesAppleSignIn": true,
       "bundleIdentifier": "com.laysadiniz.sweetpricing",
@@ -24,7 +25,7 @@
         "ITSAppUsesNonExemptEncryption": false,
         "NSPhotoLibraryUsageDescription": "Precisamos acessar sua galeria para enviar fotos no suporte."
       },
-      "buildNumber": "54"
+      "buildNumber": "55"
     },
     "android": {
       "adaptiveIcon": {

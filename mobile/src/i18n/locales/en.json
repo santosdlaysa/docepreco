@@ -1,4 +1,11 @@
 {
+  "salesWidget": {
+    "title": "Add the sales widget",
+    "description": "See today's total and open Sales in one tap to record a new sale.",
+    "action": "How to add",
+    "ios": "1. Touch and hold an empty area on your iPhone Home Screen.\n\n2. Tap Edit > Add Widget, or tap + if it appears.\n\n3. Find DocePreço, choose Vendas de hoje, then tap Add Widget.",
+    "android": "1. Touch and hold an empty area on your Home screen.\n\n2. Tap Widgets and find DocePreço.\n\n3. Touch and hold Vendas de hoje and drag it onto your Home screen."
+  },
   "common": {
     "cancel": "Cancel",
     "delete": "Delete",

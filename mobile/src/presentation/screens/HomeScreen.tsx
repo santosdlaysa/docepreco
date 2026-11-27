@@ -26,6 +26,7 @@ import { authApi } from '../../data/api/authApi';
 import { statsApi, AppStats } from '../../data/api/statsApi';
 import { saleApi } from '../../data/api/saleApi';
 import { Sale } from '../../domain/entities/Sale';
+import { localSalesDate, salesOnDate, sumSaleRevenue } from '../../domain/services/todaySales';
 import { isDemoMode } from '../../data/demo/demoMode';
 import { demoStatsApi, demoSaleApi, demoStoreApi } from '../../data/demo/demoApi';
 import { storeApi } from '../../data/api/storeApi';
@@ -38,6 +39,7 @@ import { SupportFab } from '../components/SupportFab';
 import { StoreCityRequiredModal } from '../components/StoreCityRequiredModal';
 import { SubscriptionExpiringModal } from '../components/SubscriptionExpiringModal';
 import { CheckinWidget } from '../components/CheckinWidget';
+import { SalesWidgetSetupCard } from '../components/SalesWidgetSetupCard';
 import { subscriptionAlertStorage } from '../../data/storage/subscriptionAlertStorage';
 import { isGuideAvailable } from './BeginnerGuideScreen';
 import { bannerApi, Banner, CarouselBanner, PlanBanner } from '../../data/api/bannerApi';
@@ -80,7 +82,7 @@ const DAY_LABELS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
 export const HomeScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp>();
-  const { companyName, companyLogo } = useAuth();
+  const { companyName, companyLogo, impersonatedCompany } = useAuth();
   const { isPremium, isMaster, isAdmin, isInTrial, daysLeft, planTier } = usePremium();
   const { guardAction, DemoGuardModal } = useDemoGuard();
   const { requirePremium } = usePaywall();
@@ -280,10 +282,9 @@ export const HomeScreen: React.FC = () => {
     return () => clearInterval(interval);
   }, [totalSlides]);
 
-  const today = new Date().toISOString().split('T')[0];
-
-  const todaySales = useMemo(() => allSales.filter(s => s.saleDate === today), [allSales, today]);
-  const todayRevenue = useMemo(() => todaySales.reduce((sum, s) => sum + s.totalRevenue, 0), [todaySales]);
+  const today = localSalesDate();
+  const todaySales = useMemo(() => salesOnDate(allSales, today), [allSales, today]);
+  const todayRevenue = useMemo(() => sumSaleRevenue(todaySales), [todaySales]);
   const todayProfit = useMemo(() => Math.round(todayRevenue * 0.58), [todayRevenue]);
 
   const weeklyData = useMemo(() => {
@@ -291,8 +292,7 @@ export const HomeScreen: React.FC = () => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key = d.toISOString().split('T')[0];
-      days.push(allSales.filter(s => s.saleDate === key).reduce((sum, s) => sum + s.totalRevenue, 0));
+      days.push(sumSaleRevenue(salesOnDate(allSales, localSalesDate(d))));
     }
     return days;
   }, [allSales]);
@@ -559,6 +559,8 @@ export const HomeScreen: React.FC = () => {
             </View>
           </LinearGradient>
         </View>
+
+        {!isDemoMode() && !impersonatedCompany && <SalesWidgetSetupCard />}
 
         {/* ═══════ NOTIFICATION BANNERS ═══════ */}
         {visibleBanners.map(banner => {
